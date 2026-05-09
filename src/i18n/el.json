@@ -1,0 +1,52 @@
+{
+  "app": {
+    "name": "Strength Atlas",
+    "tagline": "Προπονήσου με βάρη. Κατέκτησε τα skills."
+  },
+  "nav": {
+    "workout": "Προπόνηση",
+    "history": "Ιστορικό",
+    "skills": "Skills",
+    "settings": "Ρυθμίσεις"
+  },
+  "workout": {
+    "title": "Προπόνηση",
+    "empty": "Δεν υπάρχει ενεργή προπόνηση. Πάτα Έναρξη.",
+    "start": "Έναρξη προπόνησης",
+    "addExercise": "Προσθήκη άσκησης",
+    "logSet": "Καταγραφή set"
+  },
+  "history": {
+    "title": "Ιστορικό",
+    "empty": "Το ιστορικό προπονήσεων θα εμφανίζεται εδώ."
+  },
+  "skills": {
+    "title": "Skills",
+    "empty": "Διάλεξε ένα skill για να ξεκινήσεις τις προοδεύσεις.",
+    "currentStep": "Τρέχον βήμα",
+    "nextUnlock": "Επόμενο unlock",
+    "mastered": "Κατακτήθηκε",
+    "locked": "Κλειδωμένο",
+    "inProgress": "Σε εξέλιξη"
+  },
+  "settings": {
+    "title": "Ρυθμίσεις",
+    "language": "Γλώσσα",
+    "units": "Μονάδες",
+    "theme": "Θέμα",
+    "themeDark": "Σκούρο",
+    "themeLight": "Φωτεινό",
+    "themeAuto": "Αυτόματο",
+    "restTimer": "Προεπιλεγμένος rest timer",
+    "showE1rm": "Εμφάνιση estimated 1RM"
+  },
+  "common": {
+    "save": "Αποθήκευση",
+    "cancel": "Άκυρο",
+    "delete": "Διαγραφή",
+    "kg": "kg",
+    "lb": "lb",
+    "sec": "δευτ",
+    "reps": "επαν"
+  }
+}

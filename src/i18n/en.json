@@ -1,0 +1,52 @@
+{
+  "app": {
+    "name": "Strength Atlas",
+    "tagline": "Train weighted basics. Master the skills."
+  },
+  "nav": {
+    "workout": "Workout",
+    "history": "History",
+    "skills": "Skills",
+    "settings": "Settings"
+  },
+  "workout": {
+    "title": "Workout",
+    "empty": "No active session. Tap Start to begin.",
+    "start": "Start workout",
+    "addExercise": "Add exercise",
+    "logSet": "Log set"
+  },
+  "history": {
+    "title": "History",
+    "empty": "Your training log will appear here."
+  },
+  "skills": {
+    "title": "Skills",
+    "empty": "Pick a skill to start tracking progressions.",
+    "currentStep": "Current step",
+    "nextUnlock": "Next unlock",
+    "mastered": "Mastered",
+    "locked": "Locked",
+    "inProgress": "In progress"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "units": "Units",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "themeAuto": "Auto",
+    "restTimer": "Default rest timer",
+    "showE1rm": "Show estimated 1RM"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "kg": "kg",
+    "lb": "lb",
+    "sec": "sec",
+    "reps": "reps"
+  }
+}

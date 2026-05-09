@@ -1,0 +1,21 @@
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { AppShell } from './layouts/AppShell';
+import { WorkoutPage } from '@/features/workout/WorkoutPage';
+import { HistoryPage } from '@/features/history/HistoryPage';
+import { SkillsPage } from '@/features/skills/SkillsPage';
+import { SettingsPage } from '@/features/settings/SettingsPage';
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <AppShell />,
+    children: [
+      { index: true, element: <Navigate to="/workout" replace /> },
+      { path: 'workout', element: <WorkoutPage /> },
+      { path: 'history', element: <HistoryPage /> },
+      { path: 'skills', element: <SkillsPage /> },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: '*', element: <Navigate to="/workout" replace /> },
+    ],
+  },
+]);
