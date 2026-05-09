@@ -14,11 +14,47 @@
     "empty": "No active session. Tap Start to begin.",
     "start": "Start workout",
     "addExercise": "Add exercise",
-    "logSet": "Log set"
+    "logSet": "Log set",
+    "active": "Active workout",
+    "end": "End",
+    "endConfirmTitle": "End workout?",
+    "endConfirmDesc": "This will close the active session and save its duration.",
+    "typePlaceholder": "leg day, push A...",
+    "noExercises": "No exercises yet. Tap below to add one.",
+    "weighted": "Weighted",
+    "bodyweight": "Bodyweight",
+    "addSet": "Add set",
+    "set": "Set",
+    "weightKg": "Weight (kg)",
+    "reps": "Reps",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "swipeHint": "Swipe ← for actions",
+    "lastWorkout": "Last workout",
+    "duration": "Duration",
+    "exercises": "Exercises",
+    "sets": "Sets",
+    "searchExercises": "Search exercises…",
+    "noResults": "No exercises match.",
+    "category": {
+      "push": "Push",
+      "pull": "Pull",
+      "legs": "Legs",
+      "core": "Core",
+      "other": "Other"
+    },
+    "rest": {
+      "start": "Start rest",
+      "stop": "Stop rest",
+      "restingShort": "Rest"
+    }
   },
   "history": {
     "title": "History",
-    "empty": "Your training log will appear here."
+    "empty": "Your training log will appear here.",
+    "completed": "completed sessions",
+    "ongoing": "ongoing"
   },
   "skills": {
     "title": "Skills",
@@ -43,7 +79,9 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "delete": "Delete",
+    "edit": "Edit",
     "kg": "kg",
     "lb": "lb",
     "sec": "sec",

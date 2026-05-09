@@ -1,11 +1,23 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
+import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { queries } from '@/lib/db';
+import { LastWorkoutCard } from './components/LastWorkoutCard';
 
 export function WorkoutPage() {
   const { t } = useTranslation();
-  const exerciseCount = useLiveQuery(() => db.exercises.count(), [], 0);
+  const [starting, setStarting] = useState(false);
+
+  const onStart = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      await queries.startWorkout();
+    } finally {
+      setStarting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -13,17 +25,15 @@ export function WorkoutPage() {
         <h1 className="text-2xl font-semibold tracking-tight">
           {t('workout.title')}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {exerciseCount} exercises seeded · ready when you are
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('workout.empty')}</p>
       </header>
 
-      <div className="rounded-lg border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">{t('workout.empty')}</p>
-        <Button className="mt-4" size="lg" disabled>
-          {t('workout.start')}
-        </Button>
-      </div>
+      <Button size="lg" className="w-full" onClick={() => void onStart()} disabled={starting}>
+        <Play className="h-5 w-5" />
+        {t('workout.start')}
+      </Button>
+
+      <LastWorkoutCard />
     </div>
   );
 }

@@ -14,11 +14,47 @@
     "empty": "Δεν υπάρχει ενεργή προπόνηση. Πάτα Έναρξη.",
     "start": "Έναρξη προπόνησης",
     "addExercise": "Προσθήκη άσκησης",
-    "logSet": "Καταγραφή set"
+    "logSet": "Καταγραφή set",
+    "active": "Ενεργή προπόνηση",
+    "end": "Τέλος",
+    "endConfirmTitle": "Τέλος προπόνησης;",
+    "endConfirmDesc": "Η ενεργή συνεδρία θα κλείσει και θα αποθηκευτεί η διάρκεια.",
+    "typePlaceholder": "πόδια, push A...",
+    "noExercises": "Καμία άσκηση ακόμα. Πάτα παρακάτω για να προσθέσεις.",
+    "weighted": "Με βάρος",
+    "bodyweight": "Bodyweight",
+    "addSet": "Προσθήκη set",
+    "set": "Set",
+    "weightKg": "Βάρος (kg)",
+    "reps": "Επαναλήψεις",
+    "save": "Αποθήκευση",
+    "edit": "Επεξεργασία",
+    "delete": "Διαγραφή",
+    "swipeHint": "Σύρε ← για ενέργειες",
+    "lastWorkout": "Τελευταία προπόνηση",
+    "duration": "Διάρκεια",
+    "exercises": "Ασκήσεις",
+    "sets": "Sets",
+    "searchExercises": "Αναζήτηση ασκήσεων…",
+    "noResults": "Δεν βρέθηκαν ασκήσεις.",
+    "category": {
+      "push": "Push",
+      "pull": "Pull",
+      "legs": "Πόδια",
+      "core": "Core",
+      "other": "Άλλο"
+    },
+    "rest": {
+      "start": "Έναρξη rest",
+      "stop": "Τερματισμός",
+      "restingShort": "Rest"
+    }
   },
   "history": {
     "title": "Ιστορικό",
-    "empty": "Το ιστορικό προπονήσεων θα εμφανίζεται εδώ."
+    "empty": "Το ιστορικό προπονήσεων θα εμφανίζεται εδώ.",
+    "completed": "ολοκληρωμένες συνεδρίες",
+    "ongoing": "σε εξέλιξη"
   },
   "skills": {
     "title": "Skills",
@@ -43,7 +79,9 @@
   "common": {
     "save": "Αποθήκευση",
     "cancel": "Άκυρο",
+    "confirm": "Επιβεβαίωση",
     "delete": "Διαγραφή",
+    "edit": "Επεξεργασία",
     "kg": "kg",
     "lb": "lb",
     "sec": "δευτ",
