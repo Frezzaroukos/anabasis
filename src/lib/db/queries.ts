@@ -9,7 +9,13 @@
 import { v4 as uuid } from 'uuid';
 import { db } from './schema';
 import { LOCAL_USER_ID } from './bootstrap';
-import type { Exercise, SetEntry, Workout } from './types';
+import type {
+  Exercise,
+  SetEntry,
+  UserSkillProgress,
+  UserSkillStepCompletion,
+  Workout,
+} from './types';
 
 const now = () => new Date().toISOString();
 
@@ -137,4 +143,129 @@ export async function listExercises(): Promise<Exercise[]> {
   return all
     .filter((e) => e.deleted_at == null && !e.is_archived)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/* ─────────── Skills (the progression tree) ─────────── */
+
+/** Ένα skill μαζί με τα βήματά του, ταξινομημένα. */
+export async function getSkillWithSteps(skillId: string) {
+  const [skill, steps] = await Promise.all([
+    db.skills.get(skillId),
+    db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number'),
+  ]);
+  return skill ? { skill, steps } : null;
+}
+
+/** Τα ολοκληρωμένα βήματα του χρήστη για ένα skill (step_id → completion). */
+export async function getStepCompletions(
+  stepIds: string[],
+): Promise<Map<string, UserSkillStepCompletion>> {
+  if (stepIds.length === 0) return new Map();
+  const rows = await db.user_skill_step_completions
+    .where('user_id')
+    .equals(LOCAL_USER_ID)
+    .toArray();
+  const wanted = new Set(stepIds);
+  return new Map(
+    rows.filter((r) => wanted.has(r.skill_step_id)).map((r) => [r.skill_step_id, r]),
+  );
+}
+
+export async function getSkillProgress(
+  skillId: string,
+): Promise<UserSkillProgress | undefined> {
+  return db.user_skill_progress
+    .where('[user_id+skill_id]')
+    .equals([LOCAL_USER_ID, skillId])
+    .first();
+}
+
+/** Πρόοδος για ΟΛΑ τα skills — για τη λίστα (skill_id → progress). */
+export async function getAllSkillProgress(): Promise<Map<string, UserSkillProgress>> {
+  const rows = await db.user_skill_progress
+    .where('user_id')
+    .equals(LOCAL_USER_ID)
+    .toArray();
+  return new Map(rows.map((r) => [r.skill_id, r]));
+}
+
+async function upsertProgress(
+  skillId: string,
+  patch: Partial<UserSkillProgress>,
+): Promise<void> {
+  const t = now();
+  const existing = await getSkillProgress(skillId);
+  if (existing) {
+    await db.user_skill_progress.update(existing.id, { ...patch, updated_at: t });
+    return;
+  }
+  await db.user_skill_progress.add({
+    id: uuid(),
+    user_id: LOCAL_USER_ID,
+    skill_id: skillId,
+    current_step_id: null,
+    status: 'in_progress',
+    started_at: t,
+    mastered_at: null,
+    notes: null,
+    created_at: t,
+    updated_at: t,
+    ...patch,
+  });
+}
+
+/**
+ * Μαρκάρει ένα βήμα ως πετυχημένο και προωθεί το skill στο επόμενο.
+ * Αν ήταν το τελευταίο βήμα → mastered.
+ */
+export async function achieveStep(
+  skillId: string,
+  stepId: string,
+  achievedValue: number,
+): Promise<void> {
+  const t = now();
+  const steps = await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number');
+  const idx = steps.findIndex((s) => s.id === stepId);
+  if (idx === -1) return;
+
+  const already = await db.user_skill_step_completions
+    .where('user_id')
+    .equals(LOCAL_USER_ID)
+    .filter((r) => r.skill_step_id === stepId)
+    .first();
+
+  if (!already) {
+    await db.user_skill_step_completions.add({
+      id: uuid(),
+      user_id: LOCAL_USER_ID,
+      skill_step_id: stepId,
+      achieved_value: achievedValue,
+      achieved_at: t,
+      workout_id: null,
+      notes: null,
+      created_at: t,
+    });
+  }
+
+  const next = steps[idx + 1];
+  await upsertProgress(skillId, {
+    current_step_id: next ? next.id : stepId,
+    status: next ? 'in_progress' : 'mastered',
+    mastered_at: next ? null : t,
+  });
+}
+
+/** Αναίρεση — χρήσιμο όταν μαρκάρεις κατά λάθος. */
+export async function undoStep(skillId: string, stepId: string): Promise<void> {
+  const rows = await db.user_skill_step_completions
+    .where('user_id')
+    .equals(LOCAL_USER_ID)
+    .filter((r) => r.skill_step_id === stepId)
+    .toArray();
+  await Promise.all(rows.map((r) => db.user_skill_step_completions.delete(r.id)));
+  await upsertProgress(skillId, {
+    current_step_id: stepId,
+    status: 'in_progress',
+    mastered_at: null,
+  });
 }

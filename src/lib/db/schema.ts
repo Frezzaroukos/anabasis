@@ -1,5 +1,5 @@
 /**
- * Dexie schema for Strength Atlas.
+ * Dexie schema for Anabasis.
  * Indexes mirror DATABASE_SCHEMA.md "Indexes" section.
  *
  * Schema versioning: bump the number in `db.version(N).stores({...})`
@@ -23,7 +23,7 @@ import type {
 
 export const SCHEMA_VERSION = 1;
 
-export class StrengthAtlasDB extends Dexie {
+export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
   exercises!: Table<Exercise, string>;
   workouts!: Table<Workout, string>;
@@ -37,7 +37,7 @@ export class StrengthAtlasDB extends Dexie {
   events_outgoing!: Table<OutgoingEvent, string>;
 
   constructor() {
-    super('strength-atlas');
+    super('anabasis');
 
     this.version(1).stores({
       users: 'id, email, updated_at',
@@ -62,4 +62,4 @@ export class StrengthAtlasDB extends Dexie {
   }
 }
 
-export const db = new StrengthAtlasDB();
+export const db = new AnabasisDB();

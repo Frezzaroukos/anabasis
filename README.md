@@ -1,4 +1,4 @@
-# Strength Atlas
+# Anabasis
 
 Weighted calisthenics & skill progression tracker. PWA, offline-first, bilingual (EN/EL).
 

@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Strength Atlas",
+    "name": "Anabasis",
     "tagline": "Προπονήσου με βάρη. Κατέκτησε τα skills."
   },
   "nav": {
@@ -63,7 +63,14 @@
     "nextUnlock": "Επόμενο unlock",
     "mastered": "Κατακτήθηκε",
     "locked": "Κλειδωμένο",
-    "inProgress": "Σε εξέλιξη"
+    "inProgress": "Σε εξέλιξη",
+    "goal": "Στόχος",
+    "stepsDone": "βήματα ολοκληρωμένα",
+    "target": "Στόχος",
+    "achieved": "Πέτυχα",
+    "markAchieved": "Το πέτυχα",
+    "watchBenchmark": "Δες benchmark",
+    "available": "προοδευτικές διαδρομές"
   },
   "settings": {
     "title": "Ρυθμίσεις",
@@ -85,6 +92,8 @@
     "kg": "kg",
     "lb": "lb",
     "sec": "δευτ",
-    "reps": "επαν"
+    "reps": "επαν",
+    "loading": "Φόρτωση…",
+    "undo": "Αναίρεση"
   }
 }

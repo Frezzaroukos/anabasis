@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Strength Atlas",
+    "name": "Anabasis",
     "tagline": "Train weighted basics. Master the skills."
   },
   "nav": {
@@ -63,7 +63,14 @@
     "nextUnlock": "Next unlock",
     "mastered": "Mastered",
     "locked": "Locked",
-    "inProgress": "In progress"
+    "inProgress": "In progress",
+    "goal": "Goal",
+    "stepsDone": "steps done",
+    "target": "Target",
+    "achieved": "Achieved",
+    "markAchieved": "Mark achieved",
+    "watchBenchmark": "Watch benchmark",
+    "available": "progressions available"
   },
   "settings": {
     "title": "Settings",
@@ -85,6 +92,8 @@
     "kg": "kg",
     "lb": "lb",
     "sec": "sec",
-    "reps": "reps"
+    "reps": "reps",
+    "loading": "Loading…",
+    "undo": "Undo"
   }
 }

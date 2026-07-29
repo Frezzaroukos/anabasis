@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
-        name: 'Strength Atlas',
+        name: 'Anabasis',
         short_name: 'Atlas',
         description: 'Weighted calisthenics & skill progression tracker',
         theme_color: '#0a0a0a',

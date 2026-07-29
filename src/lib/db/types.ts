@@ -1,5 +1,5 @@
 /**
- * Strength Atlas — Domain types.
+ * Anabasis — Domain types.
  * Mirrors DATABASE_SCHEMA.md exactly. Same field names, same shape, same units.
  */
 

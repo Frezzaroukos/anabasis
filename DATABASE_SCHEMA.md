@@ -1,4 +1,4 @@
-# Strength Atlas — Database Schema
+# Anabasis — Database Schema
 
 > **IndexedDB (local) + Supabase Postgres (Pro tier sync).** Same shape. Schema versioned από v1.
 

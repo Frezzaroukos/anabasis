@@ -1,4 +1,4 @@
-# Strength Atlas — Project Scope
+# Anabasis — Project Scope
 
 > **Weighted calisthenics & skill progression tracker.** Όχι generic gym app. Όχι nutrition tool.
 

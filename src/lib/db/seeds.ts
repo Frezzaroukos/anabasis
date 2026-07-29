@@ -1,5 +1,5 @@
 /**
- * System-seeded data for Strength Atlas.
+ * System-seeded data for Anabasis.
  *
  * IDs are stable UUIDs — they MUST stay constant across releases so that
  * sync between local Dexie and Supabase (Pro tier) doesn't double-insert.

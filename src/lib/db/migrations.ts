@@ -6,9 +6,9 @@
  * v1 = initial schema, no upgrade needed.
  */
 
-import type { StrengthAtlasDB } from './schema';
+import type { AnabasisDB } from './schema';
 
-export type Migration = (db: StrengthAtlasDB) => Promise<void> | void;
+export type Migration = (db: AnabasisDB) => Promise<void> | void;
 
 export const migrations: Record<number, Migration> = {
   1: () => {
