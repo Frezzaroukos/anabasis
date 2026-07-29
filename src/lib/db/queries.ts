@@ -9,8 +9,11 @@
 import { v4 as uuid } from 'uuid';
 import { db } from './schema';
 import { LOCAL_USER_ID } from './bootstrap';
+import { candidatesFromSet, isNewPR } from '../domain/pr';
 import type {
+  AppSettings,
   Exercise,
+  PersonalRecord,
   SetEntry,
   UserSkillProgress,
   UserSkillStepCompletion,
@@ -121,7 +124,70 @@ export async function addSet(input: AddSetInput): Promise<SetEntry> {
     deleted_at: null,
   };
   await db.sets.add(set);
+  // Warm-ups δεν μετράνε για PR — αλλιώς κάθε ζέσταμα θα «έσπαγε» ρεκόρ.
+  if (!set.is_warmup) await detectPRs(set, input.workout_id);
   return set;
+}
+
+/**
+ * Ελέγχει κάθε PR-υποψηφιότητα του σετ έναντι του τρέχοντος ρεκόρ και
+ * αποθηκεύει ό,τι είναι νέο. Καλείται αυτόματα από το addSet.
+ */
+async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
+  const t = now();
+  const candidates = candidatesFromSet(set);
+  if (candidates.length === 0) return;
+
+  const existing = await db.personal_records
+    .where('user_id')
+    .equals(LOCAL_USER_ID)
+    .filter((r) => r.exercise_id === set.exercise_id)
+    .toArray();
+
+  for (const c of candidates) {
+    const current = existing.find((r) => r.type === c.type) ?? null;
+    if (!isNewPR(c, current)) continue;
+    await db.personal_records.add({
+      id: uuid(),
+      user_id: LOCAL_USER_ID,
+      exercise_id: set.exercise_id,
+      type: c.type,
+      value: c.value,
+      reps: c.reps,
+      weight_kg: c.weight_kg,
+      achieved_at: t,
+      workout_id: workoutId,
+      set_id: set.id,
+      created_at: t,
+      updated_at: t,
+    });
+  }
+}
+
+/** PRs ανά άσκηση — για το UI (exercise_id → PersonalRecord[]). */
+export async function getPRsByExercise(): Promise<Map<string, PersonalRecord[]>> {
+  const rows = await db.personal_records
+    .where('user_id')
+    .equals(LOCAL_USER_ID)
+    .toArray();
+  const m = new Map<string, PersonalRecord[]>();
+  for (const r of rows) {
+    const arr = m.get(r.exercise_id) ?? [];
+    arr.push(r);
+    m.set(r.exercise_id, arr);
+  }
+  return m;
+}
+
+/** Τα πιο πρόσφατα PRs, ταξινομημένα (για History/Dashboard). */
+export async function getRecentPRs(limit = 20): Promise<PersonalRecord[]> {
+  const rows = await db.personal_records
+    .where('user_id')
+    .equals(LOCAL_USER_ID)
+    .toArray();
+  return rows
+    .sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
+    .slice(0, limit);
 }
 
 export async function updateSet(
@@ -268,4 +334,86 @@ export async function undoStep(skillId: string, stepId: string): Promise<void> {
     status: 'in_progress',
     mastered_at: null,
   });
+}
+
+/* ─────────── Data ownership (export / import) ─────────── */
+
+/** Πλήρες JSON backup. Local-first σημαίνει: τα δεδομένα φεύγουν όποτε θες. */
+export async function exportAll(): Promise<string> {
+  const [
+    users, exercises, workouts, sets, personal_records,
+    user_skill_progress, user_skill_step_completions, app_settings,
+  ] = await Promise.all([
+    db.users.toArray(), db.exercises.toArray(), db.workouts.toArray(),
+    db.sets.toArray(), db.personal_records.toArray(),
+    db.user_skill_progress.toArray(), db.user_skill_step_completions.toArray(),
+    db.app_settings.toArray(),
+  ]);
+  return JSON.stringify(
+    {
+      format: 'anabasis-backup',
+      version: 1,
+      exported_at: now(),
+      data: {
+        users, exercises, workouts, sets, personal_records,
+        user_skill_progress, user_skill_step_completions, app_settings,
+      },
+    },
+    null,
+    2,
+  );
+}
+
+export interface ImportResult {
+  ok: boolean;
+  message: string;
+  counts?: Record<string, number>;
+}
+
+/**
+ * Επαναφορά από backup. Κάνει merge (bulkPut) — δεν σβήνει ό,τι δεν είναι στο
+ * αρχείο, ώστε μια λάθος επαναφορά να μην καταστρέφει δεδομένα.
+ * Τα seeded skills/skill_steps δεν εισάγονται (τα ορίζει η έκδοση της εφαρμογής).
+ */
+export async function importAll(json: string): Promise<ImportResult> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return { ok: false, message: 'invalidJson' };
+  }
+  const b = parsed as { format?: string; data?: Record<string, unknown[]> };
+  if (b?.format !== 'anabasis-backup' || !b.data) {
+    return { ok: false, message: 'notABackup' };
+  }
+
+  const tables = {
+    users: db.users, exercises: db.exercises, workouts: db.workouts,
+    sets: db.sets, personal_records: db.personal_records,
+    user_skill_progress: db.user_skill_progress,
+    user_skill_step_completions: db.user_skill_step_completions,
+    app_settings: db.app_settings,
+  } as const;
+
+  const counts: Record<string, number> = {};
+  for (const [name, table] of Object.entries(tables)) {
+    const rows = b.data[name];
+    if (!Array.isArray(rows) || rows.length === 0) continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (table as any).bulkPut(rows);
+    counts[name] = rows.length;
+  }
+  return { ok: true, message: 'imported', counts };
+}
+
+/* ─────────── Settings ─────────── */
+
+export async function updateSettings(
+  patch: Partial<AppSettings>,
+): Promise<void> {
+  const s = await db.app_settings.where('user_id').equals(LOCAL_USER_ID).first();
+  const t = now();
+  if (s) {
+    await db.app_settings.update(s.id, { ...patch, updated_at: t });
+  }
 }

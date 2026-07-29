@@ -54,7 +54,15 @@
     "title": "Ιστορικό",
     "empty": "Το ιστορικό προπονήσεων θα εμφανίζεται εδώ.",
     "completed": "ολοκληρωμένες συνεδρίες",
-    "ongoing": "σε εξέλιξη"
+    "ongoing": "σε εξέλιξη",
+    "recentPRs": "Πρόσφατα ρεκόρ",
+    "pr": {
+      "max_weight": "Μέγιστο βάρος",
+      "max_reps": "Μέγιστες επαναλήψεις",
+      "max_volume": "Μέγιστος όγκος",
+      "e1rm": "Εκτ. 1RM",
+      "max_hold": "Μέγιστο hold"
+    }
   },
   "skills": {
     "title": "Skills",
@@ -81,7 +89,20 @@
     "themeLight": "Φωτεινό",
     "themeAuto": "Αυτόματο",
     "restTimer": "Προεπιλεγμένος rest timer",
-    "showE1rm": "Εμφάνιση estimated 1RM"
+    "showE1rm": "Εμφάνιση estimated 1RM",
+    "yourData": "Τα δεδομένα σου",
+    "dataHint": "Όλα ζουν σε αυτή τη συσκευή. Εξήγαγέ τα όποτε θες — δεν κλειδώνονται πουθενά.",
+    "export": "Εξαγωγή backup",
+    "import": "Εισαγωγή backup",
+    "exported": "Το backup κατέβηκε.",
+    "imported": "Εισήχθησαν",
+    "invalidJson": "Μη έγκυρο JSON.",
+    "notABackup": "Δεν είναι αρχείο backup του Anabasis.",
+    "workouts": "προπονήσεις",
+    "sets": "σετ",
+    "prs": "ρεκόρ",
+    "steps": "βήματα",
+    "offlineNote": "offline-first · τα δεδομένα μένουν δικά σου"
   },
   "common": {
     "save": "Αποθήκευση",

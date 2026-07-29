@@ -1,12 +1,31 @@
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, LOCAL_USER_ID } from '@/lib/db';
+import { exportAll, importAll, updateSettings } from '@/lib/db/queries';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+const REST_PRESETS = [60, 90, 120, 180, 240, 300];
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<string | null>(null);
+
   const settings = useLiveQuery(
     () => db.app_settings.where('user_id').equals(LOCAL_USER_ID).first(),
     [],
+  );
+  const stats = useLiveQuery(
+    async () => ({
+      workouts: await db.workouts.count(),
+      sets: await db.sets.count(),
+      prs: await db.personal_records.count(),
+      steps: await db.user_skill_step_completions.count(),
+    }),
+    [],
+    { workouts: 0, sets: 0, prs: 0, steps: 0 },
   );
 
   const onLangChange = (lang: 'en' | 'el') => {
@@ -17,6 +36,30 @@ export function SettingsPage() {
     });
   };
 
+  const onExport = async () => {
+    const json = await exportAll();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `anabasis-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus(t('settings.exported'));
+  };
+
+  const onImportFile = async (file: File) => {
+    const res = await importAll(await file.text());
+    setStatus(
+      res.ok
+        ? `${t('settings.imported')} (${Object.values(res.counts ?? {}).reduce(
+            (a, b) => a + b,
+            0,
+          )})`
+        : t(`settings.${res.message}`),
+    );
+  };
+
   return (
     <div className="space-y-6">
       <header>
@@ -25,6 +68,7 @@ export function SettingsPage() {
         </h1>
       </header>
 
+      {/* Language */}
       <section className="rounded-lg border border-border bg-card p-4">
         <p className="mb-3 text-sm font-medium">{t('settings.language')}</p>
         <div className="flex gap-2">
@@ -44,12 +88,96 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4 text-sm">
-        <p className="mb-2 font-medium">{t('settings.restTimer')}</p>
-        <p className="text-muted-foreground">
-          {settings?.default_rest_timer_seconds ?? 180}s
-        </p>
+      {/* Rest timer — τώρα επεξεργάσιμο */}
+      <section className="rounded-lg border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-medium">{t('settings.restTimer')}</p>
+        <div className="flex flex-wrap gap-2">
+          {REST_PRESETS.map((s) => (
+            <button
+              key={s}
+              onClick={() => void updateSettings({ default_rest_timer_seconds: s })}
+              className={`rounded-md border border-border px-3 py-1.5 font-mono text-sm transition-colors ${
+                settings?.default_rest_timer_seconds === s
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent'
+              }`}
+            >
+              {s < 60 ? `${s}s` : `${s / 60}m`}
+            </button>
+          ))}
+        </div>
       </section>
+
+      {/* Units */}
+      <section className="rounded-lg border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-medium">{t('settings.units')}</p>
+        <div className="flex gap-2">
+          {(['kg', 'lb'] as const).map((u) => (
+            <button
+              key={u}
+              onClick={() => void updateSettings({ weight_unit: u })}
+              className={`rounded-md border border-border px-3 py-1.5 text-sm uppercase transition-colors ${
+                settings?.weight_unit === u
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent'
+              }`}
+            >
+              {u}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Your data — local-first σημαίνει ότι φεύγει όποτε θες */}
+      <section className="rounded-lg border border-border bg-card p-4">
+        <p className="text-sm font-medium">{t('settings.yourData')}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t('settings.dataHint')}
+        </p>
+        <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
+          {(
+            [
+              ['workouts', stats.workouts],
+              ['sets', stats.sets],
+              ['prs', stats.prs],
+              ['steps', stats.steps],
+            ] as const
+          ).map(([k, v]) => (
+            <div key={k} className="rounded-md bg-muted/50 py-2">
+              <dt className="text-[10px] uppercase text-muted-foreground">
+                {t(`settings.${k}`)}
+              </dt>
+              <dd className="font-mono text-sm">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-4 flex gap-2">
+          <Button onClick={() => void onExport()}>{t('settings.export')}</Button>
+          <Button variant="outline" onClick={() => fileRef.current?.click()}>
+            {t('settings.import')}
+          </Button>
+          <Input
+            ref={fileRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void onImportFile(f);
+              e.target.value = '';
+            }}
+          />
+        </div>
+        {status && (
+          <p className="mt-3 text-xs text-muted-foreground" role="status">
+            {status}
+          </p>
+        )}
+      </section>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Anabasis · {t('settings.offlineNote')}
+      </p>
     </div>
   );
 }

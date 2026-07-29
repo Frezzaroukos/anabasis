@@ -54,7 +54,15 @@
     "title": "History",
     "empty": "Your training log will appear here.",
     "completed": "completed sessions",
-    "ongoing": "ongoing"
+    "ongoing": "ongoing",
+    "recentPRs": "Recent PRs",
+    "pr": {
+      "max_weight": "Max weight",
+      "max_reps": "Max reps",
+      "max_volume": "Max volume",
+      "e1rm": "Est. 1RM",
+      "max_hold": "Max hold"
+    }
   },
   "skills": {
     "title": "Skills",
@@ -81,7 +89,20 @@
     "themeLight": "Light",
     "themeAuto": "Auto",
     "restTimer": "Default rest timer",
-    "showE1rm": "Show estimated 1RM"
+    "showE1rm": "Show estimated 1RM",
+    "yourData": "Your data",
+    "dataHint": "Everything lives on this device. Export any time — your data is never locked in.",
+    "export": "Export backup",
+    "import": "Import backup",
+    "exported": "Backup downloaded.",
+    "imported": "Imported",
+    "invalidJson": "Not valid JSON.",
+    "notABackup": "Not an Anabasis backup file.",
+    "workouts": "workouts",
+    "sets": "sets",
+    "prs": "PRs",
+    "steps": "steps",
+    "offlineNote": "offline-first · your data stays yours"
   },
   "common": {
     "save": "Save",

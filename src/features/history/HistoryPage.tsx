@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, LOCAL_USER_ID } from '@/lib/db';
 import { formatHMS } from '@/hooks/useSessionTimer';
+import { getRecentPRs } from '@/lib/db/queries';
 
 export function HistoryPage() {
   const { t } = useTranslation();
@@ -15,6 +16,13 @@ export function HistoryPage() {
 
   const list = completed ?? [];
 
+  const prs = useLiveQuery(() => getRecentPRs(8), [], []);
+  const exerciseNames = useLiveQuery(
+    async () => new Map((await db.exercises.toArray()).map((e) => [e.id, e.name])),
+    [],
+    new Map<string, string>(),
+  );
+
   return (
     <div className="space-y-6">
       <header>
@@ -25,6 +33,35 @@ export function HistoryPage() {
           {list.length} {t('history.completed')}
         </p>
       </header>
+
+      {prs.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-medium">{t('history.recentPRs')}</h2>
+          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+            {prs.map((pr) => (
+              <li key={pr.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="text-amber-500" aria-hidden>
+                  ★
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {exerciseNames.get(pr.exercise_id) ?? '—'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(`history.pr.${pr.type}`)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-mono text-sm">{Math.round(pr.value * 10) / 10}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {new Date(pr.achieved_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {list.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
