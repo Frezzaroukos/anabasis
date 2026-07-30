@@ -59,7 +59,11 @@ export function BottomTabNav() {
                       isActive && 'scale-110',
                     )}
                   />
-                  <span>{t(`nav.${labelKey}`)}</span>
+                  {/* truncate: καμία ετικέτα δεν επιτρέπεται να τυλίξει και να
+                      σπρώξει τα εικονίδια — 6 tabs σε 390px αφήνουν ~65px */}
+                  <span className="w-full truncate px-0.5 text-center">
+                    {t(`nav.${labelKey}`)}
+                  </span>
                 </>
               )}
             </NavLink>
