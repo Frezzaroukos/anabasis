@@ -8,7 +8,9 @@
     "history": "History",
     "skills": "Skills",
     "settings": "Settings",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "home": "Home",
+    "programs": "Programs"
   },
   "workout": {
     "title": "Workout",
@@ -52,6 +54,29 @@
     },
     "activityKind": "Activity",
     "setType": "Set type"
+  },
+  "programs": {
+    "title": "Programs",
+    "empty": "No programs yet. Build one on the spot at the gym.",
+    "newProgram": "New program",
+    "namePlaceholder": "Program name",
+    "fromLastWorkout": "From last workout",
+    "lastWorkoutCopyName": "Last workout",
+    "noCompletedWorkout": "No completed workout to copy yet.",
+    "start": "Start",
+    "noExercises": "No exercises yet. Add one below.",
+    "targetSets": "Sets",
+    "targetReps": "Reps",
+    "targetWeight": "Weight (kg)",
+    "targetHold": "Hold (sec)",
+    "notes": "Notes",
+    "notesPlaceholder": "Notes (optional)",
+    "linkPrevious": "Link with previous",
+    "unlink": "Unlink",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "deleteConfirmTitle": "Delete program?",
+    "deleteConfirmDesc": "This program will be hidden. Your workout history is not affected."
   },
   "history": {
     "title": "History",
@@ -157,7 +182,10 @@
     "save": "Save",
     "weightTrend": "Weight trend",
     "calorieBalance": "Calorie balance",
-    "balanceHint": "Above zero = surplus, below = deficit."
+    "balanceHint": "Above zero = surplus, below = deficit.",
+    "protein": "Protein",
+    "bodyFat": "Body fat",
+    "proteinPerKg": "Protein/kg bodyweight"
   },
   "progress": {
     "title": "Exercise progress",
@@ -170,6 +198,19 @@
     "needMore": "Log this exercise at least twice to see a trend.",
     "change": "Change exercise",
     "noMatch": "No exercise matches."
+  },
+  "dashboard": {
+    "title": "Overview",
+    "noData": "Nothing logged yet. Start a workout to see your stats here.",
+    "consistency": "Consistency",
+    "last7days": "Last 7 days",
+    "last30days": "Last 30 days",
+    "weeklyVolume": "Weekly volume",
+    "thisWeek": "this week",
+    "vsLastWeek": "vs last week",
+    "skillsProgress": "Skills progress",
+    "latestWeight": "Latest weight",
+    "todayBalance": "Today's balance"
   },
   "setType": {
     "normal": "Normal",
