@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { SetType } from '@/lib/db/types';
 
+/** Προαιρετική ένταση — δίπλα στο βάρος λέει ΠΟΣΟ κόστισε το σετ. */
+export interface SetIntensity {
+  rpe: number | null;
+  rir: number | null;
+  tempo: string | null;
+}
+
 /** Σειρά εμφάνισης των τύπων σετ στον επιλογέα. */
 const SET_TYPES: SetType[] = [
   'normal',
@@ -20,7 +27,11 @@ interface AddSetInlineProps {
   weighted: boolean;
   initialWeight?: number | null;
   initialReps?: number | null;
-  onSave: (weightKg: number | null, reps: number | null) => Promise<void> | void;
+  onSave: (
+    weightKg: number | null,
+    reps: number | null,
+    intensity: SetIntensity,
+  ) => Promise<void> | void;
   onCancel?: () => void;
   saveLabelKey?: 'workout.addSet' | 'workout.save';
   /** Όταν δίνεται, εμφανίζεται ο επιλογέας τύπου σετ (μόνο κατά την προσθήκη — όχι στο edit). */
@@ -46,6 +57,17 @@ export function AddSetInline({
     initialReps != null ? String(initialReps) : '',
   );
   const [busy, setBusy] = useState(false);
+  // Κρυμμένα πίσω από toggle: στο γυμναστήριο η γρήγορη καταγραφή δεν πρέπει
+  // να επιβραδύνεται από πεδία που συμπληρώνονται σπάνια.
+  const [showIntensity, setShowIntensity] = useState(false);
+  const [rpe, setRpe] = useState('');
+  const [rir, setRir] = useState('');
+  const [tempo, setTempo] = useState('');
+
+  const numOrNull = (s: string) => {
+    const v = Number(s);
+    return s.trim() !== '' && Number.isFinite(v) ? v : null;
+  };
 
   const repsNum = reps.trim() === '' ? null : Number(reps);
   const weightNum = weight.trim() === '' ? null : Number(weight);
@@ -58,9 +80,16 @@ export function AddSetInline({
     if (!valid || busy) return;
     setBusy(true);
     try {
-      await onSave(weighted ? weightNum : null, repsNum);
+      await onSave(weighted ? weightNum : null, repsNum, {
+        rpe: numOrNull(rpe),
+        rir: numOrNull(rir),
+        tempo: tempo.trim() === '' ? null : tempo.trim(),
+      });
       setWeight('');
       setReps('');
+      setRpe('');
+      setRir('');
+      // Το tempo συνήθως επαναλαμβάνεται μέσα στην ίδια άσκηση — δεν το σβήνουμε.
     } finally {
       setBusy(false);
     }
@@ -139,6 +168,63 @@ export function AddSetInline({
           </Button>
         )}
       </div>
+
+      <button
+        type="button"
+        aria-expanded={showIntensity}
+        onClick={() => setShowIntensity((v) => !v)}
+        className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+      >
+        {showIntensity ? t('workout.intensityHide') : t('workout.intensityShow')}
+      </button>
+
+      {showIntensity && (
+        <div className="flex items-end gap-2">
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t('workout.rpe')}
+            </span>
+            <Input
+              inputMode="decimal"
+              type="number"
+              step="0.5"
+              min="1"
+              max="10"
+              value={rpe}
+              onChange={(e) => setRpe(e.target.value)}
+              className="h-9"
+              aria-label={t('workout.rpe')}
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t('workout.rir')}
+            </span>
+            <Input
+              inputMode="numeric"
+              type="number"
+              step="1"
+              min="0"
+              value={rir}
+              onChange={(e) => setRir(e.target.value)}
+              className="h-9"
+              aria-label={t('workout.rir')}
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t('workout.tempo')}
+            </span>
+            <Input
+              value={tempo}
+              onChange={(e) => setTempo(e.target.value)}
+              placeholder="3-1-1-0"
+              className="h-9"
+              aria-label={t('workout.tempo')}
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }

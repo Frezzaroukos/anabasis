@@ -9,7 +9,9 @@ import { cn } from '@/lib/utils';
 import type { Exercise, Workout } from '@/lib/db/types';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
-import { SET_LOGGED_ACTIVITY_KINDS, type SetChain } from '../utils';
+import { isSetLoggedActivity, type SetChain } from '../utils';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { getActivity } from '@/lib/db/queries';
 import { useWakeLock } from '../useWakeLock';
 import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
@@ -23,7 +25,13 @@ interface ActiveWorkoutViewProps {
 
 export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   const { t } = useTranslation();
-  const isSetLogged = SET_LOGGED_ACTIVITY_KINDS.includes(workout.activity_kind);
+  // Ρωτάμε τη ΔΡΑΣΤΗΡΙΟΤΗΤΑ αν καταγράφει σετ, αντί να ελέγχουμε ονόματα —
+  // αλλιώς ένα δικό σου άθλημα δεν θα μπορούσε ποτέ να έχει σετ.
+  const activity = useLiveQuery(
+    () => getActivity(workout.activity_kind),
+    [workout.activity_kind],
+  );
+  const isSetLogged = isSetLoggedActivity(activity, workout.activity_kind);
   const sets = useWorkoutSets(workout.id);
   const persistedExerciseIds = useWorkoutExerciseIds(workout.id);
   const exercises = useExercises();

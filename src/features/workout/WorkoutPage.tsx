@@ -1,32 +1,23 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Play } from 'lucide-react';
+import { Play, Settings2 } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { queries } from '@/lib/db';
+import { listActivities } from '@/lib/db/queries';
 import type { ActivityKind } from '@/lib/db/types';
 import { LastWorkoutCard } from './components/LastWorkoutCard';
 import { cn } from '@/lib/utils';
-
-/**
- * Δραστηριότητες που ξεκινούν από εδώ. Το `strength`/`skill` οδηγούν στον
- * logger με σετ· τα υπόλοιπα καταγράφονται με χρόνο (και απόσταση), γι' αυτό
- * η επιλογή γίνεται ΠΡΙΝ το start — αλλάζει τι μετράμε.
- */
-const KINDS: ActivityKind[] = [
-  'strength',
-  'skill',
-  'run',
-  'basketball',
-  'cycling',
-  'swim',
-  'mobility',
-  'other',
-];
 
 export function WorkoutPage() {
   const { t } = useTranslation();
   const [starting, setStarting] = useState(false);
   const [kind, setKind] = useState<ActivityKind>('strength');
+
+  // Οι δραστηριότητες έρχονται από τη βάση, όχι από hardcoded λίστα — ό,τι
+  // άθλημα προσθέσεις εμφανίζεται εδώ αμέσως, χωρίς αλλαγή κώδικα.
+  const activities = useLiveQuery(() => listActivities(), [], []);
 
   const onStart = async () => {
     if (starting) return;
@@ -52,18 +43,31 @@ export function WorkoutPage() {
           {t('workout.activityKind')}
         </p>
         <div className="flex flex-wrap gap-2">
-          {KINDS.map((k) => (
+          {activities.map((a) => (
             <button
-              key={k}
-              onClick={() => setKind(k)}
+              key={a.key}
+              onClick={() => setKind(a.key)}
               className={cn(
                 'rounded-md border border-border px-3 py-1.5 text-sm transition-colors',
-                kind === k ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                kind === a.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent',
               )}
             >
-              {t(`activity.${k}`)}
+              <span aria-hidden className="mr-1.5">
+                {a.icon}
+              </span>
+              {a.label}
             </button>
           ))}
+          <Link
+            to="/activities"
+            aria-label={t('activities.title')}
+            className="flex items-center gap-1.5 rounded-md border border-dashed border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            {t('activities.title')}
+          </Link>
         </div>
       </section>
 

@@ -130,6 +130,23 @@ export function SetRow({ set, weighted }: SetRowProps) {
             {formatLoad(set.weight_kg, set.bodyweight_kg)}
             {set.reps != null ? <> × {set.reps}</> : null}
           </span>
+          {/* Η ένταση φαίνεται μόνο όταν καταγράφηκε — αλλιώς θα ήταν
+              write-only πεδίο, δηλαδή άχρηστο. */}
+          {set.rpe != null && (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              RPE {set.rpe}
+            </span>
+          )}
+          {set.rir != null && (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              RIR {set.rir}
+            </span>
+          )}
+          {set.tempo && (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {set.tempo}
+            </span>
+          )}
         </div>
         {set.set_type !== 'normal' && (
           <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">

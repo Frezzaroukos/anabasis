@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { queries } from '@/lib/db';
 import type { Exercise, SetEntry, SetType } from '@/lib/db/types';
 import { CATEGORY_DOT, resolveSetGroup, type SetChain } from '../utils';
+import type { SetIntensity } from './AddSetInline';
 import { SetRow } from './SetRow';
 import { AddSetInline } from './AddSetInline';
 
@@ -35,7 +36,11 @@ export function ExerciseCard({
   const supportsToggle = exercise.is_bodyweight; // bodyweight exercises can be done with or without added load
   const visibleSets = sets;
 
-  const onSave = async (weightKg: number | null, reps: number | null) => {
+  const onSave = async (
+    weightKg: number | null,
+    reps: number | null,
+    intensity: SetIntensity,
+  ) => {
     const { groupId, chain: nextChain } = resolveSetGroup(setType, chain, crypto.randomUUID());
     if (nextChain !== chain) onChainChange(nextChain);
     await queries.addSet({
@@ -49,6 +54,9 @@ export function ExerciseCard({
       group_id: groupId,
       is_warmup: setType === 'warmup',
       is_failure: setType === 'failure',
+      rpe: intensity.rpe,
+      rir: intensity.rir,
+      tempo: intensity.tempo,
     });
     setAdding(false);
   };

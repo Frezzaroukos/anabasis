@@ -5,7 +5,9 @@ import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import type { SessionFeel, Workout } from '@/lib/db/types';
 import { useSessionTimer } from '@/hooks/useSessionTimer';
-import { DISTANCE_ACTIVITY_KINDS, formatPaceMinPerKm } from '../utils';
+import { isDistanceTrackedActivity, formatPaceMinPerKm } from '../utils';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { getActivity } from '@/lib/db/queries';
 
 interface ActivityLogFormProps {
   workout: Workout;
@@ -26,7 +28,11 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
   );
   const [notes, setNotes] = useState(workout.notes ?? '');
 
-  const showDistance = DISTANCE_ACTIVITY_KINDS.includes(workout.activity_kind);
+  const activity = useLiveQuery(
+    () => getActivity(workout.activity_kind),
+    [workout.activity_kind],
+  );
+  const showDistance = isDistanceTrackedActivity(activity, workout.activity_kind);
   const distanceKm = distance.trim() === '' ? null : Number(distance);
   const pace =
     showDistance && distanceKm != null && Number.isFinite(distanceKm)

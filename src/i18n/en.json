@@ -62,7 +62,12 @@
     "pace": "Pace",
     "feel": "Feel",
     "notes": "Notes",
-    "notesPlaceholder": "How did it go?"
+    "notesPlaceholder": "How did it go?",
+    "intensityShow": "+ intensity",
+    "intensityHide": "− intensity",
+    "rpe": "RPE",
+    "rir": "RIR",
+    "tempo": "Tempo"
   },
   "programs": {
     "title": "Programs",

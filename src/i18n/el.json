@@ -62,7 +62,12 @@
     "pace": "Ρυθμός",
     "feel": "Αίσθηση",
     "notes": "Σημειώσεις",
-    "notesPlaceholder": "Πώς πήγε;"
+    "notesPlaceholder": "Πώς πήγε;",
+    "intensityShow": "+ ένταση",
+    "intensityHide": "− ένταση",
+    "rpe": "RPE",
+    "rir": "RIR",
+    "tempo": "Ρυθμός"
   },
   "programs": {
     "title": "Προγράμματα",
