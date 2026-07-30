@@ -1,6 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from './layouts/AppShell';
+import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { WorkoutPage } from '@/features/workout/WorkoutPage';
+import { ProgramsPage } from '@/features/programs/ProgramsPage';
+import { ProgramDetailPage } from '@/features/programs/ProgramDetailPage';
 import { HistoryPage } from '@/features/history/HistoryPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
 import { BodyPage } from '@/features/body/BodyPage';
@@ -14,8 +17,12 @@ export const router = createBrowserRouter([
     path: '/',
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="/workout" replace /> },
+      // Το «μια ματιά» είναι η αρχική: ο χρήστης θέλει πρώτα να δει πού
+      // βρίσκεται, και μετά να πατήσει έναρξη προπόνησης.
+      { index: true, element: <DashboardPage /> },
       { path: 'workout', element: <WorkoutPage /> },
+      { path: 'programs', element: <ProgramsPage /> },
+      { path: 'programs/:programId', element: <ProgramDetailPage /> },
       { path: 'history', element: <HistoryPage /> },
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'body', element: <BodyPage /> },
@@ -23,7 +30,7 @@ export const router = createBrowserRouter([
       { path: 'skills', element: <SkillsPage /> },
       { path: 'skills/:skillId', element: <SkillDetailPage /> },
       { path: 'settings', element: <SettingsPage /> },
-      { path: '*', element: <Navigate to="/workout" replace /> },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ]);
