@@ -106,6 +106,35 @@ export function SettingsPage() {
             </button>
           ))}
         </div>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+          <div>
+            <p className="text-sm">{t('settings.restNotify')}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t('settings.restNotifyHint')}
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={settings?.notify_rest_timer ?? true}
+            aria-label={t('settings.restNotify')}
+            onClick={() =>
+              void updateSettings({
+                notify_rest_timer: !(settings?.notify_rest_timer ?? true),
+              })
+            }
+            className={`h-6 w-11 shrink-0 rounded-full border border-border transition-colors ${
+              (settings?.notify_rest_timer ?? true) ? 'bg-primary' : 'bg-muted'
+            }`}
+          >
+            <span
+              className={`block h-4 w-4 rounded-full bg-background transition-transform ${
+                (settings?.notify_rest_timer ?? true)
+                  ? 'translate-x-6'
+                  : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
       </section>
 
       {/* Units */}

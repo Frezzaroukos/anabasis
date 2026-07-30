@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, X } from 'lucide-react';
+import { Link2, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { queries } from '@/lib/db';
+import { cn } from '@/lib/utils';
 import type { Exercise, Workout } from '@/lib/db/types';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
+import { SET_LOGGED_ACTIVITY_KINDS, type SetChain } from '../utils';
+import { useWakeLock } from '../useWakeLock';
 import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
 import { AddExerciseSheet } from './AddExerciseSheet';
 import { RestTimer } from './RestTimer';
+import { ActivityLogForm } from './ActivityLogForm';
 
 interface ActiveWorkoutViewProps {
   workout: Workout;
@@ -19,14 +23,19 @@ interface ActiveWorkoutViewProps {
 
 export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   const { t } = useTranslation();
+  const isSetLogged = SET_LOGGED_ACTIVITY_KINDS.includes(workout.activity_kind);
   const sets = useWorkoutSets(workout.id);
   const persistedExerciseIds = useWorkoutExerciseIds(workout.id);
   const exercises = useExercises();
+
+  // Η οθόνη δεν πρέπει να κλειδώνει ανάμεσα σε σετ — όσο υπάρχει ενεργό workout.
+  useWakeLock(true);
 
   // Pending = exercises added in this session that haven't received a set yet.
   // Memory-only by design: refresh discards them (sets persist).
   const [pending, setPending] = useState<Exercise[]>([]);
   const [weightedById, setWeightedById] = useState<Record<string, boolean>>({});
+  const [chain, setChain] = useState<SetChain | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [workoutType, setWorkoutType] = useState(workout.workout_type ?? '');
@@ -98,7 +107,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
         </Button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-32 pt-3">
+      <div className={cn('flex-1 overflow-y-auto px-4 pt-3', isSetLogged ? 'pb-32' : 'pb-6')}>
         <div className="mb-4">
           <Input
             value={workoutType}
@@ -109,56 +118,85 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           />
         </div>
 
-        {orderedIds.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            {t('workout.noExercises')}
-          </p>
+        {isSetLogged ? (
+          <>
+            {chain && (
+              <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-2 text-xs">
+                <span className="flex items-center gap-1.5 font-medium text-primary">
+                  <Link2 className="h-3.5 w-3.5" aria-hidden />
+                  {t('workout.chain.activeBanner', { type: t(`setType.${chain.type}`) })}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setChain(null)}
+                >
+                  {t('workout.chain.end')}
+                </Button>
+              </div>
+            )}
+
+            {orderedIds.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {t('workout.noExercises')}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {orderedIds.map((id) => {
+                  const ex = exerciseById.get(id);
+                  if (!ex) return null;
+                  const exSets = setsByExercise.get(id) ?? [];
+                  const weightedDefault = !ex.is_bodyweight;
+                  const weighted = weightedById[id] ?? weightedDefault;
+                  return (
+                    <ExerciseCard
+                      key={id}
+                      exercise={ex}
+                      workoutId={workout.id}
+                      sets={exSets}
+                      weighted={weighted}
+                      onWeightedChange={(next) =>
+                        setWeightedById((cur) => ({ ...cur, [id]: next }))
+                      }
+                      chain={chain}
+                      onChainChange={setChain}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            <Button
+              variant="outline"
+              className="mt-4 w-full"
+              onClick={() => setSheetOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              {t('workout.addExercise')}
+            </Button>
+          </>
         ) : (
-          <div className="space-y-3">
-            {orderedIds.map((id) => {
-              const ex = exerciseById.get(id);
-              if (!ex) return null;
-              const exSets = setsByExercise.get(id) ?? [];
-              const weightedDefault = !ex.is_bodyweight;
-              const weighted = weightedById[id] ?? weightedDefault;
-              return (
-                <ExerciseCard
-                  key={id}
-                  exercise={ex}
-                  workoutId={workout.id}
-                  sets={exSets}
-                  weighted={weighted}
-                  onWeightedChange={(next) =>
-                    setWeightedById((cur) => ({ ...cur, [id]: next }))
-                  }
-                />
-              );
-            })}
-          </div>
+          <ActivityLogForm workout={workout} />
         )}
-
-        <Button
-          variant="outline"
-          className="mt-4 w-full"
-          onClick={() => setSheetOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          {t('workout.addExercise')}
-        </Button>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-4 py-3 safe-bottom backdrop-blur">
-        <div className="mx-auto max-w-md">
-          <RestTimer />
+      {isSetLogged && (
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-4 py-3 safe-bottom backdrop-blur">
+          <div className="mx-auto max-w-md">
+            <RestTimer />
+          </div>
         </div>
-      </div>
+      )}
 
-      <AddExerciseSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        onPick={onAddExercise}
-        excludeIds={orderedIds}
-      />
+      {isSetLogged && (
+        <AddExerciseSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          onPick={onAddExercise}
+          excludeIds={orderedIds}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmEnd}

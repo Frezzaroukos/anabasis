@@ -53,7 +53,16 @@
       "restingShort": "Rest"
     },
     "activityKind": "Activity",
-    "setType": "Set type"
+    "setType": "Set type",
+    "chain": {
+      "activeBanner": "{{type}} chain active",
+      "end": "End chain"
+    },
+    "distanceKm": "Distance (km)",
+    "pace": "Pace",
+    "feel": "Feel",
+    "notes": "Notes",
+    "notesPlaceholder": "How did it go?"
   },
   "programs": {
     "title": "Programs",
@@ -136,7 +145,9 @@
     "sets": "sets",
     "prs": "PRs",
     "steps": "steps",
-    "offlineNote": "offline-first · your data stays yours"
+    "offlineNote": "offline-first · your data stays yours",
+    "restNotify": "Rest timer alert",
+    "restNotifyHint": "Sound and vibration when the rest timer ends."
   },
   "common": {
     "save": "Save",
@@ -185,7 +196,9 @@
     "balanceHint": "Above zero = surplus, below = deficit.",
     "protein": "Protein",
     "bodyFat": "Body fat",
-    "proteinPerKg": "Protein/kg bodyweight"
+    "proteinPerKg": "Protein/kg bodyweight",
+    "bodyFatTrend": "Body fat trend",
+    "proteinTrend": "Protein trend"
   },
   "progress": {
     "title": "Exercise progress",
@@ -210,7 +223,8 @@
     "vsLastWeek": "vs last week",
     "skillsProgress": "Skills progress",
     "latestWeight": "Latest weight",
-    "todayBalance": "Today's balance"
+    "todayBalance": "Today's balance",
+    "latestBodyFat": "Latest body fat"
   },
   "setType": {
     "normal": "Normal",

@@ -221,6 +221,8 @@ export interface AppSettings {
   default_rest_timer_seconds: number;
   notify_pr: boolean;
   notify_session_reminder: boolean;
+  /** ήχος + δόνηση στη λήξη του rest timer — στο γυμναστήριο δεν κοιτάς οθόνη */
+  notify_rest_timer: boolean;
   reminder_time: string | null;
   reminder_days: number[];
   show_e1rm: boolean;

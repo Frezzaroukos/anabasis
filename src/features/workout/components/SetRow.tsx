@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Link2, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import type { SetEntry } from '@/lib/db/types';
 import { AddSetInline } from './AddSetInline';
-import { formatLoad } from '../utils';
+import { formatLoad, groupColorClass } from '../utils';
 
 interface SetRowProps {
   set: SetEntry;
@@ -113,7 +113,10 @@ export function SetRow({ set, weighted }: SetRowProps) {
 
       {/* Row */}
       <div
-        className="relative flex select-none items-center justify-between bg-card px-3 py-2 transition-transform touch-pan-y"
+        className={cn(
+          'relative flex select-none items-center justify-between bg-card px-3 py-2 transition-transform touch-pan-y',
+          set.group_id && groupColorClass(set.group_id),
+        )}
         style={{ transform: `translateX(${offset}px)`, transitionDuration: drag ? '0ms' : '180ms' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -128,8 +131,11 @@ export function SetRow({ set, weighted }: SetRowProps) {
             {set.reps != null ? <> × {set.reps}</> : null}
           </span>
         </div>
-        {set.is_warmup && (
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">warmup</span>
+        {set.set_type !== 'normal' && (
+          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            {set.group_id && <Link2 className="h-3 w-3" aria-hidden />}
+            {t(`setType.${set.set_type}`)}
+          </span>
         )}
       </div>
     </div>

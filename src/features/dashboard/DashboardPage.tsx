@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Link } from 'react-router-dom';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import {
   getAllSkillProgress,
@@ -12,6 +13,16 @@ import {
   localDay,
 } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
+
+/**
+ * Σελίδες που δεν έχουν tab στο bottom nav — πρέπει να είναι προσβάσιμες
+ * από εδώ με ένα tap, ανεξάρτητα από το αν υπάρχουν ήδη δεδομένα.
+ */
+const QUICK_LINKS = [
+  { to: '/body', labelKey: 'body.title' },
+  { to: '/history', labelKey: 'history.title' },
+  { to: '/progress', labelKey: 'progress.title' },
+] as const;
 
 /**
  * «Μια ματιά»: η πρώτη οθόνη που βλέπει ο χρήστης. Κάθε section κρύβεται αν
@@ -83,24 +94,34 @@ export function DashboardPage() {
     latestBF != null ||
     todayBalance != null;
 
-  if (!hasAnyData) {
-    return (
-      <div className="space-y-6">
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
-        </header>
-        <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-          {t('dashboard.noData')}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
       </header>
+
+      {/*
+        Το Body/History/Progress δεν έχουν tab στο bottom nav — αυτή η σειρά
+        είναι ο μόνος δρόμος προς αυτά, γι' αυτό μένει πάντα ορατή (ακόμα και
+        χωρίς δεδομένα, ώστε η πρώτη καταγραφή να είναι ένα tap μακριά).
+      */}
+      <div className="flex gap-2">
+        {QUICK_LINKS.map(({ to, labelKey }) => (
+          <Link
+            key={to}
+            to={to}
+            className="flex-1 rounded-md border border-border bg-card py-2 text-center text-xs font-medium transition-colors hover:bg-muted/50"
+          >
+            {t(labelKey)}
+          </Link>
+        ))}
+      </div>
+
+      {!hasAnyData && (
+        <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          {t('dashboard.noData')}
+        </div>
+      )}
 
       {hasTrainingData && (
         <section className="rounded-lg border border-border bg-card p-4">
@@ -165,8 +186,11 @@ export function DashboardPage() {
       )}
 
       {prs.length > 0 && (
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-medium">{t('history.recentPRs')}</h2>
+        <Link
+          to="/history"
+          className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+        >
+          <h2 className="mb-3 text-sm font-medium">{t('history.recentPRs')} →</h2>
           <ul className="divide-y divide-border">
             {prs.map((pr) => (
               <li key={pr.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
@@ -183,12 +207,15 @@ export function DashboardPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </Link>
       )}
 
       {hasSkillData && (
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-medium">{t('dashboard.skillsProgress')}</h2>
+        <Link
+          to="/skills"
+          className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+        >
+          <h2 className="mb-3 text-sm font-medium">{t('dashboard.skillsProgress')} →</h2>
           <dl className="grid grid-cols-2 gap-2 text-center">
             <div className="rounded-md bg-muted/50 py-2">
               <dt className="text-[10px] uppercase text-muted-foreground">
@@ -203,12 +230,15 @@ export function DashboardPage() {
               <dd className="font-mono text-sm">{skillsMastered}</dd>
             </div>
           </dl>
-        </section>
+        </Link>
       )}
 
       {(latestWeight != null || latestBF != null || todayBalance != null) && (
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-medium">{t('body.title')}</h2>
+        <Link
+          to="/body"
+          className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+        >
+          <h2 className="mb-3 text-sm font-medium">{t('body.title')} →</h2>
           <dl className="grid grid-cols-2 gap-2 text-center">
             {latestWeight != null && (
               <div className="rounded-md bg-muted/50 py-2">
@@ -277,7 +307,7 @@ export function DashboardPage() {
               </div>
             )}
           </dl>
-        </section>
+        </Link>
       )}
     </div>
   );

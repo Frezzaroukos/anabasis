@@ -24,7 +24,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -102,6 +102,19 @@ export class AnabasisDB extends Dexie {
     this.version(3).stores({
       programs: 'id, user_id, name, activity_kind, display_order, is_archived, deleted_at',
       program_exercises: 'id, program_id, exercise_id, position, [program_id+position]',
+    });
+
+    /**
+     * v4 — ειδοποίηση rest timer. Καμία αλλαγή σε index· μόνο backfill ώστε
+     * το πεδίο να μην είναι undefined σε υπάρχουσες εγκαταστάσεις.
+     */
+    this.version(4).upgrade(async (tx) => {
+      await tx
+        .table('app_settings')
+        .toCollection()
+        .modify((s) => {
+          s.notify_rest_timer ??= true;
+        });
     });
   }
 }

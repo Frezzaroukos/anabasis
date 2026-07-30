@@ -31,13 +31,17 @@ export function RestTimer() {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const defaultSeconds = settings?.default_rest_timer_seconds ?? 180;
+  // Οι εγκαταστάσεις πριν το schema v4 δεν έχουν το πεδίο — σιωπηλός timer
+  // θα ήταν χειρότερη έκπληξη από έναν ήχο, οπότε το default είναι «ναι».
+  const notifyEnabled = settings?.notify_rest_timer ?? true;
 
   const onComplete = useCallback(() => {
+    if (!notifyEnabled) return;
     beep();
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate([200, 80, 200]);
     }
-  }, []);
+  }, [notifyEnabled]);
 
   const { remaining, running, start, stop } = useRestTimer({ defaultSeconds, onComplete });
 

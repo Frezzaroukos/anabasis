@@ -51,6 +51,7 @@ export async function bootstrapDB(): Promise<void> {
           default_rest_timer_seconds: 180,
           notify_pr: true,
           notify_session_reminder: false,
+          notify_rest_timer: true,
           reminder_time: null,
           reminder_days: [],
           show_e1rm: true,

@@ -4,8 +4,8 @@ import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { queries } from '@/lib/db';
-import type { Exercise, SetEntry } from '@/lib/db/types';
-import { CATEGORY_DOT } from '../utils';
+import type { Exercise, SetEntry, SetType } from '@/lib/db/types';
+import { CATEGORY_DOT, resolveSetGroup, type SetChain } from '../utils';
 import { SetRow } from './SetRow';
 import { AddSetInline } from './AddSetInline';
 
@@ -15,6 +15,8 @@ interface ExerciseCardProps {
   sets: SetEntry[];
   weighted: boolean;
   onWeightedChange: (next: boolean) => void;
+  chain: SetChain | null;
+  onChainChange: (next: SetChain | null) => void;
 }
 
 export function ExerciseCard({
@@ -23,14 +25,19 @@ export function ExerciseCard({
   sets,
   weighted,
   onWeightedChange,
+  chain,
+  onChainChange,
 }: ExerciseCardProps) {
   const { t } = useTranslation();
   const [adding, setAdding] = useState(sets.length === 0);
+  const [setType, setSetType] = useState<SetType>('normal');
 
   const supportsToggle = exercise.is_bodyweight; // bodyweight exercises can be done with or without added load
   const visibleSets = sets;
 
   const onSave = async (weightKg: number | null, reps: number | null) => {
+    const { groupId, chain: nextChain } = resolveSetGroup(setType, chain, crypto.randomUUID());
+    if (nextChain !== chain) onChainChange(nextChain);
     await queries.addSet({
       workout_id: workoutId,
       exercise_id: exercise.id,
@@ -38,6 +45,10 @@ export function ExerciseCard({
       bodyweight_kg: null,
       reps,
       hold_seconds: null,
+      set_type: setType,
+      group_id: groupId,
+      is_warmup: setType === 'warmup',
+      is_failure: setType === 'failure',
     });
     setAdding(false);
   };
@@ -96,7 +107,13 @@ export function ExerciseCard({
 
       <div className="border-t border-border p-2">
         {adding ? (
-          <AddSetInline weighted={weighted} onSave={onSave} onCancel={() => setAdding(false)} />
+          <AddSetInline
+            weighted={weighted}
+            onSave={onSave}
+            onCancel={() => setAdding(false)}
+            setType={setType}
+            onSetTypeChange={setSetType}
+          />
         ) : (
           <Button
             variant="ghost"

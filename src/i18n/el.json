@@ -53,7 +53,16 @@
       "restingShort": "Rest"
     },
     "activityKind": "Δραστηριότητα",
-    "setType": "Τύπος σετ"
+    "setType": "Τύπος σετ",
+    "chain": {
+      "activeBanner": "Ενεργή αλυσίδα {{type}}",
+      "end": "Τέλος αλυσίδας"
+    },
+    "distanceKm": "Απόσταση (km)",
+    "pace": "Ρυθμός",
+    "feel": "Αίσθηση",
+    "notes": "Σημειώσεις",
+    "notesPlaceholder": "Πώς πήγε;"
   },
   "programs": {
     "title": "Προγράμματα",
@@ -136,7 +145,9 @@
     "sets": "σετ",
     "prs": "ρεκόρ",
     "steps": "βήματα",
-    "offlineNote": "offline-first · τα δεδομένα μένουν δικά σου"
+    "offlineNote": "offline-first · τα δεδομένα μένουν δικά σου",
+    "restNotify": "Ειδοποίηση rest timer",
+    "restNotifyHint": "Ήχος και δόνηση όταν τελειώνει η ξεκούραση."
   },
   "common": {
     "save": "Αποθήκευση",
@@ -185,7 +196,9 @@
     "balanceHint": "Πάνω από μηδέν = πλεόνασμα, κάτω = έλλειμμα.",
     "protein": "Πρωτεΐνη",
     "bodyFat": "Λίπος σώματος",
-    "proteinPerKg": "Πρωτεΐνη/kg σωματικού βάρους"
+    "proteinPerKg": "Πρωτεΐνη/kg σωματικού βάρους",
+    "bodyFatTrend": "Τάση λίπους σώματος",
+    "proteinTrend": "Τάση πρωτεΐνης"
   },
   "progress": {
     "title": "Πρόοδος άσκησης",
@@ -210,7 +223,8 @@
     "vsLastWeek": "vs προηγούμενη εβδομάδα",
     "skillsProgress": "Πρόοδος skills",
     "latestWeight": "Τελευταίο βάρος",
-    "todayBalance": "Σημερινό ισοζύγιο"
+    "todayBalance": "Σημερινό ισοζύγιο",
+    "latestBodyFat": "Τελευταίο λίπος σώματος"
   },
   "setType": {
     "normal": "Κανονικό",

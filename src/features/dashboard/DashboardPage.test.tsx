@@ -53,6 +53,12 @@ describe('DashboardPage — empty DB', () => {
     );
     expect(screen.queryByText(dashboardEn.consistency)).toBeNull();
     expect(screen.queryByText('0/7')).toBeNull();
+
+    // Body/History/Progress δεν έχουν bottom-nav tab — η quick-links σειρά
+    // πρέπει να μένει ορατή ακόμα και χωρίς καμία καταγραφή.
+    expect(screen.getByText('Body')).toBeTruthy();
+    expect(screen.getByText('History')).toBeTruthy();
+    expect(screen.getByText('Exercise progress')).toBeTruthy();
   });
 });
 
@@ -98,7 +104,8 @@ describe('DashboardPage — με δεδομένα', () => {
     // "Back Squat" εμφανίζεται σε παραπάνω από μία γραμμή της λίστας ρεκόρ.
     expect(screen.getAllByText('Back Squat').length).toBeGreaterThan(0);
 
-    expect(screen.getByText(dashboardEn.skillsProgress)).toBeTruthy();
+    // header έχει βέλος πλέον (clickable card προς /skills) — regex αντί για exact match
+    expect(screen.getByText(new RegExp(dashboardEn.skillsProgress))).toBeTruthy();
 
     expect(screen.getByText(dashboardEn.latestWeight)).toBeTruthy();
     expect(screen.getByText(/78\.5 kg/)).toBeTruthy();
