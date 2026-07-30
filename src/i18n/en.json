@@ -62,7 +62,13 @@
       "max_volume": "Max volume",
       "e1rm": "Est. 1RM",
       "max_hold": "Max hold"
-    }
+    },
+    "volumeTrend": "Volume trend",
+    "lastDays": "last {{days}} days",
+    "volume": "volume",
+    "totalVolume": "volume",
+    "totalSets": "sets",
+    "activeDays": "active days"
   },
   "skills": {
     "title": "Skills",

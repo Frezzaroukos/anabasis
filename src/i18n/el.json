@@ -62,7 +62,13 @@
       "max_volume": "Μέγιστος όγκος",
       "e1rm": "Εκτ. 1RM",
       "max_hold": "Μέγιστο hold"
-    }
+    },
+    "volumeTrend": "Τάση όγκου",
+    "lastDays": "τελευταίες {{days}} ημέρες",
+    "volume": "όγκος",
+    "totalVolume": "όγκος",
+    "totalSets": "σετ",
+    "activeDays": "ημέρες άσκησης"
   },
   "skills": {
     "title": "Skills",

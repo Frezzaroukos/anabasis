@@ -1,5 +1,18 @@
 /**
- * Test setup: IndexedDB σε μνήμη + i18n, ώστε τα components να μπορούν
- * να render-άρουν πραγματικά (Dexie + react-i18next) χωρίς browser.
+ * Test setup: IndexedDB σε μνήμη + polyfills, ώστε τα components να
+ * render-άρουν πραγματικά (Dexie, Recharts) χωρίς browser.
  */
 import 'fake-indexeddb/auto';
+
+// Το jsdom δεν υλοποιεί ResizeObserver· το Recharts ResponsiveContainer το απαιτεί.
+if (!('ResizeObserver' in globalThis)) {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    value: ResizeObserverStub,
+    writable: true,
+  });
+}

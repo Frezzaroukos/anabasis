@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { db } from './schema';
 import { LOCAL_USER_ID } from './bootstrap';
 import { candidatesFromSet, isNewPR } from '../domain/pr';
+import { setVolume } from '../domain/volume';
 import type {
   AppSettings,
   Exercise,
@@ -416,4 +417,71 @@ export async function updateSettings(
   if (s) {
     await db.app_settings.update(s.id, { ...patch, updated_at: t });
   }
+}
+
+/* ─────────── Progress analytics (charts) ─────────── */
+
+export interface VolumePoint {
+  /** ISO ημερομηνία (YYYY-MM-DD) */
+  date: string;
+  volume: number;
+  sets: number;
+}
+
+/**
+ * Όγκος προπόνησης ανά ημέρα για τις τελευταίες N ημέρες.
+ * Οι κενές ημέρες συμπληρώνονται με 0 — αλλιώς το chart ψεύδεται
+ * δείχνοντας συνεχή γραμμή πάνω από μέρες που δεν προπονήθηκες.
+ */
+export async function getVolumeTrend(days = 30): Promise<VolumePoint[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - (days - 1));
+  since.setHours(0, 0, 0, 0);
+  // ΠΡΟΣΟΧΗ: toISOString() δίνει UTC. Σε UTC+3 τα τοπικά μεσάνυχτα πέφτουν
+  // στην προηγούμενη UTC ημέρα → τα keys μετατοπίζονταν κατά μία μέρα και ο
+  // όγκος εμφανιζόταν 0. Χρησιμοποιούμε ΤΟΠΙΚΗ ημερομηνία και για τα δύο.
+  const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`;
+
+  const workouts = (
+    await db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray()
+  ).filter((w) => w.deleted_at == null && Date.parse(w.started_at) >= since.getTime());
+
+  const byId = new Map(workouts.map((w) => [w.id, dayKey(new Date(w.started_at))]));
+  const sets = (await db.sets.toArray()).filter(
+    (s) => s.deleted_at == null && !s.is_warmup && byId.has(s.workout_id),
+  );
+
+  const acc = new Map<string, { volume: number; sets: number }>();
+  for (const s of sets) {
+    const day = byId.get(s.workout_id)!;
+    const cur = acc.get(day) ?? { volume: 0, sets: 0 };
+    cur.volume += setVolume(s);
+    cur.sets += 1;
+    acc.set(day, cur);
+  }
+
+  const out: VolumePoint[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(since.getDate() + i);
+    const key = dayKey(d);
+    const v = acc.get(key);
+    out.push({ date: key, volume: Math.round(v?.volume ?? 0), sets: v?.sets ?? 0 });
+  }
+  return out;
+}
+
+/** Σύνοψη για το header του History. */
+export async function getTrainingSummary(days = 30) {
+  const trend = await getVolumeTrend(days);
+  const active = trend.filter((p) => p.sets > 0);
+  return {
+    totalVolume: trend.reduce((a, p) => a + p.volume, 0),
+    totalSets: trend.reduce((a, p) => a + p.sets, 0),
+    activeDays: active.length,
+    days,
+  };
 }

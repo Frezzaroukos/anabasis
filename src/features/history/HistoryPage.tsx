@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, LOCAL_USER_ID } from '@/lib/db';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { getRecentPRs } from '@/lib/db/queries';
+import { VolumeChart } from './components/VolumeChart';
 
 export function HistoryPage() {
   const { t } = useTranslation();
@@ -33,6 +34,8 @@ export function HistoryPage() {
           {list.length} {t('history.completed')}
         </p>
       </header>
+
+      <VolumeChart />
 
       {prs.length > 0 && (
         <section>
