@@ -16,6 +16,8 @@ import type {
   ActivityKind,
   AppSettings,
   BodyMetric,
+  Program,
+  ProgramExercise,
   Exercise,
   PersonalRecord,
   SetEntry,
@@ -689,4 +691,189 @@ export async function getCalendar(from: string, to: string): Promise<Map<string,
     out.set(m.date, { date: m.date, workouts: [], weight: m.weight_kg });
   }
   return out;
+}
+
+/* ─────────── Programs / routines ─────────── */
+
+export async function listPrograms(): Promise<Program[]> {
+  const rows = await db.programs.where('user_id').equals(LOCAL_USER_ID).toArray();
+  return rows
+    .filter((p) => p.deleted_at == null && !p.is_archived)
+    .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+}
+
+export async function createProgram(
+  name: string,
+  activityKind: ActivityKind = 'strength',
+): Promise<Program> {
+  const t = now();
+  const count = await db.programs.where('user_id').equals(LOCAL_USER_ID).count();
+  const p: Program = {
+    id: uuid(),
+    user_id: LOCAL_USER_ID,
+    name,
+    description: null,
+    activity_kind: activityKind,
+    display_order: count,
+    is_archived: false,
+    created_at: t,
+    updated_at: t,
+    deleted_at: null,
+  };
+  await db.programs.add(p);
+  return p;
+}
+
+export async function renameProgram(id: string, name: string): Promise<void> {
+  await db.programs.update(id, { name, updated_at: now() });
+}
+
+export async function softDeleteProgram(id: string): Promise<void> {
+  const t = now();
+  await db.programs.update(id, { deleted_at: t, updated_at: t });
+}
+
+export async function getProgramWithExercises(programId: string) {
+  const [program, rows] = await Promise.all([
+    db.programs.get(programId),
+    db.program_exercises.where('program_id').equals(programId).sortBy('position'),
+  ]);
+  return program ? { program, exercises: rows } : null;
+}
+
+export interface ProgramExerciseInput {
+  exercise_id: string;
+  target_sets?: number | null;
+  target_reps?: number | null;
+  target_weight_kg?: number | null;
+  target_hold_seconds?: number | null;
+  set_type?: SetType;
+  group_key?: string | null;
+  notes?: string | null;
+}
+
+export async function addProgramExercise(
+  programId: string,
+  input: ProgramExerciseInput,
+): Promise<ProgramExercise> {
+  const t = now();
+  const position = await db.program_exercises
+    .where('program_id')
+    .equals(programId)
+    .count();
+  const row: ProgramExercise = {
+    id: uuid(),
+    program_id: programId,
+    exercise_id: input.exercise_id,
+    position,
+    target_sets: input.target_sets ?? null,
+    target_reps: input.target_reps ?? null,
+    target_weight_kg: input.target_weight_kg ?? null,
+    target_hold_seconds: input.target_hold_seconds ?? null,
+    set_type: input.set_type ?? 'normal',
+    group_key: input.group_key ?? null,
+    notes: input.notes ?? null,
+    created_at: t,
+    updated_at: t,
+  };
+  await db.program_exercises.add(row);
+  return row;
+}
+
+export async function updateProgramExercise(
+  id: string,
+  patch: Partial<Omit<ProgramExercise, 'id' | 'program_id' | 'created_at'>>,
+): Promise<void> {
+  await db.program_exercises.update(id, { ...patch, updated_at: now() });
+}
+
+export async function removeProgramExercise(id: string): Promise<void> {
+  await db.program_exercises.delete(id);
+}
+
+/** Αλλαγή σειράς — γράφει ξανά τα positions ώστε να μένουν 0..n-1. */
+export async function reorderProgramExercises(orderedIds: string[]): Promise<void> {
+  const t = now();
+  await Promise.all(
+    orderedIds.map((id, i) =>
+      db.program_exercises.update(id, { position: i, updated_at: t }),
+    ),
+  );
+}
+
+/**
+ * Ξεκινά workout από πρόγραμμα. ΔΕΝ γράφει σετ — ένα σετ σημαίνει «το έκανα».
+ * Το πλάνο επιστρέφεται ώστε ο logger να δείξει τους στόχους προς εκτέλεση.
+ */
+export async function startWorkoutFromProgram(programId: string) {
+  const data = await getProgramWithExercises(programId);
+  if (!data) return null;
+  const w = await startWorkout(data.program.activity_kind);
+  await db.workouts.update(w.id, {
+    workout_type: data.program.name,
+    updated_at: now(),
+  });
+  return { workout: { ...w, workout_type: data.program.name }, plan: data.exercises };
+}
+
+/** Αντιγράφει την τελευταία προπόνηση ως πρόγραμμα — «κάνε ό,τι έκανα τότε». */
+export async function programFromLastWorkout(name: string): Promise<Program | null> {
+  const done = (
+    await db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray()
+  )
+    .filter((w) => w.ended_at != null && w.deleted_at == null)
+    .sort((a, b) => b.started_at.localeCompare(a.started_at));
+  const last = done[0];
+  if (!last) return null;
+
+  const sets = (await db.sets.where('workout_id').equals(last.id).toArray()).filter(
+    (s) => s.deleted_at == null && s.set_type !== 'warmup',
+  );
+  if (sets.length === 0) return null;
+
+  const prog = await createProgram(name, last.activity_kind ?? 'strength');
+  // ομαδοποίηση ανά άσκηση: πλήθος σετ + το βαρύτερο ως στόχος
+  const byExercise = new Map<string, { count: number; weight: number | null; reps: number | null; hold: number | null; setType: SetType }>();
+  for (const s of sets) {
+    const cur = byExercise.get(s.exercise_id) ?? {
+      count: 0, weight: null, reps: null, hold: null, setType: s.set_type,
+    };
+    cur.count += 1;
+    const load = s.weight_kg ?? null;
+    if (load != null && (cur.weight == null || load > cur.weight)) {
+      cur.weight = load;
+      cur.reps = s.reps;
+    }
+    if (s.hold_seconds != null && (cur.hold == null || s.hold_seconds > cur.hold)) {
+      cur.hold = s.hold_seconds;
+    }
+    byExercise.set(s.exercise_id, cur);
+  }
+  for (const [exercise_id, v] of byExercise) {
+    await addProgramExercise(prog.id, {
+      exercise_id,
+      target_sets: v.count,
+      target_reps: v.reps,
+      target_weight_kg: v.weight,
+      target_hold_seconds: v.hold,
+      set_type: v.setType,
+    });
+  }
+  return prog;
+}
+
+/** Απόσταση για run/cycling/swim — γράφεται στο workout, όχι σε σετ. */
+export async function updateWorkoutDistance(
+  workoutId: string,
+  km: number | null,
+): Promise<void> {
+  await db.workouts.update(workoutId, { distance_km: km, updated_at: now() });
+}
+
+/** Σημειώσεις & αίσθηση συνεδρίας — χρήσιμα σε non-strength δραστηριότητες. */
+export async function updateWorkoutMeta(
+  workoutId: string,
+  patch: Partial<Pick<Workout, 'notes' | 'feel' | 'workout_type'>>,
+): Promise<void> {
+  await db.workouts.update(workoutId, { ...patch, updated_at: now() });
 }

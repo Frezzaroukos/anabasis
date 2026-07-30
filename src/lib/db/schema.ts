@@ -10,6 +10,8 @@ import Dexie, { type Table } from 'dexie';
 import type {
   AppSettings,
   BodyMetric,
+  Program,
+  ProgramExercise,
   Exercise,
   OutgoingEvent,
   PersonalRecord,
@@ -22,7 +24,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -36,6 +38,8 @@ export class AnabasisDB extends Dexie {
   user_skill_step_completions!: Table<UserSkillStepCompletion, string>;
   app_settings!: Table<AppSettings, string>;
   body_metrics!: Table<BodyMetric, string>;
+  programs!: Table<Program, string>;
+  program_exercises!: Table<ProgramExercise, string>;
   events_outgoing!: Table<OutgoingEvent, string>;
 
   constructor() {
@@ -93,6 +97,12 @@ export class AnabasisDB extends Dexie {
             s.group_id ??= null;
           });
       });
+
+    /** v3 — αποθηκευμένα προγράμματα/ρουτίνες. Μόνο νέοι πίνακες, μηδέν migration. */
+    this.version(3).stores({
+      programs: 'id, user_id, name, activity_kind, display_order, is_archived, deleted_at',
+      program_exercises: 'id, program_id, exercise_id, position, [program_id+position]',
+    });
   }
 }
 

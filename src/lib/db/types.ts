@@ -240,3 +240,42 @@ export interface OutgoingEvent {
   delivered_at: ISOTimestamp | null;
   created_at: ISOTimestamp;
 }
+
+/* ─────────── Programs / routines (v3) ─────────── */
+
+/**
+ * Ένα αποθηκευμένο πλάνο προπόνησης. Δεν είναι workout — είναι το πρότυπο
+ * από το οποίο ΞΕΚΙΝΑΕΙ ένα workout. Ο χρήστης μπορεί να το φτιάξει επί
+ * τόπου στο γυμναστήριο και να το ξανα-χρησιμοποιήσει.
+ */
+export interface Program {
+  id: UUID;
+  user_id: UUID;
+  name: string;
+  description: string | null;
+  activity_kind: ActivityKind;
+  /** σειρά εμφάνισης στη λίστα */
+  display_order: number;
+  is_archived: boolean;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+  deleted_at: ISOTimestamp | null;
+}
+
+/** Μια γραμμή του πλάνου: άσκηση + στόχοι. */
+export interface ProgramExercise {
+  id: UUID;
+  program_id: UUID;
+  exercise_id: UUID;
+  position: number;
+  target_sets: number | null;
+  target_reps: number | null;
+  target_weight_kg: number | null;
+  target_hold_seconds: number | null;
+  set_type: SetType;
+  /** superset/dropset ομαδοποίηση μέσα στο πλάνο */
+  group_key: string | null;
+  notes: string | null;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+}
