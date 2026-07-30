@@ -11,7 +11,7 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: 'Anabasis',
-        short_name: 'Atlas',
+        short_name: 'Anabasis',
         description: 'Weighted calisthenics & skill progression tracker',
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
@@ -37,5 +37,10 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
   },
 });
