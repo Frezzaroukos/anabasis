@@ -7,7 +7,8 @@
     "workout": "Workout",
     "history": "History",
     "skills": "Skills",
-    "settings": "Settings"
+    "settings": "Settings",
+    "calendar": "Calendar"
   },
   "workout": {
     "title": "Workout",
@@ -122,5 +123,30 @@
     "reps": "reps",
     "loading": "Loading…",
     "undo": "Undo"
+  },
+  "activity": {
+    "strength": "Strength",
+    "skill": "Skill work",
+    "run": "Run",
+    "basketball": "Basketball",
+    "cycling": "Cycling",
+    "swim": "Swim",
+    "mobility": "Mobility",
+    "other": "Other"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "today": "Today",
+    "prev": "Previous month",
+    "next": "Next month",
+    "noActivity": "No activity logged.",
+    "pickDay": "Pick a day"
+  },
+  "body": {
+    "weight": "Weight",
+    "calories": "Calories",
+    "balance": "Balance",
+    "in": "in",
+    "out": "out"
   }
 }

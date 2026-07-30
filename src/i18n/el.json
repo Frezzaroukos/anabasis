@@ -7,7 +7,8 @@
     "workout": "Προπόνηση",
     "history": "Ιστορικό",
     "skills": "Skills",
-    "settings": "Ρυθμίσεις"
+    "settings": "Ρυθμίσεις",
+    "calendar": "Ημερολόγιο"
   },
   "workout": {
     "title": "Προπόνηση",
@@ -122,5 +123,30 @@
     "reps": "επαν",
     "loading": "Φόρτωση…",
     "undo": "Αναίρεση"
+  },
+  "activity": {
+    "strength": "Δύναμη",
+    "skill": "Skill",
+    "run": "Τρέξιμο",
+    "basketball": "Μπάσκετ",
+    "cycling": "Ποδήλατο",
+    "swim": "Κολύμβηση",
+    "mobility": "Κινητικότητα",
+    "other": "Άλλο"
+  },
+  "calendar": {
+    "title": "Ημερολόγιο",
+    "today": "Σήμερα",
+    "prev": "Προηγούμενος μήνας",
+    "next": "Επόμενος μήνας",
+    "noActivity": "Καμία δραστηριότητα.",
+    "pickDay": "Διάλεξε μέρα"
+  },
+  "body": {
+    "weight": "Βάρος",
+    "calories": "Θερμίδες",
+    "balance": "Ισοζύγιο",
+    "in": "πρόσληψη",
+    "out": "δαπάνη"
   }
 }
