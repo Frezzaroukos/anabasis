@@ -50,4 +50,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = 'Button';
 
+// buttonVariants είναι το καθιερωμένο shadcn/ui pattern (variant helper δίπλα
+// στο component). Το fast-refresh warning είναι αναμενόμενο εδώ και ακίνδυνο.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants };
