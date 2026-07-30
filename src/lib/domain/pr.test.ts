@@ -16,6 +16,8 @@ const baseSet = (over: Partial<SetEntry> = {}): SetEntry => ({
   reps: 5,
   hold_seconds: null,
   rpe: null,
+  rir: null,
+  tempo: null,
   is_warmup: false,
   is_failure: false,
   set_type: 'normal',

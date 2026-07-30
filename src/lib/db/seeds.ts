@@ -6,9 +6,44 @@
  * If you need to retire a row, mark it `is_archived: true` — never reuse an id.
  */
 
-import type { Exercise, Skill, SkillStep } from './types';
+import type { Activity, Exercise, Skill, SkillStep } from './types';
 
 const NOW = '1970-01-01T00:00:00.000Z'; // overwritten on insert (see seedSystemData)
+
+/* ─────────── Δραστηριότητες (8 αφετηρίες, όχι όρια) ─────────── */
+
+/**
+ * Τα builtin αθλήματα ζουν στη βάση σαν κανονικές εγγραφές — άρα μπορείς να
+ * τα μετονομάσεις, να αλλάξεις εικονίδιο/χρώμα ή να τα αρχειοθετήσεις, όπως
+ * ακριβώς και όσα προσθέσεις εσύ. Το `key` δεν αλλάζει ποτέ (το γράφουν τα
+ * workouts)· το `label` είναι δικό σου.
+ */
+export const SEED_ACTIVITIES: Activity[] = (
+  [
+    ['strength', 'Strength', '⬛', 'bg-sky-400', true, false],
+    ['skill', 'Skill', '◆', 'bg-violet-400', true, false],
+    ['run', 'Run', '▲', 'bg-emerald-400', false, true],
+    ['basketball', 'Basketball', '●', 'bg-amber-400', false, false],
+    ['cycling', 'Cycling', '◇', 'bg-cyan-400', false, true],
+    ['swim', 'Swim', '≈', 'bg-blue-400', false, true],
+    ['mobility', 'Mobility', '◡', 'bg-rose-400', false, false],
+    ['other', 'Other', '·', 'bg-zinc-400', false, false],
+  ] as const
+).map(([key, label, icon, dot_class, uses_sets, tracks_distance], i) => ({
+  id: `a0000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+  user_id: null,
+  key,
+  label,
+  icon,
+  dot_class,
+  uses_sets,
+  tracks_distance,
+  is_builtin: true,
+  display_order: i,
+  is_archived: false,
+  created_at: NOW,
+  updated_at: NOW,
+}));
 
 /* ─────────── Exercises (8 starters) ─────────── */
 

@@ -11,13 +11,41 @@ export type WeightUnit = 'kg' | 'lb';
 export type Language = 'en' | 'el';
 export type Theme = 'dark' | 'light' | 'auto';
 
-export type ExerciseCategory = 'push' | 'pull' | 'legs' | 'core' | 'other';
+/**
+ * Οι ενσωματωμένες κατηγορίες. Το `& {}` στο union κρατάει το autocomplete
+ * ζωντανό ΕΝΩ επιτρέπει οποιοδήποτε δικό σου string — το app δεν σε κλειδώνει
+ * σε πέντε κουτάκια που διάλεξε κάποιος άλλος.
+ */
+export const BUILTIN_EXERCISE_CATEGORIES = [
+  'push',
+  'pull',
+  'legs',
+  'core',
+  'other',
+] as const;
+export type BuiltinExerciseCategory = (typeof BUILTIN_EXERCISE_CATEGORIES)[number];
+export type ExerciseCategory = BuiltinExerciseCategory | (string & {});
 export type MovementType = 'compound' | 'isolation' | 'skill';
 export type DefaultUnit = 'kg' | 'lb' | 'sec' | 'reps';
 
-export type SkillCategory = 'pull' | 'push' | 'core' | 'lower' | 'mixed';
+export const BUILTIN_SKILL_CATEGORIES = [
+  'pull',
+  'push',
+  'core',
+  'lower',
+  'mixed',
+] as const;
+export type BuiltinSkillCategory = (typeof BUILTIN_SKILL_CATEGORIES)[number];
+export type SkillCategory = BuiltinSkillCategory | (string & {});
 export type SkillStatus = 'locked' | 'in_progress' | 'mastered';
-export type SkillTargetType = 'hold' | 'reps' | 'distance' | 'angle';
+export const BUILTIN_SKILL_TARGET_TYPES = [
+  'hold',
+  'reps',
+  'distance',
+  'angle',
+] as const;
+export type BuiltinSkillTargetType = (typeof BUILTIN_SKILL_TARGET_TYPES)[number];
+export type SkillTargetType = BuiltinSkillTargetType | (string & {});
 
 export type PRType =
   | 'max_weight'
@@ -33,15 +61,23 @@ export type SessionFeel = 1 | 2 | 3 | 4 | 5;
  * μετρούνται με διάρκεια (και προαιρετικά απόσταση), γι' αυτό τα κρατάμε
  * στον ίδιο πίνακα workouts αλλά με διαφορετικά πεδία μέτρησης.
  */
-export type ActivityKind =
-  | 'strength'
-  | 'skill'
-  | 'run'
-  | 'basketball'
-  | 'cycling'
-  | 'swim'
-  | 'mobility'
-  | 'other';
+export const BUILTIN_ACTIVITY_KINDS = [
+  'strength',
+  'skill',
+  'run',
+  'basketball',
+  'cycling',
+  'swim',
+  'mobility',
+  'other',
+] as const;
+export type BuiltinActivityKind = (typeof BUILTIN_ACTIVITY_KINDS)[number];
+/**
+ * Οποιοδήποτε δικό σου άθλημα (boxing, yoga, πεζοπορία…) είναι έγκυρο kind —
+ * αρκεί να υπάρχει αντίστοιχη εγγραφή στον πίνακα `activities`. Τα builtin
+ * keys μένουν για autocomplete και για τα seeded δεδομένα.
+ */
+export type ActivityKind = BuiltinActivityKind | (string & {});
 
 /** Πώς εκτελέστηκε ένα σετ — dropset/superset/rest-pause αλλάζουν το νόημα του όγκου. */
 export type SetType =
@@ -129,7 +165,12 @@ export interface SetEntry {
   bodyweight_kg: number | null;
   reps: number | null;
   hold_seconds: number | null;
+  /** 1-10 — πόσο κοντά στην αποτυχία ήταν το σετ */
   rpe: number | null;
+  /** v5: επαναλήψεις που έμεναν στο ρεζερβουάρ (reps in reserve) */
+  rir: number | null;
+  /** v5: ρυθμός εκτέλεσης, π.χ. "3-1-1-0" (κατέβασμα-παύση-ανέβασμα-παύση) */
+  tempo: string | null;
   is_warmup: boolean;
   is_failure: boolean;
   /** v2: τύπος σετ (dropset/superset/rest-pause…). Παλιά σετ = 'normal'/'warmup'. */
@@ -241,6 +282,36 @@ export interface OutgoingEvent {
   emitted_at: ISOTimestamp;
   delivered_at: ISOTimestamp | null;
   created_at: ISOTimestamp;
+}
+
+/* ─────────── Δραστηριότητες οριζόμενες από τον χρήστη (v5) ─────────── */
+
+/**
+ * Ένα άθλημα/είδος προπόνησης. Τα 8 ενσωματωμένα υπάρχουν ως εγγραφές με
+ * `is_builtin: true` ώστε να μπορείς να τα κρύψεις ή να τα μετονομάσεις —
+ * και να προσθέσεις όσα δικά σου θέλεις.
+ *
+ * `uses_sets` καθορίζει ΤΙ βλέπεις στον logger: σετ/επαναλήψεις ή
+ * χρόνος/απόσταση. Είναι ρύθμιση, όχι hardcoded if.
+ */
+export interface Activity {
+  id: UUID;
+  user_id: UUID | null;
+  /** σταθερό key που γράφεται στο `workouts.activity_kind` */
+  key: string;
+  label: string;
+  /** ελεύθερο emoji/σύμβολο — καμία λίστα εικονιδίων να διαλέξεις */
+  icon: string;
+  /** tailwind class για την κουκκίδα στο ημερολόγιο */
+  dot_class: string;
+  /** true = logger με σετ· false = χρόνος (+ απόσταση αν tracks_distance) */
+  uses_sets: boolean;
+  tracks_distance: boolean;
+  is_builtin: boolean;
+  display_order: number;
+  is_archived: boolean;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
 }
 
 /* ─────────── Programs / routines (v3) ─────────── */

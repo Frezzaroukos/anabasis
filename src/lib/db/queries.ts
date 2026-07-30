@@ -12,9 +12,18 @@ import { LOCAL_USER_ID } from './bootstrap';
 import { candidatesFromSet, isNewPR } from '../domain/pr';
 import { setVolume } from '../domain/volume';
 import { e1rm } from '../domain/e1rm';
+import { BUILTIN_EXERCISE_CATEGORIES } from './types';
 import type {
+  Activity,
   ActivityKind,
   AppSettings,
+  DefaultUnit,
+  ExerciseCategory,
+  MovementType,
+  Skill,
+  SkillCategory,
+  SkillStep,
+  SkillTargetType,
   BodyMetric,
   Program,
   ProgramExercise,
@@ -110,6 +119,12 @@ export interface AddSetInput {
   /** κοινό id για superset/dropset αλυσίδες */
   group_id?: string | null;
   notes?: string | null;
+  /** v5: ένταση — 1-10 */
+  rpe?: number | null;
+  /** v5: επαναλήψεις που έμειναν */
+  rir?: number | null;
+  /** v5: ρυθμός εκτέλεσης, π.χ. "3-1-1-0" */
+  tempo?: string | null;
 }
 
 export async function addSet(input: AddSetInput): Promise<SetEntry> {
@@ -129,7 +144,9 @@ export async function addSet(input: AddSetInput): Promise<SetEntry> {
     bodyweight_kg: input.bodyweight_kg,
     reps: input.reps,
     hold_seconds: input.hold_seconds,
-    rpe: null,
+    rpe: input.rpe ?? null,
+    rir: input.rir ?? null,
+    tempo: input.tempo ?? null,
     is_warmup: input.is_warmup ?? false,
     is_failure: input.is_failure ?? false,
     set_type:
@@ -211,7 +228,12 @@ export async function getRecentPRs(limit = 20): Promise<PersonalRecord[]> {
 
 export async function updateSet(
   setId: string,
-  patch: Partial<Pick<SetEntry, 'weight_kg' | 'reps' | 'hold_seconds' | 'notes'>>,
+  patch: Partial<
+    Pick<
+      SetEntry,
+      'weight_kg' | 'reps' | 'hold_seconds' | 'notes' | 'rpe' | 'rir' | 'tempo'
+    >
+  >,
 ): Promise<void> {
   await db.sets.update(setId, { ...patch, updated_at: now() });
 }
@@ -880,4 +902,262 @@ export async function updateWorkoutMeta(
   patch: Partial<Pick<Workout, 'notes' | 'feel' | 'workout_type'>>,
 ): Promise<void> {
   await db.workouts.update(workoutId, { ...patch, updated_at: now() });
+}
+
+/* ─────────── Δικές σου ασκήσεις (v5) ─────────── */
+
+export interface ExerciseInput {
+  name: string;
+  category?: ExerciseCategory;
+  movement_type?: MovementType;
+  equipment?: string[];
+  is_weighted?: boolean;
+  is_bodyweight?: boolean;
+  default_unit?: DefaultUnit;
+  notes?: string | null;
+}
+
+/**
+ * Φτιάχνει δική σου άσκηση. Η κατηγορία είναι ελεύθερο string — αν γράψεις
+ * «grip» ή «neck», γίνεται κανονική κατηγορία, δεν μπαίνει στο «other».
+ */
+export async function createExercise(input: ExerciseInput): Promise<Exercise> {
+  const t = now();
+  const e: Exercise = {
+    id: uuid(),
+    user_id: LOCAL_USER_ID,
+    name: input.name.trim(),
+    category: input.category ?? 'other',
+    movement_type: input.movement_type ?? 'compound',
+    equipment: input.equipment ?? [],
+    is_weighted: input.is_weighted ?? true,
+    is_bodyweight: input.is_bodyweight ?? false,
+    default_unit: input.default_unit ?? 'kg',
+    notes: input.notes ?? null,
+    is_archived: false,
+    created_at: t,
+    updated_at: t,
+    deleted_at: null,
+  };
+  await db.exercises.add(e);
+  return e;
+}
+
+export async function updateExercise(
+  id: string,
+  patch: Partial<Omit<Exercise, 'id' | 'created_at'>>,
+): Promise<void> {
+  await db.exercises.update(id, { ...patch, updated_at: now() });
+}
+
+/**
+ * Αρχειοθέτηση αντί για διαγραφή: τα παλιά σετ δείχνουν σε αυτή την άσκηση
+ * και το ιστορικό δεν επιτρέπεται να σπάσει. Ισχύει και για τις builtin —
+ * αν δεν κάνεις ποτέ Human Flag, κρύψ' την.
+ */
+export async function setExerciseArchived(id: string, archived: boolean): Promise<void> {
+  await db.exercises.update(id, { is_archived: archived, updated_at: now() });
+}
+
+/** Όλες, μαζί με τις αρχειοθετημένες — για την οθόνη διαχείρισης. */
+export async function listAllExercises(): Promise<Exercise[]> {
+  const all = await db.exercises.toArray();
+  return all
+    .filter((e) => e.deleted_at == null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Οι κατηγορίες που ΥΠΑΡΧΟΥΝ πραγματικά, builtin + δικές σου. */
+export async function listExerciseCategories(): Promise<string[]> {
+  const all = await listAllExercises();
+  const set = new Set<string>(BUILTIN_EXERCISE_CATEGORIES);
+  for (const e of all) set.add(e.category);
+  return [...set].sort();
+}
+
+/* ─────────── Δικά σου skills & βήματα (v5) ─────────── */
+
+export interface SkillInput {
+  name: string;
+  category?: SkillCategory;
+  description?: string;
+  ultimate_goal?: string;
+  difficulty?: Skill['difficulty'];
+}
+
+/** Δικό σου skill tree — ο πυρήνας του app παύει να είναι read-only. */
+export async function createSkill(input: SkillInput): Promise<Skill> {
+  const t = now();
+  const count = await db.skills.count();
+  const name = input.name.trim();
+  const s: Skill = {
+    id: uuid(),
+    name,
+    // short_code: αρχικά των λέξεων, ώστε να μη ζητάμε από τον χρήστη κάτι τεχνικό
+    short_code: name
+      .split(/\s+/)
+      .map((w) => w[0] ?? '')
+      .join('')
+      .toUpperCase()
+      .slice(0, 4) || 'SKL',
+    category: input.category ?? 'mixed',
+    description: input.description ?? '',
+    ultimate_goal: input.ultimate_goal ?? '',
+    difficulty: input.difficulty ?? 3,
+    display_order: count,
+    is_archived: false,
+    created_at: t,
+    updated_at: t,
+  };
+  await db.skills.add(s);
+  return s;
+}
+
+export async function updateSkill(
+  id: string,
+  patch: Partial<Omit<Skill, 'id' | 'created_at'>>,
+): Promise<void> {
+  await db.skills.update(id, { ...patch, updated_at: now() });
+}
+
+export async function setSkillArchived(id: string, archived: boolean): Promise<void> {
+  await db.skills.update(id, { is_archived: archived, updated_at: now() });
+}
+
+export interface SkillStepInput {
+  name: string;
+  description?: string;
+  target_type?: SkillTargetType;
+  target_value?: number;
+  target_unit?: string;
+  benchmark_video_url?: string | null;
+}
+
+/**
+ * Προσθέτει βήμα στο τέλος του tree. Το προηγούμενο βήμα γίνεται αυτόματα
+ * προαπαιτούμενο — έτσι δουλεύει μια progression, δεν χρειάζεται να το ορίσεις.
+ */
+export async function addSkillStep(
+  skillId: string,
+  input: SkillStepInput,
+): Promise<SkillStep> {
+  const t = now();
+  const existing = await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number');
+  const prev = existing[existing.length - 1];
+  const step: SkillStep = {
+    id: uuid(),
+    skill_id: skillId,
+    step_number: (prev?.step_number ?? 0) + 1,
+    name: input.name.trim(),
+    description: input.description ?? '',
+    target_type: input.target_type ?? 'hold',
+    target_value: input.target_value ?? 0,
+    target_unit: input.target_unit ?? 'sec',
+    benchmark_video_url: input.benchmark_video_url ?? null,
+    prerequisites: prev ? [prev.id] : [],
+    created_at: t,
+    updated_at: t,
+  };
+  await db.skill_steps.add(step);
+  return step;
+}
+
+export async function updateSkillStep(
+  id: string,
+  patch: Partial<Omit<SkillStep, 'id' | 'skill_id' | 'created_at'>>,
+): Promise<void> {
+  await db.skill_steps.update(id, { ...patch, updated_at: now() });
+}
+
+/**
+ * Διαγράφει βήμα και ξανα-αριθμεί τα υπόλοιπα, ξαναδένοντας την αλυσίδα
+ * προαπαιτούμενων — αλλιώς το tree μένει με τρύπα και σπασμένο prerequisite.
+ */
+export async function removeSkillStep(id: string): Promise<void> {
+  const step = await db.skill_steps.get(id);
+  if (!step) return;
+  await db.user_skill_step_completions.where('skill_step_id').equals(id).delete();
+  await db.skill_steps.delete(id);
+  const rest = await db.skill_steps
+    .where('skill_id')
+    .equals(step.skill_id)
+    .sortBy('step_number');
+  const t = now();
+  for (let i = 0; i < rest.length; i++) {
+    const prev = i === 0 ? null : rest[i - 1]!;
+    await db.skill_steps.update(rest[i]!.id, {
+      step_number: i + 1,
+      prerequisites: prev ? [prev.id] : [],
+      updated_at: t,
+    });
+  }
+}
+
+/* ─────────── Δικές σου δραστηριότητες (v5) ─────────── */
+
+export async function listActivities(includeArchived = false): Promise<Activity[]> {
+  const all = await db.activities.toArray();
+  return all
+    .filter((a) => includeArchived || !a.is_archived)
+    .sort((a, b) => a.display_order - b.display_order);
+}
+
+export async function getActivity(key: string): Promise<Activity | undefined> {
+  return db.activities.where('key').equals(key).first();
+}
+
+export interface ActivityInput {
+  label: string;
+  icon?: string;
+  dot_class?: string;
+  uses_sets?: boolean;
+  tracks_distance?: boolean;
+}
+
+/**
+ * Δικό σου άθλημα. Το `key` παράγεται από το label (slug) και μένει σταθερό
+ * ακόμα κι αν μετονομάσεις — τα workouts δείχνουν στο key, όχι στο label.
+ */
+export async function createActivity(input: ActivityInput): Promise<Activity> {
+  const t = now();
+  const base =
+    input.label
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9α-ω]+/gi, '-')
+      .replace(/^-+|-+$/g, '') || 'activity';
+  let key = base;
+  for (let i = 2; await getActivity(key); i++) key = `${base}-${i}`;
+  const count = await db.activities.count();
+  const a: Activity = {
+    id: uuid(),
+    user_id: LOCAL_USER_ID,
+    key,
+    label: input.label.trim(),
+    icon: input.icon ?? '•',
+    dot_class: input.dot_class ?? 'bg-zinc-400',
+    uses_sets: input.uses_sets ?? false,
+    tracks_distance: input.tracks_distance ?? false,
+    is_builtin: false,
+    display_order: count,
+    is_archived: false,
+    created_at: t,
+    updated_at: t,
+  };
+  await db.activities.add(a);
+  return a;
+}
+
+export async function updateActivity(
+  id: string,
+  patch: Partial<Omit<Activity, 'id' | 'key' | 'is_builtin' | 'created_at'>>,
+): Promise<void> {
+  await db.activities.update(id, { ...patch, updated_at: now() });
+}
+
+export async function reorderActivities(orderedIds: string[]): Promise<void> {
+  const t = now();
+  await Promise.all(
+    orderedIds.map((id, i) => db.activities.update(id, { display_order: i, updated_at: t })),
+  );
 }

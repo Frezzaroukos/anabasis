@@ -8,6 +8,7 @@
 
 import Dexie, { type Table } from 'dexie';
 import type {
+  Activity,
   AppSettings,
   BodyMetric,
   Program,
@@ -24,7 +25,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -40,6 +41,7 @@ export class AnabasisDB extends Dexie {
   body_metrics!: Table<BodyMetric, string>;
   programs!: Table<Program, string>;
   program_exercises!: Table<ProgramExercise, string>;
+  activities!: Table<Activity, string>;
   events_outgoing!: Table<OutgoingEvent, string>;
 
   constructor() {
@@ -116,6 +118,26 @@ export class AnabasisDB extends Dexie {
           s.notify_rest_timer ??= true;
         });
     });
+
+    /**
+     * v5 — «ξεκλείδωμα»: δικές σου δραστηριότητες αντί για 8 σταθερές, και
+     * RIR/tempo δίπλα στο RPE. Οι κατηγορίες ασκήσεων/skills έγιναν ελεύθερα
+     * strings σε επίπεδο τύπων — δεν χρειάζονται migration, τα υπάρχοντα
+     * δεδομένα είναι ήδη έγκυρα.
+     */
+    this.version(5)
+      .stores({
+        activities: 'id, user_id, &key, display_order, is_archived, is_builtin',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('sets')
+          .toCollection()
+          .modify((s) => {
+            s.rir ??= null;
+            s.tempo ??= null;
+          });
+      });
   }
 }
 

@@ -9,7 +9,12 @@
 
 import { v4 as uuid } from 'uuid';
 import { db, SCHEMA_VERSION } from './schema';
-import { SEED_EXERCISES, SEED_SKILLS, SEED_SKILL_STEPS } from './seeds';
+import {
+  SEED_ACTIVITIES,
+  SEED_EXERCISES,
+  SEED_SKILLS,
+  SEED_SKILL_STEPS,
+} from './seeds';
 import type { AppSettings, User } from './types';
 
 export const LOCAL_USER_ID = 'local-user-00000-0000-4000-8000-000000000001';
@@ -20,7 +25,14 @@ export async function bootstrapDB(): Promise<void> {
 
   await db.transaction(
     'rw',
-    [db.users, db.app_settings, db.exercises, db.skills, db.skill_steps],
+    [
+      db.users,
+      db.app_settings,
+      db.exercises,
+      db.skills,
+      db.skill_steps,
+      db.activities,
+    ],
     async () => {
       const userExists = await db.users.get(LOCAL_USER_ID);
       if (!userExists) {
@@ -63,30 +75,39 @@ export async function bootstrapDB(): Promise<void> {
         await db.app_settings.add(settings);
       }
 
-      // System exercises: upsert ΠΑΝΤΑ (όχι μόνο σε κενή DB), αλλιώς μια
-      // υπάρχουσα εγκατάσταση δεν θα έπαιρνε ποτέ τις νέες ασκήσεις.
-      // Τα seed IDs είναι σταθερά, οπότε το bulkPut ενημερώνει αντί να διπλασιάζει.
-      // Οι ασκήσεις του χρήστη (user_id != null) δεν αγγίζονται ποτέ.
-      const existingSystem = await db.exercises
-        .filter((e) => e.user_id === null)
-        .toArray();
-      const seenAt = new Map(existingSystem.map((e) => [e.id, e.created_at]));
-      await db.exercises.bulkPut(
-        SEED_EXERCISES.map((e) => ({
-          ...e,
-          created_at: seenAt.get(e.id) ?? now,
-          updated_at: now,
-        })),
-      );
+      /**
+       * ΠΡΟΣΘΕΤΟΥΜΕ μόνο ό,τι λείπει — ΠΟΤΕ δεν γράφουμε πάνω σε υπάρχουσα
+       * εγγραφή. Το παλιό `bulkPut` έσβηνε σε κάθε εκκίνηση ό,τι είχε αλλάξει
+       * ο χρήστης σε builtin δεδομένα (μετονομασία, αρχειοθέτηση, σημειώσεις,
+       * αλλαγμένοι στόχοι βημάτων). Το τίμημα είναι ότι διορθώσεις στα seeds
+       * δεν φτάνουν σε παλιές εγκαταστάσεις — αποδεκτό: οι αλλαγές του χρήστη
+       * βαραίνουν περισσότερο από τα δικά μας defaults.
+       */
+      const addMissing = async <T extends { id: string }>(
+        table: { bulkGet(keys: string[]): Promise<(T | undefined)[]>; bulkAdd(rows: T[]): Promise<unknown> },
+        rows: T[],
+      ) => {
+        const found = await table.bulkGet(rows.map((r) => r.id));
+        const missing = rows.filter((_, i) => found[i] === undefined);
+        if (missing.length > 0) await table.bulkAdd(missing);
+        return missing.length;
+      };
 
-      // Ίδια λογική για skills/steps: upsert ώστε νέα skills ή διορθωμένα
-      // βήματα να φτάνουν και σε υπάρχουσες εγκαταστάσεις. Η πρόοδος του
-      // χρήστη ζει σε ξεχωριστούς πίνακες, οπότε δεν κινδυνεύει.
-      await db.skills.bulkPut(
+      await addMissing(
+        db.exercises,
+        SEED_EXERCISES.map((e) => ({ ...e, created_at: now, updated_at: now })),
+      );
+      await addMissing(
+        db.skills,
         SEED_SKILLS.map((s) => ({ ...s, created_at: now, updated_at: now })),
       );
-      await db.skill_steps.bulkPut(
+      await addMissing(
+        db.skill_steps,
         SEED_SKILL_STEPS.map((s) => ({ ...s, created_at: now, updated_at: now })),
+      );
+      await addMissing(
+        db.activities,
+        SEED_ACTIVITIES.map((a) => ({ ...a, created_at: now, updated_at: now })),
       );
     },
   );

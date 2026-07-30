@@ -2,23 +2,17 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getCalendar, localDay } from '@/lib/db/queries';
+import { getCalendar, listActivities, localDay } from '@/lib/db/queries';
 import type { DayActivities } from '@/lib/db/queries';
-import type { ActivityKind } from '@/lib/db/types';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { cn } from '@/lib/utils';
 
-/** Χρώμα + σύμβολο ανά δραστηριότητα — ώστε μια μέρα με 3 αθλήματα να διαβάζεται με μια ματιά. */
-const KIND_STYLE: Record<ActivityKind, { dot: string; icon: string }> = {
-  strength: { dot: 'bg-sky-400', icon: '⬛' },
-  skill: { dot: 'bg-violet-400', icon: '◆' },
-  run: { dot: 'bg-emerald-400', icon: '▲' },
-  basketball: { dot: 'bg-amber-400', icon: '●' },
-  cycling: { dot: 'bg-cyan-400', icon: '◇' },
-  swim: { dot: 'bg-blue-400', icon: '≈' },
-  mobility: { dot: 'bg-rose-400', icon: '◡' },
-  other: { dot: 'bg-zinc-400', icon: '·' },
-};
+/**
+ * Τα χρώματα/σύμβολα ΔΕΝ είναι πια hardcoded — έρχονται από τον πίνακα
+ * `activities`, ώστε ένα δικό σου άθλημα να εμφανίζεται εδώ σωστά χωρίς
+ * να αγγίξει κανείς κώδικα.
+ */
+const FALLBACK_DOT = 'bg-zinc-400';
 
 function monthBounds(year: number, month: number) {
   const first = new Date(year, month, 1);
@@ -34,6 +28,12 @@ export function CalendarPage() {
     return { year: d.getFullYear(), month: d.getMonth() };
   });
   const [selected, setSelected] = useState<string | null>(today);
+
+  const activities = useLiveQuery(() => listActivities(true), [], []);
+  const dotOf = (kind: string) =>
+    activities.find((a) => a.key === kind)?.dot_class ?? FALLBACK_DOT;
+  const labelOf = (kind: string) =>
+    activities.find((a) => a.key === kind)?.label ?? kind;
 
   const { first, last } = monthBounds(cursor.year, cursor.month);
   const fromKey = localDay(first);
@@ -157,7 +157,7 @@ export function CalendarPage() {
                   {(cal.get(c.key)?.workouts ?? []).slice(0, 4).map((w) => (
                     <span
                       key={w.id}
-                      className={cn('h-1.5 w-1.5 rounded-full', KIND_STYLE[w.kind].dot)}
+                      className={cn('h-1.5 w-1.5 rounded-full', dotOf(w.kind))}
                     />
                   ))}
                 </span>
@@ -193,11 +193,11 @@ export function CalendarPage() {
                 className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2"
               >
                 <span
-                  className={cn('h-2 w-2 shrink-0 rounded-full', KIND_STYLE[w.kind].dot)}
+                  className={cn('h-2 w-2 shrink-0 rounded-full', dotOf(w.kind))}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">
-                    {w.label ?? t(`activity.${w.kind}`)}
+                    {w.label ?? labelOf(w.kind)}
                   </p>
                   <p className="font-mono text-xs text-muted-foreground">
                     {[
