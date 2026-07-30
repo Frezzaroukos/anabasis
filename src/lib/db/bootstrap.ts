@@ -62,31 +62,31 @@ export async function bootstrapDB(): Promise<void> {
         await db.app_settings.add(settings);
       }
 
-      const exerciseCount = await db.exercises.count();
-      if (exerciseCount === 0) {
-        const stamped = SEED_EXERCISES.map((e) => ({
+      // System exercises: upsert ΠΑΝΤΑ (όχι μόνο σε κενή DB), αλλιώς μια
+      // υπάρχουσα εγκατάσταση δεν θα έπαιρνε ποτέ τις νέες ασκήσεις.
+      // Τα seed IDs είναι σταθερά, οπότε το bulkPut ενημερώνει αντί να διπλασιάζει.
+      // Οι ασκήσεις του χρήστη (user_id != null) δεν αγγίζονται ποτέ.
+      const existingSystem = await db.exercises
+        .filter((e) => e.user_id === null)
+        .toArray();
+      const seenAt = new Map(existingSystem.map((e) => [e.id, e.created_at]));
+      await db.exercises.bulkPut(
+        SEED_EXERCISES.map((e) => ({
           ...e,
-          created_at: now,
+          created_at: seenAt.get(e.id) ?? now,
           updated_at: now,
-        }));
-        await db.exercises.bulkAdd(stamped);
-      }
+        })),
+      );
 
-      const skillCount = await db.skills.count();
-      if (skillCount === 0) {
-        const stampedSkills = SEED_SKILLS.map((s) => ({
-          ...s,
-          created_at: now,
-          updated_at: now,
-        }));
-        const stampedSteps = SEED_SKILL_STEPS.map((s) => ({
-          ...s,
-          created_at: now,
-          updated_at: now,
-        }));
-        await db.skills.bulkAdd(stampedSkills);
-        await db.skill_steps.bulkAdd(stampedSteps);
-      }
+      // Ίδια λογική για skills/steps: upsert ώστε νέα skills ή διορθωμένα
+      // βήματα να φτάνουν και σε υπάρχουσες εγκαταστάσεις. Η πρόοδος του
+      // χρήστη ζει σε ξεχωριστούς πίνακες, οπότε δεν κινδυνεύει.
+      await db.skills.bulkPut(
+        SEED_SKILLS.map((s) => ({ ...s, created_at: now, updated_at: now })),
+      );
+      await db.skill_steps.bulkPut(
+        SEED_SKILL_STEPS.map((s) => ({ ...s, created_at: now, updated_at: now })),
+      );
     },
   );
 }
