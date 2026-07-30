@@ -100,9 +100,13 @@ describe('DashboardPage — με δεδομένα', () => {
     expect(screen.getByText('1/7')).toBeTruthy();
 
     expect(screen.getByText(dashboardEn.weeklyVolume)).toBeTruthy();
-    // ένα σετ δημιουργεί πολλαπλά PR-candidates (max_weight/max_reps/e1rm/...) —
-    // "Back Squat" εμφανίζεται σε παραπάνω από μία γραμμή της λίστας ρεκόρ.
-    expect(screen.getAllByText('Back Squat').length).toBeGreaterThan(0);
+    // Το όνομα της άσκησης έρχεται από ΔΕΥΤΕΡΟ liveQuery (listExercises) που
+    // μπορεί να λύσει μετά τα PRs — χωρίς waitFor το test είναι flaky και
+    // βλέπει το placeholder «—». Ένα σετ δίνει πολλαπλά PR-candidates
+    // (max_weight/max_reps/e1rm), άρα το όνομα εμφανίζεται σε >1 γραμμή.
+    await waitFor(() =>
+      expect(screen.getAllByText('Back Squat').length).toBeGreaterThan(0),
+    );
 
     // header έχει βέλος πλέον (clickable card προς /skills) — regex αντί για exact match
     expect(screen.getByText(new RegExp(dashboardEn.skillsProgress))).toBeTruthy();
