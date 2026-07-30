@@ -28,6 +28,47 @@ export type PRType =
 
 export type SessionFeel = 1 | 2 | 3 | 4 | 5;
 
+/**
+ * Τι είδος δραστηριότητα. Το `strength` έχει σετ/επαναλήψεις· τα υπόλοιπα
+ * μετρούνται με διάρκεια (και προαιρετικά απόσταση), γι' αυτό τα κρατάμε
+ * στον ίδιο πίνακα workouts αλλά με διαφορετικά πεδία μέτρησης.
+ */
+export type ActivityKind =
+  | 'strength'
+  | 'skill'
+  | 'run'
+  | 'basketball'
+  | 'cycling'
+  | 'swim'
+  | 'mobility'
+  | 'other';
+
+/** Πώς εκτελέστηκε ένα σετ — dropset/superset/rest-pause αλλάζουν το νόημα του όγκου. */
+export type SetType =
+  | 'normal'
+  | 'warmup'
+  | 'dropset'
+  | 'superset'
+  | 'rest_pause'
+  | 'amrap'
+  | 'failure';
+
+/** Μέτρηση σώματος/διατροφής — χρονοσειρά, μία εγγραφή ανά μέρα. */
+export interface BodyMetric {
+  id: UUID;
+  user_id: UUID;
+  /** τοπική ημερομηνία YYYY-MM-DD — ένα record ανά μέρα */
+  date: string;
+  weight_kg: number | null;
+  calories_in: number | null;
+  calories_out: number | null;
+  protein_g: number | null;
+  body_fat_pct: number | null;
+  notes: string | null;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+}
+
 /* ────────────────────────────────────────────────────────────── */
 
 export interface User {
@@ -69,6 +110,10 @@ export interface Workout {
   duration_seconds: number | null;
   notes: string | null;
   workout_type: string | null;
+  /** v2: τι άθλημα/δραστηριότητα. Παλιές εγγραφές γίνονται 'strength'. */
+  activity_kind: ActivityKind;
+  /** v2: για running/cycling/swim */
+  distance_km: number | null;
   feel: SessionFeel | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
@@ -87,6 +132,14 @@ export interface SetEntry {
   rpe: number | null;
   is_warmup: boolean;
   is_failure: boolean;
+  /** v2: τύπος σετ (dropset/superset/rest-pause…). Παλιά σετ = 'normal'/'warmup'. */
+  set_type: SetType;
+  /**
+   * v2: κοινό id για σετ που εκτελούνται μαζί.
+   * superset = ίδιο group_id, ΔΙΑΦΟΡΕΤΙΚΕΣ ασκήσεις.
+   * dropset  = ίδιο group_id, ΙΔΙΑ άσκηση, φθίνον βάρος.
+   */
+  group_id: UUID | null;
   notes: string | null;
   rest_seconds: number | null;
   created_at: ISOTimestamp;

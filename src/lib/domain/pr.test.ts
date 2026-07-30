@@ -18,6 +18,8 @@ const baseSet = (over: Partial<SetEntry> = {}): SetEntry => ({
   rpe: null,
   is_warmup: false,
   is_failure: false,
+  set_type: 'normal',
+  group_id: null,
   notes: null,
   rest_seconds: null,
   created_at: '2026-01-01T00:00:00.000Z',

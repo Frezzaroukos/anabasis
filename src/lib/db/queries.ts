@@ -11,11 +11,15 @@ import { db } from './schema';
 import { LOCAL_USER_ID } from './bootstrap';
 import { candidatesFromSet, isNewPR } from '../domain/pr';
 import { setVolume } from '../domain/volume';
+import { e1rm } from '../domain/e1rm';
 import type {
+  ActivityKind,
   AppSettings,
+  BodyMetric,
   Exercise,
   PersonalRecord,
   SetEntry,
+  SetType,
   UserSkillProgress,
   UserSkillStepCompletion,
   Workout,
@@ -25,7 +29,9 @@ const now = () => new Date().toISOString();
 
 /* ─────────── Workouts ─────────── */
 
-export async function startWorkout(): Promise<Workout> {
+export async function startWorkout(
+  activityKind: ActivityKind = 'strength',
+): Promise<Workout> {
   const t = now();
   const w: Workout = {
     id: uuid(),
@@ -35,6 +41,8 @@ export async function startWorkout(): Promise<Workout> {
     duration_seconds: null,
     notes: null,
     workout_type: null,
+    activity_kind: activityKind,
+    distance_km: null,
     feel: null,
     created_at: t,
     updated_at: t,
@@ -95,6 +103,10 @@ export interface AddSetInput {
   hold_seconds: number | null;
   is_warmup?: boolean;
   is_failure?: boolean;
+  /** dropset/superset/rest-pause… default 'normal' (ή 'warmup' αν is_warmup) */
+  set_type?: SetType;
+  /** κοινό id για superset/dropset αλυσίδες */
+  group_id?: string | null;
   notes?: string | null;
 }
 
@@ -118,6 +130,10 @@ export async function addSet(input: AddSetInput): Promise<SetEntry> {
     rpe: null,
     is_warmup: input.is_warmup ?? false,
     is_failure: input.is_failure ?? false,
+    set_type:
+      input.set_type ??
+      (input.is_warmup ? 'warmup' : input.is_failure ? 'failure' : 'normal'),
+    group_id: input.group_id ?? null,
     notes: input.notes ?? null,
     rest_seconds: null,
     created_at: t,
@@ -484,4 +500,193 @@ export async function getTrainingSummary(days = 30) {
     activeDays: active.length,
     days,
   };
+}
+
+/* ─────────── Body metrics (βάρος / θερμίδες) ─────────── */
+
+/** Τοπική ημερομηνία YYYY-MM-DD — μία εγγραφή ανά μέρα. */
+export function localDay(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+}
+
+/** Upsert μέτρησης ημέρας — γράφεις μόνο ό,τι θέλεις, τα υπόλοιπα μένουν. */
+export async function saveBodyMetric(
+  date: string,
+  patch: Partial<Omit<BodyMetric, 'id' | 'user_id' | 'date' | 'created_at' | 'updated_at'>>,
+): Promise<void> {
+  const t = now();
+  const existing = await db.body_metrics
+    .where('[user_id+date]')
+    .equals([LOCAL_USER_ID, date])
+    .first();
+  if (existing) {
+    await db.body_metrics.update(existing.id, { ...patch, updated_at: t });
+    return;
+  }
+  await db.body_metrics.add({
+    id: uuid(),
+    user_id: LOCAL_USER_ID,
+    date,
+    weight_kg: null,
+    calories_in: null,
+    calories_out: null,
+    protein_g: null,
+    body_fat_pct: null,
+    notes: null,
+    created_at: t,
+    updated_at: t,
+    ...patch,
+  });
+}
+
+export async function getBodyMetric(date: string): Promise<BodyMetric | undefined> {
+  return db.body_metrics.where('[user_id+date]').equals([LOCAL_USER_ID, date]).first();
+}
+
+export interface BodyPoint {
+  date: string;
+  weight: number | null;
+  caloriesIn: number | null;
+  caloriesOut: number | null;
+  /** θετικό = πλεόνασμα, αρνητικό = έλλειμμα */
+  balance: number | null;
+}
+
+/**
+ * Χρονοσειρά βάρους & θερμίδων. Το βάρος αφήνεται `null` στις μέρες χωρίς
+ * ζύγισμα (το chart τις γεφυρώνει) — δεν εφευρίσκουμε τιμές.
+ */
+export async function getBodyTrend(days = 60): Promise<BodyPoint[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - (days - 1));
+  const rows = await db.body_metrics.where('user_id').equals(LOCAL_USER_ID).toArray();
+  const byDate = new Map(rows.map((r) => [r.date, r]));
+  const out: BodyPoint[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(since.getDate() + i);
+    const key = localDay(d);
+    const r = byDate.get(key);
+    const cin = r?.calories_in ?? null;
+    const cout = r?.calories_out ?? null;
+    out.push({
+      date: key,
+      weight: r?.weight_kg ?? null,
+      caloriesIn: cin,
+      caloriesOut: cout,
+      balance: cin != null && cout != null ? cin - cout : null,
+    });
+  }
+  return out;
+}
+
+/* ─────────── Per-exercise progress ─────────── */
+
+export interface ExercisePoint {
+  date: string;
+  topWeight: number | null;
+  e1rm: number | null;
+  volume: number;
+  reps: number | null;
+}
+
+/**
+ * Πρόοδος σε ΜΙΑ άσκηση: καλύτερο σετ ανά ημέρα προπόνησης.
+ * Μόνο ημέρες με δεδομένα (όχι gap-fill) — για μια άσκηση, τα κενά είναι
+ * φυσιολογικά και μια συνεχής γραμμή είναι πιο ευανάγνωστη.
+ */
+export async function getExerciseProgress(
+  exerciseId: string,
+  days = 180,
+): Promise<ExercisePoint[]> {
+  const since = Date.now() - days * 86400_000;
+  const workouts = await db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray();
+  const wDay = new Map(
+    workouts
+      .filter((w) => w.deleted_at == null && Date.parse(w.started_at) >= since)
+      .map((w) => [w.id, localDay(new Date(w.started_at))]),
+  );
+  const sets = (
+    await db.sets.where('exercise_id').equals(exerciseId).toArray()
+  ).filter((s) => s.deleted_at == null && s.set_type !== 'warmup' && wDay.has(s.workout_id));
+
+  const byDay = new Map<string, ExercisePoint>();
+  for (const s of sets) {
+    const day = wDay.get(s.workout_id)!;
+    const cur =
+      byDay.get(day) ??
+      ({ date: day, topWeight: null, e1rm: null, volume: 0, reps: null } as ExercisePoint);
+    const load = (s.weight_kg ?? 0) + (s.bodyweight_kg ?? 0);
+    if (load > 0 && (cur.topWeight == null || load > cur.topWeight)) {
+      cur.topWeight = load;
+      cur.reps = s.reps;
+    }
+    if (s.reps && load > 0) {
+      const est = e1rm(load, s.reps);
+      if (cur.e1rm == null || est > cur.e1rm) cur.e1rm = Math.round(est * 10) / 10;
+    }
+    cur.volume += setVolume(s);
+    byDay.set(day, cur);
+  }
+  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/* ─────────── Calendar ─────────── */
+
+export interface DayActivities {
+  date: string;
+  workouts: Array<{
+    id: string;
+    kind: ActivityKind;
+    label: string | null;
+    durationSeconds: number | null;
+    distanceKm: number | null;
+    sets: number;
+  }>;
+  weight: number | null;
+}
+
+/**
+ * Ημερολόγιο: ΟΛΕΣ οι δραστηριότητες κάθε μέρας. Πολλές την ίδια μέρα είναι
+ * κανονικό (γυμναστήριο + μπάσκετ + τρέξιμο), γι' αυτό επιστρέφουμε λίστα.
+ */
+export async function getCalendar(from: string, to: string): Promise<Map<string, DayActivities>> {
+  const [workouts, allSets, metrics] = await Promise.all([
+    db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray(),
+    db.sets.toArray(),
+    db.body_metrics.where('user_id').equals(LOCAL_USER_ID).toArray(),
+  ]);
+  const setCount = new Map<string, number>();
+  for (const s of allSets) {
+    if (s.deleted_at != null) continue;
+    setCount.set(s.workout_id, (setCount.get(s.workout_id) ?? 0) + 1);
+  }
+  const weightBy = new Map(metrics.map((m) => [m.date, m.weight_kg]));
+
+  const out = new Map<string, DayActivities>();
+  for (const w of workouts) {
+    if (w.deleted_at != null) continue;
+    const day = localDay(new Date(w.started_at));
+    if (day < from || day > to) continue;
+    const entry =
+      out.get(day) ?? { date: day, workouts: [], weight: weightBy.get(day) ?? null };
+    entry.workouts.push({
+      id: w.id,
+      kind: w.activity_kind ?? 'strength',
+      label: w.workout_type,
+      durationSeconds: w.duration_seconds,
+      distanceKm: w.distance_km,
+      sets: setCount.get(w.id) ?? 0,
+    });
+    out.set(day, entry);
+  }
+  // μέρες με ζύγισμα αλλά χωρίς προπόνηση — φαίνονται κι αυτές
+  for (const m of metrics) {
+    if (m.date < from || m.date > to || out.has(m.date)) continue;
+    if (m.weight_kg == null && m.calories_in == null) continue;
+    out.set(m.date, { date: m.date, workouts: [], weight: m.weight_kg });
+  }
+  return out;
 }

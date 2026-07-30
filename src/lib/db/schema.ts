@@ -9,6 +9,7 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   AppSettings,
+  BodyMetric,
   Exercise,
   OutgoingEvent,
   PersonalRecord,
@@ -21,7 +22,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -34,6 +35,7 @@ export class AnabasisDB extends Dexie {
   user_skill_progress!: Table<UserSkillProgress, string>;
   user_skill_step_completions!: Table<UserSkillStepCompletion, string>;
   app_settings!: Table<AppSettings, string>;
+  body_metrics!: Table<BodyMetric, string>;
   events_outgoing!: Table<OutgoingEvent, string>;
 
   constructor() {
@@ -59,6 +61,38 @@ export class AnabasisDB extends Dexie {
       events_outgoing:
         'id, user_id, event_type, target_app, delivered_at, emitted_at',
     });
+
+    /**
+     * v2 — πολλαπλές δραστηριότητες/μέρα (γυμναστήριο + μπάσκετ + τρέξιμο),
+     * τύποι σετ (dropset/superset/rest-pause) και μετρήσεις σώματος.
+     *
+     * Το upgrade συμπληρώνει ΜΟΝΟ τα νέα πεδία σε υπάρχουσες εγγραφές —
+     * καμία διαγραφή, κανένα rewrite δεδομένων.
+     */
+    this.version(2)
+      .stores({
+        workouts:
+          'id, user_id, started_at, ended_at, activity_kind, deleted_at, [user_id+started_at]',
+        sets:
+          'id, workout_id, exercise_id, set_number, set_type, group_id, deleted_at, [exercise_id+created_at], [workout_id+set_number]',
+        body_metrics: 'id, user_id, date, &[user_id+date]',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('workouts')
+          .toCollection()
+          .modify((w) => {
+            w.activity_kind ??= 'strength';
+            w.distance_km ??= null;
+          });
+        await tx
+          .table('sets')
+          .toCollection()
+          .modify((s) => {
+            s.set_type ??= s.is_warmup ? 'warmup' : s.is_failure ? 'failure' : 'normal';
+            s.group_id ??= null;
+          });
+      });
   }
 }
 
