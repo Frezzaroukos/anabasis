@@ -49,7 +49,9 @@
       "start": "Start rest",
       "stop": "Stop rest",
       "restingShort": "Rest"
-    }
+    },
+    "activityKind": "Activity",
+    "setType": "Set type"
   },
   "history": {
     "title": "History",
@@ -147,6 +149,35 @@
     "calories": "Calories",
     "balance": "Balance",
     "in": "in",
-    "out": "out"
+    "out": "out",
+    "title": "Body",
+    "logToday": "Log today",
+    "caloriesIn": "Calories in",
+    "caloriesOut": "Calories out",
+    "save": "Save",
+    "weightTrend": "Weight trend",
+    "calorieBalance": "Calorie balance",
+    "balanceHint": "Above zero = surplus, below = deficit."
+  },
+  "progress": {
+    "title": "Exercise progress",
+    "hint": "Pick an exercise to see how it has moved over time.",
+    "topWeight": "Top set",
+    "e1rm": "Est. 1RM",
+    "volume": "Volume",
+    "best": "best",
+    "sessions": "sessions",
+    "needMore": "Log this exercise at least twice to see a trend.",
+    "change": "Change exercise",
+    "noMatch": "No exercise matches."
+  },
+  "setType": {
+    "normal": "Normal",
+    "warmup": "Warm-up",
+    "dropset": "Drop set",
+    "superset": "Superset",
+    "rest_pause": "Rest-pause",
+    "amrap": "AMRAP",
+    "failure": "To failure"
   }
 }

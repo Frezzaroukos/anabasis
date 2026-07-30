@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getCalendar, localDay } from '@/lib/db/queries';
@@ -85,6 +86,12 @@ export function CalendarPage() {
           {monthLabel}
         </h1>
         <div className="flex gap-1">
+          <Link
+            to="/body"
+            className="rounded-md border border-border px-3 py-1 text-sm hover:bg-accent"
+          >
+            {t('body.title')}
+          </Link>
           <button
             onClick={() => shift(-1)}
             aria-label={t('calendar.prev')}

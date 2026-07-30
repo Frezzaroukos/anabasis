@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
@@ -56,7 +57,9 @@ describe('HistoryPage', () => {
   it('δείχνει ολοκληρωμένη προπόνηση και τα πρόσφατα PRs', async () => {
     render(
       <I18nextProvider i18n={i18next}>
-        <HistoryPage />
+        <MemoryRouter>
+          <HistoryPage />
+        </MemoryRouter>
       </I18nextProvider>,
     );
     await waitFor(() => expect(screen.getByText('Recent PRs')).toBeTruthy());

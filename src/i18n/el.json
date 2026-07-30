@@ -49,7 +49,9 @@
       "start": "Έναρξη rest",
       "stop": "Τερματισμός",
       "restingShort": "Rest"
-    }
+    },
+    "activityKind": "Δραστηριότητα",
+    "setType": "Τύπος σετ"
   },
   "history": {
     "title": "Ιστορικό",
@@ -147,6 +149,35 @@
     "calories": "Θερμίδες",
     "balance": "Ισοζύγιο",
     "in": "πρόσληψη",
-    "out": "δαπάνη"
+    "out": "δαπάνη",
+    "title": "Σώμα",
+    "logToday": "Καταγραφή σήμερα",
+    "caloriesIn": "Πρόσληψη",
+    "caloriesOut": "Δαπάνη",
+    "save": "Αποθήκευση",
+    "weightTrend": "Τάση βάρους",
+    "calorieBalance": "Θερμιδικό ισοζύγιο",
+    "balanceHint": "Πάνω από μηδέν = πλεόνασμα, κάτω = έλλειμμα."
+  },
+  "progress": {
+    "title": "Πρόοδος άσκησης",
+    "hint": "Διάλεξε άσκηση για να δεις πώς εξελίχθηκε.",
+    "topWeight": "Καλύτερο σετ",
+    "e1rm": "Εκτ. 1RM",
+    "volume": "Όγκος",
+    "best": "καλύτερο",
+    "sessions": "προπονήσεις",
+    "needMore": "Κατέγραψε την άσκηση 2+ φορές για να φανεί τάση.",
+    "change": "Άλλαξε άσκηση",
+    "noMatch": "Καμία άσκηση δεν ταιριάζει."
+  },
+  "setType": {
+    "normal": "Κανονικό",
+    "warmup": "Ζέσταμα",
+    "dropset": "Drop set",
+    "superset": "Superset",
+    "rest_pause": "Rest-pause",
+    "amrap": "AMRAP",
+    "failure": "Μέχρι εξάντληση"
   }
 }

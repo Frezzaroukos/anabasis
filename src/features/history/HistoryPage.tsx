@@ -4,6 +4,7 @@ import { db, LOCAL_USER_ID } from '@/lib/db';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { getRecentPRs } from '@/lib/db/queries';
 import { VolumeChart } from './components/VolumeChart';
+import { Link } from 'react-router-dom';
 
 export function HistoryPage() {
   const { t } = useTranslation();
@@ -34,6 +35,13 @@ export function HistoryPage() {
           {list.length} {t('history.completed')}
         </p>
       </header>
+
+      <Link
+        to="/progress"
+        className="block rounded-lg border border-border bg-card px-4 py-3 text-sm transition-colors hover:bg-muted/50"
+      >
+        {t('progress.title')} →
+      </Link>
 
       <VolumeChart />
 
