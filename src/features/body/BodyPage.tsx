@@ -34,6 +34,8 @@ export function BodyPage() {
   const [w, setW] = useState('');
   const [cin, setCin] = useState('');
   const [cout, setCout] = useState('');
+  const [protein, setProtein] = useState('');
+  const [bf, setBf] = useState('');
 
   // Πρόσθεσε τις υπάρχουσες τιμές της ημέρας στα πεδία (edit αντί για ξανα-εισαγωγή).
   // Εξαρτάται από το ίδιο το record: όταν αλλάξει (id/updated_at), τα πεδία
@@ -43,6 +45,8 @@ export function BodyPage() {
     setW(todayMetric.weight_kg?.toString() ?? '');
     setCin(todayMetric.calories_in?.toString() ?? '');
     setCout(todayMetric.calories_out?.toString() ?? '');
+    setProtein(todayMetric.protein_g?.toString() ?? '');
+    setBf(todayMetric.body_fat_pct?.toString() ?? '');
   }, [todayMetric]);
 
   const num = (s: string) => {
@@ -55,6 +59,8 @@ export function BodyPage() {
       weight_kg: num(w),
       calories_in: num(cin),
       calories_out: num(cout),
+      protein_g: num(protein),
+      body_fat_pct: num(bf),
     });
 
   // Το βάρος γεφυρώνεται (connectNulls) — οι μέρες χωρίς ζύγισμα δεν είναι μηδέν.
@@ -63,6 +69,22 @@ export function BodyPage() {
   const latest = weightPoints.at(-1)?.weight ?? null;
   const first = weightPoints[0]?.weight ?? null;
   const delta = latest != null && first != null ? latest - first : null;
+
+  // Πρωτεΐνη/kg σωματικού βάρους — χρησιμοποιεί το σημερινό βάρος αν
+  // καταγράφηκε, αλλιώς το πιο πρόσφατο γνωστό (δεν χρειάζεται να ζυγιστείς
+  // ΚΑΙ να μετρήσεις πρωτεΐνη την ίδια μέρα για να δεις τη μετρική).
+  const weightForRatio = todayMetric?.weight_kg ?? latest;
+  const proteinPerKg =
+    todayMetric?.protein_g != null && weightForRatio != null
+      ? Math.round((todayMetric.protein_g / weightForRatio) * 10) / 10
+      : null;
+
+  const bodyFatPoints = trend.filter((p) => p.bodyFatPct != null);
+  const latestBF = bodyFatPoints.at(-1)?.bodyFatPct ?? null;
+  const firstBF = bodyFatPoints[0]?.bodyFatPct ?? null;
+  const bfDelta = latestBF != null && firstBF != null ? latestBF - firstBF : null;
+
+  const proteinPoints = trend.filter((p) => p.proteinG != null);
 
   return (
     <div className="space-y-6">
@@ -92,6 +114,8 @@ export function BodyPage() {
               [t('body.weight'), w, setW, 'kg'],
               [t('body.caloriesIn'), cin, setCin, 'kcal'],
               [t('body.caloriesOut'), cout, setCout, 'kcal'],
+              [t('body.protein'), protein, setProtein, 'g'],
+              [t('body.bodyFat'), bf, setBf, '%'],
             ] as const
           ).map(([label, val, set, unit]) => (
             <label key={label} className="block">
@@ -124,6 +148,20 @@ export function BodyPage() {
               {todayMetric.calories_in - todayMetric.calories_out > 0 ? '+' : ''}
               {todayMetric.calories_in - todayMetric.calories_out} kcal
             </span>
+          </p>
+        )}
+        {(proteinPerKg != null || todayMetric?.body_fat_pct != null) && (
+          <p className="mt-1 flex gap-3 font-mono text-xs text-muted-foreground">
+            {proteinPerKg != null && (
+              <span>
+                {t('body.proteinPerKg')}: <span className="text-foreground">{proteinPerKg} g/kg</span>
+              </span>
+            )}
+            {todayMetric?.body_fat_pct != null && (
+              <span>
+                {t('body.bodyFat')}: <span className="text-foreground">{todayMetric.body_fat_pct}%</span>
+              </span>
+            )}
           </p>
         )}
       </section>
@@ -191,6 +229,75 @@ export function BodyPage() {
         </section>
       )}
 
+      {/*
+        Σύσταση σώματος (body fat %). Ξεχωριστό chart από το βάρος: μιλάμε για
+        ποσοστό 0-40%, όχι kg — στον ίδιο άξονα με το βάρος θα ήταν άχρηστο
+        (ίδιος λόγος που το ισοζύγιο θερμίδων έχει το δικό του chart παρακάτω).
+        Άξονας αγκυρωμένος στο 0 (όχι dataMin-1 όπως το βάρος): σε ποσοστό η
+        απόλυτη θέση μετράει περισσότερο από τη σχετική διακύμανση.
+      */}
+      {bodyFatPoints.length > 1 && (
+        <section className="rounded-lg border border-border bg-card p-4">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-sm font-medium">{t('body.bodyFatTrend')}</h2>
+            {bfDelta != null && (
+              <span
+                className={`font-mono text-xs ${
+                  bfDelta > 0 ? 'text-amber-400' : bfDelta < 0 ? 'text-emerald-400' : ''
+                }`}
+              >
+                {bfDelta > 0 ? '+' : ''}
+                {Math.round(bfDelta * 10) / 10}%
+              </span>
+            )}
+          </div>
+          <div className="h-40 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="currentColor"
+                  className="text-border"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(d: string) => d.slice(5)}
+                  tick={{ fontSize: 10 }}
+                  stroke="currentColor"
+                  className="text-muted-foreground"
+                  interval={Math.max(1, Math.floor(days / 6))}
+                />
+                <YAxis
+                  domain={[0, 'dataMax + 5']}
+                  tick={{ fontSize: 10 }}
+                  stroke="currentColor"
+                  className="text-muted-foreground"
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number) => [`${v}%`, t('body.bodyFat')]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="bodyFatPct"
+                  stroke="currentColor"
+                  className="text-rose-400"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      )}
+
       {/* Θερμιδικό ισοζύγιο */}
       {balancePoints.length > 0 && (
         <section className="rounded-lg border border-border bg-card p-4">
@@ -242,6 +349,63 @@ export function BodyPage() {
           <p className="mt-2 text-[10px] text-muted-foreground">
             {t('body.balanceHint')}
           </p>
+        </section>
+      )}
+
+      {/*
+        Πρωτεΐνη ως δικό της chart, όχι πάνω στο ισοζύγιο θερμίδων: το
+        ισοζύγιο είναι ένα netto delta γύρω απ' το μηδέν (μπορεί να είναι
+        αρνητικό), ενώ η πρωτεΐνη είναι πάντα θετική ποσότητα σε τελείως
+        διαφορετική κλίμακα (~100-250g έναντι ~±500 kcal) — αν μπουν μαζί,
+        η μία γραμμή θα «πλακώσει» την άλλη οπτικά χωρίς κοινό νόημα.
+      */}
+      {proteinPoints.length > 1 && (
+        <section className="rounded-lg border border-border bg-card p-4">
+          <h2 className="mb-3 text-sm font-medium">{t('body.proteinTrend')}</h2>
+          <div className="h-40 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="currentColor"
+                  className="text-border"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(d: string) => d.slice(5)}
+                  tick={{ fontSize: 10 }}
+                  stroke="currentColor"
+                  className="text-muted-foreground"
+                  interval={Math.max(1, Math.floor(days / 6))}
+                />
+                <YAxis
+                  domain={[0, 'dataMax + 20']}
+                  tick={{ fontSize: 10 }}
+                  stroke="currentColor"
+                  className="text-muted-foreground"
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number) => [`${v} g`, t('body.protein')]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="proteinG"
+                  stroke="currentColor"
+                  className="text-violet-400"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </section>
       )}
     </div>

@@ -104,6 +104,19 @@ describe('body metrics (βάρος / θερμίδες)', () => {
     const empty = trend.find((p) => p.date !== localDay() && p.caloriesIn == null);
     expect(empty?.balance).toBeNull();
   });
+
+  it('επιστρέφει και πρωτεΐνη / λίπος σώματος στη χρονοσειρά', async () => {
+    const day = localDay();
+    await saveBodyMetric(day, { protein_g: 165, body_fat_pct: 12.5 });
+    const trend = await getBodyTrend(7);
+    const today = trend.find((p) => p.date === day)!;
+    expect(today.proteinG).toBe(165);
+    expect(today.bodyFatPct).toBe(12.5);
+    // μέρες χωρίς καταγραφή μένουν null — δεν γεμίζουμε με μηδενικά
+    const other = trend.find((p) => p.date !== day)!;
+    expect(other.proteinG).toBeNull();
+    expect(other.bodyFatPct).toBeNull();
+  });
 });
 
 describe('per-exercise progress', () => {

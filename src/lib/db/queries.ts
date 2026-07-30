@@ -554,11 +554,13 @@ export interface BodyPoint {
   caloriesOut: number | null;
   /** θετικό = πλεόνασμα, αρνητικό = έλλειμμα */
   balance: number | null;
+  proteinG: number | null;
+  bodyFatPct: number | null;
 }
 
 /**
- * Χρονοσειρά βάρους & θερμίδων. Το βάρος αφήνεται `null` στις μέρες χωρίς
- * ζύγισμα (το chart τις γεφυρώνει) — δεν εφευρίσκουμε τιμές.
+ * Χρονοσειρά βάρους, θερμίδων & σύστασης σώματος. Οι τιμές αφήνονται `null`
+ * στις μέρες χωρίς καταγραφή (το chart τις γεφυρώνει) — δεν εφευρίσκουμε τιμές.
  */
 export async function getBodyTrend(days = 60): Promise<BodyPoint[]> {
   const since = new Date();
@@ -579,6 +581,8 @@ export async function getBodyTrend(days = 60): Promise<BodyPoint[]> {
       caloriesIn: cin,
       caloriesOut: cout,
       balance: cin != null && cout != null ? cin - cout : null,
+      proteinG: r?.protein_g ?? null,
+      bodyFatPct: r?.body_fat_pct ?? null,
     });
   }
   return out;

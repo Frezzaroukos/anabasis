@@ -1,0 +1,109 @@
+import { describe, expect, it, beforeAll } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import i18next from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import en from '@/i18n/en.json';
+import { DashboardPage } from './DashboardPage';
+import { db } from '@/lib/db';
+import { SEED_EXERCISES, SEED_SKILLS, SEED_SKILL_STEPS } from '@/lib/db/seeds';
+import { achieveStep, addSet, localDay, saveBodyMetric, startWorkout } from '@/lib/db/queries';
+
+/**
+ * Ίδιο fixture-πρότυπο με SettingsPage/SkillsPage tests: i18n merged με ένα
+ * τοπικό dashboard namespace — το πραγματικό en.json/el.json το ενημερώνει
+ * ο team lead, το test δεν εξαρτάται από αυτό.
+ */
+const dashboardEn = {
+  title: 'Overview',
+  noData: 'Nothing logged yet. Start a workout to see your stats here.',
+  consistency: 'Consistency',
+  last7days: 'Last 7 days',
+  last30days: 'Last 30 days',
+  weeklyVolume: 'Weekly volume',
+  thisWeek: 'this week',
+  vsLastWeek: 'vs last week',
+  skillsProgress: 'Skills progress',
+  latestWeight: 'Latest weight',
+  latestBodyFat: 'Latest body fat',
+  todayBalance: "Today's balance",
+};
+
+beforeAll(async () => {
+  if (!i18next.isInitialized) {
+    await i18next.init({
+      lng: 'en',
+      resources: { en: { translation: { ...en, dashboard: dashboardEn } } },
+      interpolation: { escapeValue: false },
+    });
+  }
+});
+
+const wrap = (ui: React.ReactNode) => (
+  <I18nextProvider i18n={i18next}>
+    <MemoryRouter>{ui}</MemoryRouter>
+  </I18nextProvider>
+);
+
+describe('DashboardPage — empty DB', () => {
+  it('render-άρει χωρίς crash και δείχνει "no data", όχι ψεύτικα μηδενικά', async () => {
+    render(wrap(<DashboardPage />));
+    await waitFor(() =>
+      expect(screen.getByText(dashboardEn.noData)).toBeTruthy(),
+    );
+    expect(screen.queryByText(dashboardEn.consistency)).toBeNull();
+    expect(screen.queryByText('0/7')).toBeNull();
+  });
+});
+
+describe('DashboardPage — με δεδομένα', () => {
+  beforeAll(async () => {
+    await db.exercises.bulkPut(SEED_EXERCISES);
+    await db.skills.bulkPut(SEED_SKILLS);
+    await db.skill_steps.bulkPut(SEED_SKILL_STEPS);
+
+    const squat = SEED_EXERCISES.find((e) => e.name === 'Back Squat')!;
+    const w = await startWorkout();
+    await addSet({
+      workout_id: w.id,
+      exercise_id: squat.id,
+      weight_kg: 100,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+
+    const skill = SEED_SKILLS.find((s) => s.name === 'Back Lever')!;
+    const firstStep = SEED_SKILL_STEPS.filter((s) => s.skill_id === skill.id).sort(
+      (a, b) => a.step_number - b.step_number,
+    )[0]!;
+    await achieveStep(skill.id, firstStep.id, firstStep.target_value);
+
+    await saveBodyMetric(localDay(), {
+      weight_kg: 78.5,
+      calories_in: 2400,
+      calories_out: 2200,
+      body_fat_pct: 17,
+    });
+  });
+
+  it('δείχνει consistency, όγκο, PR, skills και σώμα με πραγματικά δεδομένα', async () => {
+    render(wrap(<DashboardPage />));
+
+    await waitFor(() => expect(screen.getByText(dashboardEn.consistency)).toBeTruthy());
+    expect(screen.getByText('1/7')).toBeTruthy();
+
+    expect(screen.getByText(dashboardEn.weeklyVolume)).toBeTruthy();
+    // ένα σετ δημιουργεί πολλαπλά PR-candidates (max_weight/max_reps/e1rm/...) —
+    // "Back Squat" εμφανίζεται σε παραπάνω από μία γραμμή της λίστας ρεκόρ.
+    expect(screen.getAllByText('Back Squat').length).toBeGreaterThan(0);
+
+    expect(screen.getByText(dashboardEn.skillsProgress)).toBeTruthy();
+
+    expect(screen.getByText(dashboardEn.latestWeight)).toBeTruthy();
+    expect(screen.getByText(/78\.5 kg/)).toBeTruthy();
+    expect(screen.getByText(dashboardEn.latestBodyFat)).toBeTruthy();
+    expect(screen.getByText(/17%/)).toBeTruthy();
+    expect(screen.getByText(dashboardEn.todayBalance)).toBeTruthy();
+  });
+});
