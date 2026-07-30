@@ -35,13 +35,15 @@ export function BodyPage() {
   const [cin, setCin] = useState('');
   const [cout, setCout] = useState('');
 
-  // Πρόσθεσε τις υπάρχουσες τιμές της ημέρας στα πεδία (edit αντί για ξανα-εισαγωγή)
+  // Πρόσθεσε τις υπάρχουσες τιμές της ημέρας στα πεδία (edit αντί για ξανα-εισαγωγή).
+  // Εξαρτάται από το ίδιο το record: όταν αλλάξει (id/updated_at), τα πεδία
+  // ξανασυγχρονίζονται· δεν χρειάζεται πιο στενό dep array.
   useEffect(() => {
     if (!todayMetric) return;
     setW(todayMetric.weight_kg?.toString() ?? '');
     setCin(todayMetric.calories_in?.toString() ?? '');
     setCout(todayMetric.calories_out?.toString() ?? '');
-  }, [todayMetric?.id, todayMetric?.updated_at]);
+  }, [todayMetric]);
 
   const num = (s: string) => {
     const v = Number(s);
