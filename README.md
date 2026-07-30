@@ -77,3 +77,19 @@ export/import, i18n, PWA. **Επόμενα:** charts προόδου, προγρ�
 ---
 
 Χτίστηκε ενοποιώντας έξι προηγούμενες προσπάθειες σε ένα προϊόν.
+
+## Run locally (desktop app)
+
+Το Anabasis τρέχει ως **systemd user service** και ανοίγει ως αυτόνομο παράθυρο:
+
+```bash
+npm run build
+systemctl --user enable --now anabasis     # σερβίρει το dist στο :8120
+```
+
+- **Desktop app:** `Mod+A` (Niri) ή από το app launcher («Anabasis»)
+- **Browser:** http://localhost:8120
+- **Άλλες συσκευές** (κινητό/tablet μέσω Tailscale): `http://<tailnet-ip>:8120` — και «Add to Home Screen» για PWA install
+
+Ο `serve.py` κάνει SPA fallback (deep links σε skills δουλεύουν σε refresh) και
+θέτει no-cache στο index/service-worker ώστε τα updates να φτάνουν.
