@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, LOCAL_USER_ID } from '@/lib/db';
@@ -67,6 +68,30 @@ export function SettingsPage() {
           {t('settings.title')}
         </h1>
       </header>
+
+      {/* Η βιβλιοθήκη σου — το bottom nav είναι γεμάτο στα 6 tabs, και αυτές
+          είναι οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
+      <section className="rounded-lg border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-medium">{t('settings.library')}</p>
+        <div className="grid gap-2">
+          {(
+            [
+              ['/exercises', 'exercises.title'],
+              ['/activities', 'activities.title'],
+              ['/skills', 'skills.title'],
+            ] as const
+          ).map(([to, key]) => (
+            <Link
+              key={to}
+              to={to}
+              className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-accent"
+            >
+              <span>{t(key)}</span>
+              <span aria-hidden className="text-muted-foreground">→</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Language */}
       <section className="rounded-lg border border-border bg-card p-4">

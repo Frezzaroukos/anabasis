@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
+import { MemoryRouter } from 'react-router-dom';
 import en from '@/i18n/en.json';
 import { SettingsPage } from './SettingsPage';
 import { exportAll, importAll } from '@/lib/db/queries';
@@ -20,7 +21,10 @@ describe('SettingsPage', () => {
   it('render-άρει γλώσσα, rest presets, μονάδες και data section', async () => {
     render(
       <I18nextProvider i18n={i18next}>
-        <SettingsPage />
+        {/* Η σελίδα έχει πλέον <Link> προς τη βιβλιοθήκη — θέλει router context */}
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
       </I18nextProvider>,
     );
     await waitFor(() => expect(screen.getByText('Settings')).toBeTruthy());
@@ -28,6 +32,11 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Units')).toBeTruthy();
     expect(screen.getByText('Your data')).toBeTruthy();
     expect(screen.getByText('Export backup')).toBeTruthy();
+    // η βιβλιοθήκη (ασκήσεις/δραστηριότητες/skills) είναι προσβάσιμη από εδώ,
+    // αφού το bottom nav είναι γεμάτο στα 6 tabs
+    expect(screen.getByText('Your library')).toBeTruthy();
+    expect(screen.getByText('Exercises')).toBeTruthy();
+    expect(screen.getByText('Activities')).toBeTruthy();
   });
 });
 

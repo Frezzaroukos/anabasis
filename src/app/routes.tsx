@@ -3,6 +3,8 @@ import { AppShell } from './layouts/AppShell';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { WorkoutPage } from '@/features/workout/WorkoutPage';
 import { ProgramsPage } from '@/features/programs/ProgramsPage';
+import { ExercisesPage } from '@/features/exercises/ExercisesPage';
+import { ActivitiesPage } from '@/features/activities/ActivitiesPage';
 import { ProgramDetailPage } from '@/features/programs/ProgramDetailPage';
 import { HistoryPage } from '@/features/history/HistoryPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
@@ -22,6 +24,8 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'workout', element: <WorkoutPage /> },
       { path: 'programs', element: <ProgramsPage /> },
+      { path: 'exercises', element: <ExercisesPage /> },
+      { path: 'activities', element: <ActivitiesPage /> },
       { path: 'programs/:programId', element: <ProgramDetailPage /> },
       { path: 'history', element: <HistoryPage /> },
       { path: 'calendar', element: <CalendarPage /> },

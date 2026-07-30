@@ -121,7 +121,31 @@
     "achieved": "Achieved",
     "markAchieved": "Mark achieved",
     "watchBenchmark": "Watch benchmark",
-    "available": "progressions available"
+    "available": "progressions available",
+    "newSkill": "New skill",
+    "namePlaceholder": "Skill name",
+    "categoryPlaceholder": "Type or pick a category…",
+    "descriptionPlaceholder": "What is it?",
+    "goalPlaceholder": "Final goal",
+    "difficulty": "Difficulty",
+    "builtin": "Built-in",
+    "custom": "Yours",
+    "archive": "Archive",
+    "restore": "Restore",
+    "showArchived": "Show archived",
+    "hideArchived": "Hide archived",
+    "addStep": "Add step",
+    "editStep": "Edit step",
+    "deleteStep": "Delete step",
+    "deleteStepConfirmTitle": "Delete step?",
+    "deleteStepConfirmDesc": "The remaining steps are renumbered and re-linked.",
+    "requires": "Requires",
+    "targetType": "Target type",
+    "targetValue": "Target",
+    "targetUnit": "Unit",
+    "stepNamePlaceholder": "Step name",
+    "stepDescriptionPlaceholder": "How to do it",
+    "videoUrlPlaceholder": "Benchmark video URL (optional)"
   },
   "settings": {
     "title": "Settings",
@@ -147,7 +171,8 @@
     "steps": "steps",
     "offlineNote": "offline-first · your data stays yours",
     "restNotify": "Rest timer alert",
-    "restNotifyHint": "Sound and vibration when the rest timer ends."
+    "restNotifyHint": "Sound and vibration when the rest timer ends.",
+    "library": "Your library"
   },
   "common": {
     "save": "Save",
@@ -234,5 +259,65 @@
     "rest_pause": "Rest-pause",
     "amrap": "AMRAP",
     "failure": "To failure"
+  },
+  "exercises": {
+    "title": "Exercises",
+    "available": "in your library",
+    "new": "New exercise",
+    "search": "Search exercises…",
+    "empty": "No exercises match.",
+    "emptyArchived": "No archived exercises.",
+    "filter": {
+      "all": "All",
+      "mine": "Mine",
+      "archived": "Archived"
+    },
+    "builtin": "Built-in",
+    "custom": "Yours",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "editTitle": "Edit exercise",
+    "newTitle": "New exercise",
+    "movementType": {
+      "compound": "Compound",
+      "isolation": "Isolation",
+      "skill": "Skill"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Weighted pull-up",
+      "category": "Category",
+      "categoryPlaceholder": "Type or pick a category…",
+      "movementType": "Movement type",
+      "equipment": "Equipment",
+      "equipmentPlaceholder": "Type and press Enter…",
+      "isWeighted": "Weighted",
+      "isBodyweight": "Bodyweight",
+      "defaultUnit": "Default unit",
+      "notes": "Notes",
+      "notesPlaceholder": "Cues, form notes…"
+    }
+  },
+  "activities": {
+    "title": "Activities",
+    "new": "New activity",
+    "edit": "Edit activity",
+    "empty": "No activities yet.",
+    "label": "Name",
+    "labelPlaceholder": "e.g. Boxing",
+    "icon": "Icon",
+    "iconPlaceholder": "Any emoji or symbol",
+    "color": "Colour",
+    "usesSets": "Logs sets",
+    "usesSetsHint": "Off = tracked by time instead of sets and reps.",
+    "tracksDistance": "Tracks distance",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "showArchived": "Show archived",
+    "hideArchived": "Hide archived",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "save": "Save",
+    "cancel": "Cancel"
   }
 }

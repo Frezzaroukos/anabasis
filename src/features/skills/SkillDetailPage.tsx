@@ -2,15 +2,22 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   achieveStep,
+  addSkillStep,
   getSkillWithSteps,
   getStepCompletions,
   getSkillProgress,
+  removeSkillStep,
   undoStep,
+  updateSkillStep,
 } from '@/lib/db/queries';
+import type { SkillStep } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ConfirmDialog } from '@/components/ui/dialog';
+import { StepFormSheet } from './components/StepFormSheet';
 import { cn } from '@/lib/utils';
 
 /**
@@ -23,6 +30,9 @@ export function SkillDetailPage() {
   const { t } = useTranslation();
   const { skillId = '' } = useParams();
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [addingStep, setAddingStep] = useState(false);
+  const [editingStep, setEditingStep] = useState<SkillStep | null>(null);
+  const [deleteStepId, setDeleteStepId] = useState<string | null>(null);
 
   const data = useLiveQuery(() => getSkillWithSteps(skillId), [skillId]);
   const steps = data?.steps ?? [];
@@ -42,6 +52,8 @@ export function SkillDetailPage() {
   const pct = steps.length ? Math.round((doneCount / steps.length) * 100) : 0;
   // Πρώτο μη-ολοκληρωμένο = το τρέχον· ό,τι έπεται είναι κλειδωμένο.
   const currentIdx = steps.findIndex((s) => !completions.has(s.id));
+  const stepById = new Map(steps.map((s) => [s.id, s]));
+  const unitSuggestions = [...new Set(steps.map((s) => s.target_unit))];
 
   return (
     <div className="space-y-6">
@@ -120,11 +132,41 @@ export function SkillDetailPage() {
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{step.name}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium">{step.name}</p>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingStep(step)}
+                        aria-label={t('skills.editStep')}
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteStepId(step.id)}
+                        aria-label={t('skills.deleteStep')}
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   <p className="text-xs text-muted-foreground">{step.description}</p>
                   <p className="mt-1 font-mono text-xs">
                     {t('skills.target')}: {step.target_value} {step.target_unit}
                   </p>
+                  {/* Η αλυσίδα προαπαιτούμενων — γραμμική, ένα βήμα ξεκλειδώνει το επόμενο. */}
+                  {step.prerequisites.length > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t('skills.requires')}:{' '}
+                      {step.prerequisites
+                        .map((id) => stepById.get(id)?.name)
+                        .filter(Boolean)
+                        .join(', ')}
+                    </p>
+                  )}
 
                   {done && (
                     <p className="mt-2 text-xs text-emerald-500">
@@ -190,6 +232,50 @@ export function SkillDetailPage() {
           );
         })}
       </ol>
+
+      <Button variant="outline" className="w-full" onClick={() => setAddingStep(true)}>
+        <Plus className="h-4 w-4" />
+        {t('skills.addStep')}
+      </Button>
+
+      <StepFormSheet
+        open={addingStep}
+        onClose={() => setAddingStep(false)}
+        unitSuggestions={unitSuggestions}
+        onSubmit={async (input) => {
+          await addSkillStep(skillId, input);
+        }}
+      />
+      <StepFormSheet
+        open={editingStep != null}
+        onClose={() => setEditingStep(null)}
+        initial={editingStep ?? undefined}
+        unitSuggestions={unitSuggestions}
+        onSubmit={(input) => {
+          if (!editingStep) return;
+          return updateSkillStep(editingStep.id, {
+            name: input.name,
+            description: input.description ?? '',
+            target_type: input.target_type ?? 'hold',
+            target_value: input.target_value ?? 0,
+            target_unit: input.target_unit ?? 'sec',
+            benchmark_video_url: input.benchmark_video_url ?? null,
+          });
+        }}
+      />
+      <ConfirmDialog
+        open={deleteStepId != null}
+        title={t('skills.deleteStepConfirmTitle')}
+        description={t('skills.deleteStepConfirmDesc')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onConfirm={() => {
+          if (deleteStepId) void removeSkillStep(deleteStepId);
+          setDeleteStepId(null);
+        }}
+        onCancel={() => setDeleteStepId(null)}
+      />
     </div>
   );
 }

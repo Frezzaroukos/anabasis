@@ -1,4 +1,4 @@
-import type { ActivityKind, ExerciseCategory, SetType } from '@/lib/db/types';
+import type { Activity, ActivityKind, ExerciseCategory, SetType } from '@/lib/db/types';
 
 export const CATEGORY_DOT: Record<ExerciseCategory, string> = {
   push: 'bg-category-push',
@@ -16,11 +16,40 @@ export function formatLoad(weightKg: number | null, bodyweightKg: number | null)
   return 'BW';
 }
 
-/** Δραστηριότητες που καταγράφονται με σετ/επαναλήψεις — οι υπόλοιπες με διάρκεια. */
+/**
+ * Fallback μόνο για όσο δεν έχει φορτώσει ακόμα (ή λείπει) η εγγραφή
+ * Activity — π.χ. πρώτο render πριν απαντήσει το liveQuery. Η πηγή αλήθειας
+ * είναι πλέον `activity.uses_sets`/`activity.tracks_distance` στη βάση.
+ */
 export const SET_LOGGED_ACTIVITY_KINDS: ActivityKind[] = ['strength', 'skill'];
-
-/** Δραστηριότητες όπου έχει νόημα η απόσταση (και άρα ο ρυθμός). */
 export const DISTANCE_ACTIVITY_KINDS: ActivityKind[] = ['run', 'cycling', 'swim'];
+
+/** true = logger με σετ/επαναλήψεις· false = χρόνος (+ απόσταση). Data-driven. */
+export function isSetLoggedActivity(
+  activity: Activity | undefined,
+  kind: ActivityKind,
+): boolean {
+  if (activity) return activity.uses_sets;
+  return SET_LOGGED_ACTIVITY_KINDS.includes(kind);
+}
+
+/** true = έχει νόημα η απόσταση (και άρα ο ρυθμός) γι' αυτή τη δραστηριότητα. */
+export function isDistanceTrackedActivity(
+  activity: Activity | undefined,
+  kind: ActivityKind,
+): boolean {
+  if (activity) return activity.tracks_distance;
+  return DISTANCE_ACTIVITY_KINDS.includes(kind);
+}
+
+/** Τιμές φόρμας ενός σετ — βάρος/επαναλήψεις + προαιρετική ένταση (RPE/RIR/tempo). */
+export interface SetFormValues {
+  weightKg: number | null;
+  reps: number | null;
+  rpe: number | null;
+  rir: number | null;
+  tempo: string | null;
+}
 
 /** Τύποι σετ που ενώνονται σε αλυσίδα μέσω κοινού group_id. */
 export const CHAIN_SET_TYPES: SetType[] = ['dropset', 'superset', 'rest_pause'];

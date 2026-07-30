@@ -121,7 +121,31 @@
     "achieved": "Πέτυχα",
     "markAchieved": "Το πέτυχα",
     "watchBenchmark": "Δες benchmark",
-    "available": "προοδευτικές διαδρομές"
+    "available": "προοδευτικές διαδρομές",
+    "newSkill": "Νέο skill",
+    "namePlaceholder": "Όνομα skill",
+    "categoryPlaceholder": "Γράψε ή διάλεξε κατηγορία…",
+    "descriptionPlaceholder": "Τι είναι;",
+    "goalPlaceholder": "Τελικός στόχος",
+    "difficulty": "Δυσκολία",
+    "builtin": "Ενσωματωμένο",
+    "custom": "Δικό σου",
+    "archive": "Αρχειοθέτηση",
+    "restore": "Επαναφορά",
+    "showArchived": "Δείξε αρχειοθετημένα",
+    "hideArchived": "Κρύψε αρχειοθετημένα",
+    "addStep": "Προσθήκη βήματος",
+    "editStep": "Επεξεργασία βήματος",
+    "deleteStep": "Διαγραφή βήματος",
+    "deleteStepConfirmTitle": "Διαγραφή βήματος;",
+    "deleteStepConfirmDesc": "Τα υπόλοιπα βήματα ξανα-αριθμούνται και ξαναδένονται.",
+    "requires": "Απαιτεί",
+    "targetType": "Τύπος στόχου",
+    "targetValue": "Στόχος",
+    "targetUnit": "Μονάδα",
+    "stepNamePlaceholder": "Όνομα βήματος",
+    "stepDescriptionPlaceholder": "Πώς γίνεται",
+    "videoUrlPlaceholder": "Σύνδεσμος βίντεο αναφοράς (προαιρετικό)"
   },
   "settings": {
     "title": "Ρυθμίσεις",
@@ -147,7 +171,8 @@
     "steps": "βήματα",
     "offlineNote": "offline-first · τα δεδομένα μένουν δικά σου",
     "restNotify": "Ειδοποίηση rest timer",
-    "restNotifyHint": "Ήχος και δόνηση όταν τελειώνει η ξεκούραση."
+    "restNotifyHint": "Ήχος και δόνηση όταν τελειώνει η ξεκούραση.",
+    "library": "Η βιβλιοθήκη σου"
   },
   "common": {
     "save": "Αποθήκευση",
@@ -234,5 +259,65 @@
     "rest_pause": "Rest-pause",
     "amrap": "AMRAP",
     "failure": "Μέχρι εξάντληση"
+  },
+  "exercises": {
+    "title": "Ασκήσεις",
+    "available": "στη βιβλιοθήκη σου",
+    "new": "Νέα άσκηση",
+    "search": "Αναζήτηση ασκήσεων…",
+    "empty": "Καμία άσκηση δεν ταιριάζει.",
+    "emptyArchived": "Καμία αρχειοθετημένη άσκηση.",
+    "filter": {
+      "all": "Όλες",
+      "mine": "Δικές μου",
+      "archived": "Αρχειοθετημένες"
+    },
+    "builtin": "Ενσωματωμένη",
+    "custom": "Δική σου",
+    "archive": "Αρχειοθέτηση",
+    "unarchive": "Επαναφορά",
+    "editTitle": "Επεξεργασία άσκησης",
+    "newTitle": "Νέα άσκηση",
+    "movementType": {
+      "compound": "Πολυαρθρική",
+      "isolation": "Μονοαρθρική",
+      "skill": "Skill"
+    },
+    "form": {
+      "name": "Όνομα",
+      "namePlaceholder": "π.χ. Έλξεις με βάρος",
+      "category": "Κατηγορία",
+      "categoryPlaceholder": "Γράψε ή διάλεξε κατηγορία…",
+      "movementType": "Τύπος κίνησης",
+      "equipment": "Εξοπλισμός",
+      "equipmentPlaceholder": "Γράψε και πάτα Enter…",
+      "isWeighted": "Με βάρος",
+      "isBodyweight": "Bodyweight",
+      "defaultUnit": "Προεπιλεγμένη μονάδα",
+      "notes": "Σημειώσεις",
+      "notesPlaceholder": "Νύξεις εκτέλεσης, σημειώσεις…"
+    }
+  },
+  "activities": {
+    "title": "Δραστηριότητες",
+    "new": "Νέα δραστηριότητα",
+    "edit": "Επεξεργασία",
+    "empty": "Καμία δραστηριότητα ακόμα.",
+    "label": "Όνομα",
+    "labelPlaceholder": "π.χ. Πυγμαχία",
+    "icon": "Εικονίδιο",
+    "iconPlaceholder": "Όποιο emoji ή σύμβολο θες",
+    "color": "Χρώμα",
+    "usesSets": "Καταγράφει σετ",
+    "usesSetsHint": "Κλειστό = μετριέται με χρόνο αντί για σετ και επαναλήψεις.",
+    "tracksDistance": "Καταγράφει απόσταση",
+    "archive": "Αρχειοθέτηση",
+    "unarchive": "Επαναφορά",
+    "showArchived": "Δείξε αρχειοθετημένες",
+    "hideArchived": "Κρύψε αρχειοθετημένες",
+    "moveUp": "Μετακίνηση πάνω",
+    "moveDown": "Μετακίνηση κάτω",
+    "save": "Αποθήκευση",
+    "cancel": "Άκυρο"
   }
 }
