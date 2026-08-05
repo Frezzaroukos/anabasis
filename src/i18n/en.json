@@ -68,7 +68,8 @@
     "intensityHide": "− intensity",
     "rpe": "RPE",
     "rir": "RIR",
-    "tempo": "Tempo"
+    "tempo": "Tempo",
+    "previous": "Previous"
   },
   "programs": {
     "title": "Programs",
@@ -264,7 +265,9 @@
     "superset": "Superset",
     "rest_pause": "Rest-pause",
     "amrap": "AMRAP",
-    "failure": "To failure"
+    "failure": "To failure",
+    "custom": "Custom",
+    "customPlaceholder": "e.g. cluster"
   },
   "exercises": {
     "title": "Exercises",
@@ -301,8 +304,10 @@
       "isBodyweight": "Bodyweight",
       "defaultUnit": "Default unit",
       "notes": "Notes",
-      "notesPlaceholder": "Cues, form notes…"
-    }
+      "notesPlaceholder": "Cues, form notes…",
+      "unitPlaceholder": "kg, lb, meters…"
+    },
+    "viewProgress": "View progress"
   },
   "activities": {
     "title": "Activities",

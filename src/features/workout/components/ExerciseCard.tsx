@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { queries } from '@/lib/db';
+import { getLastPerformance } from '@/lib/db/queries';
+import { Button } from '@/components/ui/button';
 import type { Exercise, SetEntry, SetType } from '@/lib/db/types';
 import { CATEGORY_DOT, resolveSetGroup, type SetChain } from '../utils';
 import type { SetIntensity } from './AddSetInline';
@@ -35,6 +37,10 @@ export function ExerciseCard({
 
   const supportsToggle = exercise.is_bodyweight; // bodyweight exercises can be done with or without added load
   const visibleSets = sets;
+
+  // «Τι έκανα την τελευταία φορά» — προ-γεμίζει τα inputs ώστε το τυπικό
+  // «ίδιο βάρος με πέρσι» να μη θέλει καθόλου πληκτρολόγηση.
+  const last = useLiveQuery(() => getLastPerformance(exercise.id), [exercise.id]);
 
   const onSave = async (
     weightKg: number | null,
@@ -117,6 +123,15 @@ export function ExerciseCard({
         {adding ? (
           <AddSetInline
             weighted={weighted}
+            initialWeight={last?.weight_kg ?? null}
+            initialReps={last?.reps ?? null}
+            lastLabel={
+              last && (last.weight_kg != null || last.reps != null)
+                ? `${t('workout.previous')}: ${
+                    last.weight_kg != null ? `${last.weight_kg}kg` : t('workout.bodyweight')
+                  }${last.reps != null ? ` × ${last.reps}` : ''}`
+                : null
+            }
             onSave={onSave}
             onCancel={() => setAdding(false)}
             setType={setType}

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { SetType } from '@/lib/db/types';
+import { BUILTIN_SET_TYPES, type SetType } from '@/lib/db/types';
 
 /** Προαιρετική ένταση — δίπλα στο βάρος λέει ΠΟΣΟ κόστισε το σετ. */
 export interface SetIntensity {
@@ -12,16 +12,12 @@ export interface SetIntensity {
   tempo: string | null;
 }
 
-/** Σειρά εμφάνισης των τύπων σετ στον επιλογέα. */
-const SET_TYPES: SetType[] = [
-  'normal',
-  'warmup',
-  'dropset',
-  'superset',
-  'rest_pause',
-  'amrap',
-  'failure',
-];
+const SET_TYPES: readonly SetType[] = BUILTIN_SET_TYPES;
+
+/** Ετικέτα ενός set type — builtin μεταφράζεται, custom δείχνεται ως έχει. */
+function setTypeLabel(st: SetType, t: (k: string) => string): string {
+  return (BUILTIN_SET_TYPES as readonly string[]).includes(st) ? t(`setType.${st}`) : st;
+}
 
 interface AddSetInlineProps {
   weighted: boolean;
@@ -34,6 +30,8 @@ interface AddSetInlineProps {
   ) => Promise<void> | void;
   onCancel?: () => void;
   saveLabelKey?: 'workout.addSet' | 'workout.save';
+  /** «Προηγ: 42.5kg × 8» — chip πάνω από τα πεδία (tap = ξανα-γέμισμα). */
+  lastLabel?: string | null;
   /** Όταν δίνεται, εμφανίζεται ο επιλογέας τύπου σετ (μόνο κατά την προσθήκη — όχι στο edit). */
   setType?: SetType;
   onSetTypeChange?: (type: SetType) => void;
@@ -46,6 +44,7 @@ export function AddSetInline({
   onSave,
   onCancel,
   saveLabelKey = 'workout.addSet',
+  lastLabel,
   setType,
   onSetTypeChange,
 }: AddSetInlineProps) {
@@ -63,6 +62,8 @@ export function AddSetInline({
   const [rpe, setRpe] = useState('');
   const [rir, setRir] = useState('');
   const [tempo, setTempo] = useState('');
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customType, setCustomType] = useState('');
 
   const numOrNull = (s: string) => {
     const v = Number(s);
@@ -97,8 +98,31 @@ export function AddSetInline({
 
   return (
     <div className="space-y-2">
+      {lastLabel && (
+        <button
+          type="button"
+          onClick={() => {
+            if (initialWeight != null) setWeight(String(initialWeight));
+            if (initialReps != null) setReps(String(initialReps));
+          }}
+          className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          {lastLabel}
+        </button>
+      )}
       {onSetTypeChange && (
-        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t('workout.setType')}>
+        <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label={t('workout.setType')}>
+          {/* Το τρέχον custom type (αν δεν είναι builtin) εμφανίζεται πρώτο ως ενεργό chip */}
+          {!(BUILTIN_SET_TYPES as readonly string[]).includes(setType ?? 'normal') && setType && (
+            <button
+              type="button"
+              role="radio"
+              aria-checked
+              className="rounded-full border border-border bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground"
+            >
+              {setType}
+            </button>
+          )}
           {SET_TYPES.map((st) => (
             <button
               key={st}
@@ -113,9 +137,40 @@ export function AddSetInline({
                   : 'text-muted-foreground hover:bg-accent',
               )}
             >
-              {t(`setType.${st}`)}
+              {setTypeLabel(st, t)}
             </button>
           ))}
+          {customOpen ? (
+            <Input
+              autoFocus
+              value={customType}
+              onChange={(e) => setCustomType(e.target.value)}
+              onBlur={() => {
+                const v = customType.trim();
+                if (v) onSetTypeChange(v);
+                setCustomOpen(false);
+                setCustomType('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+                if (e.key === 'Escape') {
+                  setCustomOpen(false);
+                  setCustomType('');
+                }
+              }}
+              placeholder={t('setType.customPlaceholder')}
+              className="h-7 w-28 text-[11px]"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCustomOpen(true)}
+              aria-label={t('setType.custom')}
+              className="rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              +
+            </button>
+          )}
         </div>
       )}
       <div className="flex items-end gap-2">

@@ -68,7 +68,8 @@
     "intensityHide": "− ένταση",
     "rpe": "RPE",
     "rir": "RIR",
-    "tempo": "Ρυθμός"
+    "tempo": "Ρυθμός",
+    "previous": "Προηγ"
   },
   "programs": {
     "title": "Προγράμματα",
@@ -264,7 +265,9 @@
     "superset": "Superset",
     "rest_pause": "Rest-pause",
     "amrap": "AMRAP",
-    "failure": "Μέχρι εξάντληση"
+    "failure": "Μέχρι εξάντληση",
+    "custom": "Δικό σου",
+    "customPlaceholder": "π.χ. cluster"
   },
   "exercises": {
     "title": "Ασκήσεις",
@@ -301,8 +304,10 @@
       "isBodyweight": "Bodyweight",
       "defaultUnit": "Προεπιλεγμένη μονάδα",
       "notes": "Σημειώσεις",
-      "notesPlaceholder": "Νύξεις εκτέλεσης, σημειώσεις…"
-    }
+      "notesPlaceholder": "Νύξεις εκτέλεσης, σημειώσεις…",
+      "unitPlaceholder": "kg, lb, μέτρα…"
+    },
+    "viewProgress": "Δες πρόοδο"
   },
   "activities": {
     "title": "Δραστηριότητες",

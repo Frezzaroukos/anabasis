@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Archive, ArchiveRestore, Plus, Search } from 'lucide-react';
+import { Archive, ArchiveRestore, LineChart, Plus, Search } from 'lucide-react';
 import {
+  getExerciseSummaries,
   listAllExercises,
   listExerciseCategories,
   setExerciseArchived,
 } from '@/lib/db/queries';
 import type { Exercise } from '@/lib/db/types';
-import { } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,12 @@ export function ExercisesPage() {
 
   const allExercises = useLiveQuery(() => listAllExercises(), [], []);
   const categories = useLiveQuery(() => listExerciseCategories(), [], []);
+  const summaries = useLiveQuery(
+    () => getExerciseSummaries(),
+    [],
+    new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>(),
+  );
+  const navigate = useNavigate();
 
   const [filter, setFilter] = useState<LibraryFilter>('all');
   const [query, setQuery] = useState('');
@@ -118,7 +125,9 @@ export function ExercisesPage() {
                 {category}
               </h3>
               <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-                {items.map((ex) => (
+                {items.map((ex) => {
+                  const summary = summaries.get(ex.id);
+                  return (
                   <li key={ex.id} className="flex items-center gap-3 px-4 py-3">
                     <span
                       className={cn('h-2 w-2 shrink-0 rounded-full', categoryDotClass(ex.category))}
@@ -130,6 +139,9 @@ export function ExercisesPage() {
                       className="min-w-0 flex-1 text-left"
                     >
                       <p className="flex items-center gap-2 text-sm font-medium">
+                        {summary?.hasPR && (
+                          <span className="shrink-0 text-amber-500" aria-hidden title="PR">★</span>
+                        )}
                         {ex.name}
                         {ex.user_id === null ? (
                           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
@@ -146,6 +158,16 @@ export function ExercisesPage() {
                         {ex.equipment.length > 0 && ` · ${ex.equipment.join(', ')}`}
                       </p>
                     </button>
+                    {summary?.lastTrainedAt && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/progress?exerciseId=${ex.id}`)}
+                        aria-label={t('exercises.viewProgress')}
+                        className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        <LineChart className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => void onToggleArchive(ex)}
@@ -159,7 +181,8 @@ export function ExercisesPage() {
                       )}
                     </button>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </section>
           ))}

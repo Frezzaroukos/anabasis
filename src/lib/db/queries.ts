@@ -523,6 +523,35 @@ export async function undoStep(skillId: string, stepId: string): Promise<void> {
 /* ─────────── Data ownership (export / import) ─────────── */
 
 /** Πλήρες JSON backup. Local-first σημαίνει: τα δεδομένα φεύγουν όποτε θες. */
+/**
+ * CSV μιας άσκησης — για δικό σου spreadsheet/ανάλυση. Το exportAll είναι
+ * ολόκληρο το προφίλ σε JSON· εδώ θέλεις μόνο το squat σου σε στήλες.
+ */
+export async function exportExerciseCsv(exerciseId: string): Promise<string> {
+  const rows = (
+    await db.sets.where('exercise_id').equals(exerciseId).toArray()
+  )
+    .filter((s) => s.deleted_at == null)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+  const header = 'date,set_number,weight_kg,reps,rpe,rir,e1rm,volume';
+  const csv = (v: number | string | null) => (v == null ? '' : String(v));
+  const lines = rows.map((s) => {
+    const est = s.weight_kg != null && s.reps != null ? Math.round(e1rm(s.weight_kg, s.reps) * 10) / 10 : null;
+    return [
+      s.created_at.slice(0, 10),
+      s.set_number,
+      csv(s.weight_kg),
+      csv(s.reps),
+      csv(s.rpe),
+      csv(s.rir),
+      csv(est),
+      csv(setVolume(s)),
+    ].join(',');
+  });
+  return [header, ...lines].join('\n');
+}
+
 export async function exportAll(): Promise<string> {
   const [
     users, exercises, workouts, sets, personal_records,

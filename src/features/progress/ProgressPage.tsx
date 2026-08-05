@@ -1,21 +1,38 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Download } from 'lucide-react';
 import {
   CartesianGrid,
+  Label,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { getExerciseProgress, listExercises } from '@/lib/db/queries';
+import {
+  exportExerciseCsv,
+  getExerciseProgress,
+  getExerciseSummaries,
+  getPRsByExercise,
+  listExercises,
+} from '@/lib/db/queries';
+import type { PersonalRecord, PRType } from '@/lib/db/types';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 type Metric = 'topWeight' | 'e1rm' | 'volume';
+
+/** Ποιος τύπος PR αντιστοιχεί σε κάθε metric του chart. */
+const METRIC_PR: Record<Metric, PRType> = {
+  topWeight: 'max_weight',
+  e1rm: 'e1rm',
+  volume: 'max_volume',
+};
 
 /**
  * Πρόοδος ανά άσκηση. Ο χρήστης διαλέγει ΤΙ μετρά: το καλύτερο σετ (topWeight)
@@ -24,11 +41,29 @@ type Metric = 'topWeight' | 'e1rm' | 'volume';
  */
 export function ProgressPage() {
   const { t } = useTranslation();
+  const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
   const [exerciseId, setExerciseId] = useState<string | null>(null);
   const [metric, setMetric] = useState<Metric>('topWeight');
 
+  // Deep-link: ?exerciseId= από τη βιβλιοθήκη ασκήσεων → άνοιξε κατευθείαν
+  // το chart, χωρίς να ξαναψάξει ο χρήστης το όνομα.
+  useEffect(() => {
+    const fromUrl = params.get('exerciseId');
+    if (fromUrl) setExerciseId(fromUrl);
+  }, [params]);
+
   const exercises = useLiveQuery(() => listExercises(), [], []);
+  const summaries = useLiveQuery(
+    () => getExerciseSummaries(),
+    [],
+    new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>(),
+  );
+  const prsByExercise = useLiveQuery(
+    () => getPRsByExercise(),
+    [],
+    new Map<string, PersonalRecord[]>(),
+  );
   const points = useLiveQuery(
     () => (exerciseId ? getExerciseProgress(exerciseId, 365) : Promise.resolve([])),
     [exerciseId],
@@ -43,6 +78,28 @@ export function ProgressPage() {
   const best = withData.length
     ? Math.max(...withData.map((p) => Number(p[metric])))
     : null;
+
+  // Το τρέχον PR για το επιλεγμένο metric — γίνεται γραμμή αναφοράς στο chart.
+  const prValue =
+    (prsByExercise.get(exerciseId ?? '') ?? []).find((r) => r.type === METRIC_PR[metric])
+      ?.value ?? null;
+
+  const close = () => {
+    setExerciseId(null);
+    if (params.has('exerciseId')) setParams({}, { replace: true });
+  };
+
+  const onExport = async () => {
+    if (!exerciseId) return;
+    const csv = await exportExerciseCsv(exerciseId);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selected?.name ?? 'exercise'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
@@ -65,19 +122,33 @@ export function ProgressPage() {
             className="h-10"
           />
           <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-            {filtered.map((e) => (
-              <li key={e.id}>
-                <button
-                  onClick={() => setExerciseId(e.id)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/50"
-                >
-                  <span className="text-sm font-medium">{e.name}</span>
-                  <span className="text-[10px] uppercase text-muted-foreground">
-                    {e.category}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {filtered.map((e) => {
+              const s = summaries.get(e.id);
+              return (
+                <li key={e.id}>
+                  <button
+                    onClick={() => setExerciseId(e.id)}
+                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      {/* ★ = έχει PR, ● = έχει προπονηθεί· αλλιώς ο χρήστης
+                          ψάχνει στα τυφλά ποια άσκηση αξίζει να ανοίξει */}
+                      {s?.hasPR ? (
+                        <span className="shrink-0 text-amber-500" aria-hidden>★</span>
+                      ) : s?.lastTrainedAt ? (
+                        <span className="shrink-0 text-primary" aria-hidden>●</span>
+                      ) : (
+                        <span className="shrink-0 text-transparent" aria-hidden>·</span>
+                      )}
+                      <span className="truncate text-sm font-medium">{e.name}</span>
+                    </span>
+                    <span className="shrink-0 text-[10px] uppercase text-muted-foreground">
+                      {e.category}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
             {filtered.length === 0 && (
               <li className="px-4 py-6 text-center text-sm text-muted-foreground">
                 {t('progress.noMatch')}
@@ -89,12 +160,21 @@ export function ProgressPage() {
         <section className="space-y-4">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-lg font-medium">{selected?.name}</h2>
-            <button
-              onClick={() => setExerciseId(null)}
-              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-            >
-              {t('progress.change')}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => void onExport()}
+                className="flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                <Download className="h-3 w-3" aria-hidden />
+                CSV
+              </button>
+              <button
+                onClick={close}
+                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+              >
+                {t('progress.change')}
+              </button>
+            </div>
           </div>
 
           <div className="flex gap-1">
@@ -160,6 +240,21 @@ export function ProgressPage() {
                       labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
                       formatter={(v: number) => [v, t(`progress.${metric}`)]}
                     />
+                    {prValue != null && (
+                      <ReferenceLine
+                        y={prValue}
+                        stroke="currentColor"
+                        className="text-amber-500"
+                        strokeDasharray="4 3"
+                      >
+                        <Label
+                          value={`PR ${Math.round(prValue * 10) / 10}`}
+                          position="insideTopRight"
+                          fill="currentColor"
+                          className="fill-amber-500 text-[10px]"
+                        />
+                      </ReferenceLine>
+                    )}
                     <Line
                       type="monotone"
                       dataKey={metric}

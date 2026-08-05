@@ -178,26 +178,15 @@ export function ExerciseFormSheet({
           ))}
         </div>
 
-        <div>
-          <p className="mb-1.5 text-sm font-medium">{t('exercises.form.defaultUnit')}</p>
-          <div className="flex flex-wrap gap-2">
-            {DEFAULT_UNITS.map((u) => (
-              <button
-                key={u}
-                type="button"
-                onClick={() => patch({ default_unit: u })}
-                className={cn(
-                  'rounded-md border border-border px-3 py-1.5 text-sm uppercase transition-colors',
-                  form.default_unit === u
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent',
-                )}
-              >
-                {t(`common.${u}`)}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Ελεύθερη μονάδα (μέτρα, θερμίδες, όροφοι…) — τα builtin είναι
+            απλώς προτάσεις, όχι όρια. Ίδιο combobox με την κατηγορία. */}
+        <CategoryCombobox
+          label={t('exercises.form.defaultUnit')}
+          value={form.default_unit}
+          onChange={(v) => patch({ default_unit: v })}
+          suggestions={[...DEFAULT_UNITS]}
+          placeholder={t('exercises.form.unitPlaceholder')}
+        />
 
         <div>
           <label className="mb-1.5 block text-sm font-medium">
