@@ -92,7 +92,9 @@
     "moveUp": "Move up",
     "moveDown": "Move down",
     "deleteConfirmTitle": "Delete program?",
-    "deleteConfirmDesc": "This program will be hidden. Your workout history is not affected."
+    "deleteConfirmDesc": "This program will be hidden. Your workout history is not affected.",
+    "duplicate": "Duplicate",
+    "addN": "Add {{count}}"
   },
   "history": {
     "title": "History",

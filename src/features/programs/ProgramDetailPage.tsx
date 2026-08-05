@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuid } from 'uuid';
 import { ChevronDown, ChevronUp, Link2, Play, Plus } from 'lucide-react';
 import {
-  addProgramExercise,
+  addProgramExercisesBulk,
   getProgramWithExercises,
   listExercises,
   removeProgramExercise,
@@ -102,8 +102,12 @@ export function ProgramDetailPage() {
     }
   };
 
-  const onPickExercise = async (ex: Exercise) => {
-    await addProgramExercise(program.id, { exercise_id: ex.id, target_sets: 3 });
+  const onPickMany = async (exercises: Exercise[]) => {
+    await addProgramExercisesBulk(
+      program.id,
+      exercises.map((e) => e.id),
+      { target_sets: 3 },
+    );
   };
 
   const onStart = async () => {
@@ -222,7 +226,9 @@ export function ProgramDetailPage() {
       <ExercisePickerSheet
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onPick={(ex) => void onPickExercise(ex)}
+        mode="multi"
+        onPick={() => {}}
+        onPickMany={(list) => void onPickMany(list)}
       />
     </div>
   );

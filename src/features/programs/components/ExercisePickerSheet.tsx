@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useExercises } from '@/hooks/useExercises';
 import type { Exercise, ExerciseCategory } from '@/lib/db/types';
 import { CATEGORY_DOT } from '../utils';
@@ -12,6 +13,10 @@ interface ExercisePickerSheetProps {
   open: boolean;
   onClose: () => void;
   onPick: (exercise: Exercise) => void;
+  /** 'multi' = διάλεξε πολλές μαζί χωρίς κλείσιμο ανά tap· default 'single' */
+  mode?: 'single' | 'multi';
+  /** μόνο για 'multi': προσθήκη όλων των επιλεγμένων σε ένα call */
+  onPickMany?: (exercises: Exercise[]) => void;
 }
 
 const CATEGORY_ORDER: ExerciseCategory[] = ['push', 'pull', 'legs', 'core', 'other'];
@@ -21,10 +26,32 @@ const CATEGORY_ORDER: ExerciseCategory[] = ['push', 'pull', 'legs', 'core', 'oth
  * (δεν αγγίζουμε άλλα features) — και ΧΩΡΙΣ excludeIds, γιατί ένα πρόγραμμα
  * μπορεί να έχει την ίδια άσκηση πολλές φορές (π.χ. dropset chain).
  */
-export function ExercisePickerSheet({ open, onClose, onPick }: ExercisePickerSheetProps) {
+export function ExercisePickerSheet({
+  open,
+  onClose,
+  onPick,
+  mode = 'single',
+  onPickMany,
+}: ExercisePickerSheetProps) {
   const { t } = useTranslation();
   const [q, setQ] = useState('');
+  const [selected, setSelected] = useState<Exercise[]>([]);
   const all = useExercises();
+
+  const isSelected = (id: string) => selected.some((e) => e.id === id);
+
+  const toggle = (ex: Exercise) => {
+    setSelected((prev) =>
+      prev.some((e) => e.id === ex.id) ? prev.filter((e) => e.id !== ex.id) : [...prev, ex],
+    );
+  };
+
+  const confirmMulti = () => {
+    if (selected.length > 0) onPickMany?.(selected);
+    setSelected([]);
+    setQ('');
+    onClose();
+  };
 
   const grouped = useMemo(() => {
     const filtered = all.filter((e) =>
@@ -74,11 +101,18 @@ export function ExercisePickerSheet({ open, onClose, onPick }: ExercisePickerShe
                       <button
                         type="button"
                         onClick={() => {
-                          onPick(ex);
-                          onClose();
-                          setQ('');
+                          if (mode === 'multi') {
+                            toggle(ex);
+                          } else {
+                            onPick(ex);
+                            onClose();
+                            setQ('');
+                          }
                         }}
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent',
+                          mode === 'multi' && isSelected(ex.id) && 'bg-accent',
+                        )}
                       >
                         <span
                           className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[ex.category])}
@@ -90,6 +124,9 @@ export function ExercisePickerSheet({ open, onClose, onPick }: ExercisePickerShe
                             BW
                           </span>
                         )}
+                        {mode === 'multi' && isSelected(ex.id) && (
+                          <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        )}
                       </button>
                     </li>
                   ))}
@@ -97,6 +134,18 @@ export function ExercisePickerSheet({ open, onClose, onPick }: ExercisePickerShe
               </section>
             ),
           )}
+        </div>
+      )}
+
+      {mode === 'multi' && (
+        <div className="sticky bottom-0 border-t border-border bg-background/95 p-3 backdrop-blur safe-bottom">
+          <Button
+            className="w-full"
+            disabled={selected.length === 0}
+            onClick={confirmMulti}
+          >
+            {t('programs.addN', { count: selected.length })}
+          </Button>
         </div>
       )}
     </BottomSheet>

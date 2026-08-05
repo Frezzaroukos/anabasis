@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Play, Plus, Trash2, History } from 'lucide-react';
+import { Copy, Play, Plus, Trash2, History } from 'lucide-react';
 import {
   createProgram,
+  duplicateProgram,
   listPrograms,
   programFromLastWorkout,
   renameProgram,
@@ -96,6 +97,12 @@ export function ProgramsPage() {
   const onStart = async (programId: string) => {
     const started = await startWorkoutFromProgram(programId);
     if (started) navigate('/workout');
+  };
+
+  // Fork: «Upper A» → «Upper A (2)», μετά ανοίγει τον editor για μετονομασία/αλλαγές.
+  const onDuplicate = async (programId: string) => {
+    const copy = await duplicateProgram(programId);
+    if (copy) navigate(`/programs/${copy.id}`);
   };
 
   const onConfirmRename = async (id: string) => {
@@ -222,6 +229,14 @@ export function ProgramsPage() {
                     >
                       {t('common.edit')}
                     </Button>
+                    <button
+                      type="button"
+                      onClick={() => void onDuplicate(p.id)}
+                      aria-label={t('programs.duplicate')}
+                      className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => setDeleteId(p.id)}
