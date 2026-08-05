@@ -25,7 +25,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -154,6 +154,39 @@ export class AnabasisDB extends Dexie {
           .toCollection()
           .modify((s) => {
             s.user_id ??= null;
+          });
+      });
+
+    /**
+     * v7 — ενιαίο PR σύστημα (strength + δραστηριότητες χωρίς σετ), εύκολο
+     * workout building, macros, στόχος συχνότητας. Το `personal_records`
+     * αποκτά `activity_kind` index ώστε ένα PR τρεξίματος να αναζητείται
+     * χωρίς exercise_id — τα strength PRs κρατούν το παλιό τους μονοπάτι.
+     */
+    this.version(7)
+      .stores({
+        personal_records:
+          'id, user_id, exercise_id, activity_kind, type, achieved_at, [user_id+exercise_id+type], [user_id+activity_kind+type]',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('personal_records')
+          .toCollection()
+          .modify((r) => {
+            r.activity_kind ??= null;
+          });
+        await tx
+          .table('programs')
+          .toCollection()
+          .modify((p) => {
+            p.target_sessions_per_week ??= null;
+          });
+        await tx
+          .table('body_metrics')
+          .toCollection()
+          .modify((m) => {
+            m.carbs_g ??= null;
+            m.fat_g ??= null;
           });
       });
   }

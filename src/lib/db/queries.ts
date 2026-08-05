@@ -9,7 +9,7 @@
 import { v4 as uuid } from 'uuid';
 import { db, SCHEMA_VERSION } from './schema';
 import { getCurrentUserId } from './session';
-import { candidatesFromSet, isNewPR } from '../domain/pr';
+import { candidatesFromSet, candidatesFromWorkout, isNewPR } from '../domain/pr';
 import { setVolume } from '../domain/volume';
 import { e1rm } from '../domain/e1rm';
 import { BUILTIN_EXERCISE_CATEGORIES } from './types';
@@ -24,6 +24,7 @@ import type {
   SkillCategory,
   SkillStep,
   SkillTargetType,
+  PRType,
   BodyMetric,
   Program,
   ProgramExercise,
@@ -86,6 +87,16 @@ export async function endWorkout(workoutId: string): Promise<void> {
     duration_seconds: duration,
     updated_at: t,
   });
+  // Ένας δρομέας/κολυμβητής αξίζει το ίδιο PR-tracking με έναν lifter —
+  // η απόσταση/διάρκεια μπαίνει ΤΩΡΑ που είναι τελική (distance_km μπορεί
+  // να ενημερώθηκε κατά τη διάρκεια μέσω updateWorkoutDistance). Ελέγχουμε
+  // `uses_sets` της δραστηριότητας (όχι hardcoded ονόματα) — αλλιώς μια
+  // δική σου set-logged δραστηριότητα θα έπαιρνε ψευδές «longest duration»
+  // PR από την απλή διάρκεια της συνεδρίας.
+  const activity = await getActivity(w.activity_kind);
+  if (activity ? !activity.uses_sets : w.activity_kind !== 'strength' && w.activity_kind !== 'skill') {
+    await detectActivityPRs({ ...w, duration_seconds: duration });
+  }
 }
 
 export async function setWorkoutType(
@@ -198,6 +209,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
       id: uuid(),
       user_id: getCurrentUserId(),
       exercise_id: set.exercise_id,
+      activity_kind: null,
       type: c.type,
       value: c.value,
       reps: c.reps,
@@ -211,7 +223,45 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
   }
 }
 
-/** PRs ανά άσκηση — για το UI (exercise_id → PersonalRecord[]). */
+/**
+ * PR για δραστηριότητες χωρίς σετ (τρέξιμο/ποδήλατο/κολύμβηση…). Καλείται
+ * από endWorkout όταν η προπόνηση έχει απόσταση ή διάρκεια χωρίς σετ —
+ * ίδιος σκελετός με το detectPRs, απλά κλειδώνει σε activity_kind αντί
+ * για exercise_id.
+ */
+async function detectActivityPRs(workout: Workout): Promise<void> {
+  const t = now();
+  const candidates = candidatesFromWorkout(workout);
+  if (candidates.length === 0) return;
+
+  const existing = await db.personal_records
+    .where('user_id')
+    .equals(getCurrentUserId())
+    .filter((r) => r.activity_kind === workout.activity_kind)
+    .toArray();
+
+  for (const c of candidates) {
+    const current = existing.find((r) => r.type === c.type) ?? null;
+    if (!isNewPR(c, current)) continue;
+    await db.personal_records.add({
+      id: uuid(),
+      user_id: getCurrentUserId(),
+      exercise_id: null,
+      activity_kind: workout.activity_kind,
+      type: c.type,
+      value: c.value,
+      reps: c.reps,
+      weight_kg: c.weight_kg,
+      achieved_at: t,
+      workout_id: workout.id,
+      set_id: null,
+      created_at: t,
+      updated_at: t,
+    });
+  }
+}
+
+/** PRs ανά άσκηση — για το UI (exercise_id → PersonalRecord[]). Μόνο strength PRs. */
 export async function getPRsByExercise(): Promise<Map<string, PersonalRecord[]>> {
   const rows = await db.personal_records
     .where('user_id')
@@ -219,10 +269,30 @@ export async function getPRsByExercise(): Promise<Map<string, PersonalRecord[]>>
     .toArray();
   const m = new Map<string, PersonalRecord[]>();
   for (const r of rows) {
+    if (r.exercise_id == null) continue;
     const arr = m.get(r.exercise_id) ?? [];
     arr.push(r);
     m.set(r.exercise_id, arr);
   }
+  return m;
+}
+
+/**
+ * Τα τρέχοντα PRs μιας δραστηριότητας χωρίς σετ (type → PersonalRecord).
+ * Κρατάμε το πιο ΠΡΟΣΦΑΤΟ ανά type: το detectActivityPRs γράφει νέα εγγραφή
+ * μόνο όταν σπάει το ρεκόρ, άρα το τελευταίο achieved_at είναι το ισχύον PR.
+ * (Χωρίς ταξινόμηση θα κρατούσαμε τυχαία εγγραφή, αφού τα ids είναι uuid.)
+ */
+export async function getActivityPRs(activityKind: string): Promise<Map<PRType, PersonalRecord>> {
+  const rows = (
+    await db.personal_records
+      .where('user_id')
+      .equals(getCurrentUserId())
+      .filter((r) => r.activity_kind === activityKind)
+      .toArray()
+  ).sort((a, b) => a.achieved_at.localeCompare(b.achieved_at));
+  const m = new Map<PRType, PersonalRecord>();
+  for (const r of rows) m.set(r.type, r);
   return m;
 }
 
@@ -247,6 +317,58 @@ export async function updateSet(
   >,
 ): Promise<void> {
   await db.sets.update(setId, { ...patch, updated_at: now() });
+}
+
+/**
+ * «Τι έκανα την τελευταία φορά σε αυτή την άσκηση» — για auto-fill του logger.
+ * Το πιο πρόσφατο ΜΗ-warmup σετ· τα ζεστάματα δεν είναι απόδοση προς επανάληψη.
+ */
+export async function getLastPerformance(exerciseId: string): Promise<{
+  weight_kg: number | null;
+  reps: number | null;
+  hold_seconds: number | null;
+  bodyweight_kg: number | null;
+  achieved_at: string;
+} | null> {
+  const rows = await db.sets
+    .where('exercise_id')
+    .equals(exerciseId)
+    .filter((s) => s.deleted_at == null && !s.is_warmup)
+    .toArray();
+  if (rows.length === 0) return null;
+  const last = rows.sort((a, b) => b.created_at.localeCompare(a.created_at))[0]!;
+  return {
+    weight_kg: last.weight_kg,
+    reps: last.reps,
+    hold_seconds: last.hold_seconds,
+    bodyweight_kg: last.bodyweight_kg,
+    achieved_at: last.created_at,
+  };
+}
+
+/**
+ * Περίληψη ανά άσκηση για badges στις λίστες — «πότε την έκανα τελευταία»
+ * και «έχει PR». Ένα pass αντί για N queries ανά γραμμή.
+ */
+export async function getExerciseSummaries(): Promise<
+  Map<string, { lastTrainedAt: string | null; hasPR: boolean }>
+> {
+  const sets = await db.sets.filter((s) => s.deleted_at == null).toArray();
+  const prByExercise = await getPRsByExercise();
+  const out = new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>();
+  for (const s of sets) {
+    const cur = out.get(s.exercise_id) ?? { lastTrainedAt: null, hasPR: false };
+    if (cur.lastTrainedAt == null || s.created_at > cur.lastTrainedAt) {
+      cur.lastTrainedAt = s.created_at;
+    }
+    out.set(s.exercise_id, cur);
+  }
+  for (const [exId, prs] of prByExercise) {
+    const cur = out.get(exId) ?? { lastTrainedAt: null, hasPR: false };
+    cur.hasPR = prs.length > 0;
+    out.set(exId, cur);
+  }
+  return out;
 }
 
 export async function softDeleteSet(setId: string): Promise<void> {
@@ -578,6 +700,8 @@ export async function saveBodyMetric(
     calories_in: null,
     calories_out: null,
     protein_g: null,
+    carbs_g: null,
+    fat_g: null,
     body_fat_pct: null,
     notes: null,
     created_at: t,
@@ -762,6 +886,7 @@ export async function createProgram(
     description: null,
     activity_kind: activityKind,
     display_order: count,
+    target_sessions_per_week: null,
     is_archived: false,
     created_at: t,
     updated_at: t,
@@ -769,6 +894,46 @@ export async function createProgram(
   };
   await db.programs.add(p);
   return p;
+}
+
+export async function setProgramTarget(
+  programId: string,
+  perWeek: number | null,
+): Promise<void> {
+  await db.programs.update(programId, {
+    target_sessions_per_week: perWeek,
+    updated_at: now(),
+  });
+}
+
+/**
+ * Πόσες φορές έγινε αυτή τη ISO εβδομάδα, έναντι του στόχου. Αντιστοίχιση
+ * γίνεται μέσω workout_type (αντίγραφο του ονόματος προγράμματος κατά το
+ * startWorkoutFromProgram) — όχι FK. Ατέλεια γνωστή: μετονομασία προγράμματος
+ * μετά την προπόνηση σπάει το ταίριασμα για παλιές εγγραφές.
+ */
+export async function getProgramAdherence(
+  programId: string,
+): Promise<{ target: number; completedThisWeek: number } | null> {
+  const program = await db.programs.get(programId);
+  if (!program || program.target_sessions_per_week == null) return null;
+
+  const monday = new Date();
+  const day = (monday.getDay() + 6) % 7; // 0 = Δευτέρα
+  monday.setDate(monday.getDate() - day);
+  monday.setHours(0, 0, 0, 0);
+  const weekStart = monday.toISOString();
+
+  const rows = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
+  const completedThisWeek = rows.filter(
+    (w) =>
+      w.deleted_at == null &&
+      w.ended_at != null &&
+      w.workout_type === program.name &&
+      w.started_at >= weekStart,
+  ).length;
+
+  return { target: program.target_sessions_per_week, completedThisWeek };
 }
 
 export async function renameProgram(id: string, name: string): Promise<void> {
@@ -827,6 +992,39 @@ export async function addProgramExercise(
   return row;
 }
 
+/**
+ * Πολλές ασκήσεις σε ΕΝΑ write — αλλιώς φτιάξιμο 6-ασκήσεων προγράμματος
+ * σημαίνει 6 ξεχωριστά awaits. Οι θέσεις συνεχίζουν από το τρέχον μήκος.
+ */
+export async function addProgramExercisesBulk(
+  programId: string,
+  exerciseIds: string[],
+  defaults: Pick<ProgramExerciseInput, 'target_sets'> = {},
+): Promise<ProgramExercise[]> {
+  const t = now();
+  const startPosition = await db.program_exercises
+    .where('program_id')
+    .equals(programId)
+    .count();
+  const rows: ProgramExercise[] = exerciseIds.map((exercise_id, i) => ({
+    id: uuid(),
+    program_id: programId,
+    exercise_id,
+    position: startPosition + i,
+    target_sets: defaults.target_sets ?? null,
+    target_reps: null,
+    target_weight_kg: null,
+    target_hold_seconds: null,
+    set_type: 'normal',
+    group_key: null,
+    notes: null,
+    created_at: t,
+    updated_at: t,
+  }));
+  await db.program_exercises.bulkAdd(rows);
+  return rows;
+}
+
 export async function updateProgramExercise(
   id: string,
   patch: Partial<Omit<ProgramExercise, 'id' | 'program_id' | 'created_at'>>,
@@ -861,6 +1059,37 @@ export async function startWorkoutFromProgram(programId: string) {
     updated_at: now(),
   });
   return { workout: { ...w, workout_type: data.program.name }, plan: data.exercises };
+}
+
+/**
+ * Fork ενός προγράμματος — «Upper B» ως παραλλαγή του «Upper A» χωρίς να
+ * ξαναχτίζεις τις γραμμές με το χέρι. Κρατά στόχους/set_type/group_key
+ * ίδια· δικό του id ώστε οι αλλαγές στο ένα να μην αγγίζουν το άλλο.
+ */
+export async function duplicateProgram(
+  programId: string,
+  newName?: string,
+): Promise<Program | null> {
+  const data = await getProgramWithExercises(programId);
+  if (!data) return null;
+
+  const copy = await createProgram(
+    newName?.trim() || `${data.program.name} (2)`,
+    data.program.activity_kind,
+  );
+  for (const row of data.exercises) {
+    await addProgramExercise(copy.id, {
+      exercise_id: row.exercise_id,
+      target_sets: row.target_sets,
+      target_reps: row.target_reps,
+      target_weight_kg: row.target_weight_kg,
+      target_hold_seconds: row.target_hold_seconds,
+      set_type: row.set_type,
+      group_key: row.group_key,
+      notes: row.notes,
+    });
+  }
+  return copy;
 }
 
 /** Αντιγράφει την τελευταία προπόνηση ως πρόγραμμα — «κάνε ό,τι έκανα τότε». */

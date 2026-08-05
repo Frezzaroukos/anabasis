@@ -18,6 +18,7 @@ const PROGRAM: Program = {
   description: null,
   activity_kind: 'strength',
   display_order: 0,
+  target_sessions_per_week: null,
   is_archived: false,
   created_at: NOW,
   updated_at: NOW,

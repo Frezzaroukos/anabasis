@@ -9,6 +9,7 @@ import {
   getRecentPRs,
   getTrainingSummary,
   getVolumeTrend,
+  listActivities,
   listExercises,
   localDay,
 } from '@/lib/db/queries';
@@ -50,8 +51,10 @@ export function DashboardPage() {
   const bodyTrend = useLiveQuery(() => getBodyTrend(30), [], []);
   const todayMetric = useLiveQuery(() => getBodyMetric(today), [today]);
   const exercises = useLiveQuery(() => listExercises(), [], []);
+  const activities = useLiveQuery(() => listActivities(true), [], []);
 
   const exerciseNames = new Map(exercises.map((e) => [e.id, e.name]));
+  const activityLabels = new Map(activities.map((a) => [a.key, a.label]));
 
   const hasTrainingData = summary30.totalSets > 0;
 
@@ -199,7 +202,11 @@ export function DashboardPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {exerciseNames.get(pr.exercise_id) ?? '—'}
+                    {pr.exercise_id
+                      ? (exerciseNames.get(pr.exercise_id) ?? '—')
+                      : pr.activity_kind
+                        ? (activityLabels.get(pr.activity_kind) ?? pr.activity_kind)
+                        : '—'}
                   </p>
                   <p className="text-xs text-muted-foreground">{t(`history.pr.${pr.type}`)}</p>
                 </div>

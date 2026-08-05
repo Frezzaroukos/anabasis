@@ -26,7 +26,10 @@ export const BUILTIN_EXERCISE_CATEGORIES = [
 export type BuiltinExerciseCategory = (typeof BUILTIN_EXERCISE_CATEGORIES)[number];
 export type ExerciseCategory = BuiltinExerciseCategory | (string & {});
 export type MovementType = 'compound' | 'isolation' | 'skill';
-export type DefaultUnit = 'kg' | 'lb' | 'sec' | 'reps';
+export const BUILTIN_DEFAULT_UNITS = ['kg', 'lb', 'sec', 'reps'] as const;
+export type BuiltinDefaultUnit = (typeof BUILTIN_DEFAULT_UNITS)[number];
+/** Ελεύθερο string — μέτρα, θερμίδες, όροφοι, ό,τι μετράει η δική σου άσκηση. */
+export type DefaultUnit = BuiltinDefaultUnit | (string & {});
 
 export const BUILTIN_SKILL_CATEGORIES = [
   'pull',
@@ -47,12 +50,19 @@ export const BUILTIN_SKILL_TARGET_TYPES = [
 export type BuiltinSkillTargetType = (typeof BUILTIN_SKILL_TARGET_TYPES)[number];
 export type SkillTargetType = BuiltinSkillTargetType | (string & {});
 
-export type PRType =
-  | 'max_weight'
-  | 'max_reps'
-  | 'max_volume'
-  | 'e1rm'
-  | 'max_hold';
+export const BUILTIN_PR_TYPES = [
+  'max_weight',
+  'max_reps',
+  'max_volume',
+  'e1rm',
+  'max_hold',
+  /** v7: PRs για δραστηριότητες χωρίς άσκηση (τρέξιμο/ποδήλατο/κολύμβηση) */
+  'longest_distance',
+  'longest_duration',
+  'fastest_pace',
+] as const;
+export type BuiltinPRType = (typeof BUILTIN_PR_TYPES)[number];
+export type PRType = BuiltinPRType | (string & {});
 
 export type SessionFeel = 1 | 2 | 3 | 4 | 5;
 
@@ -80,14 +90,18 @@ export type BuiltinActivityKind = (typeof BUILTIN_ACTIVITY_KINDS)[number];
 export type ActivityKind = BuiltinActivityKind | (string & {});
 
 /** Πώς εκτελέστηκε ένα σετ — dropset/superset/rest-pause αλλάζουν το νόημα του όγκου. */
-export type SetType =
-  | 'normal'
-  | 'warmup'
-  | 'dropset'
-  | 'superset'
-  | 'rest_pause'
-  | 'amrap'
-  | 'failure';
+export const BUILTIN_SET_TYPES = [
+  'normal',
+  'warmup',
+  'dropset',
+  'superset',
+  'rest_pause',
+  'amrap',
+  'failure',
+] as const;
+export type BuiltinSetType = (typeof BUILTIN_SET_TYPES)[number];
+/** Ελεύθερο string — cluster set, myo-reps, ό,τι τεχνική θέλεις ονομάσεις. */
+export type SetType = BuiltinSetType | (string & {});
 
 /** Μέτρηση σώματος/διατροφής — χρονοσειρά, μία εγγραφή ανά μέρα. */
 export interface BodyMetric {
@@ -99,6 +113,10 @@ export interface BodyMetric {
   calories_in: number | null;
   calories_out: number | null;
   protein_g: number | null;
+  /** v7 */
+  carbs_g: number | null;
+  /** v7 */
+  fat_g: number | null;
   body_fat_pct: number | null;
   notes: string | null;
   created_at: ISOTimestamp;
@@ -188,17 +206,25 @@ export interface SetEntry {
   deleted_at: ISOTimestamp | null;
 }
 
+/**
+ * v7: ένα PR ανήκει είτε σε άσκηση (`exercise_id` + `set_id`) είτε σε
+ * δραστηριότητα χωρίς σετ (`activity_kind`) — ένας δρομέας/κολυμβητής
+ * αξίζει το ίδιο σύστημα ρεκόρ με έναν lifter. Ακριβώς ένα από τα δύο
+ * ζεύγη είναι μη-null.
+ */
 export interface PersonalRecord {
   id: UUID;
   user_id: UUID;
-  exercise_id: UUID;
+  exercise_id: UUID | null;
+  /** μόνο για activity-level PRs (χωρίς άσκηση) */
+  activity_kind: ActivityKind | null;
   type: PRType;
   value: number;
   reps: number | null;
   weight_kg: number | null;
   achieved_at: ISOTimestamp;
   workout_id: UUID;
-  set_id: UUID;
+  set_id: UUID | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
 }
@@ -331,6 +357,8 @@ export interface Program {
   activity_kind: ActivityKind;
   /** σειρά εμφάνισης στη λίστα */
   display_order: number;
+  /** v7: πόσες φορές/εβδομάδα στοχεύεις — null = χωρίς στόχο συχνότητας */
+  target_sessions_per_week: number | null;
   is_archived: boolean;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;

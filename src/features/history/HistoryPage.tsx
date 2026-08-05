@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
 import { formatHMS } from '@/hooks/useSessionTimer';
-import { getRecentPRs } from '@/lib/db/queries';
+import { getRecentPRs, listActivities } from '@/lib/db/queries';
 import { VolumeChart } from './components/VolumeChart';
 import { Link } from 'react-router-dom';
 
@@ -22,6 +22,11 @@ export function HistoryPage() {
   const prs = useLiveQuery(() => getRecentPRs(8), [], []);
   const exerciseNames = useLiveQuery(
     async () => new Map((await db.exercises.toArray()).map((e) => [e.id, e.name])),
+    [],
+    new Map<string, string>(),
+  );
+  const activityLabels = useLiveQuery(
+    async () => new Map((await listActivities(true)).map((a) => [a.key, a.label])),
     [],
     new Map<string, string>(),
   );
@@ -57,7 +62,11 @@ export function HistoryPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {exerciseNames.get(pr.exercise_id) ?? '—'}
+                    {pr.exercise_id
+                      ? (exerciseNames.get(pr.exercise_id) ?? '—')
+                      : pr.activity_kind
+                        ? (activityLabels.get(pr.activity_kind) ?? pr.activity_kind)
+                        : '—'}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {t(`history.pr.${pr.type}`)}
