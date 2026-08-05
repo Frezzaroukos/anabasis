@@ -7,8 +7,8 @@
  */
 
 import { v4 as uuid } from 'uuid';
-import { db } from './schema';
-import { LOCAL_USER_ID } from './bootstrap';
+import { db, SCHEMA_VERSION } from './schema';
+import { getCurrentUserId } from './session';
 import { candidatesFromSet, isNewPR } from '../domain/pr';
 import { setVolume } from '../domain/volume';
 import { e1rm } from '../domain/e1rm';
@@ -31,12 +31,23 @@ import type {
   PersonalRecord,
   SetEntry,
   SetType,
+  User,
   UserSkillProgress,
   UserSkillStepCompletion,
   Workout,
 } from './types';
 
 const now = () => new Date().toISOString();
+
+/**
+ * Ορατό σε αυτό το προφίλ: τα seeded (`user_id === null`, κοινά σε όλους)
+ * και ό,τι έφτιαξε το ίδιο το προφίλ. Χωρίς αυτό, οι δικές σου ασκήσεις
+ * θα εμφανίζονταν στο προφίλ του διπλανού.
+ */
+function isVisibleToMe(row: { user_id: string | null }): boolean {
+  return row.user_id === null || row.user_id === getCurrentUserId();
+}
+
 
 /* ─────────── Workouts ─────────── */
 
@@ -46,7 +57,7 @@ export async function startWorkout(
   const t = now();
   const w: Workout = {
     id: uuid(),
-    user_id: LOCAL_USER_ID,
+    user_id: getCurrentUserId(),
     started_at: t,
     ended_at: null,
     duration_seconds: null,
@@ -96,7 +107,7 @@ export async function getActiveWorkout(): Promise<Workout | undefined> {
   // "Active" = not ended yet, not soft-deleted, owned by local user
   const candidates = await db.workouts
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .toArray();
   return candidates
     .filter((w) => w.ended_at == null && w.deleted_at == null)
@@ -176,7 +187,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
 
   const existing = await db.personal_records
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .filter((r) => r.exercise_id === set.exercise_id)
     .toArray();
 
@@ -185,7 +196,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
     if (!isNewPR(c, current)) continue;
     await db.personal_records.add({
       id: uuid(),
-      user_id: LOCAL_USER_ID,
+      user_id: getCurrentUserId(),
       exercise_id: set.exercise_id,
       type: c.type,
       value: c.value,
@@ -204,7 +215,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
 export async function getPRsByExercise(): Promise<Map<string, PersonalRecord[]>> {
   const rows = await db.personal_records
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .toArray();
   const m = new Map<string, PersonalRecord[]>();
   for (const r of rows) {
@@ -219,7 +230,7 @@ export async function getPRsByExercise(): Promise<Map<string, PersonalRecord[]>>
 export async function getRecentPRs(limit = 20): Promise<PersonalRecord[]> {
   const rows = await db.personal_records
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .toArray();
   return rows
     .sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
@@ -248,11 +259,21 @@ export async function softDeleteSet(setId: string): Promise<void> {
 export async function listExercises(): Promise<Exercise[]> {
   const all = await db.exercises.toArray();
   return all
-    .filter((e) => e.deleted_at == null && !e.is_archived)
+    .filter((e) => isVisibleToMe(e) && e.deleted_at == null && !e.is_archived)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /* ─────────── Skills (the progression tree) ─────────── */
+
+/**
+ * Τα skills που βλέπει αυτό το προφίλ: τα seeded (κοινά) + τα δικά του.
+ * Το component ΔΕΝ πρέπει να χτυπάει το `db.skills` απευθείας — αλλιώς
+ * παρακάμπτει αυτό ακριβώς το φίλτρο.
+ */
+export async function listSkills(includeArchived = false): Promise<Skill[]> {
+  const all = await db.skills.orderBy('display_order').toArray();
+  return all.filter((s) => isVisibleToMe(s) && (includeArchived || !s.is_archived));
+}
 
 /** Ένα skill μαζί με τα βήματά του, ταξινομημένα. */
 export async function getSkillWithSteps(skillId: string) {
@@ -270,7 +291,7 @@ export async function getStepCompletions(
   if (stepIds.length === 0) return new Map();
   const rows = await db.user_skill_step_completions
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .toArray();
   const wanted = new Set(stepIds);
   return new Map(
@@ -283,7 +304,7 @@ export async function getSkillProgress(
 ): Promise<UserSkillProgress | undefined> {
   return db.user_skill_progress
     .where('[user_id+skill_id]')
-    .equals([LOCAL_USER_ID, skillId])
+    .equals([getCurrentUserId(), skillId])
     .first();
 }
 
@@ -291,7 +312,7 @@ export async function getSkillProgress(
 export async function getAllSkillProgress(): Promise<Map<string, UserSkillProgress>> {
   const rows = await db.user_skill_progress
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .toArray();
   return new Map(rows.map((r) => [r.skill_id, r]));
 }
@@ -308,7 +329,7 @@ async function upsertProgress(
   }
   await db.user_skill_progress.add({
     id: uuid(),
-    user_id: LOCAL_USER_ID,
+    user_id: getCurrentUserId(),
     skill_id: skillId,
     current_step_id: null,
     status: 'in_progress',
@@ -337,14 +358,14 @@ export async function achieveStep(
 
   const already = await db.user_skill_step_completions
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .filter((r) => r.skill_step_id === stepId)
     .first();
 
   if (!already) {
     await db.user_skill_step_completions.add({
       id: uuid(),
-      user_id: LOCAL_USER_ID,
+      user_id: getCurrentUserId(),
       skill_step_id: stepId,
       achieved_value: achievedValue,
       achieved_at: t,
@@ -366,7 +387,7 @@ export async function achieveStep(
 export async function undoStep(skillId: string, stepId: string): Promise<void> {
   const rows = await db.user_skill_step_completions
     .where('user_id')
-    .equals(LOCAL_USER_ID)
+    .equals(getCurrentUserId())
     .filter((r) => r.skill_step_id === stepId)
     .toArray();
   await Promise.all(rows.map((r) => db.user_skill_step_completions.delete(r.id)));
@@ -452,7 +473,7 @@ export async function importAll(json: string): Promise<ImportResult> {
 export async function updateSettings(
   patch: Partial<AppSettings>,
 ): Promise<void> {
-  const s = await db.app_settings.where('user_id').equals(LOCAL_USER_ID).first();
+  const s = await db.app_settings.where('user_id').equals(getCurrentUserId()).first();
   const t = now();
   if (s) {
     await db.app_settings.update(s.id, { ...patch, updated_at: t });
@@ -486,7 +507,7 @@ export async function getVolumeTrend(days = 30): Promise<VolumePoint[]> {
     ).padStart(2, '0')}`;
 
   const workouts = (
-    await db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray()
+    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
   ).filter((w) => w.deleted_at == null && Date.parse(w.started_at) >= since.getTime());
 
   const byId = new Map(workouts.map((w) => [w.id, dayKey(new Date(w.started_at))]));
@@ -543,7 +564,7 @@ export async function saveBodyMetric(
   const t = now();
   const existing = await db.body_metrics
     .where('[user_id+date]')
-    .equals([LOCAL_USER_ID, date])
+    .equals([getCurrentUserId(), date])
     .first();
   if (existing) {
     await db.body_metrics.update(existing.id, { ...patch, updated_at: t });
@@ -551,7 +572,7 @@ export async function saveBodyMetric(
   }
   await db.body_metrics.add({
     id: uuid(),
-    user_id: LOCAL_USER_ID,
+    user_id: getCurrentUserId(),
     date,
     weight_kg: null,
     calories_in: null,
@@ -566,7 +587,7 @@ export async function saveBodyMetric(
 }
 
 export async function getBodyMetric(date: string): Promise<BodyMetric | undefined> {
-  return db.body_metrics.where('[user_id+date]').equals([LOCAL_USER_ID, date]).first();
+  return db.body_metrics.where('[user_id+date]').equals([getCurrentUserId(), date]).first();
 }
 
 export interface BodyPoint {
@@ -587,7 +608,7 @@ export interface BodyPoint {
 export async function getBodyTrend(days = 60): Promise<BodyPoint[]> {
   const since = new Date();
   since.setDate(since.getDate() - (days - 1));
-  const rows = await db.body_metrics.where('user_id').equals(LOCAL_USER_ID).toArray();
+  const rows = await db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray();
   const byDate = new Map(rows.map((r) => [r.date, r]));
   const out: BodyPoint[] = [];
   for (let i = 0; i < days; i++) {
@@ -630,7 +651,7 @@ export async function getExerciseProgress(
   days = 180,
 ): Promise<ExercisePoint[]> {
   const since = Date.now() - days * 86400_000;
-  const workouts = await db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray();
+  const workouts = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
   const wDay = new Map(
     workouts
       .filter((w) => w.deleted_at == null && Date.parse(w.started_at) >= since)
@@ -682,9 +703,9 @@ export interface DayActivities {
  */
 export async function getCalendar(from: string, to: string): Promise<Map<string, DayActivities>> {
   const [workouts, allSets, metrics] = await Promise.all([
-    db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray(),
+    db.workouts.where('user_id').equals(getCurrentUserId()).toArray(),
     db.sets.toArray(),
-    db.body_metrics.where('user_id').equals(LOCAL_USER_ID).toArray(),
+    db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray(),
   ]);
   const setCount = new Map<string, number>();
   for (const s of allSets) {
@@ -722,7 +743,7 @@ export async function getCalendar(from: string, to: string): Promise<Map<string,
 /* ─────────── Programs / routines ─────────── */
 
 export async function listPrograms(): Promise<Program[]> {
-  const rows = await db.programs.where('user_id').equals(LOCAL_USER_ID).toArray();
+  const rows = await db.programs.where('user_id').equals(getCurrentUserId()).toArray();
   return rows
     .filter((p) => p.deleted_at == null && !p.is_archived)
     .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
@@ -733,10 +754,10 @@ export async function createProgram(
   activityKind: ActivityKind = 'strength',
 ): Promise<Program> {
   const t = now();
-  const count = await db.programs.where('user_id').equals(LOCAL_USER_ID).count();
+  const count = await db.programs.where('user_id').equals(getCurrentUserId()).count();
   const p: Program = {
     id: uuid(),
-    user_id: LOCAL_USER_ID,
+    user_id: getCurrentUserId(),
     name,
     description: null,
     activity_kind: activityKind,
@@ -845,7 +866,7 @@ export async function startWorkoutFromProgram(programId: string) {
 /** Αντιγράφει την τελευταία προπόνηση ως πρόγραμμα — «κάνε ό,τι έκανα τότε». */
 export async function programFromLastWorkout(name: string): Promise<Program | null> {
   const done = (
-    await db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray()
+    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
   )
     .filter((w) => w.ended_at != null && w.deleted_at == null)
     .sort((a, b) => b.started_at.localeCompare(a.started_at));
@@ -925,7 +946,7 @@ export async function createExercise(input: ExerciseInput): Promise<Exercise> {
   const t = now();
   const e: Exercise = {
     id: uuid(),
-    user_id: LOCAL_USER_ID,
+    user_id: getCurrentUserId(),
     name: input.name.trim(),
     category: input.category ?? 'other',
     movement_type: input.movement_type ?? 'compound',
@@ -963,7 +984,7 @@ export async function setExerciseArchived(id: string, archived: boolean): Promis
 export async function listAllExercises(): Promise<Exercise[]> {
   const all = await db.exercises.toArray();
   return all
-    .filter((e) => e.deleted_at == null)
+    .filter((e) => isVisibleToMe(e) && e.deleted_at == null)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -1000,6 +1021,7 @@ export async function createSkill(input: SkillInput): Promise<Skill> {
       .join('')
       .toUpperCase()
       .slice(0, 4) || 'SKL',
+    user_id: getCurrentUserId(),
     category: input.category ?? 'mixed',
     description: input.description ?? '',
     ultimate_goal: input.ultimate_goal ?? '',
@@ -1098,7 +1120,7 @@ export async function removeSkillStep(id: string): Promise<void> {
 export async function listActivities(includeArchived = false): Promise<Activity[]> {
   const all = await db.activities.toArray();
   return all
-    .filter((a) => includeArchived || !a.is_archived)
+    .filter((a) => isVisibleToMe(a) && (includeArchived || !a.is_archived))
     .sort((a, b) => a.display_order - b.display_order);
 }
 
@@ -1120,10 +1142,14 @@ export interface ActivityInput {
  */
 export async function createActivity(input: ActivityInput): Promise<Activity> {
   const t = now();
+  // NFD + αφαίρεση τόνων: χωρίς αυτό το «Παρκούρ» γινόταν «παρκο-ρ», γιατί
+  // τα τονούμενα φωνήεντα δεν ανήκουν στο εύρος α-ω.
   const base =
     input.label
       .trim()
       .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9α-ω]+/gi, '-')
       .replace(/^-+|-+$/g, '') || 'activity';
   let key = base;
@@ -1131,7 +1157,7 @@ export async function createActivity(input: ActivityInput): Promise<Activity> {
   const count = await db.activities.count();
   const a: Activity = {
     id: uuid(),
-    user_id: LOCAL_USER_ID,
+    user_id: getCurrentUserId(),
     key,
     label: input.label.trim(),
     icon: input.icon ?? '•',
@@ -1160,4 +1186,106 @@ export async function reorderActivities(orderedIds: string[]): Promise<void> {
   await Promise.all(
     orderedIds.map((id, i) => db.activities.update(id, { display_order: i, updated_at: t })),
   );
+}
+
+/* ─────────── Προφίλ σε αυτή τη συσκευή (v6) ─────────── */
+
+/**
+ * ⚠️ Τα προφίλ ΔΕΝ είναι λογαριασμοί: δεν προστατεύονται με κωδικό και
+ * όποιος έχει τη συσκευή τα βλέπει όλα. Είναι διαχωρισμός δεδομένων
+ * («ποιανού προπόνηση καταγράφω»), όχι ασφάλεια — αυτή θέλει server.
+ */
+export async function listProfiles(): Promise<User[]> {
+  const rows = await db.users.toArray();
+  return rows.sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+export async function getCurrentProfile(): Promise<User | undefined> {
+  return db.users.get(getCurrentUserId());
+}
+
+export async function createProfile(displayName: string): Promise<User> {
+  const t = now();
+  const id = uuid();
+  const user: User = {
+    id,
+    email: null,
+    display_name: displayName.trim() || null,
+    units: 'metric',
+    bodyweight_unit: 'kg',
+    language: 'en',
+    schema_version: SCHEMA_VERSION,
+    created_at: t,
+    updated_at: t,
+    is_pro: false,
+    pro_expires_at: null,
+  };
+  await db.users.add(user);
+  // Κάθε προφίλ έχει δικές του ρυθμίσεις — αλλιώς θα κληρονομούσε του προηγούμενου.
+  await db.app_settings.add({
+    id: uuid(),
+    user_id: id,
+    default_rest_timer_seconds: 180,
+    notify_pr: true,
+    notify_session_reminder: false,
+    notify_rest_timer: true,
+    reminder_time: null,
+    reminder_days: [],
+    show_e1rm: true,
+    weight_unit: 'kg',
+    theme: 'dark',
+    created_at: t,
+    updated_at: t,
+  });
+  return user;
+}
+
+export async function renameProfile(id: string, displayName: string): Promise<void> {
+  await db.users.update(id, {
+    display_name: displayName.trim() || null,
+    updated_at: now(),
+  });
+}
+
+/**
+ * Σβήνει το προφίλ ΚΑΙ όλα του τα δεδομένα. Μη αναστρέψιμο — το UI οφείλει
+ * να ζητήσει ρητή επιβεβαίωση. Τα seeded δεδομένα (`user_id === null`)
+ * είναι κοινά και δεν αγγίζονται.
+ */
+export async function deleteProfile(id: string): Promise<void> {
+  const workouts = await db.workouts.where('user_id').equals(id).toArray();
+  const workoutIds = new Set(workouts.map((w) => w.id));
+
+  const sets = await db.sets.toArray();
+  await db.sets.bulkDelete(
+    sets.filter((s) => workoutIds.has(s.workout_id)).map((s) => s.id),
+  );
+
+  const programs = await db.programs.where('user_id').equals(id).toArray();
+  const programIds = new Set(programs.map((p) => p.id));
+  const programExercises = await db.program_exercises.toArray();
+  await db.program_exercises.bulkDelete(
+    programExercises.filter((r) => programIds.has(r.program_id)).map((r) => r.id),
+  );
+
+  await db.workouts.where('user_id').equals(id).delete();
+  await db.programs.where('user_id').equals(id).delete();
+  await db.personal_records.where('user_id').equals(id).delete();
+  await db.body_metrics.where('user_id').equals(id).delete();
+  await db.user_skill_progress.where('user_id').equals(id).delete();
+  await db.user_skill_step_completions.where('user_id').equals(id).delete();
+  await db.app_settings.where('user_id').equals(id).delete();
+  await db.exercises.where('user_id').equals(id).delete();
+  await db.activities.where('user_id').equals(id).delete();
+  await db.users.delete(id);
+}
+
+/** Πόσα δεδομένα κρέμονται από ένα προφίλ — για να ξέρει ΤΙ σβήνει. */
+export async function getProfileStats(id: string) {
+  const [workouts, prs, programs] = await Promise.all([
+    db.workouts.where('user_id').equals(id).count(),
+    db.personal_records.where('user_id').equals(id).count(),
+    db.programs.where('user_id').equals(id).count(),
+  ]);
+  return { workouts, prs, programs };
 }

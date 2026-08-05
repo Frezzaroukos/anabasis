@@ -573,6 +573,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(1),
     name: 'Muscle Up',
+    user_id: null,
     short_code: 'Mu',
     category: 'pull',
     description:
@@ -587,6 +588,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(2),
     name: 'Front Lever',
+    user_id: null,
     short_code: 'Fl',
     category: 'pull',
     description: 'Body held horizontal, face up, hanging from a bar.',
@@ -600,6 +602,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(3),
     name: 'Back Lever',
+    user_id: null,
     short_code: 'Bl',
     category: 'pull',
     description: 'Body held horizontal, face down, hanging from a bar.',
@@ -613,6 +616,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(4),
     name: 'Planche',
+    user_id: null,
     short_code: 'Pl',
     category: 'push',
     description:
@@ -627,6 +631,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(5),
     name: 'Handstand',
+    user_id: null,
     short_code: 'Hs',
     category: 'push',
     description: 'Freestanding inverted hold on the hands.',
@@ -640,6 +645,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(6),
     name: 'Human Flag',
+    user_id: null,
     short_code: 'Hf',
     category: 'mixed',
     description: 'Side hold, body horizontal off a vertical pole.',
@@ -653,6 +659,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(7),
     name: 'One Arm Chin-up',
+    user_id: null,
     short_code: 'Oac',
     category: 'pull',
     description: 'Strict pull from dead hang to chin over bar on a single arm.',
@@ -666,6 +673,7 @@ export const SEED_SKILLS: Skill[] = [
   {
     id: skillId(8),
     name: 'V-Sit',
+    user_id: null,
     short_code: 'Vs',
     category: 'core',
     description: 'Compression hold, hips lifted, legs angled high.',

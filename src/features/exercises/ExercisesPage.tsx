@@ -8,7 +8,8 @@ import {
   setExerciseArchived,
 } from '@/lib/db/queries';
 import type { Exercise } from '@/lib/db/types';
-import { LOCAL_USER_ID } from '@/lib/db';
+import { } from '@/lib/db';
+import { getCurrentUserId } from '@/lib/db/session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ExerciseFormSheet } from './components/ExerciseFormSheet';
@@ -38,7 +39,7 @@ export function ExercisesPage() {
     return allExercises.filter((ex) => {
       if (filter === 'archived' && !ex.is_archived) return false;
       if (filter !== 'archived' && ex.is_archived) return false;
-      if (filter === 'mine' && ex.user_id !== LOCAL_USER_ID) return false;
+      if (filter === 'mine' && ex.user_id !== getCurrentUserId()) return false;
       if (q !== '' && !ex.name.toLowerCase().includes(q)) return false;
       return true;
     });

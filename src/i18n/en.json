@@ -10,7 +10,8 @@
     "settings": "Settings",
     "calendar": "Calendar",
     "home": "Home",
-    "programs": "Programs"
+    "programs": "Programs",
+    "profile": "Profile"
   },
   "workout": {
     "title": "Workout",
@@ -324,5 +325,22 @@
     "moveDown": "Move down",
     "save": "Save",
     "cancel": "Cancel"
+  },
+  "profile": {
+    "title": "Profile",
+    "deviceOnly": "Profiles on this device. No password, no sync across devices yet.",
+    "unnamed": "Unnamed profile",
+    "active": "active",
+    "switch": "Switch",
+    "delete": "Delete profile",
+    "name": "Profile name",
+    "newProfile": "New profile",
+    "namePlaceholder": "e.g. Aggelos",
+    "create": "Create",
+    "workouts": "workouts",
+    "prs": "PRs",
+    "deleteConfirmTitle": "Delete this profile and all its data?",
+    "deleteConfirmDesc": "{{workouts}} workouts and {{prs}} records will be permanently deleted. This cannot be undone.",
+    "syncHint": "Data lives in this browser only. Clearing browser data deletes it. Cross-device sync is coming."
   }
 }

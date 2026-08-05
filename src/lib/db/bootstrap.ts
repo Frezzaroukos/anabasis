@@ -16,11 +16,15 @@ import {
   SEED_SKILL_STEPS,
 } from './seeds';
 import type { AppSettings, User } from './types';
+import { getCurrentUserId, initSession } from './session';
 
-export const LOCAL_USER_ID = 'local-user-00000-0000-4000-8000-000000000001';
+export { DEFAULT_USER_ID as LOCAL_USER_ID } from './session';
 
 export async function bootstrapDB(): Promise<void> {
+  initSession();
   await db.open();
+  // Το ενεργό προφίλ μπορεί να είναι δικό του (πολλαπλά προφίλ) ή το αρχικό.
+  const activeUserId = getCurrentUserId();
   const now = new Date().toISOString();
 
   await db.transaction(
@@ -34,10 +38,10 @@ export async function bootstrapDB(): Promise<void> {
       db.activities,
     ],
     async () => {
-      const userExists = await db.users.get(LOCAL_USER_ID);
+      const userExists = await db.users.get(activeUserId);
       if (!userExists) {
         const user: User = {
-          id: LOCAL_USER_ID,
+          id: activeUserId,
           email: null,
           display_name: null,
           units: 'metric',
@@ -54,12 +58,12 @@ export async function bootstrapDB(): Promise<void> {
 
       const settingsExists = await db.app_settings
         .where('user_id')
-        .equals(LOCAL_USER_ID)
+        .equals(activeUserId)
         .first();
       if (!settingsExists) {
         const settings: AppSettings = {
           id: uuid(),
-          user_id: LOCAL_USER_ID,
+          user_id: activeUserId,
           default_rest_timer_seconds: 180,
           notify_pr: true,
           notify_session_reminder: false,

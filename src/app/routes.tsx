@@ -13,6 +13,7 @@ import { ProgressPage } from '@/features/progress/ProgressPage';
 import { SkillsPage } from '@/features/skills/SkillsPage';
 import { SkillDetailPage } from '@/features/skills/SkillDetailPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
+import { ProfilePage } from '@/features/profile/ProfilePage';
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: 'skills', element: <SkillsPage /> },
       { path: 'skills/:skillId', element: <SkillDetailPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'profile', element: <ProfilePage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

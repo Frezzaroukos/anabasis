@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, LOCAL_USER_ID } from '@/lib/db';
+import { db, } from '@/lib/db';
+import { getCurrentUserId } from '@/lib/db/session';
 import { exportAll, importAll, updateSettings } from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ export function SettingsPage() {
   const [status, setStatus] = useState<string | null>(null);
 
   const settings = useLiveQuery(
-    () => db.app_settings.where('user_id').equals(LOCAL_USER_ID).first(),
+    () => db.app_settings.where('user_id').equals(getCurrentUserId()).first(),
     [],
   );
   const stats = useLiveQuery(
@@ -31,7 +32,7 @@ export function SettingsPage() {
 
   const onLangChange = (lang: 'en' | 'el') => {
     void i18n.changeLanguage(lang);
-    void db.users.update(LOCAL_USER_ID, {
+    void db.users.update(getCurrentUserId(), {
       language: lang,
       updated_at: new Date().toISOString(),
     });
@@ -68,6 +69,14 @@ export function SettingsPage() {
           {t('settings.title')}
         </h1>
       </header>
+
+      <Link
+        to="/profile"
+        className="flex items-center justify-between rounded-lg border border-border bg-card p-4 text-sm transition-colors hover:bg-accent"
+      >
+        <span className="font-medium">{t('profile.title')}</span>
+        <span aria-hidden className="text-muted-foreground">→</span>
+      </Link>
 
       {/* Η βιβλιοθήκη σου — το bottom nav είναι γεμάτο στα 6 tabs, και αυτές
           είναι οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}

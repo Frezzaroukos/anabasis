@@ -25,7 +25,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -136,6 +136,24 @@ export class AnabasisDB extends Dexie {
           .modify((s) => {
             s.rir ??= null;
             s.tempo ??= null;
+          });
+      });
+
+    /**
+     * v6 — πολλαπλά προφίλ στην ίδια συσκευή. Τα skills αποκτούν ιδιοκτήτη
+     * ώστε ένα δικό σου tree να μη φαίνεται στο προφίλ του διπλανού· τα
+     * seeded μένουν `null` (κοινά σε όλους).
+     */
+    this.version(6)
+      .stores({
+        skills: 'id, user_id, short_code, category, display_order, is_archived',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('skills')
+          .toCollection()
+          .modify((s) => {
+            s.user_id ??= null;
           });
       });
   }

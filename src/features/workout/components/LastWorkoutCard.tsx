@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, LOCAL_USER_ID } from '@/lib/db';
+import { db, } from '@/lib/db';
+import { getCurrentUserId } from '@/lib/db/session';
 import { formatHMS } from '@/hooks/useSessionTimer';
 
 export function LastWorkoutCard() {
   const { t } = useTranslation();
 
   const data = useLiveQuery(async () => {
-    const all = await db.workouts.where('user_id').equals(LOCAL_USER_ID).toArray();
+    const all = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
     const completed = all
       .filter((w) => w.ended_at != null && w.deleted_at == null)
       .sort((a, b) => (b.ended_at ?? '').localeCompare(a.ended_at ?? ''))[0];

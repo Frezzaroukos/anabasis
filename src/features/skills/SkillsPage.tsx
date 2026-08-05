@@ -4,7 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Archive, ArchiveRestore, Plus } from 'lucide-react';
 import { db } from '@/lib/db';
-import { createSkill, getAllSkillProgress, setSkillArchived } from '@/lib/db/queries';
+import {
+  createSkill,
+  getAllSkillProgress,
+  listSkills,
+  setSkillArchived,
+} from '@/lib/db/queries';
 import { SEED_SKILLS } from '@/lib/db/seeds';
 import { BUILTIN_SKILL_CATEGORIES } from '@/lib/db/types';
 import type { Skill, SkillCategory } from '@/lib/db/types';
@@ -30,7 +35,7 @@ export function SkillsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const skills = useLiveQuery(
-    () => db.skills.orderBy('display_order').toArray(),
+    () => listSkills(true),
     [],
     [],
   );

@@ -205,6 +205,8 @@ export interface PersonalRecord {
 
 export interface Skill {
   id: UUID;
+  /** null = seeded, κοινό σε όλα τα προφίλ· αλλιώς ανήκει σε ένα προφίλ */
+  user_id: UUID | null;
   name: string;
   short_code: string;
   category: SkillCategory;
