@@ -1547,3 +1547,216 @@ export async function getProfileStats(id: string) {
   ]);
   return { workouts, prs, programs };
 }
+
+/* ─────────── Analytics: activity progress, insights, feel, heatmap (v7) ─────────── */
+
+export interface ActivityPoint {
+  date: string;
+  distanceKm: number | null;
+  durationSeconds: number | null;
+  paceSecPerKm: number | null;
+}
+
+/**
+ * Πρόοδος δραστηριότητας χωρίς σετ (τρέξιμο/ποδήλατο/κολύμβηση) — το ίδιο
+ * chart-εργαλείο που έχουν οι lifters, πάνω σε db.workouts αντί για db.sets.
+ * Κρατά το «καλύτερο» της ημέρας: μέγιστη απόσταση, ταχύτερο pace.
+ */
+export async function getActivityProgress(
+  activityKind: string,
+  days = 180,
+): Promise<ActivityPoint[]> {
+  const since = Date.now() - days * 86400_000;
+  const workouts = (
+    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
+  ).filter(
+    (w) =>
+      w.deleted_at == null &&
+      w.ended_at != null &&
+      w.activity_kind === activityKind &&
+      Date.parse(w.started_at) >= since,
+  );
+
+  const byDay = new Map<string, ActivityPoint>();
+  for (const w of workouts) {
+    const day = localDay(new Date(w.started_at));
+    const cur =
+      byDay.get(day) ??
+      ({ date: day, distanceKm: null, durationSeconds: null, paceSecPerKm: null } as ActivityPoint);
+    if (w.distance_km != null && (cur.distanceKm == null || w.distance_km > cur.distanceKm)) {
+      cur.distanceKm = w.distance_km;
+    }
+    if (w.duration_seconds != null && (cur.durationSeconds == null || w.duration_seconds > cur.durationSeconds)) {
+      cur.durationSeconds = w.duration_seconds;
+    }
+    if (w.distance_km != null && w.distance_km > 0 && w.duration_seconds != null) {
+      const pace = w.duration_seconds / w.distance_km;
+      if (cur.paceSecPerKm == null || pace < cur.paceSecPerKm) cur.paceSecPerKm = pace;
+    }
+    byDay.set(day, cur);
+  }
+  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Ημέρες προπόνησης (distinct) στο διάστημα — για streak/adherence. */
+async function trainingDays(): Promise<string[]> {
+  const workouts = (
+    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
+  ).filter((w) => w.deleted_at == null && w.ended_at != null);
+  const days = new Set(workouts.map((w) => localDay(new Date(w.started_at))));
+  return [...days].sort();
+}
+
+export interface TrainingInsights {
+  streakDays: number;
+  longestStreakDays: number;
+  volumeDeltaPct: number | null;
+  adherencePct: number | null;
+  weightTrend: { ratePerWeekKg: number; projectedGoalDate: string | null } | null;
+  prsThisPeriod: number;
+}
+
+/**
+ * Rule-based insights (port του kalori μοτίβου: pure stat → threshold guard →
+ * templated πρόταση). ΚΑΘΕ τιμή έχει «κατώφλι» (n≥…) στην UI ώστε να μη
+ * βγαίνουν θορυβώδεις ισχυρισμοί από ελάχιστα δεδομένα.
+ */
+export async function getTrainingInsights(days = 30): Promise<TrainingInsights> {
+  const daysList = await trainingDays();
+  const daySet = new Set(daysList);
+
+  // streak: μετράμε πίσω από σήμερα (ή χθες) όσο υπάρχουν συνεχόμενες μέρες
+  const countStreakFrom = (start: Date): number => {
+    let n = 0;
+    const d = new Date(start);
+    while (daySet.has(localDay(d))) {
+      n++;
+      d.setDate(d.getDate() - 1);
+    }
+    return n;
+  };
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const streakDays = daySet.has(localDay(today))
+    ? countStreakFrom(today)
+    : countStreakFrom(yesterday);
+
+  // longest streak: σάρωση των ταξινομημένων ημερών
+  let longestStreakDays = 0;
+  let run = 0;
+  let prev: Date | null = null;
+  for (const key of daysList) {
+    const cur = new Date(key);
+    if (prev && (cur.getTime() - prev.getTime()) / 86400_000 === 1) run++;
+    else run = 1;
+    if (run > longestStreakDays) longestStreakDays = run;
+    prev = cur;
+  }
+
+  // adherence: μέρες προπόνησης / μέρες στο παράθυρο
+  const windowStart = Date.now() - days * 86400_000;
+  const inWindow = daysList.filter((k) => new Date(k).getTime() >= windowStart).length;
+  const adherencePct = days > 0 ? Math.round((inWindow / days) * 100) : null;
+
+  // volume delta: αυτό το παράθυρο vs το προηγούμενο ίσο
+  const trend = await getVolumeTrend(days * 2);
+  const half = Math.floor(trend.length / 2);
+  const prevVol = trend.slice(0, half).reduce((a, p) => a + p.volume, 0);
+  const curVol = trend.slice(half).reduce((a, p) => a + p.volume, 0);
+  const volumeDeltaPct =
+    prevVol > 0 ? Math.round(((curVol - prevVol) / prevVol) * 100) : null;
+
+  // weight trend: γραμμικός ρυθμός/εβδομάδα από τα ζυγίσματα
+  const body = await getBodyTrend(days);
+  const weights = body
+    .filter((p) => p.weight != null)
+    .map((p) => ({ t: new Date(p.date).getTime(), w: p.weight as number }));
+  let weightTrend: TrainingInsights['weightTrend'] = null;
+  if (weights.length >= 2) {
+    const n = weights.length;
+    const meanT = weights.reduce((a, p) => a + p.t, 0) / n;
+    const meanW = weights.reduce((a, p) => a + p.w, 0) / n;
+    let num = 0;
+    let den = 0;
+    for (const p of weights) {
+      num += (p.t - meanT) * (p.w - meanW);
+      den += (p.t - meanT) ** 2;
+    }
+    const slopePerMs = den === 0 ? 0 : num / den;
+    const ratePerWeekKg = Math.round(slopePerMs * 7 * 86400_000 * 100) / 100;
+    weightTrend = { ratePerWeekKg, projectedGoalDate: null };
+  }
+
+  // PRs σε αυτό το παράθυρο
+  const prs = await db.personal_records
+    .where('user_id')
+    .equals(getCurrentUserId())
+    .toArray();
+  const prsThisPeriod = prs.filter(
+    (r) => new Date(r.achieved_at).getTime() >= windowStart,
+  ).length;
+
+  return {
+    streakDays,
+    longestStreakDays,
+    volumeDeltaPct,
+    adherencePct,
+    weightTrend,
+    prsThisPeriod,
+  };
+}
+
+export interface FeelPoint {
+  date: string;
+  feel: number | null;
+  volume: number;
+}
+
+/** Χρονοσειρά «αίσθησης» (feel 1-5) δίπλα στον όγκο — το feel καταγράφεται ήδη. */
+export async function getFeelTrend(days = 60): Promise<FeelPoint[]> {
+  const volume = await getVolumeTrend(days);
+  const workouts = (
+    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
+  ).filter((w) => w.deleted_at == null && w.feel != null);
+
+  // πιο πρόσφατο feel της ημέρας
+  const feelByDay = new Map<string, { feel: number; at: string }>();
+  for (const w of workouts) {
+    const day = localDay(new Date(w.started_at));
+    const cur = feelByDay.get(day);
+    if (!cur || w.started_at > cur.at) feelByDay.set(day, { feel: w.feel!, at: w.started_at });
+  }
+  return volume.map((v) => ({
+    date: v.date,
+    feel: feelByDay.get(v.date)?.feel ?? null,
+    volume: v.volume,
+  }));
+}
+
+export interface HeatCell {
+  date: string;
+  trained: boolean;
+  hasPR: boolean;
+}
+
+/** Ημερολόγιο συνέπειας (GitHub-style) — trained/hasPR ανά μέρα. */
+export async function getTrainingHeat(days = 91): Promise<HeatCell[]> {
+  const daysList = new Set(await trainingDays());
+  const prs = await db.personal_records
+    .where('user_id')
+    .equals(getCurrentUserId())
+    .toArray();
+  const prDays = new Set(prs.map((r) => localDay(new Date(r.achieved_at))));
+
+  const out: HeatCell[] = [];
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const key = localDay(d);
+    out.push({ date: key, trained: daysList.has(key), hasPR: prDays.has(key) });
+  }
+  return out;
+}

@@ -14,6 +14,10 @@ import {
   getProgramAdherence,
   getProgramWithExercises,
   getRecentPRs,
+  getTrainingHeat,
+  getTrainingInsights,
+  getFeelTrend,
+  localDay,
   setProgramTarget,
   startWorkout,
   updateWorkoutDistance,
@@ -192,5 +196,43 @@ describe('F10 — στόχος συχνότητας ανά πρόγραμμα', 
   it('επιστρέφει null όταν δεν έχει οριστεί στόχος', async () => {
     const p = await createProgram('No target');
     expect(await getProgramAdherence(p.id)).toBeNull();
+  });
+});
+
+describe('F08/F11 — insights & heatmap', () => {
+  it('getTrainingHeat δίνει σωστό μήκος και μαρκάρει μέρες προπόνησης', async () => {
+    const w = await startWorkout('strength');
+    await addSet({
+      workout_id: w.id, exercise_id: bench().id, weight_kg: 50,
+      bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(w.id);
+
+    const heat = await getTrainingHeat(30);
+    expect(heat).toHaveLength(30);
+    const todayKey = heat[heat.length - 1]!.date;
+    expect(heat.find((c) => c.date === todayKey)?.trained).toBe(true);
+  });
+
+  it('getTrainingInsights: streak τρέχουσας μέρας ≥ 1 μετά από προπόνηση', async () => {
+    const ins = await getTrainingInsights(30);
+    expect(ins.streakDays).toBeGreaterThanOrEqual(1);
+    expect(ins.longestStreakDays).toBeGreaterThanOrEqual(ins.streakDays);
+    expect(ins.adherencePct).not.toBeNull();
+  });
+
+  it('getFeelTrend αντιστοιχίζει το feel της ημέρας στον όγκο', async () => {
+    const w = await startWorkout('strength');
+    await addSet({
+      workout_id: w.id, exercise_id: squat().id, weight_kg: 60,
+      bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await db.workouts.update(w.id, { feel: 4 });
+    await endWorkout(w.id);
+
+    const trend = await getFeelTrend(7);
+    const today = trend.find((p) => p.date === localDay())!;
+    expect(today.feel).toBe(4);
+    expect(today.volume).toBeGreaterThan(0);
   });
 });
