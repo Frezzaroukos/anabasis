@@ -70,26 +70,23 @@
 
 ## 3. Boundaries — τι ΔΕΝ κάνει
 
-| Feature | Που ανήκει | Γιατί όχι εδώ |
-|---|---|---|
-| Calorie tracking | **Calorie app** (separate) | Different domain, different app |
-| Body weight tracking | **Calorie app** | Belongs to body comp domain |
-| Macros / food log | **Calorie app** | — |
-| Body fat %, μετρήσεις | **Calorie app** | — |
-| Cardio / HR zones / GPS | Strava/dedicated | Sport science domain |
-| Meal planning / recipes | Κανένα app μου | Out of scope |
-| Sleep tracking | Health apps | Out of scope |
-| Social feed / leaderboards | Κανένα — συνειδητά | Σπάει το focused ethos |
-| Photo progress pics | **Calorie app** ίσως v2 | Belongs με body comp |
+> **⚠️ Αναθεώρηση 2026-08 (ενοποίηση):** το αρχικό scope έλεγε ότι
+> θερμίδες/βάρος/macros/cardio ανήκουν σε ξεχωριστό app. Αυτό **άλλαξε**:
+> το Anabasis είναι πλέον ΕΝΙΑΙΟ personal training app. Ενσωματώθηκαν:
+> βάρος, θερμίδες, macros (protein/carbs/fat), λίπος σώματος, cardio με
+> απόσταση/ρυθμό/PR, ημερολόγιο πολλαπλών δραστηριοτήτων. Ο πίνακας παρακάτω
+> κρατιέται ως ιστορικό της αρχικής απόφασης.
 
-### Γκρίζες ζώνες
-
-| Case | Decision |
+| Feature | Κατάσταση τώρα |
 |---|---|
-| User θέλει να δει βάρος του δίπλα στα PRs | **No.** Το βάρος είναι στο calorie app. Cross-app dashboard = future. |
-| User κάνει "did I eat enough για το leg day;" | **No** εδώ. Calorie app job. |
-| User logging "δεν προπονήθηκα σήμερα" | **No** rest day logging εδώ. Streak/consistency μέσω session count μόνο. |
-| User θέλει cardio session log | **Note-only** — γράφει "30 min cardio" σαν workout type, χωρίς HR/pace detail. |
+| ~~Calorie / weight / macros tracking~~ | ✅ **Ενσωματώθηκε** (BodyPage: βάρος, θερμίδες, protein/carbs/fat, BF%, macro donut) |
+| ~~Cardio / distance / pace~~ | ✅ **Ενσωματώθηκε** (activity logger + PR απόστασης/ρυθμού + progress charts) |
+| Πλήρες food database / barcode scan | ❌ Εκτός scope — το nutrition μένει στο επίπεδο macros/insights, όχι food-log app |
+| HR zones / GPS route map | ❌ Strava-domain· καταγράφουμε distance/duration/pace, όχι live GPS |
+| Meal planning / recipes | ❌ Out of scope |
+| Sleep tracking | ❌ Out of scope |
+| Social feed / leaderboards | ❌ Συνειδητά — σπάει το focused, privacy-first ethos |
+| Photo progress pics | ⏳ Πιθανό future (body comp) |
 
 ---
 

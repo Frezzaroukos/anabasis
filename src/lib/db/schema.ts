@@ -2,8 +2,9 @@
  * Dexie schema for Anabasis.
  * Indexes mirror DATABASE_SCHEMA.md "Indexes" section.
  *
- * Schema versioning: bump the number in `db.version(N).stores({...})`
- * AND add a matching entry in migrations.ts when fields/indexes change.
+ * Schema versioning: bump SCHEMA_VERSION και πρόσθεσε ένα `this.version(N)`
+ * block με το .upgrade() του — όλη η migration λογική ζει ΕΔΩ, ώστε να
+ * τρέχει αυτόματα από το Dexie όταν ανοίγει παλιά βάση.
  */
 
 import Dexie, { type Table } from 'dexie';

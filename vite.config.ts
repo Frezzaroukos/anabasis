@@ -34,6 +34,27 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Το recharts + d3 είναι το βαρύτερο dependency· δικό του chunk ώστε
+        // να cache-άρεται ξεχωριστά και να μη φουσκώνει το κύριο bundle.
+        manualChunks(id: string) {
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
+            return 'recharts';
+          }
+          if (
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react-router') ||
+            id.includes('node_modules/react/')
+          ) {
+            return 'react';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     host: true,

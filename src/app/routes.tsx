@@ -1,19 +1,32 @@
+import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from './layouts/AppShell';
-import { DashboardPage } from '@/features/dashboard/DashboardPage';
-import { WorkoutPage } from '@/features/workout/WorkoutPage';
-import { ProgramsPage } from '@/features/programs/ProgramsPage';
-import { ExercisesPage } from '@/features/exercises/ExercisesPage';
-import { ActivitiesPage } from '@/features/activities/ActivitiesPage';
-import { ProgramDetailPage } from '@/features/programs/ProgramDetailPage';
-import { HistoryPage } from '@/features/history/HistoryPage';
-import { CalendarPage } from '@/features/calendar/CalendarPage';
-import { BodyPage } from '@/features/body/BodyPage';
-import { ProgressPage } from '@/features/progress/ProgressPage';
-import { SkillsPage } from '@/features/skills/SkillsPage';
-import { SkillDetailPage } from '@/features/skills/SkillDetailPage';
-import { SettingsPage } from '@/features/settings/SettingsPage';
-import { ProfilePage } from '@/features/profile/ProfilePage';
+
+/**
+ * Κάθε σελίδα φορτώνεται lazy: το recharts (~χαμηλά εκατοντάδες KB) και οι
+ * βαριές σελίδες μπαίνουν σε ξεχωριστά chunks, ώστε το πρώτο άνοιγμα να
+ * κατεβάζει μόνο ό,τι χρειάζεται η αρχική. Named exports → μεταφράζονται
+ * σε default μέσα στο import.
+ */
+const lazyPage = <T extends Record<string, React.ComponentType<unknown>>>(
+  loader: () => Promise<T>,
+  name: keyof T,
+) => lazy(() => loader().then((m) => ({ default: m[name] })));
+
+const DashboardPage = lazyPage(() => import('@/features/dashboard/DashboardPage'), 'DashboardPage');
+const WorkoutPage = lazyPage(() => import('@/features/workout/WorkoutPage'), 'WorkoutPage');
+const ProgramsPage = lazyPage(() => import('@/features/programs/ProgramsPage'), 'ProgramsPage');
+const ProgramDetailPage = lazyPage(() => import('@/features/programs/ProgramDetailPage'), 'ProgramDetailPage');
+const ExercisesPage = lazyPage(() => import('@/features/exercises/ExercisesPage'), 'ExercisesPage');
+const ActivitiesPage = lazyPage(() => import('@/features/activities/ActivitiesPage'), 'ActivitiesPage');
+const HistoryPage = lazyPage(() => import('@/features/history/HistoryPage'), 'HistoryPage');
+const CalendarPage = lazyPage(() => import('@/features/calendar/CalendarPage'), 'CalendarPage');
+const BodyPage = lazyPage(() => import('@/features/body/BodyPage'), 'BodyPage');
+const ProgressPage = lazyPage(() => import('@/features/progress/ProgressPage'), 'ProgressPage');
+const SkillsPage = lazyPage(() => import('@/features/skills/SkillsPage'), 'SkillsPage');
+const SkillDetailPage = lazyPage(() => import('@/features/skills/SkillDetailPage'), 'SkillDetailPage');
+const SettingsPage = lazyPage(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
+const ProfilePage = lazyPage(() => import('@/features/profile/ProfilePage'), 'ProfilePage');
 
 export const router = createBrowserRouter([
   {
