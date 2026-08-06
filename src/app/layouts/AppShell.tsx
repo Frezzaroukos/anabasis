@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BottomTabNav } from '@/components/layout/BottomTabNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OnboardingOverlay } from '@/features/onboarding/OnboardingOverlay';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
 import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutView';
 
@@ -38,6 +39,8 @@ export function AppShell() {
       </main>
       {!hasActive && <BottomTabNav />}
       {hasActive && <ActiveWorkoutView workout={active} />}
+      {/* Ελέγχει μόνο του το localStorage· null αν έχει γίνει ήδη onboard. */}
+      <OnboardingOverlay />
     </div>
   );
 }

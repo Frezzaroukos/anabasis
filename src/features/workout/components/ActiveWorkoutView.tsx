@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link2, Plus, X } from 'lucide-react';
+import { Link2, Plus, Weight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
@@ -17,6 +17,8 @@ import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
 import { AddExerciseSheet } from './AddExerciseSheet';
 import { RestTimer } from './RestTimer';
+import { PlateCalculator } from './PlateCalculator';
+import { BottomSheet } from '@/components/ui/sheet';
 import { ActivityLogForm } from './ActivityLogForm';
 
 interface ActiveWorkoutViewProps {
@@ -45,6 +47,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   const [weightedById, setWeightedById] = useState<Record<string, boolean>>({});
   const [chain, setChain] = useState<SetChain | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [plateOpen, setPlateOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [workoutType, setWorkoutType] = useState(workout.workout_type ?? '');
 
@@ -175,14 +178,23 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               </div>
             )}
 
-            <Button
-              variant="outline"
-              className="mt-4 w-full"
-              onClick={() => setSheetOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              {t('workout.addExercise')}
-            </Button>
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setSheetOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                {t('workout.addExercise')}
+              </Button>
+              <Button
+                variant="outline"
+                aria-label={t('plate.target')}
+                onClick={() => setPlateOpen(true)}
+              >
+                <Weight className="h-4 w-4" />
+              </Button>
+            </div>
           </>
         ) : (
           <ActivityLogForm workout={workout} />
@@ -204,6 +216,14 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           onPick={onAddExercise}
           excludeIds={orderedIds}
         />
+      )}
+
+      {isSetLogged && (
+        <BottomSheet open={plateOpen} onClose={() => setPlateOpen(false)} title={t('plate.target')}>
+          <div className="px-4 pb-4">
+            <PlateCalculator />
+          </div>
+        </BottomSheet>
       )}
 
       <ConfirmDialog

@@ -69,7 +69,9 @@
     "rpe": "RPE",
     "rir": "RIR",
     "tempo": "Tempo",
-    "previous": "Previous"
+    "previous": "Previous",
+    "emptyHistoryTitle": "Your first workout starts here",
+    "emptyHistoryHint": "Pick an activity and hit start — everything else follows."
   },
   "programs": {
     "title": "Programs",
@@ -98,7 +100,8 @@
     "weeklyTarget": "Weekly target",
     "thisWeek": "this week",
     "increase": "Increase",
-    "decrease": "Decrease"
+    "decrease": "Decrease",
+    "emptyHint": "Build a reusable template once, start it any time."
   },
   "history": {
     "title": "History",
@@ -111,7 +114,10 @@
       "max_reps": "Max reps",
       "max_volume": "Max volume",
       "e1rm": "Est. 1RM",
-      "max_hold": "Max hold"
+      "max_hold": "Max hold",
+      "longest_distance": "Longest distance",
+      "longest_duration": "Longest duration",
+      "fastest_pace": "Fastest pace"
     },
     "volumeTrend": "Volume trend",
     "lastDays": "last {{days}} days",
@@ -387,5 +393,30 @@
     "needReview": "need review",
     "doImport": "Import {{count}} days",
     "done": "Done — {{added}} added, {{updated}} updated."
+  },
+  "onboarding": {
+    "title": "Anabasis",
+    "next": "Next",
+    "skip": "Skip",
+    "start": "Start",
+    "slide1": {
+      "title": "The map of your ascent",
+      "desc": "Every skill and PR is a step higher. Anabasis shows where you are and what comes next."
+    },
+    "slide2": {
+      "title": "Not just another gym app",
+      "desc": "Track weighted basics AND skill progressions — front lever, planche, muscle-up. No other app does both well."
+    },
+    "slide3": {
+      "title": "Yours, offline, private",
+      "desc": "Local-first. Your data stays on your device and works without a connection. Let’s go."
+    }
+  },
+  "plate": {
+    "target": "Target",
+    "bar": "Bar",
+    "perSide": "Per side",
+    "remainder": "Remainder",
+    "empty": "Add weight above the bar."
   }
 }
