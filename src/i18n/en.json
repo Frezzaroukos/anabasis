@@ -94,7 +94,11 @@
     "deleteConfirmTitle": "Delete program?",
     "deleteConfirmDesc": "This program will be hidden. Your workout history is not affected.",
     "duplicate": "Duplicate",
-    "addN": "Add {{count}}"
+    "addN": "Add {{count}}",
+    "weeklyTarget": "Weekly target",
+    "thisWeek": "this week",
+    "increase": "Increase",
+    "decrease": "Decrease"
   },
   "history": {
     "title": "History",
@@ -232,7 +236,9 @@
     "bodyFat": "Body fat",
     "proteinPerKg": "Protein/kg bodyweight",
     "bodyFatTrend": "Body fat trend",
-    "proteinTrend": "Protein trend"
+    "proteinTrend": "Protein trend",
+    "carbs": "Carbs",
+    "fat": "Fat"
   },
   "progress": {
     "title": "Exercise progress",
@@ -258,7 +264,8 @@
     "skillsProgress": "Skills progress",
     "latestWeight": "Latest weight",
     "todayBalance": "Today's balance",
-    "latestBodyFat": "Latest body fat"
+    "latestBodyFat": "Latest body fat",
+    "last91days": "Last 91 days"
   },
   "setType": {
     "normal": "Normal",
@@ -349,5 +356,15 @@
     "deleteConfirmTitle": "Delete this profile and all its data?",
     "deleteConfirmDesc": "{{workouts}} workouts and {{prs}} records will be permanently deleted. This cannot be undone.",
     "syncHint": "Data lives in this browser only. Clearing browser data deletes it. Cross-device sync is coming."
+  },
+  "insights": {
+    "title": "Insights",
+    "streak": "{{count}}-day training streak — keep it going.",
+    "volumeUp": "Training volume up {{pct}}% vs last month.",
+    "volumeDown": "Training volume down {{pct}}% vs last month.",
+    "weightRate": "Weight {{dir}} ~{{rate}} kg/week.",
+    "gaining": "up",
+    "losing": "down",
+    "prs": "{{count}} new PRs this month."
   }
 }

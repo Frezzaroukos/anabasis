@@ -14,6 +14,8 @@ import {
   localDay,
 } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
+import { InsightsCard } from './components/InsightsCard';
+import { ConsistencyHeatmap } from './components/ConsistencyHeatmap';
 
 /**
  * Σελίδες που δεν έχουν tab στο bottom nav — πρέπει να είναι προσβάσιμες
@@ -125,6 +127,9 @@ export function DashboardPage() {
           {t('dashboard.noData')}
         </div>
       )}
+
+      <InsightsCard />
+      <ConsistencyHeatmap />
 
       {hasTrainingData && (
         <section className="rounded-lg border border-border bg-card p-4">

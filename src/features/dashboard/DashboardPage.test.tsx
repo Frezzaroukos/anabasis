@@ -6,6 +6,7 @@ import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
 import { DashboardPage } from './DashboardPage';
 import { db } from '@/lib/db';
+import { setCurrentUserId } from '@/lib/db/session';
 import { SEED_EXERCISES, SEED_SKILLS, SEED_SKILL_STEPS } from '@/lib/db/seeds';
 import { achieveStep, addSet, localDay, saveBodyMetric, startWorkout } from '@/lib/db/queries';
 
@@ -46,6 +47,11 @@ const wrap = (ui: React.ReactNode) => (
 );
 
 describe('DashboardPage — empty DB', () => {
+  beforeAll(() => {
+    // Καθαρό, ξεχωριστό προφίλ ώστε δεδομένα άλλων suites να μη φαίνονται.
+    setCurrentUserId('dashboard-empty-profile');
+  });
+
   it('render-άρει χωρίς crash και δείχνει "no data", όχι ψεύτικα μηδενικά', async () => {
     render(wrap(<DashboardPage />));
     await waitFor(() =>
@@ -64,6 +70,9 @@ describe('DashboardPage — empty DB', () => {
 
 describe('DashboardPage — με δεδομένα', () => {
   beforeAll(async () => {
+    // Απομονωμένο προφίλ: τα test files μοιράζονται τη fake-indexeddb βάση,
+    // οπότε workouts από άλλα suites θα «μόλυναν» τα consistency/volume counts.
+    setCurrentUserId('dashboard-test-profile');
     await db.exercises.bulkPut(SEED_EXERCISES);
     await db.skills.bulkPut(SEED_SKILLS);
     await db.skill_steps.bulkPut(SEED_SKILL_STEPS);
@@ -99,7 +108,11 @@ describe('DashboardPage — με δεδομένα', () => {
     await waitFor(() => expect(screen.getByText(dashboardEn.consistency)).toBeTruthy());
     expect(screen.getByText('1/7')).toBeTruthy();
 
-    expect(screen.getByText(dashboardEn.weeklyVolume)).toBeTruthy();
+    // Ο όγκος έρχεται από ξεχωριστό liveQuery (trend14)· τα insights/heatmap
+    // πρόσθεσαν liveQueries που ανταγωνίζονται, οπότε θέλει waitFor.
+    await waitFor(() =>
+      expect(screen.getByText(dashboardEn.weeklyVolume)).toBeTruthy(),
+    );
     // Το όνομα της άσκησης έρχεται από ΔΕΥΤΕΡΟ liveQuery (listExercises) που
     // μπορεί να λύσει μετά τα PRs — χωρίς waitFor το test είναι flaky και
     // βλέπει το placeholder «—». Ένα σετ δίνει πολλαπλά PR-candidates

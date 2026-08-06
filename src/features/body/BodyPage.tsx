@@ -14,6 +14,7 @@ import {
 import { getBodyMetric, getBodyTrend, localDay, saveBodyMetric } from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MacroSplit } from './components/MacroSplit';
 
 const RANGES = [30, 60, 90, 180] as const;
 
@@ -35,6 +36,8 @@ export function BodyPage() {
   const [cin, setCin] = useState('');
   const [cout, setCout] = useState('');
   const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
   const [bf, setBf] = useState('');
 
   // Πρόσθεσε τις υπάρχουσες τιμές της ημέρας στα πεδία (edit αντί για ξανα-εισαγωγή).
@@ -46,6 +49,8 @@ export function BodyPage() {
     setCin(todayMetric.calories_in?.toString() ?? '');
     setCout(todayMetric.calories_out?.toString() ?? '');
     setProtein(todayMetric.protein_g?.toString() ?? '');
+    setCarbs(todayMetric.carbs_g?.toString() ?? '');
+    setFat(todayMetric.fat_g?.toString() ?? '');
     setBf(todayMetric.body_fat_pct?.toString() ?? '');
   }, [todayMetric]);
 
@@ -60,6 +65,8 @@ export function BodyPage() {
       calories_in: num(cin),
       calories_out: num(cout),
       protein_g: num(protein),
+      carbs_g: num(carbs),
+      fat_g: num(fat),
       body_fat_pct: num(bf),
     });
 
@@ -115,6 +122,8 @@ export function BodyPage() {
               [t('body.caloriesIn'), cin, setCin, 'kcal'],
               [t('body.caloriesOut'), cout, setCout, 'kcal'],
               [t('body.protein'), protein, setProtein, 'g'],
+              [t('body.carbs'), carbs, setCarbs, 'g'],
+              [t('body.fat'), fat, setFat, 'g'],
               [t('body.bodyFat'), bf, setBf, '%'],
             ] as const
           ).map(([label, val, set, unit]) => (
@@ -164,6 +173,7 @@ export function BodyPage() {
             )}
           </p>
         )}
+        <MacroSplit metric={todayMetric} />
       </section>
 
       {/* Βάρος */}

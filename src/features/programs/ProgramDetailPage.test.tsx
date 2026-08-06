@@ -92,6 +92,11 @@ describe('ProgramDetailPage', () => {
     render(wrap(<ProgramDetailPage />, `/programs/${PROGRAM.id}`));
 
     await waitFor(() => expect(screen.getByText('Bench day')).toBeTruthy());
+    // Οι γραμμές έρχονται από ΞΕΧΩΡΙΣΤΟ liveQuery (getProgramWithExercises) —
+    // περίμενε να render-αριστούν πριν ελέγξεις την ομαδοποίηση.
+    await waitFor(() =>
+      expect(screen.getAllByText(SEED_EXERCISES[0]!.name).length).toBe(2),
+    );
     // Το dropset badge (όχι τα per-row set-type pill κουμπιά) εμφανίζεται μία φορά για την αλυσίδα.
     const dropsetLabels = screen
       .getAllByText('Drop set')

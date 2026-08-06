@@ -6,7 +6,9 @@ import { v4 as uuid } from 'uuid';
 import { ChevronDown, ChevronUp, Link2, Play, Plus } from 'lucide-react';
 import {
   addProgramExercisesBulk,
+  getProgramAdherence,
   getProgramWithExercises,
+  setProgramTarget,
   listExercises,
   removeProgramExercise,
   reorderProgramExercises,
@@ -35,6 +37,7 @@ export function ProgramDetailPage() {
   const { programId = '' } = useParams();
 
   const data = useLiveQuery(() => getProgramWithExercises(programId), [programId]);
+  const adherence = useLiveQuery(() => getProgramAdherence(programId), [programId]);
   const allExercises = useLiveQuery(() => listExercises(), [], []);
   const exerciseById = useMemo(
     () => new Map(allExercises.map((e) => [e.id, e])),
@@ -132,6 +135,42 @@ export function ProgramDetailPage() {
           <span className="text-xs text-muted-foreground">
             {t(`activity.${program.activity_kind}`)}
           </span>
+        </div>
+
+        {/* Στόχος συχνότητας/εβδομάδα — habit nudge για casual, adherence για serious */}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">{t('programs.weeklyTarget')}:</span>
+          <button
+            type="button"
+            aria-label={t('programs.decrease')}
+            onClick={() =>
+              void setProgramTarget(
+                program.id,
+                Math.max(0, (program.target_sessions_per_week ?? 0) - 1) || null,
+              )
+            }
+            className="h-7 w-7 rounded-md border border-border text-muted-foreground hover:bg-accent"
+          >
+            −
+          </button>
+          <span className="w-6 text-center font-mono">
+            {program.target_sessions_per_week ?? '—'}
+          </span>
+          <button
+            type="button"
+            aria-label={t('programs.increase')}
+            onClick={() =>
+              void setProgramTarget(program.id, (program.target_sessions_per_week ?? 0) + 1)
+            }
+            className="h-7 w-7 rounded-md border border-border text-muted-foreground hover:bg-accent"
+          >
+            +
+          </button>
+          {adherence && (
+            <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
+              {adherence.completedThisWeek}/{adherence.target} {t('programs.thisWeek')}
+            </span>
+          )}
         </div>
       </header>
 
