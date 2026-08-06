@@ -71,7 +71,10 @@
     "tempo": "Tempo",
     "previous": "Previous",
     "emptyHistoryTitle": "Your first workout starts here",
-    "emptyHistoryHint": "Pick an activity and hit start — everything else follows."
+    "emptyHistoryHint": "Pick an activity and hit start — everything else follows.",
+    "quickLog": "Quick log",
+    "quickPlaceholder": "e.g. 80 5,4,3,2",
+    "quickPlaceholderBw": "e.g. 8,6,5"
   },
   "programs": {
     "title": "Programs",
@@ -193,7 +196,10 @@
     "offlineNote": "offline-first · your data stays yours",
     "restNotify": "Rest timer alert",
     "restNotifyHint": "Sound and vibration when the rest timer ends.",
-    "library": "Your library"
+    "library": "Your library",
+    "theme_dark": "Dark",
+    "theme_light": "Light",
+    "theme_auto": "Auto"
   },
   "common": {
     "save": "Save",

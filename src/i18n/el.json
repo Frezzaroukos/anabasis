@@ -71,7 +71,10 @@
     "tempo": "Ρυθμός",
     "previous": "Προηγ",
     "emptyHistoryTitle": "Η πρώτη σου προπόνηση ξεκινά εδώ",
-    "emptyHistoryHint": "Διάλεξε δραστηριότητα και πάτα έναρξη — όλα τα άλλα ακολουθούν."
+    "emptyHistoryHint": "Διάλεξε δραστηριότητα και πάτα έναρξη — όλα τα άλλα ακολουθούν.",
+    "quickLog": "Γρήγορη καταγραφή",
+    "quickPlaceholder": "π.χ. 80 5,4,3,2",
+    "quickPlaceholderBw": "π.χ. 8,6,5"
   },
   "programs": {
     "title": "Προγράμματα",
@@ -193,7 +196,10 @@
     "offlineNote": "offline-first · τα δεδομένα μένουν δικά σου",
     "restNotify": "Ειδοποίηση rest timer",
     "restNotifyHint": "Ήχος και δόνηση όταν τελειώνει η ξεκούραση.",
-    "library": "Η βιβλιοθήκη σου"
+    "library": "Η βιβλιοθήκη σου",
+    "theme_dark": "Σκούρο",
+    "theme_light": "Φωτεινό",
+    "theme_auto": "Αυτόματο"
   },
   "common": {
     "save": "Αποθήκευση",

@@ -7,6 +7,8 @@ import { getCurrentUserId } from '@/lib/db/session';
 import { exportAll, importAll, updateSettings } from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Moon, Sun, Monitor } from 'lucide-react';
+import { getStoredTheme, setTheme, type Theme } from '@/lib/theme';
 
 const REST_PRESETS = [60, 90, 120, 180, 240, 300];
 
@@ -14,6 +16,7 @@ export function SettingsPage() {
   const { t, i18n } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [theme, setThemeState] = useState<Theme>(getStoredTheme());
 
   const settings = useLiveQuery(
     () => db.app_settings.where('user_id').equals(getCurrentUserId()).first(),
@@ -107,6 +110,32 @@ export function SettingsPage() {
               <span aria-hidden className="text-muted-foreground">→</span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Theme */}
+      <section className="rounded-lg border border-border bg-card p-4">
+        <p className="mb-3 text-sm font-medium">{t('settings.theme')}</p>
+        <div className="flex gap-2">
+          {(['dark', 'light', 'auto'] as const).map((th) => {
+            const Icon = th === 'dark' ? Moon : th === 'light' ? Sun : Monitor;
+            return (
+              <button
+                key={th}
+                onClick={() => {
+                  setTheme(th);
+                  setThemeState(th);
+                  void updateSettings({ theme: th });
+                }}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm transition-colors ${
+                  theme === th ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {t(`settings.theme_${th}`)}
+              </button>
+            );
+          })}
         </div>
       </section>
 
