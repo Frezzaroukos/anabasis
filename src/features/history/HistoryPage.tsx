@@ -5,6 +5,7 @@ import { getCurrentUserId } from '@/lib/db/session';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { getRecentPRs, listActivities } from '@/lib/db/queries';
 import { VolumeChart } from './components/VolumeChart';
+import { FeelChart } from './components/FeelChart';
 import { Link } from 'react-router-dom';
 
 export function HistoryPage() {
@@ -50,6 +51,7 @@ export function HistoryPage() {
       </Link>
 
       <VolumeChart />
+      <FeelChart />
 
       {prs.length > 0 && (
         <section>

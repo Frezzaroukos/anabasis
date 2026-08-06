@@ -24,6 +24,7 @@ import {
 import type { PersonalRecord, PRType } from '@/lib/db/types';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { ActivityProgress } from './ActivityProgress';
 
 type Metric = 'topWeight' | 'e1rm' | 'volume';
 
@@ -155,6 +156,7 @@ export function ProgressPage() {
               </li>
             )}
           </ul>
+          <ActivityProgress />
         </section>
       ) : (
         <section className="space-y-4">

@@ -118,7 +118,9 @@
     "volume": "όγκος",
     "totalVolume": "όγκος",
     "totalSets": "σετ",
-    "activeDays": "ημέρες άσκησης"
+    "activeDays": "ημέρες άσκησης",
+    "feelTrend": "Πώς ένιωθες",
+    "feel": "Αίσθηση"
   },
   "skills": {
     "title": "Skills",
@@ -250,7 +252,12 @@
     "sessions": "προπονήσεις",
     "needMore": "Κατέγραψε την άσκηση 2+ φορές για να φανεί τάση.",
     "change": "Άλλαξε άσκηση",
-    "noMatch": "Καμία άσκηση δεν ταιριάζει."
+    "noMatch": "Καμία άσκηση δεν ταιριάζει.",
+    "activities": "Δραστηριότητες",
+    "distance": "Απόσταση",
+    "pace": "Ρυθμός",
+    "longestDistance": "Μακρύτερο",
+    "fastestPace": "Ταχύτερο"
   },
   "dashboard": {
     "title": "Επισκόπηση",

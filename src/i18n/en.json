@@ -118,7 +118,9 @@
     "volume": "volume",
     "totalVolume": "volume",
     "totalSets": "sets",
-    "activeDays": "active days"
+    "activeDays": "active days",
+    "feelTrend": "How you felt",
+    "feel": "Feel"
   },
   "skills": {
     "title": "Skills",
@@ -250,7 +252,12 @@
     "sessions": "sessions",
     "needMore": "Log this exercise at least twice to see a trend.",
     "change": "Change exercise",
-    "noMatch": "No exercise matches."
+    "noMatch": "No exercise matches.",
+    "activities": "Activities",
+    "distance": "Distance",
+    "pace": "Pace",
+    "longestDistance": "Longest",
+    "fastestPace": "Fastest"
   },
   "dashboard": {
     "title": "Overview",
