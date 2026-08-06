@@ -1,6 +1,8 @@
 import { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { BottomTabNav } from '@/components/layout/BottomTabNav';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
 import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutView';
 
@@ -14,15 +16,25 @@ function PageFallback() {
 }
 
 export function AppShell() {
+  const { t } = useTranslation();
   const active = useActiveWorkout();
   const hasActive = active != null;
+  // key ανά διαδρομή → το boundary ξεκαθαρίζει το σφάλμα όταν αλλάζεις σελίδα,
+  // αλλιώς μια σπασμένη σελίδα θα έμενε σπασμένη και μετά την πλοήγηση.
+  const { pathname } = useLocation();
 
   return (
     <div className="flex min-h-full flex-col bg-background">
       <main className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-6 safe-top">
-        <Suspense fallback={<PageFallback />}>
-          <Outlet />
-        </Suspense>
+        <ErrorBoundary
+          key={pathname}
+          message={t('common.pageError')}
+          retryLabel={t('common.retry')}
+        >
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
       {!hasActive && <BottomTabNav />}
       {hasActive && <ActiveWorkoutView workout={active} />}

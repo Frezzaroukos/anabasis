@@ -78,6 +78,14 @@ export function SettingsPage() {
         <span aria-hidden className="text-muted-foreground">→</span>
       </Link>
 
+      <Link
+        to="/import"
+        className="flex items-center justify-between rounded-lg border border-border bg-card p-4 text-sm transition-colors hover:bg-accent"
+      >
+        <span className="font-medium">{t('import.title')}</span>
+        <span aria-hidden className="text-muted-foreground">→</span>
+      </Link>
+
       {/* Η βιβλιοθήκη σου — το bottom nav είναι γεμάτο στα 6 tabs, και αυτές
           είναι οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
       <section className="rounded-lg border border-border bg-card p-4">

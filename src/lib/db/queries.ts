@@ -743,6 +743,49 @@ export async function getBodyMetric(date: string): Promise<BodyMetric | undefine
   return db.body_metrics.where('[user_id+date]').equals([getCurrentUserId(), date]).first();
 }
 
+/**
+ * Μαζική εισαγωγή ιστορικών μετρήσεων (π.χ. 11 μήνες θερμίδων από Notion).
+ * Upsert ανά ημερομηνία — υπάρχουσα μέρα ενημερώνεται, δεν διπλασιάζεται.
+ * Επιστρέφει πόσες προστέθηκαν/ενημερώθηκαν ώστε το UI να δείξει τι έγινε.
+ */
+export async function importBodyMetrics(
+  rows: Array<{ date: string; patch: Partial<Omit<BodyMetric, 'id' | 'user_id' | 'date' | 'created_at' | 'updated_at'>> }>,
+): Promise<{ added: number; updated: number }> {
+  const t = now();
+  const uid = getCurrentUserId();
+  let added = 0;
+  let updated = 0;
+  for (const { date, patch } of rows) {
+    const existing = await db.body_metrics
+      .where('[user_id+date]')
+      .equals([uid, date])
+      .first();
+    if (existing) {
+      await db.body_metrics.update(existing.id, { ...patch, updated_at: t });
+      updated += 1;
+    } else {
+      await db.body_metrics.add({
+        id: uuid(),
+        user_id: uid,
+        date,
+        weight_kg: null,
+        calories_in: null,
+        calories_out: null,
+        protein_g: null,
+        carbs_g: null,
+        fat_g: null,
+        body_fat_pct: null,
+        notes: null,
+        created_at: t,
+        updated_at: t,
+        ...patch,
+      });
+      added += 1;
+    }
+  }
+  return { added, updated };
+}
+
 export interface BodyPoint {
   date: string;
   weight: number | null;

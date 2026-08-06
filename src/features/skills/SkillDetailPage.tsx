@@ -16,6 +16,7 @@ import {
 import type { SkillStep } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SkillIcon } from '@/components/SkillIcon';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { StepFormSheet } from './components/StepFormSheet';
 import { cn } from '@/lib/utils';
@@ -64,8 +65,11 @@ export function SkillDetailPage() {
         >
           ← {t('skills.title')}
         </Link>
-        <div className="flex items-baseline justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{skill.name}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <SkillIcon skill={skill.short_code} className="h-12 w-12 shrink-0 text-primary" />
+            <h1 className="text-2xl font-semibold tracking-tight">{skill.name}</h1>
+          </div>
           <span className="font-mono text-xs text-muted-foreground">
             {skill.short_code}
           </span>

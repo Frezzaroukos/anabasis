@@ -14,6 +14,7 @@ import {
   localDay,
 } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/Logo';
 import { InsightsCard } from './components/InsightsCard';
 import { ConsistencyHeatmap } from './components/ConsistencyHeatmap';
 
@@ -101,8 +102,9 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
+        <Logo className="h-7 w-7 text-primary" />
       </header>
 
       {/*

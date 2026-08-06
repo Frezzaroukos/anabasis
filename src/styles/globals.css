@@ -2,73 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Χρωματικό σύστημα Anabasis.
+ * Signature: χρυσό-χάλκινο «ανόδου» (--primary) — το θέμα του app είναι η
+ * ανάβαση προς την κορυφή, οπότε το accent είναι το χρώμα της κατάκτησης.
+ * Χρησιμοποιείται σε primary actions + επιτεύγματα (PR/mastery).
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 4%;
+    --background: 40 20% 99%;
+    --foreground: 30 12% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
+    --card-foreground: 30 12% 10%;
 
-    --primary: 240 6% 10%;
-    --primary-foreground: 0 0% 98%;
+    /* Χρυσό-χάλκινο, πιο σκούρο σε light theme για contrast σε λευκό */
+    --primary: 32 78% 42%;
+    --primary-foreground: 40 40% 98%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
+    --secondary: 40 12% 95%;
+    --secondary-foreground: 30 10% 12%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    --muted: 40 10% 95%;
+    --muted-foreground: 30 6% 42%;
 
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 6% 10%;
+    --accent: 40 30% 94%;
+    --accent-foreground: 30 10% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 240 6% 10%;
+    --border: 40 10% 88%;
+    --input: 40 10% 88%;
+    --ring: 32 78% 42%;
 
-    --cat-push: 14 90% 60%;
-    --cat-pull: 217 91% 60%;
-    --cat-legs: 142 71% 45%;
-    --cat-core: 38 92% 50%;
-    --cat-mixed: 271 91% 65%;
+    /* Χρυσό επίτευξης — PR badges, mastery. Πιο λαμπερό από το primary. */
+    --gold: 42 92% 50%;
+
+    --cat-push: 14 90% 55%;
+    --cat-pull: 217 91% 58%;
+    --cat-legs: 142 71% 42%;
+    --cat-core: 38 92% 48%;
+    --cat-mixed: 271 81% 58%;
 
     --radius: 0.625rem;
   }
 
   .dark {
-    --background: 240 10% 4%;
-    --foreground: 0 0% 98%;
+    /* Ζεστό, όχι ουδέτερο γκρι — ταιριάζει με το χρυσό accent */
+    --background: 30 10% 5%;
+    --foreground: 40 15% 96%;
 
-    --card: 240 8% 6%;
-    --card-foreground: 0 0% 98%;
+    --card: 30 9% 8%;
+    --card-foreground: 40 15% 96%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 6% 10%;
+    /* Ζεστό χρυσό-amber· λάμπει σε σκούρο φόντο χωρίς να τυφλώνει στις 6πμ */
+    --primary: 40 84% 56%;
+    --primary-foreground: 32 40% 8%;
 
-    --secondary: 240 4% 12%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 30 6% 13%;
+    --secondary-foreground: 40 15% 96%;
 
-    --muted: 240 4% 12%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 30 6% 13%;
+    --muted-foreground: 40 8% 62%;
 
-    --accent: 240 4% 14%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 32 20% 16%;
+    --accent-foreground: 40 15% 96%;
 
-    --destructive: 0 63% 45%;
+    --destructive: 0 63% 48%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 4% 14%;
-    --input: 240 4% 14%;
-    --ring: 240 5% 84%;
+    --border: 32 10% 16%;
+    --input: 32 10% 16%;
+    --ring: 40 84% 56%;
 
-    --cat-push: 14 90% 60%;
-    --cat-pull: 217 91% 65%;
-    --cat-legs: 142 65% 50%;
-    --cat-core: 38 92% 55%;
-    --cat-mixed: 271 91% 70%;
+    --gold: 42 95% 58%;
+
+    --cat-push: 14 90% 62%;
+    --cat-pull: 217 91% 66%;
+    --cat-legs: 142 65% 52%;
+    --cat-core: 38 92% 56%;
+    --cat-mixed: 271 85% 72%;
   }
 
   * {
@@ -87,6 +101,13 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Οι αριθμοί (βάρη/επαναλήψεις) ευθυγραμμίζονται σε στήλες — αλλιώς δεν
+     συγκρίνονται με τη ματιά. Κάθε mono στοιχείο παίρνει tabular figures. */
+  .font-mono,
+  [class*='tabular'] {
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Disable text selection on UI chrome (re-enable on content if needed) */
   button,
   [role='button'],
@@ -101,5 +122,33 @@
   }
   .safe-top {
     padding-top: env(safe-area-inset-top);
+  }
+
+  /*
+   * Microinteractions — επιβεβαιώνουν, δεν διασκεδάζουν.
+   * Ένα app που το ανοίγεις 6 φορές την ώρα δεν επιτρέπεται να σε καθυστερεί.
+   */
+  @keyframes set-commit {
+    0% { transform: translateY(-4px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes pr-pulse {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.18); filter: brightness(1.4); }
+    100% { transform: scale(1); }
+  }
+  .animate-set-commit {
+    animation: set-commit 150ms ease-out;
+  }
+  .animate-pr-pulse {
+    animation: pr-pulse 420ms ease-out;
+  }
+
+  /* Προσβασιμότητα: μηδέν κίνηση όταν ο χρήστης το ζητά — όχι προαιρετικό. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-set-commit,
+    .animate-pr-pulse {
+      animation: none;
+    }
   }
 }

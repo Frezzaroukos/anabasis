@@ -27,6 +27,7 @@ const SkillsPage = lazyPage(() => import('@/features/skills/SkillsPage'), 'Skill
 const SkillDetailPage = lazyPage(() => import('@/features/skills/SkillDetailPage'), 'SkillDetailPage');
 const SettingsPage = lazyPage(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
 const ProfilePage = lazyPage(() => import('@/features/profile/ProfilePage'), 'ProfilePage');
+const ImportPage = lazyPage(() => import('@/features/import/ImportPage'), 'ImportPage');
 
 export const router = createBrowserRouter([
   {
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
       { path: 'skills/:skillId', element: <SkillDetailPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'import', element: <ImportPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

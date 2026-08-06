@@ -15,6 +15,7 @@ import { BUILTIN_SKILL_CATEGORIES } from '@/lib/db/types';
 import type { Skill, SkillCategory } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SkillIcon } from '@/components/SkillIcon';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_DOT: Record<SkillCategory, string> = {
@@ -243,6 +244,10 @@ export function SkillsPage() {
                       CATEGORY_DOT[s.category] ?? 'bg-zinc-400',
                     )}
                     aria-hidden
+                  />
+                  <SkillIcon
+                    skill={s.short_code}
+                    className="h-5 w-5 shrink-0 text-primary"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 text-sm font-medium">

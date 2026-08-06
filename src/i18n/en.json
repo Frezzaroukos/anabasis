@@ -200,7 +200,9 @@
     "sec": "sec",
     "reps": "reps",
     "loading": "Loading…",
-    "undo": "Undo"
+    "undo": "Undo",
+    "pageError": "Something went wrong on this page.",
+    "retry": "Try again"
   },
   "activity": {
     "strength": "Strength",
@@ -373,5 +375,17 @@
     "gaining": "up",
     "losing": "down",
     "prs": "{{count}} new PRs this month."
+  },
+  "import": {
+    "title": "Import data",
+    "hint": "Paste your Notion calorie log — the app parses it, you review, then import.",
+    "startYear": "Start year",
+    "placeholder": "Paste from Notion here…\n\nΣεπτέμβριος:\n- [x] 11-09-2025: 2500\n…",
+    "formatHint": "The month comes from the Greek header (Σεπτέμβριος…), not the date — Notion dates are often wrong. Suspicious values are flagged.",
+    "preview": "Preview",
+    "days": "days",
+    "needReview": "need review",
+    "doImport": "Import {{count}} days",
+    "done": "Done — {{added}} added, {{updated}} updated."
   }
 }

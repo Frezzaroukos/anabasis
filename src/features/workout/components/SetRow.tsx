@@ -115,6 +115,7 @@ export function SetRow({ set, weighted }: SetRowProps) {
       <div
         className={cn(
           'relative flex select-none items-center justify-between bg-card px-3 py-2 transition-transform touch-pan-y',
+          'animate-set-commit',
           set.group_id && groupColorClass(set.group_id),
         )}
         style={{ transform: `translateX(${offset}px)`, transitionDuration: drag ? '0ms' : '180ms' }}

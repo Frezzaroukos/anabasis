@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Copy, Play, Plus, Trash2, History } from 'lucide-react';
+import { Copy, Play, Plus, Trash2, History, ListChecks } from 'lucide-react';
 import {
   createProgram,
   duplicateProgram,
@@ -182,8 +182,10 @@ export function ProgramsPage() {
       )}
 
       {programs.length === 0 && !creating ? (
-        <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-          {t('programs.empty')}
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
+          <ListChecks className="h-10 w-10 text-primary" />
+          <p className="text-sm font-medium">{t('programs.empty')}</p>
+          <p className="text-xs text-muted-foreground">{t('programs.emptyHint')}</p>
         </div>
       ) : (
         <ul className="space-y-2">

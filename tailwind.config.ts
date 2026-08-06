@@ -41,6 +41,7 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        gold: 'hsl(var(--gold))',
         category: {
           push: 'hsl(var(--cat-push))',
           pull: 'hsl(var(--cat-pull))',

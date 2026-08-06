@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { Play, Settings2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
-import { queries } from '@/lib/db';
+import { Logo } from '@/components/Logo';
+import { db, queries } from '@/lib/db';
+import { getCurrentUserId } from '@/lib/db/session';
 import { listActivities } from '@/lib/db/queries';
 import type { ActivityKind } from '@/lib/db/types';
 import { LastWorkoutCard } from './components/LastWorkoutCard';
@@ -18,6 +20,13 @@ export function WorkoutPage() {
   // Οι δραστηριότητες έρχονται από τη βάση, όχι από hardcoded λίστα — ό,τι
   // άθλημα προσθέσεις εμφανίζεται εδώ αμέσως, χωρίς αλλαγή κώδικα.
   const activities = useLiveQuery(() => listActivities(), [], []);
+
+  // Ελέγχει αν υπάρχει έστω μία ολοκληρωμένη προπόνηση, για να ξέρουμε αν
+  // θα δείξουμε το LastWorkoutCard ή ένα ενθαρρυντικό empty state.
+  const hasHistory = useLiveQuery(async () => {
+    const all = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
+    return all.some((w) => w.ended_at != null && w.deleted_at == null);
+  }, []);
 
   const onStart = async () => {
     if (starting) return;
@@ -76,7 +85,15 @@ export function WorkoutPage() {
         {t('workout.start')}
       </Button>
 
-      <LastWorkoutCard />
+      {hasHistory === false ? (
+        <section className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-6 text-center">
+          <Logo className="h-10 w-10 text-primary" />
+          <p className="text-sm font-medium">{t('workout.emptyHistoryTitle')}</p>
+          <p className="text-xs text-muted-foreground">{t('workout.emptyHistoryHint')}</p>
+        </section>
+      ) : (
+        <LastWorkoutCard />
+      )}
     </div>
   );
 }
