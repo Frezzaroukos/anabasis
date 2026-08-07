@@ -54,12 +54,19 @@ function isVisibleToMe(row: { user_id: string | null }): boolean {
 
 export async function startWorkout(
   activityKind: ActivityKind = 'strength',
+  /**
+   * v8: προαιρετική ημερομηνία YYYY-MM-DD για backdated workout («χθες
+   * έκανα αυτό»). Το started_at μπαίνει στο μεσημέρι εκείνης της μέρας ώστε
+   * να πέφτει σίγουρα στη σωστή τοπική ημέρα σε calendar/history.
+   */
+  onDate?: string,
 ): Promise<Workout> {
   const t = now();
+  const startedAt = onDate ? `${onDate}T12:00:00.000Z` : t;
   const w: Workout = {
     id: uuid(),
     user_id: getCurrentUserId(),
-    started_at: t,
+    started_at: startedAt,
     ended_at: null,
     duration_seconds: null,
     notes: null,
@@ -81,9 +88,14 @@ export async function endWorkout(workoutId: string): Promise<void> {
   if (!w) return;
   const startedMs = Date.parse(w.started_at);
   const endedMs = Date.parse(t);
-  const duration = Math.max(0, Math.round((endedMs - startedMs) / 1000));
+  const elapsed = Math.round((endedMs - startedMs) / 1000);
+  // Backdated workout (started_at παλιότερο από ~12 ώρες): το wall-clock
+  // duration θα ήταν λάθος (δεν το έκανες live), οπότε δεν το μετράμε.
+  // Το ended_at ισούται με το started_at ώστε να μείνει στη σωστή μέρα.
+  const backdated = elapsed > 12 * 3600;
+  const duration = backdated ? null : Math.max(0, elapsed);
   await db.workouts.update(workoutId, {
-    ended_at: t,
+    ended_at: backdated ? w.started_at : t,
     duration_seconds: duration,
     updated_at: t,
   });

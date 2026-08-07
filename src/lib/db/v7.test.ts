@@ -236,3 +236,31 @@ describe('F08/F11 — insights & heatmap', () => {
     expect(today.volume).toBeGreaterThan(0);
   });
 });
+
+describe('backdated workout (add σε παλιά μέρα)', () => {
+  it('startWorkout με ημερομηνία → started_at στη σωστή μέρα', async () => {
+    const w = await startWorkout('strength', '2026-03-15');
+    expect(w.started_at.slice(0, 10)).toBe('2026-03-15');
+  });
+
+  it('endWorkout ΔΕΝ βάζει λάθος wall-clock duration σε backdated', async () => {
+    const w = await startWorkout('strength', '2026-03-15');
+    await addSet({
+      workout_id: w.id, exercise_id: bench().id, weight_kg: 80,
+      bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(w.id);
+    const saved = (await db.workouts.get(w.id))!;
+    // δεν το έκανες live → μηδέν ψεύτικη διάρκεια, μένει στη σωστή μέρα
+    expect(saved.duration_seconds).toBeNull();
+    expect(saved.ended_at!.slice(0, 10)).toBe('2026-03-15');
+  });
+
+  it('live workout (χωρίς ημερομηνία) κρατά κανονικό duration', async () => {
+    const w = await startWorkout('strength');
+    await endWorkout(w.id);
+    const saved = (await db.workouts.get(w.id))!;
+    expect(saved.duration_seconds).not.toBeNull();
+    expect(saved.duration_seconds).toBeGreaterThanOrEqual(0);
+  });
+});

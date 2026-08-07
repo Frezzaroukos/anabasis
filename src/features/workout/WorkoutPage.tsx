@@ -16,6 +16,10 @@ export function WorkoutPage() {
   const { t } = useTranslation();
   const [starting, setStarting] = useState(false);
   const [kind, setKind] = useState<ActivityKind>('strength');
+  // Πότε έγινε η προπόνηση: «σήμερα» (live) ή παλιότερη μέρα (backdated).
+  // Λύνει το «χθες έκανα αυτό» — ίδια λογική με το Notion calendar σου.
+  const [when, setWhen] = useState<'now' | string>('now');
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   // Οι δραστηριότητες έρχονται από τη βάση, όχι από hardcoded λίστα — ό,τι
   // άθλημα προσθέσεις εμφανίζεται εδώ αμέσως, χωρίς αλλαγή κώδικα.
@@ -32,7 +36,7 @@ export function WorkoutPage() {
     if (starting) return;
     setStarting(true);
     try {
-      await queries.startWorkout(kind);
+      await queries.startWorkout(kind, when === 'now' ? undefined : when);
     } finally {
       setStarting(false);
     }
@@ -80,9 +84,35 @@ export function WorkoutPage() {
         </div>
       </section>
 
+      {/* Πότε: σήμερα (live) ή άλλη μέρα (καταγραφή περασμένης προπόνησης) */}
+      <section>
+        <p className="mb-2 text-xs uppercase text-muted-foreground">
+          {t('workout.whenLabel')}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setWhen('now')}
+            className={cn(
+              'rounded-md border border-border px-3 py-1.5 text-sm transition-colors',
+              when === 'now' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+            )}
+          >
+            {t('workout.whenNow')}
+          </button>
+          <input
+            type="date"
+            max={todayIso}
+            value={when === 'now' ? '' : when}
+            onChange={(e) => setWhen(e.target.value || 'now')}
+            aria-label={t('workout.whenPast')}
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          />
+        </div>
+      </section>
+
       <Button size="lg" className="w-full" onClick={() => void onStart()} disabled={starting}>
         <Play className="h-5 w-5" />
-        {t('workout.start')}
+        {when === 'now' ? t('workout.start') : t('workout.addPast')}
       </Button>
 
       {hasHistory === false ? (
