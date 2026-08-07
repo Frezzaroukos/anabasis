@@ -28,6 +28,7 @@ const SkillDetailPage = lazyPage(() => import('@/features/skills/SkillDetailPage
 const SettingsPage = lazyPage(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
 const ProfilePage = lazyPage(() => import('@/features/profile/ProfilePage'), 'ProfilePage');
 const ImportPage = lazyPage(() => import('@/features/import/ImportPage'), 'ImportPage');
+const BrandingPage = lazyPage(() => import('@/features/branding/BrandingPage'), 'BrandingPage');
 
 export const router = createBrowserRouter([
   {
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <SettingsPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'import', element: <ImportPage /> },
+      { path: 'branding', element: <BrandingPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
