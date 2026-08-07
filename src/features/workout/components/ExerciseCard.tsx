@@ -39,6 +39,15 @@ export function ExerciseCard({
   const [quickMode, setQuickMode] = useState(false);
   const [quickText, setQuickText] = useState('');
   const [quickBusy, setQuickBusy] = useState(false);
+  // Πόσα ρεκόρ έσπασε το πιο πρόσφατο σετ — για τη γιορτή (χρυσό pulse).
+  const [prCount, setPrCount] = useState(0);
+
+  const celebrate = (n: number) => {
+    if (n <= 0) return;
+    setPrCount(n);
+    // Η γιορτή σβήνει μόνη της· δεν μπλοκάρει την επόμενη καταγραφή.
+    globalThis.setTimeout(() => setPrCount(0), 2600);
+  };
 
   const supportsToggle = exercise.is_bodyweight; // bodyweight exercises can be done with or without added load
   const visibleSets = sets;
@@ -54,7 +63,7 @@ export function ExerciseCard({
   ) => {
     const { groupId, chain: nextChain } = resolveSetGroup(setType, chain, crypto.randomUUID());
     if (nextChain !== chain) onChainChange(nextChain);
-    await queries.addSet({
+    const res = await queries.addSet({
       workout_id: workoutId,
       exercise_id: exercise.id,
       weight_kg: weightKg,
@@ -69,6 +78,7 @@ export function ExerciseCard({
       rir: intensity.rir,
       tempo: intensity.tempo,
     });
+    celebrate(res.newPRs.length);
     setAdding(false);
   };
 
@@ -83,8 +93,9 @@ export function ExerciseCard({
     if (parsed.length === 0) return;
     setQuickBusy(true);
     try {
+      let prs = 0;
       for (const s of parsed) {
-        await queries.addSet({
+        const res = await queries.addSet({
           workout_id: workoutId,
           exercise_id: exercise.id,
           weight_kg: weighted ? s.weightKg : null,
@@ -92,7 +103,9 @@ export function ExerciseCard({
           reps: s.reps,
           hold_seconds: null,
         });
+        prs += res.newPRs.length;
       }
+      celebrate(prs);
       setQuickText('');
       setQuickMode(false);
       setAdding(false);
@@ -104,7 +117,12 @@ export function ExerciseCard({
   const quickPreview = parseQuickSets(quickText, weighted);
 
   return (
-    <article className="rounded-lg border border-border bg-card">
+    <article
+      className={cn(
+        'rounded-lg border bg-card transition-colors',
+        prCount > 0 ? 'border-gold' : 'border-border',
+      )}
+    >
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-2 min-w-0">
           <span
@@ -112,6 +130,16 @@ export function ExerciseCard({
             aria-hidden
           />
           <span className="truncate text-sm font-medium">{exercise.name}</span>
+          {/* Γιορτή ρεκόρ: χρυσό, πάλλεται μία φορά. Λειτουργικό (σε ενημερώνει
+              ότι ξεπέρασες τον εαυτό σου) + ζωντανό — όχι διακόσμηση. */}
+          {prCount > 0 && (
+            <span
+              className="animate-pr-pulse flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-gold"
+              role="status"
+            >
+              🏆 {prCount > 1 ? `${prCount} ${t('workout.prs')}` : t('workout.pr')}
+            </span>
+          )}
         </div>
 
         {supportsToggle && (

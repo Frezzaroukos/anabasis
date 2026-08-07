@@ -74,7 +74,9 @@
     "emptyHistoryHint": "Διάλεξε δραστηριότητα και πάτα έναρξη — όλα τα άλλα ακολουθούν.",
     "quickLog": "Γρήγορη καταγραφή",
     "quickPlaceholder": "π.χ. 80 5,4,3,2",
-    "quickPlaceholderBw": "π.χ. 8,6,5"
+    "quickPlaceholderBw": "π.χ. 8,6,5",
+    "pr": "Ρεκόρ!",
+    "prs": "ρεκόρ"
   },
   "programs": {
     "title": "Προγράμματα",
@@ -286,7 +288,10 @@
     "latestWeight": "Τελευταίο βάρος",
     "todayBalance": "Σημερινό ισοζύγιο",
     "latestBodyFat": "Τελευταίο λίπος σώματος",
-    "last91days": "Τελευταίες 91 ημέρες"
+    "last91days": "Τελευταίες 91 ημέρες",
+    "startCta": "Ξεκίνα προπόνηση",
+    "startSub": "Διάλεξε δραστηριότητα και πάμε",
+    "activeThisWeek": "{{count}} μέρες προπόνηση αυτή την εβδομάδα"
   },
   "setType": {
     "normal": "Κανονικό",

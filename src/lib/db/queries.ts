@@ -149,7 +149,12 @@ export interface AddSetInput {
   tempo?: string | null;
 }
 
-export async function addSet(input: AddSetInput): Promise<SetEntry> {
+/** Το σετ + ποια ρεκόρ έσπασε — ώστε το UI να το γιορτάσει. */
+export interface AddSetResult extends SetEntry {
+  newPRs: PRType[];
+}
+
+export async function addSet(input: AddSetInput): Promise<AddSetResult> {
   const t = now();
   const existingForExercise = await db.sets
     .where('workout_id')
@@ -183,18 +188,20 @@ export async function addSet(input: AddSetInput): Promise<SetEntry> {
   };
   await db.sets.add(set);
   // Warm-ups δεν μετράνε για PR — αλλιώς κάθε ζέσταμα θα «έσπαγε» ρεκόρ.
-  if (!set.is_warmup) await detectPRs(set, input.workout_id);
-  return set;
+  const newPRs = set.is_warmup ? [] : await detectPRs(set, input.workout_id);
+  return { ...set, newPRs };
 }
 
 /**
  * Ελέγχει κάθε PR-υποψηφιότητα του σετ έναντι του τρέχοντος ρεκόρ και
- * αποθηκεύει ό,τι είναι νέο. Καλείται αυτόματα από το addSet.
+ * αποθηκεύει ό,τι είναι νέο. Επιστρέφει ποια ρεκόρ έσπασαν ώστε το UI να
+ * τα γιορτάσει.
  */
-async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
+async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
   const t = now();
+  const broken: PRType[] = [];
   const candidates = candidatesFromSet(set);
-  if (candidates.length === 0) return;
+  if (candidates.length === 0) return broken;
 
   const existing = await db.personal_records
     .where('user_id')
@@ -202,9 +209,14 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
     .filter((r) => r.exercise_id === set.exercise_id)
     .toArray();
 
+  // Πρώτο σετ ΠΟΤΕ σε αυτή την άσκηση δεν «γιορτάζεται» ως PR — αλλιώς κάθε
+  // νέα άσκηση θα έριχνε κομφετί. PR = ξεπερνάς κάτι που ΗΔΗ είχες.
+  const hadHistory = existing.length > 0;
+
   for (const c of candidates) {
     const current = existing.find((r) => r.type === c.type) ?? null;
     if (!isNewPR(c, current)) continue;
+    if (hadHistory && current) broken.push(c.type);
     await db.personal_records.add({
       id: uuid(),
       user_id: getCurrentUserId(),
@@ -221,6 +233,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<void> {
       updated_at: t,
     });
   }
+  return broken;
 }
 
 /**

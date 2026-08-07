@@ -74,7 +74,9 @@
     "emptyHistoryHint": "Pick an activity and hit start — everything else follows.",
     "quickLog": "Quick log",
     "quickPlaceholder": "e.g. 80 5,4,3,2",
-    "quickPlaceholderBw": "e.g. 8,6,5"
+    "quickPlaceholderBw": "e.g. 8,6,5",
+    "pr": "PR!",
+    "prs": "PRs"
   },
   "programs": {
     "title": "Programs",
@@ -286,7 +288,10 @@
     "latestWeight": "Latest weight",
     "todayBalance": "Today's balance",
     "latestBodyFat": "Latest body fat",
-    "last91days": "Last 91 days"
+    "last91days": "Last 91 days",
+    "startCta": "Start workout",
+    "startSub": "Pick an activity and go",
+    "activeThisWeek": "{{count}} days trained this week"
   },
   "setType": {
     "normal": "Normal",

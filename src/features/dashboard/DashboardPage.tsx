@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { Minus, Play, TrendingDown, TrendingUp } from 'lucide-react';
 import {
   getAllSkillProgress,
   getBodyMetric,
@@ -106,6 +106,23 @@ export function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
         <Logo className="h-7 w-7 text-primary" />
       </header>
+
+      {/* Hero: η #1 ενέργεια μιας fitness app είναι «ξεκίνα». Χρυσό, prominent,
+          σπάει το «κουτί-σε-κουτί» — δίνει σαφή πρωταρχική δράση, όχι ισοπεδωμένα tiles. */}
+      <Link
+        to="/workout"
+        className="flex items-center justify-between gap-3 rounded-xl bg-primary px-5 py-4 text-primary-foreground shadow-sm transition-transform active:scale-[0.99]"
+      >
+        <span>
+          <span className="block text-lg font-semibold">{t('dashboard.startCta')}</span>
+          <span className="block text-xs opacity-80">
+            {summary7.activeDays > 0
+              ? t('dashboard.activeThisWeek', { count: summary7.activeDays })
+              : t('dashboard.startSub')}
+          </span>
+        </span>
+        <Play className="h-6 w-6 shrink-0 fill-current" />
+      </Link>
 
       {/*
         Το Body/History/Progress δεν έχουν tab στο bottom nav — αυτή η σειρά
