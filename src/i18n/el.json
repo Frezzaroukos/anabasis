@@ -201,7 +201,8 @@
     "library": "Η βιβλιοθήκη σου",
     "theme_dark": "Σκούρο",
     "theme_light": "Φωτεινό",
-    "theme_auto": "Αυτόματο"
+    "theme_auto": "Αυτόματο",
+    "accent": "Χρώμα accent"
   },
   "common": {
     "save": "Αποθήκευση",

@@ -8,7 +8,7 @@ import { exportAll, importAll, updateSettings } from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Moon, Sun, Monitor } from 'lucide-react';
-import { getStoredTheme, setTheme, type Theme } from '@/lib/theme';
+import { ACCENTS, getStoredAccent, getStoredTheme, setAccent, setTheme, type Theme } from '@/lib/theme';
 
 const REST_PRESETS = [60, 90, 120, 180, 240, 300];
 
@@ -17,6 +17,7 @@ export function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [theme, setThemeState] = useState<Theme>(getStoredTheme());
+  const [accent, setAccentState] = useState<string>(getStoredAccent());
 
   const settings = useLiveQuery(
     () => db.app_settings.where('user_id').equals(getCurrentUserId()).first(),
@@ -136,6 +137,27 @@ export function SettingsPage() {
               </button>
             );
           })}
+        </div>
+
+        {/* Accent — το κύριο χρώμα του app. Το χρυσό των ρεκόρ μένει σταθερό. */}
+        <p className="mb-2 mt-4 text-sm font-medium">{t('settings.accent')}</p>
+        <div className="flex flex-wrap gap-2">
+          {ACCENTS.map((a) => (
+            <button
+              key={a.key}
+              onClick={() => {
+                setAccent(a.key);
+                setAccentState(a.key);
+              }}
+              aria-label={a.label}
+              aria-pressed={accent === a.key}
+              title={a.label}
+              className={`h-9 w-9 rounded-full border-2 transition-transform active:scale-90 ${
+                accent === a.key ? 'border-foreground scale-110' : 'border-transparent'
+              }`}
+              style={{ background: a.swatch }}
+            />
+          ))}
         </div>
       </section>
 
