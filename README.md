@@ -2,8 +2,18 @@
 
 **Weighted calisthenics & skill progression tracker.** Offline-first PWA, bilingual (EN/EL).
 
+![tests](https://img.shields.io/badge/tests-128%20passing-brightgreen)
+![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
+![PWA](https://img.shields.io/badge/PWA-offline--first-purple)
+![license](https://img.shields.io/badge/license-MIT-lightgrey)
+
+**▶ Live demo: [anabasis.axonos.dev](https://anabasis.axonos.dev)**
+
 > *Anabasis* — «η ανάβαση». Κάθε skill είναι μια σκάλα: tuck → advanced tuck → straddle → full.
 > Η εφαρμογή υπάρχει για να δείχνει σε ποιο σκαλί είσαι και ποιο είναι το επόμενο.
+
+Χτίστηκε από τον [Aggelos Frezzaroukos](https://github.com/Frezzaroukos) — ενοποιώντας έξι προηγούμενες
+προσπάθειες σε ένα προϊόν. Offline-first, TypeScript strict, 128 tests.
 
 ---
 
