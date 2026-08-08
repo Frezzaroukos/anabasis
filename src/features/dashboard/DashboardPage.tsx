@@ -15,6 +15,7 @@ import {
 } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/Logo';
+import { Card, SectionTitle } from '@/components/ui/Section';
 import { InsightsCard } from './components/InsightsCard';
 import { ConsistencyHeatmap } from './components/ConsistencyHeatmap';
 
@@ -150,30 +151,30 @@ export function DashboardPage() {
       <InsightsCard />
       <ConsistencyHeatmap />
 
+      {/* Λεπτή γραμμή συνέπειας — όχι κουτί: μετρά ενεργές μέρες (και εν εξελίξει
+          προπονήσεις), κρατά τα νούμερα ορατά χωρίς να προσθέτει άλλο ένα box. */}
       {hasTrainingData && (
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="mb-3 text-sm font-medium">{t('dashboard.consistency')}</h2>
-          <dl className="grid grid-cols-2 gap-2 text-center">
-            <div className="rounded-md bg-muted/50 py-2">
-              <dt className="text-[10px] uppercase text-muted-foreground">
-                {t('dashboard.last7days')}
-              </dt>
-              <dd className="font-mono text-sm">{summary7.activeDays}/7</dd>
-            </div>
-            <div className="rounded-md bg-muted/50 py-2">
-              <dt className="text-[10px] uppercase text-muted-foreground">
-                {t('dashboard.last30days')}
-              </dt>
-              <dd className="font-mono text-sm">{summary30.activeDays}/30</dd>
-            </div>
-          </dl>
-        </section>
+        <div className="flex items-center gap-5 px-1 text-xs text-muted-foreground">
+          <span className="font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+            {t('dashboard.consistency')}
+          </span>
+          <span>
+            {t('dashboard.last7days')}{' '}
+            <span className="font-mono text-foreground">{summary7.activeDays}/7</span>
+          </span>
+          <span>
+            {t('dashboard.last30days')}{' '}
+            <span className="font-mono text-foreground">{summary30.activeDays}/30</span>
+          </span>
+        </div>
       )}
 
       {showVolumeCompare && (
-        <section className="rounded-lg border border-border bg-card p-4">
+        <Card>
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-medium">{t('dashboard.weeklyVolume')}</h2>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {t('dashboard.weeklyVolume')}
+            </h2>
             {volumeDeltaPct != null && (
               // Περισσότερος όγκος = πρόοδος, γι' αυτό πράσινο στην αύξηση εδώ —
               // αντίθετη λογική απ' το βάρος στο BodyPage, όπου η αύξηση δεν είναι
@@ -200,25 +201,28 @@ export function DashboardPage() {
               </span>
             )}
           </div>
-          <p className="mt-2 font-mono text-lg">
-            {Math.round(thisWeekVolume / 1000)}k{' '}
-            <span className="text-xs text-muted-foreground">
+          <p className="mt-2 font-mono text-3xl leading-none">
+            {Math.round(thisWeekVolume / 1000)}
+            <span className="text-lg text-muted-foreground">k</span>{' '}
+            <span className="text-xs font-sans text-muted-foreground">
               kg · {t('dashboard.thisWeek')}
             </span>
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-1.5 text-xs text-muted-foreground">
             {t('dashboard.vsLastWeek')}: {Math.round(lastWeekVolume / 1000)}k kg
           </p>
-        </section>
+        </Card>
       )}
 
       {prs.length > 0 && (
         <Link
           to="/history"
-          className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+          className="block rounded-xl border border-border/70 bg-card p-4 transition-colors hover:bg-muted/40"
         >
-          <h2 className="mb-3 text-sm font-medium">{t('history.recentPRs')} →</h2>
-          <ul className="divide-y divide-border">
+          <SectionTitle action={<span className="text-muted-foreground">→</span>}>
+            {t('history.recentPRs')}
+          </SectionTitle>
+          <ul className="divide-y divide-border/60">
             {prs.map((pr) => (
               <li key={pr.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
                 <span className="text-amber-500" aria-hidden>
@@ -244,9 +248,11 @@ export function DashboardPage() {
       {hasSkillData && (
         <Link
           to="/skills"
-          className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+          className="block rounded-xl border border-border/70 bg-card p-4 transition-colors hover:bg-muted/40"
         >
-          <h2 className="mb-3 text-sm font-medium">{t('dashboard.skillsProgress')} →</h2>
+          <SectionTitle action={<span className="text-muted-foreground">→</span>}>
+            {t('dashboard.skillsProgress')}
+          </SectionTitle>
           <dl className="grid grid-cols-2 gap-2 text-center">
             <div className="rounded-md bg-muted/50 py-2">
               <dt className="text-[10px] uppercase text-muted-foreground">
@@ -267,9 +273,11 @@ export function DashboardPage() {
       {(latestWeight != null || latestBF != null || todayBalance != null) && (
         <Link
           to="/body"
-          className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+          className="block rounded-xl border border-border/70 bg-card p-4 transition-colors hover:bg-muted/40"
         >
-          <h2 className="mb-3 text-sm font-medium">{t('body.title')} →</h2>
+          <SectionTitle action={<span className="text-muted-foreground">→</span>}>
+            {t('body.title')}
+          </SectionTitle>
           <dl className="grid grid-cols-2 gap-2 text-center">
             {latestWeight != null && (
               <div className="rounded-md bg-muted/50 py-2">

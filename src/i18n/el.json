@@ -240,7 +240,12 @@
     "next": "Επόμενος μήνας",
     "noActivity": "Καμία δραστηριότητα.",
     "pickDay": "Διάλεξε μέρα",
-    "addWorkout": "Προσθήκη προπόνησης"
+    "addWorkout": "Προσθήκη προπόνησης",
+    "monthWorkouts": "{{count}} προπόνηση αυτόν τον μήνα",
+    "monthWorkouts_other": "{{count}} προπονήσεις αυτόν τον μήνα",
+    "monthDays": "{{count}} μέρα",
+    "monthDays_other": "{{count}} μέρες",
+    "monthEmpty": "Καμία προπόνηση αυτόν τον μήνα ακόμα"
   },
   "body": {
     "weight": "Βάρος",

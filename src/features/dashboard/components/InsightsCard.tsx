@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Flame, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 import { getTrainingInsights } from '@/lib/db/queries';
+import { Card, SectionTitle } from '@/components/ui/Section';
 
 /**
  * Rule-based insights: κάθε πρόταση εμφανίζεται ΜΟΝΟ αν περνά κατώφλι δεδομένων
@@ -62,16 +63,16 @@ export function InsightsCard() {
   if (lines.length === 0) return null;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <h2 className="mb-3 text-sm font-medium">{t('insights.title')}</h2>
-      <ul className="space-y-2">
+    <Card>
+      <SectionTitle>{t('insights.title')}</SectionTitle>
+      <ul className="space-y-2.5">
         {lines.map((l, i) => (
-          <li key={i} className="flex items-center gap-2 text-sm">
+          <li key={i} className="flex items-center gap-2.5 text-sm">
             <span className="shrink-0">{l.icon}</span>
             <span>{l.text}</span>
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   );
 }

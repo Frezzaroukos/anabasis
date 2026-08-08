@@ -105,6 +105,7 @@ describe('DashboardPage — με δεδομένα', () => {
   it('δείχνει consistency, όγκο, PR, skills και σώμα με πραγματικά δεδομένα', async () => {
     render(wrap(<DashboardPage />));
 
+    // Η συνέπεια 7/30 ζει πλέον ως λεπτή γραμμή (όχι ξεχωριστό κουτί).
     await waitFor(() => expect(screen.getByText(dashboardEn.consistency)).toBeTruthy());
     expect(screen.getByText('1/7')).toBeTruthy();
 
