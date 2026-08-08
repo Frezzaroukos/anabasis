@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#0B1017"/>
+  <g opacity="0.05" transform="translate(636,-28) scale(1.1)">
+  <path d="M37 404 H144 V348 H228 V280 H312 V198 H396 V100 H475 V427 H37 Z" fill="#FFFFFF" opacity="0.3"/>
+  <path d="M60 404 H144 V348 H228 V280 H312 V198 H396 V100 H452" fill="none" stroke="#FFFFFF" stroke-width="46"
+        stroke-linecap="butt" stroke-linejoin="miter"/>
+  </g>
+  <g transform="translate(96,84) scale(0.5)">
+  <path d="M37 404 H144 V348 H228 V280 H312 V198 H396 V100 H475 V427 H37 Z" fill="#3B82F6" opacity="0.3"/>
+  <path d="M60 404 H144 V348 H228 V280 H312 V198 H396 V100 H452" fill="none" stroke="#3B82F6" stroke-width="46"
+        stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M396 100 H452" fill="none" stroke="#E0B341" stroke-width="46" stroke-linecap="butt"/></g>
+  <text x="96" y="404" fill="#E6EDF5" font-family="Inter, system-ui, sans-serif"
+        font-size="86" font-weight="600" letter-spacing="-3">Anabasis</text>
+  <text x="96" y="458" fill="#8A97A8" font-family="Inter, system-ui, sans-serif"
+        font-size="29">Weighted calisthenics &amp; skill progression · offline-first</text>
+  <rect x="96" y="500" width="104" height="4" rx="2" fill="#E0B341"/>
+  <text x="96" y="556" fill="#5C6B7E" font-family="Inter, system-ui, sans-serif"
+        font-size="25" letter-spacing="1">anabasis.axonos.dev</text>
+</svg>
