@@ -61,7 +61,7 @@ export function SkillLadderCard() {
                   'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-medium',
                   s.state === 'done' && 'border-primary/60 bg-primary/15 text-primary',
                   s.state === 'current' &&
-                    'border-primary bg-primary text-primary-foreground ring-4 ring-primary/20',
+                    'animate-ladder-step border-primary bg-primary text-primary-foreground',
                   s.state === 'locked' && 'border-border bg-muted/40 text-muted-foreground',
                 )}
               >

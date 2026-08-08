@@ -9,6 +9,7 @@ import { db, queries } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
 import { listActivities } from '@/lib/db/queries';
 import type { ActivityKind } from '@/lib/db/types';
+import { ActivityChip } from '@/components/ActivityChip';
 import { LastWorkoutCard } from './components/LastWorkoutCard';
 import { cn } from '@/lib/utils';
 
@@ -57,26 +58,17 @@ export function WorkoutPage() {
         </p>
         <div className="flex flex-wrap gap-2">
           {activities.map((a) => (
-            <button
+            <ActivityChip
               key={a.key}
+              activity={a}
+              selected={kind === a.key}
               onClick={() => setKind(a.key)}
-              className={cn(
-                'rounded-md border border-border px-3 py-1.5 text-sm transition-colors',
-                kind === a.key
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent',
-              )}
-            >
-              <span aria-hidden className="mr-1.5">
-                {a.icon}
-              </span>
-              {a.label}
-            </button>
+            />
           ))}
           <Link
             to="/activities"
             aria-label={t('activities.title')}
-            className="flex items-center gap-1.5 rounded-md border border-dashed border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex items-center gap-1.5 rounded-full border border-dashed border-border px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Settings2 className="h-3.5 w-3.5" />
             {t('activities.title')}

@@ -308,7 +308,8 @@
     "skillLadder": "Skill ladder",
     "viewAll": "View all",
     "ladderProgress": "{{done}} of {{total}} steps cleared",
-    "ofLastWeek": "of last week"
+    "ofLastWeek": "of last week",
+    "welcomeBack": "Welcome back, {{name}}."
   },
   "setType": {
     "normal": "Normal",

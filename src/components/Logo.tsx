@@ -22,33 +22,38 @@ import { cn } from '@/lib/utils';
 const LEG = 'M60 452 L256 60 L452 452';
 const STROKE = 48;
 
-/** Προϋπολογισμένα από τη γεωμετρία του counter (βλ. scripts/gen-brand-assets.mjs). */
-const RUNGS_3 = [
-  { x: 204.8, y: 248, w: 102.3 },
-  { x: 170.8, y: 316, w: 170.3 },
-  { x: 136.8, y: 384, w: 238.3 },
+/**
+ * Προϋπολογισμένα από τη γεωμετρία του counter (βλ. scripts/gen-brand-assets.mjs).
+ * Τα σκαλιά ΑΓΓΙΖΟΥΝ τα σκέλη — έτσι διαβάζονται ως σκαλοπάτια χτισμένα μέσα
+ * στο Α, όχι ως γραμμές που επιπλέουν.
+ */
+const RUNGS_4 = [
+  { x: 194.8, y: 236, w: 122.3 },
+  { x: 169.8, y: 286, w: 172.3 },
+  { x: 144.8, y: 336, w: 222.3 },
+  { x: 119.8, y: 386, w: 272.3 },
 ];
 const RUNGS_2 = [
-  { x: 185.8, y: 286, w: 140.3 },
-  { x: 141.8, y: 374, w: 228.3 },
+  { x: 171.8, y: 282, w: 168.3 },
+  { x: 132.8, y: 360, w: 246.3 },
 ];
-const APEX_3 = 'M256 145.7 L224.8 208 L287.2 208 Z';
-const APEX_2 = 'M256 145.7 L211.8 234 L300.2 234 Z';
+const APEX_4 = 'M256 113.7 L208.8 208 L303.2 208 Z';
+const APEX_2 = 'M256 113.7 L194.8 236 L317.2 236 Z';
 
 export function Logo({
   className,
   summit = false,
-  rungs = 3,
+  rungs = 4,
 }: {
   className?: string;
   /** Χρυσή κορυφή (= PR). Για app icon / splash / branding. */
   summit?: boolean;
-  /** 2 για μικρά μεγέθη (≤24px), 3 για κανονικά. */
-  rungs?: 2 | 3;
+  /** 2 για μικρά μεγέθη (≤24px), 4 για κανονικά. */
+  rungs?: 2 | 4;
 }) {
-  const steps = rungs === 2 ? RUNGS_2 : RUNGS_3;
-  const apex = rungs === 2 ? APEX_2 : APEX_3;
-  const h = rungs === 2 ? 40 : 32;
+  const steps = rungs === 2 ? RUNGS_2 : RUNGS_4;
+  const apex = rungs === 2 ? APEX_2 : APEX_4;
+  const h = rungs === 2 ? 34 : 24;
 
   return (
     <svg
@@ -70,7 +75,7 @@ export function Logo({
         />
         <path d={apex} fill={summit ? 'hsl(var(--gold))' : 'currentColor'} />
         {steps.map((s) => (
-          <rect key={s.y} x={s.x} y={s.y} width={s.w} height={h} rx={3} fill="currentColor" />
+          <rect key={s.y} x={s.x} y={s.y} width={s.w} height={h} rx={2} fill="currentColor" />
         ))}
       </g>
     </svg>
