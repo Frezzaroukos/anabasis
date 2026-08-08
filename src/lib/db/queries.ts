@@ -1689,6 +1689,69 @@ export interface TrainingInsights {
  * templated πρόταση). ΚΑΘΕ τιμή έχει «κατώφλι» (n≥…) στην UI ώστε να μη
  * βγαίνουν θορυβώδεις ισχυρισμοί από ελάχιστα δεδομένα.
  */
+export interface ActiveLadderStep {
+  id: string;
+  stepNumber: number;
+  name: string;
+  targetValue: number;
+  targetUnit: string;
+  state: 'done' | 'current' | 'locked';
+}
+
+export interface ActiveLadder {
+  skillId: string;
+  skillName: string;
+  steps: ActiveLadderStep[];
+  /** Πόσα βήματα έχουν ολοκληρωθεί / σύνολο. */
+  done: number;
+  total: number;
+}
+
+/**
+ * Το skill που δουλεύει ΤΩΡΑ ο χρήστης, μαζί με ολόκληρη τη σκάλα του.
+ *
+ * Αυτό είναι το διαφοροποιητικό του Anabasis έναντι των generic gym apps:
+ * δεν μετράς σετ, ανεβαίνεις μια αλυσίδα προαπαιτούμενων. Το dashboard το
+ * δείχνει πρώτο. Διαλέγουμε το πιο πρόσφατα ενημερωμένο `in_progress` skill
+ * — αν δεν υπάρχει κανένα, γυρνάμε null (ΔΕΝ μαντεύουμε ένα τυχαίο).
+ */
+export async function getActiveLadder(): Promise<ActiveLadder | null> {
+  const progress = (
+    await db.user_skill_progress.where('user_id').equals(getCurrentUserId()).toArray()
+  )
+    .filter((p) => p.status === 'in_progress')
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+
+  const active = progress[0];
+  if (!active) return null;
+
+  const bundle = await getSkillWithSteps(active.skill_id);
+  if (!bundle || bundle.steps.length === 0) return null;
+
+  const completions = await getStepCompletions(bundle.steps.map((s) => s.id));
+
+  // Το «τρέχον» είναι το ρητό current_step_id· αλλιώς το πρώτο ανολοκλήρωτο.
+  const firstOpen = bundle.steps.find((s) => !completions.has(s.id));
+  const currentId = active.current_step_id ?? firstOpen?.id ?? null;
+
+  const steps: ActiveLadderStep[] = bundle.steps.map((s) => ({
+    id: s.id,
+    stepNumber: s.step_number,
+    name: s.name,
+    targetValue: s.target_value,
+    targetUnit: s.target_unit,
+    state: completions.has(s.id) ? 'done' : s.id === currentId ? 'current' : 'locked',
+  }));
+
+  return {
+    skillId: bundle.skill.id,
+    skillName: bundle.skill.name,
+    steps,
+    done: steps.filter((s) => s.state === 'done').length,
+    total: steps.length,
+  };
+}
+
 export async function getTrainingInsights(days = 30): Promise<TrainingInsights> {
   const daysList = await trainingDays();
   const daySet = new Set(daysList);

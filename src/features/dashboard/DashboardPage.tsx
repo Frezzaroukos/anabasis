@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { Minus, Play, TrendingDown, TrendingUp } from 'lucide-react';
+import { Flame, Minus, Play, TrendingDown, TrendingUp, User } from 'lucide-react';
 import {
   getAllSkillProgress,
   getBodyMetric,
   getBodyTrend,
   getRecentPRs,
+  getTrainingInsights,
   getTrainingSummary,
   getVolumeTrend,
   listActivities,
@@ -14,20 +15,12 @@ import {
   localDay,
 } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
-import { Logo } from '@/components/Logo';
+import { Wordmark } from '@/components/Logo';
 import { Card, SectionTitle } from '@/components/ui/Section';
+import { ProgressRing } from '@/components/ui/ProgressRing';
 import { InsightsCard } from './components/InsightsCard';
 import { ConsistencyHeatmap } from './components/ConsistencyHeatmap';
-
-/**
- * Σελίδες που δεν έχουν tab στο bottom nav — πρέπει να είναι προσβάσιμες
- * από εδώ με ένα tap, ανεξάρτητα από το αν υπάρχουν ήδη δεδομένα.
- */
-const QUICK_LINKS = [
-  { to: '/body', labelKey: 'body.title' },
-  { to: '/history', labelKey: 'history.title' },
-  { to: '/progress', labelKey: 'progress.title' },
-] as const;
+import { SkillLadderCard } from './components/SkillLadderCard';
 
 /**
  * «Μια ματιά»: η πρώτη οθόνη που βλέπει ο χρήστης. Κάθε section κρύβεται αν
@@ -56,6 +49,8 @@ export function DashboardPage() {
   const todayMetric = useLiveQuery(() => getBodyMetric(today), [today]);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const activities = useLiveQuery(() => listActivities(true), [], []);
+  const insights = useLiveQuery(() => getTrainingInsights(30), [], null);
+  const streakDays = insights?.streakDays ?? 0;
 
   const exerciseNames = new Map(exercises.map((e) => [e.id, e.name]));
   const activityLabels = new Map(activities.map((a) => [a.key, a.label]));
@@ -103,10 +98,41 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
-        <Logo className="h-7 w-7 text-primary" />
+      {/*
+        App bar: ταυτότητα αριστερά, κατάσταση + προφίλ δεξιά. Πριν υπήρχε
+        μόνο ένας τίτλος «Overview» και ένα logo να αιωρείται στη γωνία —
+        δεν έλεγε ποιος είσαι ούτε πώς πας.
+      */}
+      <header className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <Wordmark />
+          <div className="flex items-center gap-2">
+            {streakDays > 0 && (
+              <span
+                className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1"
+                title={t('insights.streak', { count: streakDays })}
+              >
+                <Flame className="h-3.5 w-3.5 text-[hsl(var(--gold))]" />
+                <span className="font-mono text-xs">{streakDays}</span>
+              </span>
+            )}
+            <Link
+              to="/profile"
+              aria-label={t('profile.title')}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <User className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
+        </div>
       </header>
+
+      {/* Το διαφοροποιητικό πρώτο: πού είσαι στη σκάλα του ενεργού skill. */}
+      <SkillLadderCard />
 
       {/* Hero: η #1 ενέργεια μιας fitness app είναι «ξεκίνα». Χρυσό, prominent,
           σπάει το «κουτί-σε-κουτί» — δίνει σαφή πρωταρχική δράση, όχι ισοπεδωμένα tiles. */}
@@ -116,31 +142,17 @@ export function DashboardPage() {
       >
         <span>
           <span className="block text-lg font-semibold">{t('dashboard.startCta')}</span>
-          <span className="block text-xs opacity-80">
+          <span className="block text-xs opacity-70">
             {summary7.activeDays > 0
               ? t('dashboard.activeThisWeek', { count: summary7.activeDays })
               : t('dashboard.startSub')}
           </span>
         </span>
-        <Play className="h-6 w-6 shrink-0 fill-current" />
+        {/* Το εικονίδιο επιβεβαιώνει τη δράση — δεν διεκδικεί την προσοχή. */}
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15">
+          <Play className="h-4 w-4 fill-current" />
+        </span>
       </Link>
-
-      {/*
-        Το Body/History/Progress δεν έχουν tab στο bottom nav — αυτή η σειρά
-        είναι ο μόνος δρόμος προς αυτά, γι' αυτό μένει πάντα ορατή (ακόμα και
-        χωρίς δεδομένα, ώστε η πρώτη καταγραφή να είναι ένα tap μακριά).
-      */}
-      <div className="flex gap-2">
-        {QUICK_LINKS.map(({ to, labelKey }) => (
-          <Link
-            key={to}
-            to={to}
-            className="flex-1 rounded-md border border-border bg-card py-2 text-center text-xs font-medium transition-colors hover:bg-muted/50"
-          >
-            {t(labelKey)}
-          </Link>
-        ))}
-      </div>
 
       {!hasAnyData && (
         <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
@@ -201,16 +213,35 @@ export function DashboardPage() {
               </span>
             )}
           </div>
-          <p className="mt-2 font-mono text-3xl leading-none">
-            {Math.round(thisWeekVolume / 1000)}
-            <span className="text-lg text-muted-foreground">k</span>{' '}
-            <span className="text-xs font-sans text-muted-foreground">
-              kg · {t('dashboard.thisWeek')}
-            </span>
-          </p>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            {t('dashboard.vsLastWeek')}: {Math.round(lastWeekVolume / 1000)}k kg
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-mono text-3xl leading-none">
+                {Math.round(thisWeekVolume / 1000)}
+                <span className="text-lg text-muted-foreground">k</span>{' '}
+                <span className="font-sans text-xs text-muted-foreground">
+                  kg · {t('dashboard.thisWeek')}
+                </span>
+              </p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {t('dashboard.vsLastWeek')}: {Math.round(lastWeekVolume / 1000)}k kg
+              </p>
+            </div>
+            {/*
+              Ο δακτύλιος συγκρίνει με την ΠΕΡΑΣΜΕΝΗ εβδομάδα — πραγματικό
+              μέγεθος, όχι εφευρεμένος στόχος. Εμφανίζεται μόνο αν υπάρχει
+              περασμένη εβδομάδα να συγκριθεί, αλλιώς δεν σημαίνει τίποτα.
+            */}
+            {lastWeekVolume > 0 && (
+              <ProgressRing
+                value={Math.min(thisWeekVolume, lastWeekVolume)}
+                max={lastWeekVolume}
+                size={76}
+                thickness={7}
+                label={`${Math.round((thisWeekVolume / lastWeekVolume) * 100)}%`}
+                sub={t('dashboard.ofLastWeek')}
+              />
+            )}
+          </div>
         </Card>
       )}
 
