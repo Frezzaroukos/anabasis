@@ -6,9 +6,35 @@ import { Logo } from './Logo';
  * ώστε μια μελλοντική αλλαγή να γίνεται με μάτια, όχι από μνήμη.
  */
 
-/** V2 — ΤΟ ΕΝΕΡΓΟ: προοδευτική σκάλα + μάζα + χρυσή κορυφή. */
-export function LogoAscent({ className }: { className?: string }) {
+/** V3 — ΤΟ ΕΝΕΡΓΟ: «Άλφα με σκάλα» + χρυσή κορυφή. */
+export function LogoAlphaLadder({ className }: { className?: string }) {
   return <Logo className={className} summit />;
+}
+
+/** V3b — Η εκδοχή μικρού μεγέθους (2 σκαλιά) — favicon/16px. */
+export function LogoAlphaLadderSmall({ className }: { className?: string }) {
+  return <Logo className={className} summit rungs={2} />;
+}
+
+/** V2 — Προοδευτική σκάλα + μάζα. Καλό σήμα, αλλά όχι μονόγραμμα. */
+export function LogoAscent({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 512 512" className={className} role="img" aria-label="Anabasis v2">
+      <path
+        d="M37 404 H144 V348 H228 V280 H312 V198 H396 V100 H475 V427 H37 Z"
+        fill="currentColor"
+        opacity={0.3}
+      />
+      <path
+        d="M60 404 H144 V348 H228 V280 H312 V198 H396 V100 H452"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={46}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+      />
+    </svg>
+  );
 }
 
 /** V1 — Το πρώτο draft: λεπτή κλιμακωτή γραμμή με κουκκίδα. Πολύ «stock icon». */
@@ -56,8 +82,10 @@ export function LogoAlpha({ className }: { className?: string }) {
 }
 
 export const LOGO_VARIANTS = [
-  { key: 'ascent', label: 'Ascent (ενεργό)', Comp: LogoAscent },
-  { key: 'ascent-flat', label: 'Ascent — flat', Comp: LogoAscentFlat },
+  { key: 'alpha-ladder', label: 'Άλφα-σκάλα (ενεργό)', Comp: LogoAlphaLadder },
+  { key: 'alpha-ladder-sm', label: 'Άλφα-σκάλα — μικρό (2 σκαλιά)', Comp: LogoAlphaLadderSmall },
+  { key: 'ascent', label: 'v2 — Ascent', Comp: LogoAscent },
+  { key: 'ascent-flat', label: 'v2 — flat', Comp: LogoAscentFlat },
   { key: 'stair-v1', label: 'v1 draft', Comp: LogoStairV1 },
-  { key: 'alpha', label: 'Alpha (απορρίφθηκε)', Comp: LogoAlpha },
+  { key: 'alpha', label: 'Chevron (απορρίφθηκε)', Comp: LogoAlpha },
 ] as const;
