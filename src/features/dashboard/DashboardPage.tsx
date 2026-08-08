@@ -6,6 +6,7 @@ import {
   getAllSkillProgress,
   getBodyMetric,
   getBodyTrend,
+  getCurrentProfile,
   getRecentPRs,
   getTrainingInsights,
   getTrainingSummary,
@@ -14,6 +15,7 @@ import {
   listExercises,
   localDay,
 } from '@/lib/db/queries';
+import { DEFAULT_USER_ID } from '@/lib/db/session';
 import { cn } from '@/lib/utils';
 import { Wordmark } from '@/components/Logo';
 import { Card, SectionTitle } from '@/components/ui/Section';
@@ -51,6 +53,10 @@ export function DashboardPage() {
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const insights = useLiveQuery(() => getTrainingInsights(30), [], null);
   const streakDays = insights?.streakDays ?? 0;
+  const profile = useLiveQuery(() => getCurrentProfile(), [], undefined);
+  // Το default προφίλ έχει γενικό όνομα — χαιρετάμε μόνο όποιον το όρισε ο ίδιος.
+  const profileName =
+    profile?.display_name && profile.id !== DEFAULT_USER_ID ? profile.display_name : null;
 
   const exerciseNames = new Map(exercises.map((e) => [e.id, e.name]));
   const activityLabels = new Map(activities.map((a) => [a.key, a.label]));
@@ -97,7 +103,7 @@ export function DashboardPage() {
     todayBalance != null;
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       {/*
         App bar: ταυτότητα αριστερά, κατάσταση + προφίλ δεξιά. Πριν υπήρχε
         μόνο ένας τίτλος «Overview» και ένα logo να αιωρείται στη γωνία —
@@ -126,7 +132,13 @@ export function DashboardPage() {
           </div>
         </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
+          {/*
+            Με προφίλ: χαιρετισμός με το όνομα. Χωρίς: ο ουδέτερος τίτλος —
+            ΔΕΝ επινοούμε όνομα ούτε γράφουμε «Welcome back, athlete».
+          */}
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {profileName ? t('dashboard.welcomeBack', { name: profileName }) : t('dashboard.title')}
+          </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
         </div>
       </header>

@@ -308,7 +308,8 @@
     "skillLadder": "Σκάλα skill",
     "viewAll": "Όλα",
     "ladderProgress": "{{done}} από {{total}} βήματα",
-    "ofLastWeek": "της περσινής εβδ."
+    "ofLastWeek": "της περσινής εβδ.",
+    "welcomeBack": "Καλώς ήρθες, {{name}}."
   },
   "setType": {
     "normal": "Κανονικό",

@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { getCalendar, listActivities, localDay, startWorkout } from '@/lib/db/queries';
 import type { DayActivities } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
+import { ActivityChip } from '@/components/ActivityChip';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
@@ -126,19 +127,19 @@ export function CalendarPage() {
               : t('calendar.monthEmpty')}
           </p>
         </div>
-        <div className="flex gap-1">
-          <Link
-            to="/body"
-            className="rounded-md border border-border px-3 py-1 text-sm hover:bg-accent"
-          >
-            {t('body.title')}
-          </Link>
+        {/*
+          Ένα ενιαίο σύνολο πλοήγησης. Πριν, ένας σύνδεσμος «Σώμα» ήταν
+          σφηνωμένος ανάμεσα στα βελάκια — άσχετη σελίδα σε θέση ελέγχου
+          μήνα· ζει πλέον στο «Περισσότερα». Τα βελάκια ήταν χαρακτήρες
+          «←/→» σε κουτάκια· τώρα εικονίδια, ίδιου βάρους με τα υπόλοιπα.
+        */}
+        <div className="flex shrink-0 items-center rounded-lg border border-border/70 bg-card">
           <button
             onClick={() => shift(-1)}
             aria-label={t('calendar.prev')}
-            className="rounded-md border border-border px-3 py-1 text-sm hover:bg-accent"
+            className="rounded-l-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            ←
+            <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={() => {
@@ -146,16 +147,16 @@ export function CalendarPage() {
               setCursor({ year: d.getFullYear(), month: d.getMonth() });
               setSelected(today);
             }}
-            className="rounded-md border border-border px-3 py-1 text-sm hover:bg-accent"
+            className="border-x border-border/70 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
           >
             {t('calendar.today')}
           </button>
           <button
             onClick={() => shift(1)}
             aria-label={t('calendar.next')}
-            className="rounded-md border border-border px-3 py-1 text-sm hover:bg-accent"
+            className="rounded-r-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            →
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </header>
@@ -278,16 +279,10 @@ export function CalendarPage() {
 
       {/* Επιλογή δραστηριότητας → φτιάχνει προπόνηση στην επιλεγμένη μέρα */}
       <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title={t('calendar.addWorkout')}>
-        <div className="grid grid-cols-2 gap-2 px-4 pb-4">
+        {/* Ίδια γλώσσα με το ημερολόγιο: το χρώμα ΕΙΝΑΙ η δραστηριότητα. */}
+        <div className="flex flex-wrap gap-2 px-4 pb-4">
           {activeActivities.map((a) => (
-            <button
-              key={a.key}
-              onClick={() => void onAddOnDay(a.key)}
-              className="flex items-center gap-2 rounded-lg border border-border px-3 py-3 text-left text-sm hover:bg-accent"
-            >
-              <span aria-hidden className="text-lg">{a.icon}</span>
-              <span className="truncate">{a.label}</span>
-            </button>
+            <ActivityChip key={a.key} activity={a} onClick={() => void onAddOnDay(a.key)} />
           ))}
         </div>
       </BottomSheet>

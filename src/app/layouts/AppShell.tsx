@@ -33,7 +33,14 @@ export function AppShell() {
           retryLabel={t('common.retry')}
         >
           <Suspense fallback={<PageFallback />}>
-            <Outlet />
+            {/*
+              `key={pathname}` ξαναπαίζει την είσοδο σε κάθε πλοήγηση: το
+              περιεχόμενο ανεβαίνει (ανάβαση), δεν αναβοσβήνει. Χωρίς αυτό οι
+              σελίδες «κόβονταν» — σωστό αλλά άψυχο.
+            */}
+            <div key={pathname} className="animate-rise-in">
+              <Outlet />
+            </div>
           </Suspense>
         </ErrorBoundary>
       </main>

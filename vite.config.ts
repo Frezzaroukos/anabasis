@@ -34,6 +34,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Τα press assets είναι για ανθρώπους (README/δελτίο τύπου), όχι για
+        // την εφαρμογή — 2.7MB δεν έχουν λόγο να μπουν στο offline cache.
+        globIgnores: ['press/**'],
       },
     }),
   ],

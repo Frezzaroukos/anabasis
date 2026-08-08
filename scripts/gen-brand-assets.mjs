@@ -31,16 +31,18 @@ const LEG = `M${CX - HALF_RUN} ${FOOT_Y} L${CX} ${APEX_Y} L${CX + HALF_RUN} ${FO
 /** Μισό πλάτος του εσωτερικού κενού σε ύψος y. */
 const counterHalf = (y) => Math.max(0, SLOPE * (y - APEX_Y) - H_THICK / 2);
 
+// inset 0 → τα σκαλιά αγγίζουν τα σκέλη, όπως στο brand sheet.
 const PRESETS = {
-  3: { top: 248, gap: 36, h: 32, inset: 16 },
-  2: { top: 286, gap: 48, h: 40, inset: 16 },
+  4: { top: 236, gap: 26, h: 24, inset: 0 },
+  2: { top: 282, gap: 44, h: 34, inset: 0 },
 };
 
 const BLUE = '#2F81F7'; // Electric Blue family — ίδιο με το --primary του app
+const WHITE = '#F7F7F7'; // Ghost White — το σήμα στο app icon, όπως στο brand sheet
 const GOLD = '#E0B341';
 const BG = '#0D1117'; // Deep Charcoal
 
-const mark = (color, { summit = false, rungs = 3 } = {}) => {
+const mark = (color, { summit = false, rungs = 4 } = {}) => {
   const { top, gap, h, inset } = PRESETS[rungs];
   const bars = [];
   for (let i = 0, y = top; i < rungs; i++, y += h + gap) {
@@ -64,20 +66,25 @@ const mark = (color, { summit = false, rungs = 3 } = {}) => {
 const svg = (body, w = 512, h = 512, vb = '0 0 512 512') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}">${body}</svg>\n`;
 
-/** Το σήμα μέσα σε rounded-square, με padding ασφαλείας για maskable icons. */
-const inSquare = (scale, radius, summit) => `
+/**
+ * Το σήμα μέσα σε rounded-square. Το app icon είναι ΛΕΥΚΟ σε ανθρακί —
+ * ακριβώς όπως το brand sheet (πάνελ «03 / APP ICON»). Το μπλε μένει για το
+ * UI, όπου παίρνει το accent του χρήστη· ένα app icon δεν αλλάζει χρώμα.
+ */
+const inSquare = (scale, radius, { color = WHITE, summit = false, rungs = 4 } = {}) => `
   <rect width="512" height="512" rx="${radius}" fill="${BG}"/>
-  <g transform="translate(256,258) scale(${scale}) translate(-256,-256)">${mark(BLUE, { summit })}</g>`;
+  <g transform="translate(256,258) scale(${scale}) translate(-256,-256)">${mark(color, { summit, rungs })}</g>`;
 
 const files = {
   // Το «γυμνό» σήμα — για inline χρήση/έγγραφα
   'logo.svg': svg(mark(BLUE, { summit: true })),
-  // Favicon: 2 σκαλιά — στα 16px του tab τα 3 κλείνουν οπτικά μεταξύ τους
+  'logo-white.svg': svg(mark(WHITE)),
+  // Favicon: 2 σκαλιά — στα 16px του tab τα 4 κλείνουν οπτικά μεταξύ τους
   'favicon.svg': svg(mark(BLUE, { summit: true, rungs: 2 })),
   // App icon (PWA/Apple): container + safe area
-  'app-icon.svg': svg(inSquare(0.78, 116, true)),
+  'app-icon.svg': svg(inSquare(0.78, 116)),
   // Maskable: πιο μικρό σήμα, ώστε να αντέχει το circular crop του Android
-  'app-icon-maskable.svg': svg(inSquare(0.62, 0, true)),
+  'app-icon-maskable.svg': svg(inSquare(0.62, 0)),
 };
 
 for (const [name, content] of Object.entries(files)) {

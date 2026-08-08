@@ -3,11 +3,11 @@
   <g opacity="0.045" transform="translate(700,40) scale(1.05)"><g transform="translate(256,256) scale(0.9) translate(-256,-256)">
   <path d="M60 452 L256 60 L452 452" fill="none" stroke="#FFFFFF" stroke-width="48"
         stroke-linecap="butt" stroke-linejoin="miter"/>
-  <path d="M256 145.7 L224.8 208 L287.2 208 Z" fill="#FFFFFF"/><rect x="204.8" y="248" width="102.3" height="32" rx="3" fill="#FFFFFF"/><rect x="170.8" y="316" width="170.3" height="32" rx="3" fill="#FFFFFF"/><rect x="136.8" y="384" width="238.3" height="32" rx="3" fill="#FFFFFF"/></g></g>
+  <path d="M256 113.7 L209.8 206 L302.2 206 Z" fill="#FFFFFF"/><rect x="194.8" y="236" width="122.3" height="24" rx="3" fill="#FFFFFF"/><rect x="169.8" y="286" width="172.3" height="24" rx="3" fill="#FFFFFF"/><rect x="144.8" y="336" width="222.3" height="24" rx="3" fill="#FFFFFF"/><rect x="119.8" y="386" width="272.3" height="24" rx="3" fill="#FFFFFF"/></g></g>
   <g transform="translate(84,132) scale(0.72)"><g transform="translate(256,256) scale(0.9) translate(-256,-256)">
   <path d="M60 452 L256 60 L452 452" fill="none" stroke="#2F81F7" stroke-width="48"
         stroke-linecap="butt" stroke-linejoin="miter"/>
-  <path d="M256 145.7 L224.8 208 L287.2 208 Z" fill="#E0B341"/><rect x="204.8" y="248" width="102.3" height="32" rx="3" fill="#2F81F7"/><rect x="170.8" y="316" width="170.3" height="32" rx="3" fill="#2F81F7"/><rect x="136.8" y="384" width="238.3" height="32" rx="3" fill="#2F81F7"/></g></g>
+  <path d="M256 113.7 L209.8 206 L302.2 206 Z" fill="#E0B341"/><rect x="194.8" y="236" width="122.3" height="24" rx="3" fill="#2F81F7"/><rect x="169.8" y="286" width="172.3" height="24" rx="3" fill="#2F81F7"/><rect x="144.8" y="336" width="222.3" height="24" rx="3" fill="#2F81F7"/><rect x="119.8" y="386" width="272.3" height="24" rx="3" fill="#2F81F7"/></g></g>
   <text x="470" y="292" fill="#F7F7F7" font-family="Inter, system-ui, sans-serif"
         font-size="76" font-weight="700" letter-spacing="12">ANABASIS</text>
   <text x="474" y="348" fill="#2F81F7" font-family="Inter, system-ui, sans-serif"
