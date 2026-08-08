@@ -8,20 +8,28 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'robots.txt'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'og.png', 'robots.txt'],
       manifest: {
-        name: 'Anabasis',
+        name: 'Anabasis — weighted calisthenics & skill progression',
         short_name: 'Anabasis',
-        description: 'Weighted calisthenics & skill progression tracker',
-        theme_color: '#0a0a0a',
-        background_color: '#0a0a0a',
+        description:
+          'Κάθε skill είναι μια σκάλα. Offline-first tracker για weighted calisthenics και skill progressions.',
+        theme_color: '#0B1017',
+        background_color: '#0B1017',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        categories: ['health', 'fitness', 'sports'],
         icons: [
-          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          // Ξεχωριστό maskable: το Android κόβει κύκλο — το σήμα είναι μικρότερο εκεί.
+          { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+        shortcuts: [
+          { name: 'Νέα προπόνηση', short_name: 'Προπόνηση', url: '/workout' },
+          { name: 'Ημερολόγιο', short_name: 'Ημερολόγιο', url: '/calendar' },
+          { name: 'Πρόοδος', short_name: 'Πρόοδος', url: '/progress' },
         ],
       },
       workbox: {
