@@ -4,37 +4,40 @@
 
 /*
  * Χρωματικό σύστημα Anabasis.
- * Signature: χρυσό-χάλκινο «ανόδου» (--primary) — το θέμα του app είναι η
- * ανάβαση προς την κορυφή, οπότε το accent είναι το χρώμα της κατάκτησης.
- * Χρησιμοποιείται σε primary actions + επιτεύγματα (PR/mastery).
+ *
+ * Δύο χρώματα με ξεχωριστές δουλειές — ποτέ εναλλάξιμα:
+ *  --primary (Electric Blue) = δράση & πρόοδος (κουμπιά, ενεργά states, ring)
+ *  --gold                    = ΕΠΙΤΕΥΓΜΑ (PR, mastery, κορυφή του σήματος)
+ * Αν το χρυσό γινόταν και primary, το PR θα έπαυε να ξεχωρίζει.
+ * Το accent είναι εναλλάξιμο από τον χρήστη (lib/theme.ts) — το χρυσό όχι.
  */
 @layer base {
   :root {
-    --background: 40 20% 99%;
-    --foreground: 30 12% 10%;
+    --background: 210 20% 99%;
+    --foreground: 215 25% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 30 12% 10%;
+    --card-foreground: 215 25% 11%;
 
-    /* Χρυσό-χάλκινο, πιο σκούρο σε light theme για contrast σε λευκό */
-    --primary: 32 78% 42%;
-    --primary-foreground: 40 40% 98%;
+    /* Πιο σκούρο μπλε σε light theme για contrast σε λευκό */
+    --primary: 214 85% 46%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 12% 95%;
-    --secondary-foreground: 30 10% 12%;
+    --secondary: 214 15% 95%;
+    --secondary-foreground: 215 25% 12%;
 
-    --muted: 40 10% 95%;
-    --muted-foreground: 30 6% 42%;
+    --muted: 214 14% 95%;
+    --muted-foreground: 215 12% 42%;
 
-    --accent: 40 30% 94%;
-    --accent-foreground: 30 10% 12%;
+    --accent: 214 30% 94%;
+    --accent-foreground: 215 25% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 40 10% 88%;
-    --input: 40 10% 88%;
-    --ring: 32 78% 42%;
+    --border: 214 14% 88%;
+    --input: 214 14% 88%;
+    --ring: 214 85% 46%;
 
     /* Χρυσό επίτευξης — PR badges, mastery. Πιο λαμπερό από το primary. */
     --gold: 42 92% 50%;
@@ -49,32 +52,37 @@
   }
 
   .dark {
-    /* Ζεστό, όχι ουδέτερο γκρι — ταιριάζει με το χρυσό accent */
-    --background: 30 10% 5%;
-    --foreground: 40 15% 96%;
+    /*
+     * «Deep Charcoal» #0D1117 — ψυχρό ανθρακί, όχι ζεστό γκρι.
+     * Ήταν ζεστό όσο το accent ήταν χρυσό· με μπλε accent το ζεστό φόντο
+     * τραβούσε το μπλε προς το μωβ. Ψυχρή βάση = καθαρό μπλε + το χρυσό
+     * του PR ξεχωρίζει ακόμα περισσότερο (συμπληρωματικά).
+     */
+    --background: 215 21% 7%;
+    --foreground: 210 17% 96%;
 
-    --card: 30 9% 8%;
-    --card-foreground: 40 15% 96%;
+    --card: 215 20% 11%;
+    --card-foreground: 210 17% 96%;
 
-    /* Ζεστό χρυσό-amber· λάμπει σε σκούρο φόντο χωρίς να τυφλώνει στις 6πμ */
-    --primary: 40 84% 56%;
-    --primary-foreground: 32 40% 8%;
+    /* Electric Blue — το accent του brand· λάμπει χωρίς να τυφλώνει στις 6πμ */
+    --primary: 212 90% 60%;
+    --primary-foreground: 215 40% 8%;
 
-    --secondary: 30 6% 13%;
-    --secondary-foreground: 40 15% 96%;
+    --secondary: 215 17% 16%;
+    --secondary-foreground: 210 17% 96%;
 
-    --muted: 30 6% 13%;
-    --muted-foreground: 40 8% 62%;
+    --muted: 215 17% 16%;
+    --muted-foreground: 215 12% 64%;
 
-    --accent: 32 20% 16%;
-    --accent-foreground: 40 15% 96%;
+    --accent: 215 20% 19%;
+    --accent-foreground: 210 17% 96%;
 
     --destructive: 0 63% 48%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 32 10% 16%;
-    --input: 32 10% 16%;
-    --ring: 40 84% 56%;
+    --border: 215 15% 20%;
+    --input: 215 15% 20%;
+    --ring: 212 90% 60%;
 
     --gold: 42 95% 58%;
 
