@@ -240,7 +240,12 @@
     "next": "Next month",
     "noActivity": "No activity logged.",
     "pickDay": "Pick a day",
-    "addWorkout": "Add workout"
+    "addWorkout": "Add workout",
+    "monthWorkouts": "{{count}} workout this month",
+    "monthWorkouts_other": "{{count}} workouts this month",
+    "monthDays": "{{count}} day",
+    "monthDays_other": "{{count}} days",
+    "monthEmpty": "No workouts this month yet"
   },
   "body": {
     "weight": "Weight",

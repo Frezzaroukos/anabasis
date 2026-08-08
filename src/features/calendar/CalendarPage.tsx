@@ -92,12 +92,40 @@ export function CalendarPage() {
 
   const day = selected ? cal.get(selected) : undefined;
 
+  // Σύνοψη ορατού μήνα — δίνει νόημα σε άδεια/γεμάτη σελίδα χωρίς να ανοίξεις μέρα.
+  const monthStats = useMemo(() => {
+    let workouts = 0;
+    const kinds = new Set<string>();
+    const days = new Set<string>();
+    for (const [key, d] of cal) {
+      if (!key.startsWith(`${cursor.year}-${String(cursor.month + 1).padStart(2, '0')}`)) continue;
+      for (const w of d.workouts) {
+        workouts += 1;
+        kinds.add(w.kind);
+        days.add(key);
+      }
+    }
+    return { workouts, kinds: kinds.size, days: days.size };
+  }, [cal, cursor.year, cursor.month]);
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight capitalize">
-          {monthLabel}
-        </h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight capitalize">
+            {monthLabel}
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {monthStats.workouts > 0
+              ? [
+                  t('calendar.monthWorkouts', { count: monthStats.workouts }),
+                  monthStats.days > 1 ? t('calendar.monthDays', { count: monthStats.days }) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : t('calendar.monthEmpty')}
+          </p>
+        </div>
         <div className="flex gap-1">
           <Link
             to="/body"
@@ -152,15 +180,20 @@ export function CalendarPage() {
                 key={c.key}
                 onClick={() => setSelected(c.key)}
                 className={cn(
-                  'flex min-h-[54px] flex-col items-center gap-1 rounded-md border p-1 transition-colors',
-                  c.key === today ? 'border-primary' : 'border-transparent',
-                  selected === c.key ? 'bg-accent' : 'hover:bg-muted/50',
+                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg border p-1 transition-colors',
+                  selected === c.key
+                    ? 'border-primary/70 bg-accent'
+                    : c.key === today
+                      ? 'border-primary/40 bg-primary/5'
+                      : 'border-transparent hover:bg-muted/40',
                 )}
               >
                 <span
                   className={cn(
-                    'text-xs',
-                    c.key === today ? 'font-semibold' : 'text-muted-foreground',
+                    'flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums',
+                    c.key === today
+                      ? 'bg-primary font-semibold text-primary-foreground'
+                      : 'text-muted-foreground',
                   )}
                 >
                   {c.day}
