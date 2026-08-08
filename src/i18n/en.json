@@ -239,7 +239,8 @@
     "prev": "Previous month",
     "next": "Next month",
     "noActivity": "No activity logged.",
-    "pickDay": "Pick a day"
+    "pickDay": "Pick a day",
+    "addWorkout": "Add workout"
   },
   "body": {
     "weight": "Weight",

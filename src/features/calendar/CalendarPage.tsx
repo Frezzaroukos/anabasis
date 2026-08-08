@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getCalendar, listActivities, localDay } from '@/lib/db/queries';
+import { Plus } from 'lucide-react';
+import { getCalendar, listActivities, localDay, startWorkout } from '@/lib/db/queries';
 import type { DayActivities } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
+import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 /**
@@ -28,8 +30,19 @@ export function CalendarPage() {
     return { year: d.getFullYear(), month: d.getMonth() };
   });
   const [selected, setSelected] = useState<string | null>(today);
+  const [addOpen, setAddOpen] = useState(false);
+  const navigate = useNavigate();
 
   const activities = useLiveQuery(() => listActivities(true), [], []);
+  const activeActivities = activities.filter((a) => !a.is_archived);
+
+  // Προσθήκη προπόνησης στην επιλεγμένη μέρα (σήμερα = live, παλιά = backdated).
+  const onAddOnDay = async (activityKey: string) => {
+    if (!selected) return;
+    await startWorkout(activityKey, selected === today ? undefined : selected);
+    setAddOpen(false);
+    navigate('/workout');
+  };
   const dotOf = (kind: string) =>
     activities.find((a) => a.key === kind)?.dot_class ?? FALLBACK_DOT;
   const labelOf = (kind: string) =>
@@ -218,7 +231,33 @@ export function CalendarPage() {
             {t('body.weight')}: {day.weight} kg
           </p>
         )}
+
+        {selected && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" />
+            {t('calendar.addWorkout')}
+          </button>
+        )}
       </section>
+
+      {/* Επιλογή δραστηριότητας → φτιάχνει προπόνηση στην επιλεγμένη μέρα */}
+      <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title={t('calendar.addWorkout')}>
+        <div className="grid grid-cols-2 gap-2 px-4 pb-4">
+          {activeActivities.map((a) => (
+            <button
+              key={a.key}
+              onClick={() => void onAddOnDay(a.key)}
+              className="flex items-center gap-2 rounded-lg border border-border px-3 py-3 text-left text-sm hover:bg-accent"
+            >
+              <span aria-hidden className="text-lg">{a.icon}</span>
+              <span className="truncate">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
     </div>
   );
 }
