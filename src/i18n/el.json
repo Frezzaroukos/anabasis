@@ -11,7 +11,8 @@
     "calendar": "Ημερολόγιο",
     "home": "Αρχική",
     "programs": "Ρουτίνες",
-    "profile": "Προφίλ"
+    "profile": "Προφίλ",
+    "more": "Περισσότερα"
   },
   "workout": {
     "title": "Προπόνηση",
@@ -302,7 +303,12 @@
     "last91days": "Τελευταίες 91 ημέρες",
     "startCta": "Προσθήκη προπόνησης",
     "startSub": "Διάλεξε δραστηριότητα και πάμε",
-    "activeThisWeek": "{{count}} μέρες προπόνηση αυτή την εβδομάδα"
+    "activeThisWeek": "{{count}} μέρες προπόνηση αυτή την εβδομάδα",
+    "subtitle": "Συνέχισε την ανάβαση. Κυρίεψε το σώμα σου.",
+    "skillLadder": "Σκάλα skill",
+    "viewAll": "Όλα",
+    "ladderProgress": "{{done}} από {{total}} βήματα",
+    "ofLastWeek": "της περσινής εβδ."
   },
   "setType": {
     "normal": "Κανονικό",

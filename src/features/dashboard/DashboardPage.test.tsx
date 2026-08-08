@@ -60,11 +60,9 @@ describe('DashboardPage — empty DB', () => {
     expect(screen.queryByText(dashboardEn.consistency)).toBeNull();
     expect(screen.queryByText('0/7')).toBeNull();
 
-    // Body/History/Progress δεν έχουν bottom-nav tab — η quick-links σειρά
-    // πρέπει να μένει ορατή ακόμα και χωρίς καμία καταγραφή.
-    expect(screen.getByText('Body')).toBeTruthy();
-    expect(screen.getByText('History')).toBeTruthy();
-    expect(screen.getByText('Exercise progress')).toBeTruthy();
+    // Body/History/Progress ζουν πλέον στο «Περισσότερα» του bottom nav —
+    // η Αρχική δεν κουβαλά πια σειρά με μικρά κουμπάκια.
+    expect(screen.queryByText('Exercise progress')).toBeNull();
   });
 });
 

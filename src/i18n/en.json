@@ -11,7 +11,8 @@
     "calendar": "Calendar",
     "home": "Home",
     "programs": "Programs",
-    "profile": "Profile"
+    "profile": "Profile",
+    "more": "More"
   },
   "workout": {
     "title": "Workout",
@@ -302,7 +303,12 @@
     "last91days": "Last 91 days",
     "startCta": "Add workout",
     "startSub": "Pick an activity and go",
-    "activeThisWeek": "{{count}} days trained this week"
+    "activeThisWeek": "{{count}} days trained this week",
+    "subtitle": "Keep climbing. Master your body.",
+    "skillLadder": "Skill ladder",
+    "viewAll": "View all",
+    "ladderProgress": "{{done}} of {{total}} steps cleared",
+    "ofLastWeek": "of last week"
   },
   "setType": {
     "normal": "Normal",
