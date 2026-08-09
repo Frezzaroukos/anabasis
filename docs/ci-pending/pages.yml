@@ -1,0 +1,59 @@
+name: Deploy demo to GitHub Pages
+
+# Το anabasis.axonos.dev περνά από Cloudflare tunnel στο PC του Aggelos —
+# ζει μόνο όσο ο υπολογιστής είναι ανοιχτός. Ένα demo link που πεθαίνει είναι
+# χειρότερο από κανένα, οπότε το GitHub Pages κρατά ένα αντίγραφο που δεν
+# σβήνει ποτέ. Τα δεδομένα είναι ούτως ή άλλως τοπικά (IndexedDB), άρα το
+# demo δουλεύει πλήρως χωρίς backend.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Μία ανάπτυξη τη φορά· ουρά αντί για ακύρωση, ώστε να μη μένει το Pages
+# σε μισοτελειωμένο build.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Build
+        env:
+          # Το Pages σερβίρει από υποφάκελο· το ίδιο path διαβάζει και ο router.
+          BASE_PATH: /anabasis/
+        run: npm run build
+
+      # Το Pages δεν κάνει SPA fallback: ένα refresh στο /anabasis/skills θα
+      # έδινε 404. Το 404.html είναι αντίγραφο του index — ο router αναλαμβάνει.
+      - name: SPA fallback
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
