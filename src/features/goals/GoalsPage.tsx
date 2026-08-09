@@ -98,10 +98,14 @@ export function GoalsPage() {
                 <p className="mt-0.5 font-mono text-xs text-muted-foreground">
                   {p.current} / {p.target} {p.unit}
                 </p>
+                {/* Κυλιόμενο παράθυρο δεν έχει προθεσμία — «μένουν 0 μέρες»
+                    θα ήταν ψέμα, όχι πληροφορία. */}
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {p.daysLeft > 0
-                    ? t('goals.daysLeft', { count: p.daysLeft })
-                    : t('goals.lastDay')}
+                  {p.daysLeft == null
+                    ? t('goals.noDeadline')
+                    : p.daysLeft > 1
+                      ? t('goals.daysLeft', { count: p.daysLeft })
+                      : t('goals.lastDay')}
                 </p>
               </div>
               <div className="flex shrink-0 flex-col">

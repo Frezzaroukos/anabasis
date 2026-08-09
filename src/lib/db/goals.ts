@@ -15,16 +15,74 @@ import { v4 as uuid } from 'uuid';
 import { db } from './schema';
 import { getCurrentUserId } from './session';
 import { setVolume } from '../domain/volume';
-import type { Goal, GoalMetric, GoalPeriod } from './types';
+import type { Goal, GoalMetric, GoalPeriod, GoalPeriodAnchor } from './types';
 
 const now = () => new Date().toISOString();
 
-/** Πόσες μέρες πίσω κοιτά κάθε περίοδος (κυλιόμενο παράθυρο). */
+/** Πόσες μέρες πίσω κοιτά κάθε περίοδος όταν είναι κυλιόμενη. */
 export const PERIOD_DAYS: Record<GoalPeriod, number> = {
   day: 1,
   week: 7,
   month: 30,
 };
+
+export interface GoalWindow {
+  /** Αρχή του παραθύρου (00:00 τοπική ώρα). */
+  start: Date;
+  /**
+   * Τέλος του παραθύρου. Για κυλιόμενα είναι «τώρα» — δεν υπάρχει προθεσμία,
+   * το παράθυρο σέρνεται. Για ημερολογιακά είναι η στιγμή που κλείνει.
+   */
+  end: Date;
+  /** Μέρες που απομένουν ως το κλείσιμο· null όταν δεν υπάρχει προθεσμία. */
+  daysLeft: number | null;
+}
+
+/**
+ * Το παράθυρο μέτρησης ενός στόχου.
+ *
+ * Καθαρή συνάρτηση με ενέσιμο «τώρα», ώστε να ελέγχεται σε συγκεκριμένες
+ * ημερομηνίες — αλλιώς τα tests για «η εβδομάδα ξεκινά Δευτέρα» θα άλλαζαν
+ * αποτέλεσμα ανάλογα με τη μέρα που τρέχουν.
+ *
+ * Η εβδομάδα ξεκινά **Δευτέρα** (ευρωπαϊκή σύμβαση, ίδια με το ημερολόγιο
+ * της εφαρμογής· δεν αναμιγνύουμε δύο ορισμούς «εβδομάδας» στο ίδιο app).
+ */
+export function goalWindow(
+  period: GoalPeriod,
+  anchor: GoalPeriodAnchor,
+  now: Date = new Date(),
+): GoalWindow {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  if (anchor === 'rolling') {
+    start.setDate(start.getDate() - (PERIOD_DAYS[period] - 1));
+    return { start, end: now, daysLeft: null };
+  }
+
+  const end = new Date(start);
+  if (period === 'week') {
+    // getDay(): 0=Κυριακή → μετατροπή σε 0=Δευτέρα
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    end.setTime(start.getTime());
+    end.setDate(end.getDate() + 7);
+  } else if (period === 'month') {
+    start.setDate(1);
+    end.setTime(start.getTime());
+    end.setMonth(end.getMonth() + 1);
+  } else {
+    end.setDate(end.getDate() + 1);
+  }
+
+  // Το `end` είναι το πρώτο 00:00 ΕΚΤΟΣ παραθύρου· οι μέρες που απομένουν
+  // μετρώνται από τα μεσάνυχτα του σήμερα, όχι από την τρέχουσα ώρα.
+  const todayMidnight = new Date(now);
+  todayMidnight.setHours(0, 0, 0, 0);
+  const daysLeft = Math.round((end.getTime() - todayMidnight.getTime()) / 86_400_000);
+
+  return { start, end, daysLeft };
+}
 
 /** Μονάδα εμφάνισης ανά μέτρο — ώστε το UI να μη «μαντεύει». */
 export const METRIC_UNIT: Record<GoalMetric, string> = {
@@ -47,7 +105,7 @@ export async function listGoals(includeArchived = false): Promise<Goal[]> {
 
 export async function createGoal(
   input: Pick<Goal, 'metric' | 'target' | 'period'> &
-    Partial<Pick<Goal, 'label' | 'activity_key' | 'exercise_id'>>,
+    Partial<Pick<Goal, 'label' | 'activity_key' | 'exercise_id' | 'period_anchor'>>,
 ): Promise<Goal> {
   const t = now();
   const existing = await listGoals(true);
@@ -58,6 +116,9 @@ export async function createGoal(
     metric: input.metric,
     target: input.target,
     period: input.period,
+    // Ημερολογιακό by default: «αυτή την εβδομάδα» είναι ο τρόπος που
+    // σκέφτεται ο περισσότερος κόσμος όταν λέει «4 φορές την εβδομάδα».
+    period_anchor: input.period_anchor ?? 'calendar',
     activity_key: input.activity_key ?? null,
     exercise_id: input.exercise_id ?? null,
     display_order: existing.length,
@@ -100,8 +161,8 @@ export interface GoalProgress {
   /** 0..1 — κομμένο στο 1 για τον δακτύλιο· το `current` κρατά την αλήθεια. */
   ratio: number;
   unit: string;
-  /** Πόσες μέρες μένουν στο παράθυρο (για «προλαβαίνω;»). */
-  daysLeft: number;
+  /** Μέρες ως το κλείσιμο· null σε κυλιόμενο παράθυρο (δεν έχει προθεσμία). */
+  daysLeft: number | null;
 }
 
 /**
@@ -110,12 +171,10 @@ export interface GoalProgress {
  * Διαβάζει ΜΟΝΟ ολοκληρωμένες προπονήσεις: μια προπόνηση σε εξέλιξη θα
  * ανέβαζε τον δείκτη και μετά θα τον κατέβαζε αν την ακύρωνες.
  */
-export async function getGoalProgress(goal: Goal): Promise<GoalProgress> {
-  const days = PERIOD_DAYS[goal.period];
-  const since = new Date();
-  since.setDate(since.getDate() - (days - 1));
-  since.setHours(0, 0, 0, 0);
-  const sinceIso = since.toISOString();
+export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promise<GoalProgress> {
+  const win = goalWindow(goal.period, goal.period_anchor, now);
+  const startIso = win.start.toISOString();
+  const endIso = win.end.toISOString();
 
   const workouts = (
     await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
@@ -123,7 +182,8 @@ export async function getGoalProgress(goal: Goal): Promise<GoalProgress> {
     (w) =>
       w.deleted_at == null &&
       w.ended_at != null &&
-      w.started_at >= sinceIso &&
+      w.started_at >= startIso &&
+      w.started_at < endIso &&
       (goal.activity_key == null || w.activity_kind === goal.activity_key),
   );
 
@@ -163,12 +223,14 @@ export async function getGoalProgress(goal: Goal): Promise<GoalProgress> {
     target: goal.target,
     ratio: goal.target > 0 ? Math.min(1, current / goal.target) : 0,
     unit: METRIC_UNIT[goal.metric],
-    daysLeft: days - 1 - Math.floor((Date.now() - since.getTime()) / 86_400_000),
+    daysLeft: win.daysLeft,
   };
 }
 
 /** Πρόοδος για όλους τους ενεργούς στόχους, με τη σειρά που τους έβαλε ο χρήστης. */
-export async function getAllGoalProgress(): Promise<GoalProgress[]> {
+export async function getAllGoalProgress(now: Date = new Date()): Promise<GoalProgress[]> {
   const goals = await listGoals();
-  return Promise.all(goals.map(getGoalProgress));
+  // ΟΧΙ `goals.map(getGoalProgress)`: το .map περνά και τον δείκτη, που θα
+  // κατέληγε στην παράμετρο `now` ως αριθμός.
+  return Promise.all(goals.map((g) => getGoalProgress(g, now)));
 }

@@ -218,6 +218,24 @@ export class AnabasisDB extends Dexie {
             s.dashboard_cards ??= [];
           });
       });
+
+    /**
+     * v9 — ημερολογιακή vs κυλιόμενη περίοδος στόχου.
+     *
+     * Οι υπάρχοντες στόχοι γίνονται ρητά `rolling`, γιατί έτσι μετρούσαν ήδη:
+     * ένα backfill σε `calendar` θα άλλαζε σιωπηλά το νόημα ενός στόχου που
+     * ο χρήστης είχε ήδη ορίσει, και θα «πετούσε» πρόοδο κάθε Δευτέρα χωρίς
+     * να το ζητήσει κανείς. Οι ΝΕΟΙ στόχοι ξεκινούν ως `calendar` (βλ.
+     * createGoal) επειδή έτσι σκέφτεται ο περισσότερος κόσμος.
+     */
+    this.version(9).upgrade(async (tx) => {
+      await tx
+        .table('goals')
+        .toCollection()
+        .modify((g) => {
+          g.period_anchor ??= 'rolling';
+        });
+    });
   }
 }
 

@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createGoal, updateGoal } from '@/lib/db/goals';
 import { listActivities, listExercises } from '@/lib/db/queries';
-import { BUILTIN_GOAL_METRICS, BUILTIN_GOAL_PERIODS } from '@/lib/db/types';
-import type { Goal, GoalMetric, GoalPeriod } from '@/lib/db/types';
+import {
+  BUILTIN_GOAL_METRICS,
+  BUILTIN_GOAL_PERIODS,
+  BUILTIN_PERIOD_ANCHORS,
+} from '@/lib/db/types';
+import type { Goal, GoalMetric, GoalPeriod, GoalPeriodAnchor } from '@/lib/db/types';
 import { goalTitle } from '../goalTitle';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +41,7 @@ export function GoalFormSheet({
 
   const [metric, setMetric] = useState<GoalMetric>('sessions');
   const [period, setPeriod] = useState<GoalPeriod>('week');
+  const [anchor, setAnchor] = useState<GoalPeriodAnchor>('calendar');
   const [target, setTarget] = useState('4');
   const [activityKey, setActivityKey] = useState<string | null>(null);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
@@ -46,6 +51,7 @@ export function GoalFormSheet({
     if (!open) return;
     setMetric(goal?.metric ?? 'sessions');
     setPeriod(goal?.period ?? 'week');
+    setAnchor(goal?.period_anchor ?? 'calendar');
     setTarget(String(goal?.target ?? 4));
     setActivityKey(goal?.activity_key ?? null);
     setExerciseId(goal?.exercise_id ?? null);
@@ -76,6 +82,7 @@ export function GoalFormSheet({
       metric,
       target: targetNum,
       period,
+      period_anchor: anchor,
       activity_key: activityKey,
       exercise_id: exerciseId,
       label: label.trim() || null,
@@ -125,6 +132,24 @@ export function GoalFormSheet({
             </div>
           </Field>
         </div>
+
+        {/*
+          Πότε μηδενίζει ο μετρητής. Δύο εξίσου σωστές νοοτροπίες, οπότε
+          διαλέγει ο χρήστης — και εξηγούμε τη διαφορά από κάτω, γιατί
+          «ημερολογιακό/κυλιόμενο» δεν λέει τίποτα από μόνο του.
+        */}
+        <Field label={t('goals.anchorLabel')}>
+          <div className="flex gap-2">
+            {BUILTIN_PERIOD_ANCHORS.map((a) => (
+              <button key={a} type="button" onClick={() => setAnchor(a)} className={chip(anchor === a)}>
+                {t(`goals.anchor.${a}`)}
+              </button>
+            ))}
+          </div>
+          <span className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            {t(`goals.anchorHint.${anchor}.${period}`)}
+          </span>
+        </Field>
 
         <Field label={t('goals.activityLabel')}>
           <div className="flex flex-wrap gap-2">
