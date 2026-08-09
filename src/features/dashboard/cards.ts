@@ -50,6 +50,13 @@ export const CARD_LABEL: Record<DashboardCardKey, string> = {
  */
 export const LOCKED_VISIBLE: DashboardCardKey[] = ['cta'];
 
+/**
+ * Κάρτες που πιάνουν ΟΛΟ το πλάτος στο desktop grid.
+ * Η σκάλα χρειάζεται οριζόντιο χώρο για τα βήματά της, και η πρωταρχική
+ * δράση δεν πρέπει να μοιράζεται σειρά με στατιστικά.
+ */
+export const FULL_WIDTH: DashboardCardKey[] = ['skillLadder', 'cta', 'consistency'];
+
 export interface CardPref {
   key: string;
   visible: boolean;

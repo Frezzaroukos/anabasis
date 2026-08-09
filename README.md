@@ -12,7 +12,7 @@ Offline-first PWA · TypeScript strict · bilingual (EN/EL)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
-**[▶ Live demo](https://frezzaroukos.github.io/anabasis/)** · no signup, no backend, data stays on your device
+**[▶ Live demo](https://anabasis.axonos.dev)** · no signup, no backend, data stays on your device
 
 <img src="docs/screenshots/hero.png" alt="Dashboard, goals, workout and calendar screens" width="100%">
 

@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BottomTabNav } from '@/components/layout/BottomTabNav';
+import { SideNav } from '@/components/layout/SideNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingOverlay } from '@/features/onboarding/OnboardingOverlay';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
@@ -25,8 +26,14 @@ export function AppShell() {
   const { pathname } = useLocation();
 
   return (
-    <div className="flex min-h-full flex-col bg-background">
-      <main className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-6 safe-top">
+    /*
+     * Κινητό: μία στήλη με tabs στον πάτο.
+     * Tablet/desktop (≥md): πλαϊνή στήλη πλοήγησης + πιο φαρδύ περιεχόμενο.
+     * Χωρίς αυτό, σε οθόνη 1440px το app ήταν μια λωρίδα 448px σε μαύρο κενό.
+     */
+    <div className="flex min-h-full bg-background">
+      <SideNav />
+      <main className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-6 safe-top md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl">
         <ErrorBoundary
           key={pathname}
           message={t('common.pageError')}
