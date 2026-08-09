@@ -7,7 +7,6 @@
 **Weighted-calisthenics & skill-progression tracker.**
 Offline-first PWA · TypeScript strict · bilingual (EN/EL)
 
-[![CI](https://github.com/Frezzaroukos/anabasis/actions/workflows/ci.yml/badge.svg)](https://github.com/Frezzaroukos/anabasis/actions/workflows/ci.yml)
 ![tests](https://img.shields.io/badge/tests-154%20passing-brightgreen)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
