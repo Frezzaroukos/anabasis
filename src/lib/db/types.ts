@@ -301,9 +301,24 @@ export const BUILTIN_GOAL_METRICS = [
 ] as const;
 export type GoalMetric = (typeof BUILTIN_GOAL_METRICS)[number];
 
-/** Το παράθυρο μέτρησης. Κυλιόμενο, όχι ημερολογιακό — «οι τελευταίες N μέρες». */
+/** Το μήκος του παραθύρου μέτρησης. */
 export const BUILTIN_GOAL_PERIODS = ['week', 'month', 'day'] as const;
 export type GoalPeriod = (typeof BUILTIN_GOAL_PERIODS)[number];
+
+/**
+ * ΠΟΥ ξεκινά το παράθυρο — και οι δύο απόψεις είναι σωστές:
+ *
+ *  `calendar` — «αυτή την εβδομάδα»: Δευτέρα→Κυριακή, 1η→τέλος μήνα. Έχει
+ *    προθεσμία· την Κυριακή το βράδυ ξέρεις αν τα κατάφερες και τη Δευτέρα
+ *    μηδενίζει. Έτσι σκέφτονται οι περισσότεροι.
+ *  `rolling` — «τις τελευταίες 7 μέρες»: το παράθυρο σέρνεται μαζί σου.
+ *    Δεν υπάρχει προθεσμία, μόνο ρυθμός· δεν σε «τιμωρεί» επειδή η εβδομάδα
+ *    σου δεν ξεκινά Δευτέρα.
+ *
+ * Δεν διαλέγουμε εμείς: ο χρήστης το ορίζει ανά στόχο.
+ */
+export const BUILTIN_PERIOD_ANCHORS = ['calendar', 'rolling'] as const;
+export type GoalPeriodAnchor = (typeof BUILTIN_PERIOD_ANCHORS)[number];
 
 /**
  * Ένας στόχος στα μέτρα του χρήστη.
@@ -324,6 +339,8 @@ export interface Goal {
   metric: GoalMetric;
   target: number;
   period: GoalPeriod;
+  /** Ημερολογιακό («αυτή την εβδομάδα») ή κυλιόμενο («τελευταίες 7 μέρες»). */
+  period_anchor: GoalPeriodAnchor;
   /** null = όλες οι δραστηριότητες */
   activity_key: ActivityKind | null;
   /** null = όλες οι ασκήσεις (έχει νόημα σε volume/sets/reps) */

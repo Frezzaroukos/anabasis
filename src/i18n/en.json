@@ -496,6 +496,24 @@
       "day": "day",
       "week": "week",
       "month": "month"
-    }
+    },
+    "anchorLabel": "Counter resets",
+    "anchor": {
+      "calendar": "Calendar",
+      "rolling": "Rolling"
+    },
+    "anchorHint": {
+      "calendar": {
+        "week": "Monday to Sunday. Resets every Monday.",
+        "month": "1st to the end of the month. Resets on the 1st.",
+        "day": "Resets at midnight."
+      },
+      "rolling": {
+        "week": "Always the last 7 days. No deadline — the window moves with you.",
+        "month": "Always the last 30 days. No deadline.",
+        "day": "Today so far."
+      }
+    },
+    "noDeadline": "rolling window"
   }
 }
