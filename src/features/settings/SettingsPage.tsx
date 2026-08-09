@@ -92,14 +92,6 @@ export function SettingsPage() {
         <span aria-hidden className="text-muted-foreground">→</span>
       </Link>
 
-      <Link
-        to="/branding"
-        className="flex items-center justify-between rounded-lg border border-border bg-card p-4 text-sm transition-colors hover:bg-accent"
-      >
-        <span className="font-medium">Logo & Brand</span>
-        <span aria-hidden className="text-muted-foreground">→</span>
-      </Link>
-
       <DashboardLayoutSettings />
 
       {/* Η βιβλιοθήκη σου — οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}

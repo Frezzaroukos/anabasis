@@ -74,19 +74,13 @@ export function ActivityFormSheet({ open, onClose, activity = null }: ActivityFo
       title={activity ? t('activities.edit') : t('activities.new')}
     >
       <div className="space-y-4 px-4 pb-6">
+        {/*
+          Το όνομα πρώτο και μόνο του. Το πεδίο συμβόλου έπιανε την πρώτη θέση
+          ενώ το σύμβολο δεν εμφανίζεται πλέον πουθενά — η ταυτότητα της
+          δραστηριότητας είναι το ΧΡΩΜΑ (παρακάτω), που φαίνεται στο ημερολόγιο
+          και στα chips επιλογής.
+        */}
         <div className="flex items-end gap-2">
-          <label className="flex w-16 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t('activities.icon')}
-            </span>
-            <Input
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              placeholder={t('activities.iconPlaceholder')}
-              className="h-10 text-center text-lg"
-              maxLength={4}
-            />
-          </label>
           <label className="flex flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('activities.label')}

@@ -1,0 +1,129 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from './schema';
+import { setCurrentUserId } from './session';
+import {
+  addSet,
+  endWorkout,
+  getWorkoutDetail,
+  localDay,
+  setWorkoutActivity,
+  setWorkoutDate,
+  softDeleteWorkout,
+  startWorkout,
+} from './queries';
+import { SEED_EXERCISES } from './seeds';
+
+/**
+ * Η διόρθωση μιας καταγραφής είναι ο κανόνας, όχι η εξαίρεση — πατάς λάθος
+ * μέρα, λάθος άθλημα, ή απλά δεν έγινε. Τα tests εδώ φυλάνε το μέρος που
+ * ΔΕΝ σκάει όταν χαλάσει: τα παράγωγα (σετ, ρεκόρ) που μένουν πίσω και
+ * συνεχίζουν να λένε ψέματα.
+ */
+const squat = SEED_EXERCISES.find((e) => e.name === 'Back Squat')!;
+
+beforeEach(async () => {
+  setCurrentUserId('workout-edit-profile');
+  await db.exercises.bulkPut(SEED_EXERCISES);
+  await db.workouts.clear();
+  await db.sets.clear();
+  await db.personal_records.clear();
+});
+
+async function loggedWorkout(kind = 'strength', onDate?: string) {
+  const w = await startWorkout(kind, onDate);
+  await addSet({
+    workout_id: w.id,
+    exercise_id: squat.id,
+    weight_kg: 100,
+    bodyweight_kg: null,
+    reps: 5,
+    hold_seconds: null,
+  });
+  await endWorkout(w.id);
+  return w;
+}
+
+describe('softDeleteWorkout — τι παίρνει μαζί του', () => {
+  it('σβήνει και τα σετ της προπόνησης', async () => {
+    const w = await loggedWorkout();
+    expect((await db.sets.where('workout_id').equals(w.id).toArray()).every((s) => s.deleted_at == null)).toBe(true);
+
+    await softDeleteWorkout(w.id);
+
+    const sets = await db.sets.where('workout_id').equals(w.id).toArray();
+    expect(sets.length).toBeGreaterThan(0); // soft delete, όχι εξαφάνιση
+    expect(sets.every((s) => s.deleted_at != null)).toBe(true);
+  });
+
+  it('σβήνει τα ρεκόρ που γέννησε — αλλιώς το app λέει ψέματα', async () => {
+    const w = await loggedWorkout();
+    expect((await db.personal_records.toArray()).length).toBeGreaterThan(0);
+
+    await softDeleteWorkout(w.id);
+
+    expect(await db.personal_records.toArray()).toHaveLength(0);
+  });
+
+  it('ΔΕΝ αγγίζει ρεκόρ άλλης προπόνησης', async () => {
+    const keep = await loggedWorkout();
+    const drop = await loggedWorkout();
+    const before = (await db.personal_records.toArray()).filter((r) => r.workout_id === keep.id).length;
+    expect(before).toBeGreaterThan(0);
+
+    await softDeleteWorkout(drop.id);
+
+    const after = await db.personal_records.toArray();
+    expect(after.every((r) => r.workout_id === keep.id)).toBe(true);
+    expect(after).toHaveLength(before);
+  });
+
+  it('η σβησμένη προπόνηση δεν ανοίγει πια', async () => {
+    const w = await loggedWorkout();
+    await softDeleteWorkout(w.id);
+    expect(await getWorkoutDetail(w.id)).toBeNull();
+  });
+});
+
+describe('μετακίνηση & αλλαγή αθλήματος', () => {
+  it('αλλάζει μέρα κρατώντας την ώρα', async () => {
+    const w = await loggedWorkout('strength', '2026-08-05');
+    const beforeTime = new Date(w.started_at);
+
+    await setWorkoutDate(w.id, '2026-08-03');
+
+    const after = (await db.workouts.get(w.id))!;
+    expect(localDay(new Date(after.started_at))).toBe('2026-08-03');
+    expect(new Date(after.started_at).getHours()).toBe(beforeTime.getHours());
+  });
+
+  it('η μετακίνηση κρατά τη διάρκεια ίδια', async () => {
+    const w = await loggedWorkout();
+    const before = (await db.workouts.get(w.id))!;
+    const span =
+      before.ended_at != null
+        ? new Date(before.ended_at).getTime() - new Date(before.started_at).getTime()
+        : null;
+
+    await setWorkoutDate(w.id, '2026-07-01');
+
+    const after = (await db.workouts.get(w.id))!;
+    if (span != null && after.ended_at != null) {
+      expect(new Date(after.ended_at).getTime() - new Date(after.started_at).getTime()).toBe(span);
+    }
+  });
+
+  it('αγνοεί άκυρη ημερομηνία αντί να σπάσει την εγγραφή', async () => {
+    const w = await loggedWorkout();
+    const before = (await db.workouts.get(w.id))!.started_at;
+
+    await setWorkoutDate(w.id, 'όχι-ημερομηνία');
+
+    expect((await db.workouts.get(w.id))!.started_at).toBe(before);
+  });
+
+  it('αλλάζει άθλημα και φαίνεται στη λεπτομέρεια', async () => {
+    const w = await loggedWorkout('strength');
+    await setWorkoutActivity(w.id, 'run');
+    expect((await getWorkoutDetail(w.id))!.workout.activity_kind).toBe('run');
+  });
+});

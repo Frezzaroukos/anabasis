@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, ChevronRight, Trophy } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Pencil, Trophy } from 'lucide-react';
 import { getWorkoutDetail } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { Card, SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
+import { EditWorkoutSheet } from './components/EditWorkoutSheet';
 
 /**
  * Μία προπόνηση, όπως τη διαβάζεις εκ των υστέρων.
@@ -17,6 +19,7 @@ import { cn } from '@/lib/utils';
 export function WorkoutDetailPage() {
   const { t, i18n } = useTranslation();
   const { workoutId } = useParams<{ workoutId: string }>();
+  const [editOpen, setEditOpen] = useState(false);
   const detail = useLiveQuery(
     () => (workoutId ? getWorkoutDetail(workoutId) : Promise.resolve(null)),
     [workoutId],
@@ -44,9 +47,19 @@ export function WorkoutDetailPage() {
     <div className="space-y-6">
       <header className="space-y-2">
         <BackLink label={t('history.title')} />
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {workout.workout_type ?? activityLabel}
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {workout.workout_type ?? activityLabel}
+          </h1>
+          {/* Η διόρθωση ζει δίπλα σε αυτό που διορθώνεις, όχι σε άλλη οθόνη. */}
+          <button
+            onClick={() => setEditOpen(true)}
+            aria-label={t('history.editWorkout')}
+            className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </div>
         <p className="text-sm text-muted-foreground">
           {started.toLocaleDateString(i18n.resolvedLanguage, {
             weekday: 'long',
@@ -145,6 +158,8 @@ export function WorkoutDetailPage() {
           ))}
         </div>
       )}
+
+      <EditWorkoutSheet open={editOpen} onClose={() => setEditOpen(false)} workout={workout} />
 
       {workout.notes && (
         <Card>

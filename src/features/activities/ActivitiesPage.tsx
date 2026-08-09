@@ -64,10 +64,10 @@ export function ActivitiesPage() {
               key={a.id}
               className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
             >
-              <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', a.dot_class)} aria-hidden />
-              <span className="w-6 shrink-0 text-center text-base" aria-hidden>
-                {a.icon}
-              </span>
+              {/* Το χρώμα ΕΙΝΑΙ η ταυτότητα της δραστηριότητας — ίδιο σημάδι με
+                  το ημερολόγιο και τα chips. Το παλιό σύμβολο (⬛ ◆ ▲) έμενε
+                  μόνο εδώ και έσπαγε τη συνέπεια. */}
+              <span className={cn('h-3 w-3 shrink-0 rounded-full', a.dot_class)} aria-hidden />
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.label}</span>
               <div className="flex shrink-0 items-center gap-0.5">
                 <button
@@ -132,10 +132,7 @@ export function ActivitiesPage() {
                   key={a.id}
                   className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2 opacity-70"
                 >
-                  <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', a.dot_class)} aria-hidden />
-                  <span className="w-6 shrink-0 text-center text-base" aria-hidden>
-                    {a.icon}
-                  </span>
+                  <span className={cn('h-3 w-3 shrink-0 rounded-full', a.dot_class)} aria-hidden />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.label}</span>
                   <button
                     type="button"
