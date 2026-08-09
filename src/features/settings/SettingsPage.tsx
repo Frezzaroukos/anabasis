@@ -12,6 +12,8 @@ import { ACCENTS, getStoredAccent, getStoredTheme, setAccent, setTheme, type The
 
 const REST_PRESETS = [60, 90, 120, 180, 240, 300];
 
+import { DashboardLayoutSettings } from './components/DashboardLayoutSettings';
+
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -98,8 +100,9 @@ export function SettingsPage() {
         <span aria-hidden className="text-muted-foreground">→</span>
       </Link>
 
-      {/* Η βιβλιοθήκη σου — το bottom nav είναι γεμάτο στα 6 tabs, και αυτές
-          είναι οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
+      <DashboardLayoutSettings />
+
+      {/* Η βιβλιοθήκη σου — οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
       <section className="rounded-lg border border-border bg-card p-4">
         <p className="mb-3 text-sm font-medium">{t('settings.library')}</p>
         <div className="grid gap-2">
