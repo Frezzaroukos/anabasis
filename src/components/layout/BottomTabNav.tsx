@@ -13,6 +13,7 @@ import {
   Scale,
   Settings,
   Sparkles,
+  Target,
   User,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,7 @@ const TABS: TabDef[] = [
 /** Ό,τι δεν χωρά στα tabs — με σειρά συχνότητας χρήσης. */
 const MORE: TabDef[] = [
   { to: '/programs', labelKey: 'nav.programs', Icon: ClipboardList },
+  { to: '/goals', labelKey: 'goals.title', Icon: Target },
   { to: '/progress', labelKey: 'progress.title', Icon: LineChart },
   { to: '/history', labelKey: 'history.title', Icon: Activity },
   { to: '/body', labelKey: 'body.title', Icon: Scale },

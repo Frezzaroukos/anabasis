@@ -92,29 +92,32 @@ export function HistoryPage() {
         </div>
       ) : (
         <ul className="space-y-2">
+          {/* Κάθε γραμμή ανοίγει την προπόνηση — πριν ήταν στατικό κείμενο. */}
           {list.map((w) => (
-            <li
-              key={w.id}
-              className="rounded-lg border border-border bg-card p-3"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="truncate text-sm font-medium">
-                  {w.workout_type ?? t('workout.title')}
-                </p>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(w.started_at).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="mt-1 flex gap-3 font-mono text-xs text-muted-foreground">
-                <span>{formatHMS(w.duration_seconds ?? 0)}</span>
-                <span>·</span>
-                <span>
-                  {new Date(w.started_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
+            <li key={w.id}>
+              <Link
+                to={`/history/${w.id}`}
+                className="block rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="truncate text-sm font-medium">
+                    {w.workout_type ?? t('workout.title')}
+                  </p>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(w.started_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="mt-1 flex gap-3 font-mono text-xs text-muted-foreground">
+                  <span>{formatHMS(w.duration_seconds ?? 0)}</span>
+                  <span>·</span>
+                  <span>
+                    {new Date(w.started_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              </Link>
             </li>
           ))}
         </ul>

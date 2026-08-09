@@ -1552,6 +1552,8 @@ export async function createProfile(displayName: string): Promise<User> {
     id: uuid(),
     user_id: id,
     default_rest_timer_seconds: 180,
+    // Κενό = «καμία προτίμηση» → η Αρχική πέφτει στην προεπιλεγμένη διάταξη.
+    dashboard_cards: [],
     notify_pr: true,
     notify_session_reminder: false,
     notify_rest_timer: true,
@@ -1689,6 +1691,78 @@ export interface TrainingInsights {
  * templated πρόταση). ΚΑΘΕ τιμή έχει «κατώφλι» (n≥…) στην UI ώστε να μη
  * βγαίνουν θορυβώδεις ισχυρισμοί από ελάχιστα δεδομένα.
  */
+export interface WorkoutDetailExercise {
+  exerciseId: string;
+  name: string;
+  sets: SetEntry[];
+  volume: number;
+  topWeightKg: number | null;
+}
+
+export interface WorkoutDetail {
+  workout: Workout;
+  activityLabel: string;
+  exercises: WorkoutDetailExercise[];
+  totalVolume: number;
+  totalSets: number;
+  /** Τα ρεκόρ που έπεσαν ΜΕΣΑ σε αυτή την προπόνηση. */
+  prs: PersonalRecord[];
+}
+
+/**
+ * Μια ολοκληρωμένη προπόνηση, όπως τη διαβάζεις εκ των υστέρων.
+ *
+ * Υπήρχε κενό στη ροή: το ημερολόγιο έδειχνε «έκανες κάτι εκείνη τη μέρα»
+ * αλλά δεν πήγαινε πουθενά — έβλεπες μια κουκκίδα και τελείωνε εκεί. Χωρίς
+ * αυτή τη σελίδα, όλο το ιστορικό ήταν αριθμοί χωρίς περιεχόμενο.
+ */
+export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail | null> {
+  const workout = await db.workouts.get(workoutId);
+  if (!workout || workout.deleted_at != null || workout.user_id !== getCurrentUserId()) {
+    return null;
+  }
+
+  const [sets, allExercises, activity, prs] = await Promise.all([
+    db.sets.where('workout_id').equals(workoutId).sortBy('set_number'),
+    db.exercises.toArray(),
+    getActivity(workout.activity_kind),
+    db.personal_records.where('user_id').equals(getCurrentUserId()).toArray(),
+  ]);
+
+  const live = sets.filter((s) => s.deleted_at == null);
+  const names = new Map(allExercises.map((e) => [e.id, e.name]));
+
+  // Ομαδοποίηση με σειρά πρώτης εμφάνισης — έτσι διαβάζεται όπως έγινε.
+  const byExercise = new Map<string, SetEntry[]>();
+  for (const s of live) {
+    const list = byExercise.get(s.exercise_id);
+    if (list) list.push(s);
+    else byExercise.set(s.exercise_id, [s]);
+  }
+
+  const exercises: WorkoutDetailExercise[] = [...byExercise.entries()].map(
+    ([exerciseId, exSets]) => ({
+      exerciseId,
+      name: names.get(exerciseId) ?? '—',
+      sets: exSets,
+      volume: exSets.reduce((a, s) => a + setVolume(s), 0),
+      topWeightKg: exSets.reduce<number | null>(
+        (max, s) => (s.weight_kg != null && (max == null || s.weight_kg > max) ? s.weight_kg : max),
+        null,
+      ),
+    }),
+  );
+
+  return {
+    workout,
+    activityLabel: activity?.label ?? workout.activity_kind,
+    exercises,
+    totalVolume: exercises.reduce((a, e) => a + e.volume, 0),
+    totalSets: live.filter((s) => s.set_type !== 'warmup' && !s.is_warmup).length,
+    prs: prs.filter((r) => r.workout_id === workoutId),
+  };
+}
+
 export interface ActiveLadderStep {
   id: string;
   stepNumber: number;

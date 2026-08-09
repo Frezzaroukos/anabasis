@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Play, Settings2 } from 'lucide-react';
+import { ChevronRight, ClipboardList, Play, Settings2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { db, queries } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
-import { listActivities } from '@/lib/db/queries';
+import { listActivities, listPrograms } from '@/lib/db/queries';
 import type { ActivityKind } from '@/lib/db/types';
 import { ActivityChip } from '@/components/ActivityChip';
 import { LastWorkoutCard } from './components/LastWorkoutCard';
@@ -17,14 +17,31 @@ export function WorkoutPage() {
   const { t } = useTranslation();
   const [starting, setStarting] = useState(false);
   const [kind, setKind] = useState<ActivityKind>('strength');
-  // Πότε έγινε η προπόνηση: «σήμερα» (live) ή παλιότερη μέρα (backdated).
-  // Λύνει το «χθες έκανα αυτό» — ίδια λογική με το Notion calendar σου.
-  const [when, setWhen] = useState<'now' | string>('now');
+  /*
+   * Πότε έγινε η προπόνηση. Τρεις καταστάσεις αντί για «now ή ημερομηνία»:
+   * το «χθες» είναι μακράν η συχνότερη αναδρομική καταγραφή και δεν αξίζει
+   * να ανοίγεις ημερολόγιο γι' αυτό.
+   */
+  const [whenMode, setWhenMode] = useState<'now' | 'yesterday' | 'pick'>('now');
   const todayIso = new Date().toISOString().slice(0, 10);
+  const yesterdayIso = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+  const [pickedDate, setPickedDate] = useState(todayIso);
+
+  /** Η τελική ημερομηνία που πάει στο startWorkout (undefined = τώρα/live). */
+  const onDate =
+    whenMode === 'now' ? undefined : whenMode === 'yesterday' ? yesterdayIso : pickedDate;
 
   // Οι δραστηριότητες έρχονται από τη βάση, όχι από hardcoded λίστα — ό,τι
   // άθλημα προσθέσεις εμφανίζεται εδώ αμέσως, χωρίς αλλαγή κώδικα.
   const activities = useLiveQuery(() => listActivities(), [], []);
+  const programs = useLiveQuery(() => listPrograms(), [], []);
+  // Μόνο ρουτίνες του επιλεγμένου αθλήματος — μια push ρουτίνα δεν βοηθά
+  // όταν πας για τρέξιμο.
+  const matchingPrograms = programs.filter((p) => p.activity_kind === kind);
 
   // Ελέγχει αν υπάρχει έστω μία ολοκληρωμένη προπόνηση, για να ξέρουμε αν
   // θα δείξουμε το LastWorkoutCard ή ένα ενθαρρυντικό empty state.
@@ -33,11 +50,21 @@ export function WorkoutPage() {
     return all.some((w) => w.ended_at != null && w.deleted_at == null);
   }, []);
 
+  const onStartProgram = async (programId: string) => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      await queries.startWorkoutFromProgram(programId);
+    } finally {
+      setStarting(false);
+    }
+  };
+
   const onStart = async () => {
     if (starting) return;
     setStarting(true);
     try {
-      await queries.startWorkout(kind, when === 'now' ? undefined : when);
+      await queries.startWorkout(kind, onDate);
     } finally {
       setStarting(false);
     }
@@ -76,36 +103,83 @@ export function WorkoutPage() {
         </div>
       </section>
 
-      {/* Πότε: σήμερα (live) ή άλλη μέρα (καταγραφή περασμένης προπόνησης) */}
+      {/*
+        Πότε. Ήταν ένα κουμπί «Τώρα» δίπλα σε γυμνό <input type="date"> — δύο
+        διαφορετικά ύφη για μία επιλογή, και ο επιλογέας ημερομηνίας ήταν
+        μόνιμα ορατός ακόμα κι όταν δεν τον χρειαζόσουν. Τώρα: τρεις ισότιμες
+        επιλογές, και το ημερολόγιο εμφανίζεται μόνο στο «Άλλη μέρα» — γιατί
+        το 95% των καταγραφών είναι «τώρα» ή «χθες».
+      */}
       <section>
         <p className="mb-2 text-xs uppercase text-muted-foreground">
           {t('workout.whenLabel')}
         </p>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setWhen('now')}
-            className={cn(
-              'rounded-md border border-border px-3 py-1.5 text-sm transition-colors',
-              when === 'now' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
-            )}
-          >
-            {t('workout.whenNow')}
-          </button>
+        <div className="flex items-center rounded-lg border border-border/70 bg-card p-1">
+          {(
+            [
+              ['now', t('workout.whenNow')],
+              ['yesterday', t('workout.whenYesterday')],
+              ['pick', t('workout.whenPast')],
+            ] as const
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              onClick={() => setWhenMode(mode)}
+              className={cn(
+                'flex-1 rounded-md px-3 py-1.5 text-sm transition-colors',
+                whenMode === mode
+                  ? 'bg-primary font-medium text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {whenMode === 'pick' && (
           <input
             type="date"
             max={todayIso}
-            value={when === 'now' ? '' : when}
-            onChange={(e) => setWhen(e.target.value || 'now')}
+            value={pickedDate}
+            onChange={(e) => setPickedDate(e.target.value)}
             aria-label={t('workout.whenPast')}
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+            className="mt-2 h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
           />
-        </div>
+        )}
       </section>
 
       <Button size="lg" className="w-full" onClick={() => void onStart()} disabled={starting}>
         <Play className="h-5 w-5" />
-        {when === 'now' ? t('workout.start') : t('workout.addPast')}
+        {whenMode === 'now' ? t('workout.start') : t('workout.addPast')}
       </Button>
+
+      {/*
+        Ξεκίνα από αποθηκευμένη ρουτίνα. Οι ρουτίνες υπήρχαν αλλά ζούσαν σε
+        άλλη σελίδα — έπρεπε να θυμηθείς να πας εκεί πρώτα. Εδώ είναι η
+        στιγμή που τις χρειάζεσαι, φιλτραρισμένες στο άθλημα που διάλεξες.
+      */}
+      {matchingPrograms.length > 0 && (
+        <section>
+          <p className="mb-2 text-xs uppercase text-muted-foreground">
+            {t('workout.fromRoutine')}
+          </p>
+          <ul className="space-y-2">
+            {matchingPrograms.map((p) => (
+              <li key={p.id}>
+                <button
+                  onClick={() => void onStartProgram(p.id)}
+                  disabled={starting}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/70 bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40 disabled:opacity-50"
+                >
+                  <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.name}</span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {hasHistory === false ? (
         <section className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-6 text-center">

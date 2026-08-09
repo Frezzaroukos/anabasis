@@ -17,10 +17,11 @@ mkdirSync(OUT, { recursive: true });
 
 const PAGES = [
   ['/', 'dashboard'],
+  ['/workout', 'workout'],
+  ['/goals', 'goals'],
   ['/calendar', 'calendar'],
+  ['/settings', 'settings'],
   ['/skills', 'skills'],
-  ['/progress', 'progress'],
-  ['/branding', 'branding'],
 ];
 
 const browser = await chromium.launch();

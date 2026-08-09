@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
@@ -234,28 +234,29 @@ export function CalendarPage() {
           <p className="text-sm text-muted-foreground">{t('calendar.noActivity')}</p>
         ) : (
           <ul className="space-y-2">
+            {/* Κάθε προπόνηση ανοίγει — πριν ήταν αδιέξοδο: έβλεπες ότι κάτι
+                έγινε εκείνη τη μέρα αλλά όχι ΤΙ. */}
             {day.workouts.map((w) => (
-              <li
-                key={w.id}
-                className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2"
-              >
-                <span
-                  className={cn('h-2 w-2 shrink-0 rounded-full', dotOf(w.kind))}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">
-                    {w.label ?? labelOf(w.kind)}
-                  </p>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {[
-                      w.durationSeconds ? formatHMS(w.durationSeconds) : null,
-                      w.sets ? `${w.sets} ${t('history.totalSets')}` : null,
-                      w.distanceKm ? `${w.distanceKm} km` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ') || '—'}
-                  </p>
-                </div>
+              <li key={w.id}>
+                <Link
+                  to={`/history/${w.id}`}
+                  className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
+                >
+                  <span className={cn('h-2 w-2 shrink-0 rounded-full', dotOf(w.kind))} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{w.label ?? labelOf(w.kind)}</p>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {[
+                        w.durationSeconds ? formatHMS(w.durationSeconds) : null,
+                        w.sets ? `${w.sets} ${t('history.totalSets')}` : null,
+                        w.distanceKm ? `${w.distanceKm} km` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || '—'}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </Link>
               </li>
             ))}
           </ul>
