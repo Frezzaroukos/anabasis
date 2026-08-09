@@ -32,7 +32,16 @@ const GoalsPage = lazyPage(() => import('@/features/goals/GoalsPage'), 'GoalsPag
 const WorkoutDetailPage = lazyPage(() => import('@/features/history/WorkoutDetailPage'), 'WorkoutDetailPage');
 const BrandingPage = lazyPage(() => import('@/features/branding/BrandingPage'), 'BrandingPage');
 
-export const router = createBrowserRouter([
+/*
+ * Το app σερβίρεται και από υποφάκελο (GitHub Pages: /anabasis/). Χωρίς
+ * basename ο router θα έψαχνε το «/skills» στη ρίζα του domain και κάθε deep
+ * link θα έσπαγε. Το `import.meta.env.BASE_URL` το γεμίζει το Vite από το
+ * `base`, οπότε η μία ρύθμιση καλύπτει build + routing.
+ */
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+export const router = createBrowserRouter(
+  [
   {
     path: '/',
     element: <AppShell />,
@@ -60,4 +69,6 @@ export const router = createBrowserRouter([
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
-]);
+  ],
+  { basename: basename || undefined },
+);

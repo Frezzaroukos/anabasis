@@ -4,6 +4,13 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 
 export default defineConfig({
+  /*
+   * Σερβίρεται από δύο σημεία:
+   *  · anabasis.axonos.dev (root) — Cloudflare tunnel από το PC
+   *  · frezzaroukos.github.io/anabasis/ — GitHub Pages, πάντα ζωντανό
+   * Το BASE_PATH το θέτει το CI· τοπικά μένει '/'.
+   */
+  base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
     VitePWA({
