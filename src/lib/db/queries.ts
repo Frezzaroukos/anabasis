@@ -121,9 +121,64 @@ export async function setWorkoutType(
   });
 }
 
+/**
+ * Σβήνει μια προπόνηση ΚΑΙ ό,τι γέννησε.
+ *
+ * Πριν, σημαδευόταν μόνο η ίδια η προπόνηση: τα σετ της έμεναν «ζωντανά» και
+ * — χειρότερα — τα ρεκόρ που είχε γεννήσει έμεναν στον πίνακα. Έσβηνες μια
+ * λάθος καταχώριση και το app συνέχιζε να σου λέει ότι σήκωσες 200kg.
+ *
+ * Τα PR διαγράφονται οριστικά (δεν είναι δικά σου δεδομένα — είναι *παράγωγα*
+ * των σετ· θα ξαναϋπολογιστούν από ό,τι απομένει). Σετ και προπόνηση μένουν
+ * σε soft delete, όπως όλα τα υπόλοιπα, ώστε ένα μελλοντικό sync να ξέρει τι
+ * συνέβη.
+ */
 export async function softDeleteWorkout(workoutId: string): Promise<void> {
   const t = now();
-  await db.workouts.update(workoutId, { deleted_at: t, updated_at: t });
+  await db.transaction('rw', db.workouts, db.sets, db.personal_records, async () => {
+    await db.workouts.update(workoutId, { deleted_at: t, updated_at: t });
+    await db.sets
+      .where('workout_id')
+      .equals(workoutId)
+      .modify({ deleted_at: t, updated_at: t });
+    await db.personal_records.where('user_id').equals(getCurrentUserId()).and(
+      (r) => r.workout_id === workoutId,
+    ).delete();
+  });
+}
+
+/**
+ * Αλλάζει πότε έγινε μια προπόνηση.
+ *
+ * Κρατά την ώρα της ημέρας όπου γίνεται — μια προπόνηση που μετακινείται από
+ * την Τρίτη στη Δευτέρα δεν πρέπει να αλλάξει και ώρα. Η διάρκεια δεν
+ * αγγίζεται· μόνο η μέρα.
+ */
+export async function setWorkoutDate(workoutId: string, isoDay: string): Promise<void> {
+  const w = await db.workouts.get(workoutId);
+  if (!w) return;
+
+  const started = new Date(w.started_at);
+  const [y, m, d] = isoDay.split('-').map(Number);
+  if (!y || !m || !d) return;
+  const moved = new Date(started);
+  moved.setFullYear(y, m - 1, d);
+
+  const patch: Partial<Workout> = { started_at: moved.toISOString(), updated_at: now() };
+  // Το ended_at μετακινείται μαζί, ώστε η διάρκεια να μείνει ίδια.
+  if (w.ended_at) {
+    const delta = moved.getTime() - started.getTime();
+    patch.ended_at = new Date(new Date(w.ended_at).getTime() + delta).toISOString();
+  }
+  await db.workouts.update(workoutId, patch);
+}
+
+/** Αλλάζει το άθλημα μιας καταγεγραμμένης προπόνησης. */
+export async function setWorkoutActivity(
+  workoutId: string,
+  activityKind: ActivityKind,
+): Promise<void> {
+  await db.workouts.update(workoutId, { activity_kind: activityKind, updated_at: now() });
 }
 
 export async function getActiveWorkout(): Promise<Workout | undefined> {

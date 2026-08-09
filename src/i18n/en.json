@@ -140,7 +140,13 @@
     "activeDays": "active days",
     "feelTrend": "How you felt",
     "feel": "Feel",
-    "notFound": "This workout no longer exists."
+    "notFound": "This workout no longer exists.",
+    "editWorkout": "Edit workout",
+    "workoutName": "Name",
+    "workoutDate": "Date",
+    "deleteWorkout": "Delete this workout",
+    "deleteConfirmTitle": "Delete this workout?",
+    "deleteConfirmDesc": "Its sets and any personal records it produced are removed too. This cannot be undone from the app."
   },
   "skills": {
     "title": "Skills",
