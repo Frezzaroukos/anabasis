@@ -73,6 +73,7 @@ export async function bootstrapDB(): Promise<void> {
           show_e1rm: true,
           weight_unit: 'kg',
           theme: 'dark',
+          dashboard_cards: [],
           created_at: now,
           updated_at: now,
         };

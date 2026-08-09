@@ -23,10 +23,11 @@ import type {
   User,
   UserSkillProgress,
   UserSkillStepCompletion,
+  Goal,
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -43,6 +44,7 @@ export class AnabasisDB extends Dexie {
   programs!: Table<Program, string>;
   program_exercises!: Table<ProgramExercise, string>;
   activities!: Table<Activity, string>;
+  goals!: Table<Goal, string>;
   events_outgoing!: Table<OutgoingEvent, string>;
 
   constructor() {
@@ -188,6 +190,32 @@ export class AnabasisDB extends Dexie {
           .modify((m) => {
             m.carbs_g ??= null;
             m.fat_g ??= null;
+          });
+      });
+
+    /**
+     * v8 — στόχοι στα μέτρα του χρήστη + διάταξη Αρχικής.
+     *
+     * Ο πίνακας `goals` αντικαθιστά την ιδέα ενός σταθερού «εβδομαδιαίου
+     * στόχου όγκου»: κάθε χρήστης ορίζει μέτρο/ποσό/περίοδο/εύρος. Δεν
+     * δημιουργούμε προεπιλεγμένους στόχους στο upgrade — ένας στόχος που
+     * δεν έβαλε ο χρήστης είναι ψεύτικο δεδομένο, και ο δακτύλιος θα έδειχνε
+     * πρόοδο προς κάτι που κανείς δεν ζήτησε.
+     *
+     * Το `dashboard_cards` μπαίνει ως κενός πίνακας = «καμία προτίμηση»· η
+     * Αρχική πέφτει τότε στην προεπιλεγμένη σειρά.
+     */
+    this.version(8)
+      .stores({
+        goals:
+          'id, user_id, metric, period, activity_key, exercise_id, display_order, is_archived, deleted_at, [user_id+is_archived]',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('app_settings')
+          .toCollection()
+          .modify((s) => {
+            s.dashboard_cards ??= [];
           });
       });
   }

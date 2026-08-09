@@ -284,10 +284,68 @@ export interface UserSkillStepCompletion {
   created_at: ISOTimestamp;
 }
 
+/* ───────────────────────── Στόχοι ───────────────────────── */
+
+/**
+ * Τι μετράει ένας στόχος. Κάθε metric δουλεύει σε διαφορετικά αθλήματα —
+ * γι' αυτό ο στόχος ΔΕΝ είναι ένα σταθερό «όγκος/εβδομάδα»: ο δρομέας μετρά
+ * χιλιόμετρα, ο calisthenics αθλητής σετ ή προπονήσεις, ο powerlifter kg.
+ */
+export const BUILTIN_GOAL_METRICS = [
+  'sessions', // πλήθος προπονήσεων
+  'volume_kg', // Σ(βάρος × επαναλήψεις)
+  'sets', // πλήθος σετ (χωρίς warm-up)
+  'reps', // πλήθος επαναλήψεων
+  'distance_km',
+  'duration_min',
+] as const;
+export type GoalMetric = (typeof BUILTIN_GOAL_METRICS)[number];
+
+/** Το παράθυρο μέτρησης. Κυλιόμενο, όχι ημερολογιακό — «οι τελευταίες N μέρες». */
+export const BUILTIN_GOAL_PERIODS = ['week', 'month', 'day'] as const;
+export type GoalPeriod = (typeof BUILTIN_GOAL_PERIODS)[number];
+
+/**
+ * Ένας στόχος στα μέτρα του χρήστη.
+ *
+ * Σκόπιμα *τέσσερις* ανεξάρτητοι άξονες (μέτρο × ποσό × περίοδος × εύρος)
+ * αντί για ένα προκαθορισμένο «εβδομαδιαίος όγκος»: έτσι εκφράζονται και το
+ * «4 προπονήσεις/εβδομάδα», και το «20 km τρέξιμο/μήνα», και το «100 σετ
+ * έλξεων/μήνα» — χωρίς νέο κώδικα για κάθε περίπτωση.
+ *
+ * `activity_key`/`exercise_id` = null σημαίνει «όλα». Ο συνδυασμός τους
+ * δίνει το εύρος: όλη η προπόνηση, ένα άθλημα, ή μία συγκεκριμένη άσκηση.
+ */
+export interface Goal {
+  id: UUID;
+  user_id: UUID;
+  /** Δικό του όνομα, αν το θέλει· αλλιώς παράγεται από τα υπόλοιπα πεδία. */
+  label: string | null;
+  metric: GoalMetric;
+  target: number;
+  period: GoalPeriod;
+  /** null = όλες οι δραστηριότητες */
+  activity_key: ActivityKind | null;
+  /** null = όλες οι ασκήσεις (έχει νόημα σε volume/sets/reps) */
+  exercise_id: UUID | null;
+  display_order: number;
+  is_archived: boolean;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+  deleted_at: ISOTimestamp | null;
+}
+
 export interface AppSettings {
   id: UUID;
   user_id: UUID;
   default_rest_timer_seconds: number;
+  /**
+   * Διάταξη της Αρχικής: σειρά + ορατότητα ανά κάρτα. Ζει εδώ (και όχι στο
+   * localStorage) ώστε να ταξιδεύει με το export/import και με μελλοντικό sync
+   * — η «δική μου αρχική» είναι δεδομένο του χρήστη, όχι της συσκευής.
+   * Άγνωστα κλειδιά αγνοούνται, νέα κάρτα εμφανίζεται στο τέλος by default.
+   */
+  dashboard_cards: { key: string; visible: boolean }[];
   notify_pr: boolean;
   notify_session_reminder: boolean;
   /** ήχος + δόνηση στη λήξη του rest timer — στο γυμναστήριο δεν κοιτάς οθόνη */
