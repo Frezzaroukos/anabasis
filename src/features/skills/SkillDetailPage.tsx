@@ -80,6 +80,15 @@ export function SkillDetailPage() {
           {skill.ultimate_goal}
         </p>
 
+        {/*
+          Οι στόχοι είναι ΠΡΟΤΑΣΕΙΣ, όχι πρότυπο — οι πηγές διαφωνούν ανοιχτά
+          (10-15s ως 30-60s για το ίδιο βήμα). Το λέμε ρητά, αλλιώς ένας
+          αρχάριος τα διαβάζει ως κανόνα και ένας προπονητής ως λάθος.
+        */}
+        <p className="rounded-lg bg-muted/40 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+          {t('skills.targetsAreSuggestions')}
+        </p>
+
         <div className="pt-2">
           <div className="mb-1 flex justify-between text-xs text-muted-foreground">
             <span>

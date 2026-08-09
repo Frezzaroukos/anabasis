@@ -180,7 +180,8 @@
     "targetUnit": "Unit",
     "stepNamePlaceholder": "Step name",
     "stepDescriptionPlaceholder": "How to do it",
-    "videoUrlPlaceholder": "Benchmark video URL (optional)"
+    "videoUrlPlaceholder": "Benchmark video URL (optional)",
+    "targetsAreSuggestions": "Targets are suggested starting points, not a standard — coaches and sources disagree. Edit any step to match how you train."
   },
   "settings": {
     "title": "Settings",
