@@ -28,6 +28,8 @@ const SkillDetailPage = lazyPage(() => import('@/features/skills/SkillDetailPage
 const SettingsPage = lazyPage(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
 const ProfilePage = lazyPage(() => import('@/features/profile/ProfilePage'), 'ProfilePage');
 const ImportPage = lazyPage(() => import('@/features/import/ImportPage'), 'ImportPage');
+const GoalsPage = lazyPage(() => import('@/features/goals/GoalsPage'), 'GoalsPage');
+const WorkoutDetailPage = lazyPage(() => import('@/features/history/WorkoutDetailPage'), 'WorkoutDetailPage');
 const BrandingPage = lazyPage(() => import('@/features/branding/BrandingPage'), 'BrandingPage');
 
 export const router = createBrowserRouter([
@@ -44,6 +46,7 @@ export const router = createBrowserRouter([
       { path: 'activities', element: <ActivitiesPage /> },
       { path: 'programs/:programId', element: <ProgramDetailPage /> },
       { path: 'history', element: <HistoryPage /> },
+      { path: 'history/:workoutId', element: <WorkoutDetailPage /> },
       { path: 'calendar', element: <CalendarPage /> },
       { path: 'body', element: <BodyPage /> },
       { path: 'progress', element: <ProgressPage /> },
@@ -51,6 +54,7 @@ export const router = createBrowserRouter([
       { path: 'skills/:skillId', element: <SkillDetailPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'profile', element: <ProfilePage /> },
+      { path: 'goals', element: <GoalsPage /> },
       { path: 'import', element: <ImportPage /> },
       { path: 'branding', element: <BrandingPage /> },
       { path: '*', element: <Navigate to="/" replace /> },

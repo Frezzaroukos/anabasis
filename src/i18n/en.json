@@ -12,7 +12,8 @@
     "home": "Home",
     "programs": "Programs",
     "profile": "Profile",
-    "more": "More"
+    "more": "More",
+    "goals": "Goals"
   },
   "workout": {
     "title": "Workout",
@@ -81,7 +82,9 @@
     "whenLabel": "When",
     "whenNow": "Now",
     "whenPast": "Another day",
-    "addPast": "Add workout"
+    "addPast": "Add workout",
+    "whenYesterday": "Yesterday",
+    "fromRoutine": "Start from a routine"
   },
   "programs": {
     "title": "Programs",
@@ -136,7 +139,8 @@
     "totalSets": "sets",
     "activeDays": "active days",
     "feelTrend": "How you felt",
-    "feel": "Feel"
+    "feel": "Feel",
+    "notFound": "This workout no longer exists."
   },
   "skills": {
     "title": "Skills",
@@ -207,7 +211,10 @@
     "theme_dark": "Dark",
     "theme_light": "Light",
     "theme_auto": "Auto",
-    "accent": "Accent colour"
+    "accent": "Accent colour",
+    "dashboardLayout": "Your home screen",
+    "dashboardLayoutHint": "Choose which cards appear and in what order. \"Add workout\" always stays — a home screen you cannot start from is a dead end.",
+    "dashboardLocked": "Always visible"
   },
   "common": {
     "save": "Save",
@@ -309,7 +316,16 @@
     "viewAll": "View all",
     "ladderProgress": "{{done}} of {{total}} steps cleared",
     "ofLastWeek": "of last week",
-    "welcomeBack": "Welcome back, {{name}}."
+    "welcomeBack": "Welcome back, {{name}}.",
+    "next": {
+      "title": "Next steps",
+      "skill": "Pick a skill to chase",
+      "skillHint": "Front lever, planche, muscle-up — each one is a ladder.",
+      "goal": "Set a goal in your own terms",
+      "goalHint": "Sessions, volume, kilometres — whatever you actually count.",
+      "body": "Log your first workout",
+      "bodyHint": "Everything else builds on it."
+    }
   },
   "setType": {
     "normal": "Normal",
@@ -447,5 +463,39 @@
     "perSide": "Per side",
     "remainder": "Remainder",
     "empty": "Add weight above the bar."
+  },
+  "goals": {
+    "title": "Goals",
+    "intro": "Your measure, your window. A goal is what you count, how much, over what period, and for which activity.",
+    "emptyTitle": "No goals yet",
+    "emptyHint": "Set one that fits how you train — 4 sessions a week, 20 km a month, 100 pull-up sets a month.",
+    "new": "New goal",
+    "edit": "Edit goal",
+    "preview": "Reads as",
+    "all": "All",
+    "metricLabel": "Count",
+    "targetLabel": "Amount",
+    "periodLabel": "Per",
+    "activityLabel": "Activity",
+    "exerciseLabel": "Exercise",
+    "nameLabel": "Name (optional)",
+    "daysLeft": "{{count}} day left in this period",
+    "daysLeft_other": "{{count}} days left in this period",
+    "lastDay": "Last day of this period",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "metric": {
+      "sessions": "Sessions",
+      "volume_kg": "Volume",
+      "sets": "Sets",
+      "reps": "Reps",
+      "distance_km": "Distance",
+      "duration_min": "Duration"
+    },
+    "period": {
+      "day": "day",
+      "week": "week",
+      "month": "month"
+    }
   }
 }
