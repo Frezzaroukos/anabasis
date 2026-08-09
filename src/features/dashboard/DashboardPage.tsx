@@ -6,7 +6,8 @@ import { getCurrentProfile, getTrainingInsights } from '@/lib/db/queries';
 import { DEFAULT_USER_ID } from '@/lib/db/session';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { Wordmark } from '@/components/Logo';
-import { resolveCardOrder, type DashboardCardKey } from './cards';
+import { cn } from '@/lib/utils';
+import { FULL_WIDTH, resolveCardOrder, type DashboardCardKey } from './cards';
 import { SkillLadderCard } from './components/SkillLadderCard';
 import { StartWorkoutCta } from './components/StartWorkoutCta';
 import { GoalsCard } from './components/GoalsCard';
@@ -60,15 +61,17 @@ export function DashboardPage() {
   const order = resolveCardOrder(settings?.dashboard_cards);
 
   return (
-    <div className="stagger space-y-6">
+    /* Κινητό: στοίβα. ≥md: δύο στήλες — αλλιώς το φαρδύ παράθυρο απλώς
+       μακραίνει τη σελίδα αντί να τη γεμίζει. */
+    <div className="stagger space-y-6 md:grid md:grid-cols-2 md:items-start md:gap-5 md:space-y-0">
       {/*
         App bar: ταυτότητα αριστερά, κατάσταση + προφίλ δεξιά. Πριν υπήρχε
         μόνο ένας τίτλος «Overview» και ένα logo να αιωρείται στη γωνία —
         δεν έλεγε ποιος είσαι ούτε πώς πας.
       */}
-      <header className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <Wordmark />
+      <header className="space-y-4 md:col-span-2">
+        <div className="flex items-center justify-between gap-2 md:justify-end">
+          <Wordmark className="md:hidden" />
           <div className="flex items-center gap-2">
             {streakDays > 0 && (
               <span
@@ -100,10 +103,22 @@ export function DashboardPage() {
         .filter((c) => c.visible)
         .map(({ key }) => {
           const Comp = CARD_COMPONENTS[key as DashboardCardKey];
-          return <Comp key={key} />;
+          const full = FULL_WIDTH.includes(key as DashboardCardKey);
+          return (
+            /* `empty:hidden`: μια κάρτα χωρίς δεδομένα επιστρέφει null και το
+               wrapper θα κρατούσε κενό κελί στο grid. */
+            <div
+              key={key}
+              className={cn('empty:hidden', full && 'md:col-span-2')}
+            >
+              <Comp />
+            </div>
+          );
         })}
 
-      <EmptyDashboardHint />
+      <div className="empty:hidden md:col-span-2">
+        <EmptyDashboardHint />
+      </div>
     </div>
   );
 }

@@ -1,32 +1,10 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import {
-  Activity,
-  CalendarDays,
-  ClipboardList,
-  Download,
-  Dumbbell,
-  Home,
-  LineChart,
-  ListChecks,
-  MoreHorizontal,
-  Scale,
-  Settings,
-  Sparkles,
-  Target,
-  User,
-} from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { BottomSheet } from '@/components/ui/sheet';
-
-interface TabDef {
-  to: string;
-  labelKey: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  /** το index route ταιριάζει μόνο ακριβώς, αλλιώς μένει πάντα ενεργό */
-  end?: boolean;
-}
+import { PRIMARY_NAV, SECONDARY_NAV } from './navItems';
 
 /**
  * Πέντε tabs + «Περισσότερα».
@@ -37,26 +15,6 @@ interface TabDef {
  * μικρά κουμπάκια στην Αρχική. Πέντε tabs για ό,τι αγγίζεις καθημερινά,
  * ένα φύλλο για τα υπόλοιπα.
  */
-const TABS: TabDef[] = [
-  { to: '/', labelKey: 'nav.home', Icon: Home, end: true },
-  { to: '/workout', labelKey: 'nav.workout', Icon: Dumbbell },
-  { to: '/calendar', labelKey: 'nav.calendar', Icon: CalendarDays },
-  { to: '/skills', labelKey: 'nav.skills', Icon: Sparkles },
-];
-
-/** Ό,τι δεν χωρά στα tabs — με σειρά συχνότητας χρήσης. */
-const MORE: TabDef[] = [
-  { to: '/programs', labelKey: 'nav.programs', Icon: ClipboardList },
-  { to: '/goals', labelKey: 'goals.title', Icon: Target },
-  { to: '/progress', labelKey: 'progress.title', Icon: LineChart },
-  { to: '/history', labelKey: 'history.title', Icon: Activity },
-  { to: '/body', labelKey: 'body.title', Icon: Scale },
-  { to: '/exercises', labelKey: 'exercises.title', Icon: ListChecks },
-  { to: '/profile', labelKey: 'nav.profile', Icon: User },
-  { to: '/import', labelKey: 'import.title', Icon: Download },
-  { to: '/settings', labelKey: 'nav.settings', Icon: Settings },
-];
-
 export function BottomTabNav() {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -69,9 +27,9 @@ export function BottomTabNav() {
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur safe-bottom">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur safe-bottom md:hidden">
         <ul className="mx-auto grid max-w-md grid-cols-5">
-          {TABS.map(({ to, labelKey, Icon, end }) => (
+          {PRIMARY_NAV.map(({ to, labelKey, Icon, end }) => (
             <li key={to}>
               <NavLink
                 to={to}
@@ -119,7 +77,7 @@ export function BottomTabNav() {
 
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={t('nav.more')}>
         <ul className="grid grid-cols-2 gap-2 px-4 pb-4">
-          {MORE.map(({ to, labelKey, Icon }) => (
+          {SECONDARY_NAV.map(({ to, labelKey, Icon }) => (
             <li key={to}>
               <button
                 onClick={() => go(to)}
