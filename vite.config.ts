@@ -11,8 +11,12 @@ export default defineConfig({
    * Το BASE_PATH το θέτει το CI· τοπικά μένει '/'.
    */
   base: process.env.BASE_PATH ?? '/',
+  // Μέσα στο Tauri (desktop app) δεν έχει νόημα service worker: τα assets
+  // είναι ήδη τοπικά, κι ένας stale SW θα σέρβιρε παλιά έκδοση μετά από update.
+  // Το tauri-cli θέτει TAURI_ENV_PLATFORM στα before*Command — εκεί κόβεται το PWA.
   plugins: [
     react(),
+    !process.env.TAURI_ENV_PLATFORM &&
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'og.png', 'robots.txt'],
@@ -46,7 +50,7 @@ export default defineConfig({
         globIgnores: ['press/**'],
       },
     }),
-  ],
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

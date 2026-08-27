@@ -98,6 +98,13 @@ npm test         # 154 tests
 npm run build    # production + service worker
 ```
 
+Or as a native desktop app (Tauri 2 — same frontend, no browser, ~13MB binary):
+
+```bash
+npm run tauri build -- --no-bundle   # needs Rust + webkit2gtk
+./scripts/install-desktop.sh         # installs binary + .desktop entry (Linux)
+```
+
 Screenshots in this README are generated, not hand-taken:
 
 ```bash
@@ -111,8 +118,11 @@ Working: skill ladders, workout logger, goals, PR tracking, calendar, body
 metrics, programs, progress charts, export/import, i18n, PWA, multiple local
 profiles.
 
+Also working: native desktop app via Tauri 2 (`src-tauri/`) — the same
+offline-first frontend in a WebKit window, PWA layer switched off there.
+
 Not built: accounts and cross-device sync (would unlock friends and
-leaderboards), native app.
+leaderboards), mobile native builds.
 
 ---
 
