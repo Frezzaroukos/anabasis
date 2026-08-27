@@ -632,25 +632,37 @@ export async function exportExerciseCsv(exerciseId: string): Promise<string> {
   return [header, ...lines].join('\n');
 }
 
+/*
+ * Ό,τι πίνακας κουβαλάει δεδομένα χρήστη μπαίνει ΚΑΙ στο export ΚΑΙ στο import.
+ * Η v1 του format έχανε 7 πίνακες (goals, programs, body_metrics, activities,
+ * skills…) — μια «πλήρης» επαναφορά πετούσε σιωπηλά τη διατροφή, τις ρουτίνες
+ * και τους στόχους. Τα skills/skill_steps μπαίνουν κι αυτά: κρατούν custom
+ * skills και μετονομασίες των builtin· το bootstrap κάνει add-missing-only,
+ * άρα η εισαγωγή τους δεν συγκρούεται με το seeding.
+ * (Μόνο το events_outgoing μένει έξω — νεκρό sync stub, όχι δεδομένα χρήστη.)
+ */
+const BACKUP_TABLES = () => ({
+  users: db.users, exercises: db.exercises, workouts: db.workouts,
+  sets: db.sets, personal_records: db.personal_records,
+  skills: db.skills, skill_steps: db.skill_steps,
+  user_skill_progress: db.user_skill_progress,
+  user_skill_step_completions: db.user_skill_step_completions,
+  app_settings: db.app_settings, body_metrics: db.body_metrics,
+  programs: db.programs, program_exercises: db.program_exercises,
+  activities: db.activities, goals: db.goals,
+});
+
 export async function exportAll(): Promise<string> {
-  const [
-    users, exercises, workouts, sets, personal_records,
-    user_skill_progress, user_skill_step_completions, app_settings,
-  ] = await Promise.all([
-    db.users.toArray(), db.exercises.toArray(), db.workouts.toArray(),
-    db.sets.toArray(), db.personal_records.toArray(),
-    db.user_skill_progress.toArray(), db.user_skill_step_completions.toArray(),
-    db.app_settings.toArray(),
-  ]);
+  const tables = BACKUP_TABLES();
+  const names = Object.keys(tables) as (keyof ReturnType<typeof BACKUP_TABLES>)[];
+  const arrays = await Promise.all(names.map((n) => tables[n].toArray()));
+  const data = Object.fromEntries(names.map((n, i) => [n, arrays[i]]));
   return JSON.stringify(
     {
       format: 'anabasis-backup',
-      version: 1,
+      version: 2,
       exported_at: now(),
-      data: {
-        users, exercises, workouts, sets, personal_records,
-        user_skill_progress, user_skill_step_completions, app_settings,
-      },
+      data,
     },
     null,
     2,
@@ -666,7 +678,9 @@ export interface ImportResult {
 /**
  * Επαναφορά από backup. Κάνει merge (bulkPut) — δεν σβήνει ό,τι δεν είναι στο
  * αρχείο, ώστε μια λάθος επαναφορά να μην καταστρέφει δεδομένα.
- * Τα seeded skills/skill_steps δεν εισάγονται (τα ορίζει η έκδοση της εφαρμογής).
+ * Δέχεται και v1 αρχεία (λιγότεροι πίνακες — άγνωστα keys απλώς αγνοούνται).
+ * Όλο το import τρέχει σε ΜΙΑ transaction: ή μπαίνουν όλα ή τίποτα —
+ * ένα σκάρτο row στη μέση δεν αφήνει τη βάση μισο-γραμμένη.
  */
 export async function importAll(json: string): Promise<ImportResult> {
   let parsed: unknown;
@@ -680,21 +694,20 @@ export async function importAll(json: string): Promise<ImportResult> {
     return { ok: false, message: 'notABackup' };
   }
 
-  const tables = {
-    users: db.users, exercises: db.exercises, workouts: db.workouts,
-    sets: db.sets, personal_records: db.personal_records,
-    user_skill_progress: db.user_skill_progress,
-    user_skill_step_completions: db.user_skill_step_completions,
-    app_settings: db.app_settings,
-  } as const;
-
+  const tables = BACKUP_TABLES();
   const counts: Record<string, number> = {};
-  for (const [name, table] of Object.entries(tables)) {
-    const rows = b.data[name];
-    if (!Array.isArray(rows) || rows.length === 0) continue;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (table as any).bulkPut(rows);
-    counts[name] = rows.length;
+  try {
+    await db.transaction('rw', Object.values(tables), async () => {
+      for (const [name, table] of Object.entries(tables)) {
+        const rows = b.data![name];
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (table as any).bulkPut(rows);
+        counts[name] = rows.length;
+      }
+    });
+  } catch {
+    return { ok: false, message: 'importFailed' };
   }
   return { ok: true, message: 'imported', counts };
 }

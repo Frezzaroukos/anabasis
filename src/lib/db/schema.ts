@@ -27,7 +27,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;

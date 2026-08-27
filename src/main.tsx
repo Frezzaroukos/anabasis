@@ -12,6 +12,13 @@ if (!root) throw new Error('Root element #root not found');
 applyTheme(getStoredTheme());
 
 /*
+ * Χωρίς backend, το IndexedDB είναι το ΜΟΝΑΔΙΚΟ αντίγραφο των δεδομένων —
+ * και χωρίς persist() ο browser δικαιούται να το πετάξει υπό πίεση χώρου.
+ * Best-effort: όπου δεν υποστηρίζεται/απορρίπτεται, απλώς δεν αλλάζει κάτι.
+ */
+navigator.storage?.persist?.().catch(() => {});
+
+/*
  * PWA auto-refresh: όταν ανέβει νέα έκδοση (deploy), ο service worker του
  * vite-plugin-pwa (autoUpdate) κάνει skipWaiting και «αναλαμβάνει». Χωρίς
  * reload, ο χρήστης έβλεπε ΠΑΛΙΑ έκδοση μέχρι να ξανανοίξει — τον ενοχλούσε.
