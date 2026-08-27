@@ -7,7 +7,7 @@
 **Weighted-calisthenics & skill-progression tracker.**
 Offline-first PWA · TypeScript strict · bilingual (EN/EL)
 
-![tests](https://img.shields.io/badge/tests-154%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-165%20passing-brightgreen)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -66,7 +66,7 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 154 tests concentrated on migrations, the goal
+**Testing where it pays.** 165 tests concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
 Monday" does not depend on the day CI runs), PR detection, and the card-order
 resolver — each of its cases matching a change that will actually happen
@@ -94,7 +94,7 @@ React Router 6 · Recharts · vite-plugin-pwa + Workbox · i18next · Vitest
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 154 tests
+npm test         # 165 tests
 npm run build    # production + service worker
 ```
 

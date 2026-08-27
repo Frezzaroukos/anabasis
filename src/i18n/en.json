@@ -207,6 +207,7 @@
     "imported": "Imported",
     "invalidJson": "Not valid JSON.",
     "notABackup": "Not an Anabasis backup file.",
+    "importFailed": "Import failed — nothing was changed.",
     "workouts": "workouts",
     "sets": "sets",
     "prs": "PRs",

@@ -207,6 +207,7 @@
     "imported": "Εισήχθησαν",
     "invalidJson": "Μη έγκυρο JSON.",
     "notABackup": "Δεν είναι αρχείο backup του Anabasis.",
+    "importFailed": "Η εισαγωγή απέτυχε — δεν άλλαξε τίποτα.",
     "workouts": "προπονήσεις",
     "sets": "σετ",
     "prs": "ρεκόρ",
