@@ -5,6 +5,8 @@ import { Check, Plus, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { formatWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Exercise, SetEntry, SetType } from '@/lib/db/types';
@@ -22,6 +24,8 @@ interface ExerciseCardProps {
   onWeightedChange: (next: boolean) => void;
   chain: SetChain | null;
   onChainChange: (next: SetChain | null) => void;
+  /** Ειδοποιεί ότι καταγράφηκε νέο σετ — π.χ. για auto-start του rest timer. */
+  onSetLogged?: () => void;
 }
 
 export function ExerciseCard({
@@ -32,8 +36,11 @@ export function ExerciseCard({
   onWeightedChange,
   chain,
   onChainChange,
+  onSetLogged,
 }: ExerciseCardProps) {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const [adding, setAdding] = useState(sets.length === 0);
   const [setType, setSetType] = useState<SetType>('normal');
   const [quickMode, setQuickMode] = useState(false);
@@ -50,6 +57,7 @@ export function ExerciseCard({
   };
 
   const supportsToggle = exercise.is_bodyweight; // bodyweight exercises can be done with or without added load
+  const isHold = exercise.default_unit === 'sec'; // skill/isometric άσκηση — reps γίνεται hold σε δευτερόλεπτα
   const visibleSets = sets;
 
   // «Τι έκανα την τελευταία φορά» — προ-γεμίζει τα inputs ώστε το τυπικό
@@ -59,6 +67,7 @@ export function ExerciseCard({
   const onSave = async (
     weightKg: number | null,
     reps: number | null,
+    holdSeconds: number | null,
     intensity: SetIntensity,
   ) => {
     const { groupId, chain: nextChain } = resolveSetGroup(setType, chain, crypto.randomUUID());
@@ -69,7 +78,7 @@ export function ExerciseCard({
       weight_kg: weightKg,
       bodyweight_kg: null,
       reps,
-      hold_seconds: null,
+      hold_seconds: holdSeconds,
       set_type: setType,
       group_id: groupId,
       is_warmup: setType === 'warmup',
@@ -80,6 +89,7 @@ export function ExerciseCard({
     });
     celebrate(res.newPRs.length);
     setAdding(false);
+    onSetLogged?.();
   };
 
   /**
@@ -89,7 +99,7 @@ export function ExerciseCard({
    */
   const onQuickSubmit = async () => {
     if (quickBusy) return;
-    const parsed = parseQuickSets(quickText, weighted);
+    const parsed = parseQuickSets(quickText, weighted, unit);
     if (parsed.length === 0) return;
     setQuickBusy(true);
     try {
@@ -100,8 +110,8 @@ export function ExerciseCard({
           exercise_id: exercise.id,
           weight_kg: weighted ? s.weightKg : null,
           bodyweight_kg: null,
-          reps: s.reps,
-          hold_seconds: null,
+          reps: isHold ? null : s.reps,
+          hold_seconds: isHold ? s.reps : null,
         });
         prs += res.newPRs.length;
       }
@@ -109,12 +119,13 @@ export function ExerciseCard({
       setQuickText('');
       setQuickMode(false);
       setAdding(false);
+      onSetLogged?.();
     } finally {
       setQuickBusy(false);
     }
   };
 
-  const quickPreview = parseQuickSets(quickText, weighted);
+  const quickPreview = parseQuickSets(quickText, weighted, unit);
 
   return (
     <article
@@ -179,7 +190,9 @@ export function ExerciseCard({
         {visibleSets.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground">{t('workout.swipeHint')}</p>
         ) : (
-          visibleSets.map((s) => <SetRow key={s.id} set={s} weighted={weighted} />)
+          visibleSets.map((s) => (
+            <SetRow key={s.id} set={s} weighted={weighted} holdMode={isHold} />
+          ))
         )}
       </div>
 
@@ -195,7 +208,13 @@ export function ExerciseCard({
                   if (e.key === 'Enter' && quickPreview.length > 0) void onQuickSubmit();
                   if (e.key === 'Escape') setQuickMode(false);
                 }}
-                placeholder={weighted ? t('workout.quickPlaceholder') : t('workout.quickPlaceholderBw')}
+                placeholder={
+                  isHold
+                    ? t('workout.quickPlaceholderHold')
+                    : weighted
+                      ? t('workout.quickPlaceholder')
+                      : t('workout.quickPlaceholderBw')
+                }
                 className="h-9 font-mono"
                 aria-label={t('workout.quickLog')}
               />
@@ -220,7 +239,12 @@ export function ExerciseCard({
             {quickPreview.length > 0 && (
               <p className="px-1 font-mono text-[11px] text-muted-foreground">
                 {quickPreview
-                  .map((s) => (s.weightKg != null ? `${s.weightKg}×${s.reps}` : `${s.reps}`))
+                  .map((s) => {
+                    const repsLabel = isHold ? `${s.reps}s` : `${s.reps}`;
+                    return s.weightKg != null
+                      ? `${formatWeight(s.weightKg, unit, { withUnit: false })}×${repsLabel}`
+                      : repsLabel;
+                  })
                   .join('  ·  ')}{' '}
                 <span className="text-primary">({quickPreview.length} {t('workout.sets')})</span>
               </p>
@@ -230,13 +254,18 @@ export function ExerciseCard({
           <>
             <AddSetInline
               weighted={weighted}
+              holdMode={isHold}
+              unit={unit}
               initialWeight={last?.weight_kg ?? null}
               initialReps={last?.reps ?? null}
+              initialHoldSeconds={last?.hold_seconds ?? null}
               lastLabel={
-                last && (last.weight_kg != null || last.reps != null)
+                last && (last.weight_kg != null || last.reps != null || last.hold_seconds != null)
                   ? `${t('workout.previous')}: ${
-                      last.weight_kg != null ? `${last.weight_kg}kg` : t('workout.bodyweight')
-                    }${last.reps != null ? ` × ${last.reps}` : ''}`
+                      last.weight_kg != null ? formatWeight(last.weight_kg, unit) : t('workout.bodyweight')
+                    }${last.reps != null ? ` × ${last.reps}` : ''}${
+                      last.hold_seconds != null ? ` · ${last.hold_seconds}s` : ''
+                    }`
                   : null
               }
               onSave={onSave}

@@ -22,5 +22,12 @@ void i18n
     },
   });
 
+// Το <html lang> πρέπει να ακολουθεί τη γλώσσα του UI — screen readers και
+// hyphenation διαβάζουν από εκεί, όχι από το i18next.
+document.documentElement.lang = i18n.resolvedLanguage ?? 'en';
+i18n.on('languageChanged', (lng) => {
+  document.documentElement.lang = lng;
+});
+
 export { i18n };
 export default i18n;

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { BUILTIN_SET_TYPES, type SetType } from '@/lib/db/types';
+import { BUILTIN_SET_TYPES, type SetType, type WeightUnit } from '@/lib/db/types';
+import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 
 /** Προαιρετική ένταση — δίπλα στο βάρος λέει ΠΟΣΟ κόστισε το σετ. */
 export interface SetIntensity {
@@ -21,11 +22,18 @@ function setTypeLabel(st: SetType, t: (k: string) => string): string {
 
 interface AddSetInlineProps {
   weighted: boolean;
+  /** Άσκηση skill/isometric (exercise.default_unit === 'sec') — reps γίνεται hold σε δευτερόλεπτα. */
+  holdMode?: boolean;
+  /** Μονάδα εμφάνισης/εισαγωγής βάρους — η αποθήκευση (onSave) μένει ΠΑΝΤΑ σε kg. */
+  unit?: WeightUnit;
+  /** ΠΑΝΤΑ σε kg — όπως αποθηκεύεται. */
   initialWeight?: number | null;
   initialReps?: number | null;
+  initialHoldSeconds?: number | null;
   onSave: (
     weightKg: number | null,
     reps: number | null,
+    holdSeconds: number | null,
     intensity: SetIntensity,
   ) => Promise<void> | void;
   onCancel?: () => void;
@@ -39,8 +47,11 @@ interface AddSetInlineProps {
 
 export function AddSetInline({
   weighted,
+  holdMode = false,
+  unit = 'kg',
   initialWeight,
   initialReps,
+  initialHoldSeconds,
   onSave,
   onCancel,
   saveLabelKey = 'workout.addSet',
@@ -50,10 +61,13 @@ export function AddSetInline({
 }: AddSetInlineProps) {
   const { t } = useTranslation();
   const [weight, setWeight] = useState<string>(
-    initialWeight != null ? String(initialWeight) : '',
+    initialWeight != null ? String(toDisplayWeight(initialWeight, unit)) : '',
   );
   const [reps, setReps] = useState<string>(
     initialReps != null ? String(initialReps) : '',
+  );
+  const [hold, setHold] = useState<string>(
+    initialHoldSeconds != null ? String(initialHoldSeconds) : '',
   );
   const [busy, setBusy] = useState(false);
   // Κρυμμένα πίσω από toggle: στο γυμναστήριο η γρήγορη καταγραφή δεν πρέπει
@@ -71,23 +85,31 @@ export function AddSetInline({
   };
 
   const repsNum = reps.trim() === '' ? null : Number(reps);
+  const holdNum = hold.trim() === '' ? null : Number(hold);
   const weightNum = weight.trim() === '' ? null : Number(weight);
   const repsValid = repsNum != null && Number.isFinite(repsNum) && repsNum > 0;
+  const holdValid = holdNum != null && Number.isFinite(holdNum) && holdNum > 0;
   const weightValid =
     !weighted || (weightNum != null && Number.isFinite(weightNum) && weightNum >= 0);
-  const valid = repsValid && weightValid;
+  const valid = (holdMode ? holdValid : repsValid) && weightValid;
 
   const submit = async () => {
     if (!valid || busy) return;
     setBusy(true);
     try {
-      await onSave(weighted ? weightNum : null, repsNum, {
-        rpe: numOrNull(rpe),
-        rir: numOrNull(rir),
-        tempo: tempo.trim() === '' ? null : tempo.trim(),
-      });
+      await onSave(
+        weighted && weightNum != null ? parseWeightToKg(weightNum, unit) : null,
+        holdMode ? null : repsNum,
+        holdMode ? holdNum : null,
+        {
+          rpe: numOrNull(rpe),
+          rir: numOrNull(rir),
+          tempo: tempo.trim() === '' ? null : tempo.trim(),
+        },
+      );
       setWeight('');
       setReps('');
+      setHold('');
       setRpe('');
       setRir('');
       // Το tempo συνήθως επαναλαμβάνεται μέσα στην ίδια άσκηση — δεν το σβήνουμε.
@@ -102,8 +124,12 @@ export function AddSetInline({
         <button
           type="button"
           onClick={() => {
-            if (initialWeight != null) setWeight(String(initialWeight));
-            if (initialReps != null) setReps(String(initialReps));
+            if (initialWeight != null) setWeight(String(toDisplayWeight(initialWeight, unit)));
+            if (holdMode) {
+              if (initialHoldSeconds != null) setHold(String(initialHoldSeconds));
+            } else if (initialReps != null) {
+              setReps(String(initialReps));
+            }
           }}
           className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
@@ -177,7 +203,7 @@ export function AddSetInline({
         {weighted && (
           <label className="flex flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t('workout.weightKg')}
+              {t('common.weight')} ({t(`common.${unit}`)})
             </span>
             <Input
               inputMode="decimal"
@@ -187,28 +213,49 @@ export function AddSetInline({
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               className="h-9"
-              aria-label={t('workout.weightKg')}
+              aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
             />
           </label>
         )}
-        <label className="flex flex-1 flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {t('workout.reps')}
-          </span>
-          <Input
-            inputMode="numeric"
-            type="number"
-            min="1"
-            step="1"
-            value={reps}
-            onChange={(e) => setReps(e.target.value)}
-            className="h-9"
-            aria-label={t('workout.reps')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && valid) void submit();
-            }}
-          />
-        </label>
+        {holdMode ? (
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t('workout.holdSeconds')}
+            </span>
+            <Input
+              inputMode="numeric"
+              type="number"
+              min="1"
+              step="1"
+              value={hold}
+              onChange={(e) => setHold(e.target.value)}
+              className="h-9"
+              aria-label={t('workout.holdSeconds')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && valid) void submit();
+              }}
+            />
+          </label>
+        ) : (
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t('workout.reps')}
+            </span>
+            <Input
+              inputMode="numeric"
+              type="number"
+              min="1"
+              step="1"
+              value={reps}
+              onChange={(e) => setReps(e.target.value)}
+              className="h-9"
+              aria-label={t('workout.reps')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && valid) void submit();
+              }}
+            />
+          </label>
+        )}
         <Button
           size="sm"
           disabled={!valid || busy}

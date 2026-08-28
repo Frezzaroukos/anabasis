@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -10,6 +11,8 @@ import {
   YAxis,
 } from 'recharts';
 import { getTrainingSummary, getVolumeTrend } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { toDisplayWeight } from '@/lib/units';
 
 /**
  * Όγκος ανά ημέρα, 30 ημέρες. Bars (όχι line) επίτηδες: η προπόνηση είναι
@@ -18,12 +21,23 @@ import { getTrainingSummary, getVolumeTrend } from '@/lib/db/queries';
  */
 export function VolumeChart({ days = 30 }: { days?: number }) {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const data = useLiveQuery(() => getVolumeTrend(days), [days], []);
   const summary = useLiveQuery(
     () => getTrainingSummary(days),
     [days],
     { totalVolume: 0, totalSets: 0, activeDays: 0, days },
   );
+
+  // Το bar chart διαβάζει την τιμή απευθείας από dataKey="volume" — η
+  // μετατροπή γίνεται ΕΔΩ, μία φορά, ώστε ο άξονας/tooltip να δείχνουν ήδη
+  // στη σωστή μονάδα χωρίς να ξαναμετατρέπει το καθένα.
+  const displayData = useMemo(
+    () => data.map((p) => ({ ...p, volume: toDisplayWeight(p.volume, unit, 'plate') })),
+    [data, unit],
+  );
+  const totalVolume = toDisplayWeight(summary.totalVolume, unit, 'plate');
 
   if (summary.totalSets === 0) return null;
 
@@ -39,7 +53,7 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
       <dl className="mb-4 grid grid-cols-3 gap-2 text-center">
         {(
           [
-            ['totalVolume', `${Math.round(summary.totalVolume / 1000)}k`],
+            ['totalVolume', `${Math.round(totalVolume / 1000)}k`],
             ['totalSets', summary.totalSets],
             ['activeDays', `${summary.activeDays}/${days}`],
           ] as const
@@ -55,7 +69,7 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
 
       <div className="h-40 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+          <BarChart data={displayData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="currentColor"
@@ -84,7 +98,7 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
                 fontSize: 12,
               }}
               labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-              formatter={(v: number) => [`${v} kg`, t('history.volume')]}
+              formatter={(v: number) => [`${v} ${unit}`, t('history.volume')]}
             />
             <Bar dataKey="volume" fill="currentColor" className="text-primary" radius={[2, 2, 0, 0]} />
           </BarChart>

@@ -3,8 +3,13 @@
 > Τι λείπει για να πάει από «τεχνικά σωστό» σε «κάτι που κάποιος θέλει να χρησιμοποιήσει
 > και μια εταιρία σταματά να κοιτάζει». Ανά μέτωπο: εμφάνιση, ποιότητα, branding, δομή, λειτουργίες.
 
-**Κατάσταση σήμερα:** 15 σελίδες · 98 tests · offline-first PWA · schema v7 · code-split (~160KB gzip αρχική).
-Τεχνικά: πολύ πάνω από junior level. Οπτικά: αδιάφορο.
+**Κατάσταση σήμερα (ενημέρωση 2026-08-28):** 165+ tests · offline-first PWA ·
+schema v9→v10 · **live** στο [anabasis.axonos.dev](https://anabasis.axonos.dev) ·
+native desktop app (Tauri 2) από 27/08.
+Τεχνικά: πολύ πάνω από junior level. Οπτικά: το design pass (accent picker,
+logo, skill icons, motion, onboarding, PR celebration) **έχει προχωρήσει** από
+τότε που γράφτηκε αυτό το roadmap — οι πίνακες παρακάτω μένουν ως ιστορικό
+backlog, δες `VISION-NEXT.md` για τι έχει προσγειωθεί συγκεκριμένα.
 
 ---
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -22,6 +22,8 @@ import {
   listExercises,
 } from '@/lib/db/queries';
 import type { PersonalRecord, PRType } from '@/lib/db/types';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { toDisplayWeight } from '@/lib/units';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { ActivityProgress } from './ActivityProgress';
@@ -42,6 +44,8 @@ const METRIC_PR: Record<Metric, PRType> = {
  */
 export function ProgressPage() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
   const [exerciseId, setExerciseId] = useState<string | null>(null);
@@ -65,10 +69,24 @@ export function ProgressPage() {
     [],
     new Map<string, PersonalRecord[]>(),
   );
-  const points = useLiveQuery(
+  const rawPoints = useLiveQuery(
     () => (exerciseId ? getExerciseProgress(exerciseId, 365) : Promise.resolve([])),
     [exerciseId],
     [],
+  );
+
+  // Τα σημεία έρχονται σε kg (storage) — μετατρέπονται στη μονάδα του χρήστη
+  // ΕΔΩ, μία φορά, ώστε το chart/PR-line/«best» να δουλεύουν όλα στην ίδια
+  // κλίμακα χωρίς να ξαναμετατρέπει το καθένα ξεχωριστά.
+  const points = useMemo(
+    () =>
+      rawPoints.map((p) => ({
+        ...p,
+        topWeight: p.topWeight != null ? toDisplayWeight(p.topWeight, unit) : null,
+        e1rm: p.e1rm != null ? toDisplayWeight(p.e1rm, unit) : null,
+        volume: toDisplayWeight(p.volume, unit),
+      })),
+    [rawPoints, unit],
   );
 
   const filtered = q
@@ -81,9 +99,11 @@ export function ProgressPage() {
     : null;
 
   // Το τρέχον PR για το επιλεγμένο metric — γίνεται γραμμή αναφοράς στο chart.
-  const prValue =
+  // Το ίδιο kg→unit πέρασμα με τα σημεία, αλλιώς η γραμμή θα έπεφτε σε λάθος ύψος.
+  const prValueKg =
     (prsByExercise.get(exerciseId ?? '') ?? []).find((r) => r.type === METRIC_PR[metric])
       ?.value ?? null;
+  const prValue = prValueKg != null ? toDisplayWeight(prValueKg, unit) : null;
 
   const close = () => {
     setExerciseId(null);
@@ -206,7 +226,7 @@ export function ProgressPage() {
                 </span>
                 {best != null && (
                   <span className="font-mono">
-                    {t('progress.best')}: {Math.round(best * 10) / 10}
+                    {t('progress.best')}: {best} {unit}
                   </span>
                 )}
               </div>
@@ -240,7 +260,7 @@ export function ProgressPage() {
                         fontSize: 12,
                       }}
                       labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-                      formatter={(v: number) => [v, t(`progress.${metric}`)]}
+                      formatter={(v: number) => [`${v} ${unit}`, t(`progress.${metric}`)]}
                     />
                     {prValue != null && (
                       <ReferenceLine
@@ -250,7 +270,7 @@ export function ProgressPage() {
                         strokeDasharray="4 3"
                       >
                         <Label
-                          value={`PR ${Math.round(prValue * 10) / 10}`}
+                          value={`PR ${prValue} ${unit}`}
                           position="insideTopRight"
                           fill="currentColor"
                           className="fill-amber-500 text-[10px]"

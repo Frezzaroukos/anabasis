@@ -84,7 +84,10 @@
     "whenPast": "Άλλη μέρα",
     "addPast": "Προσθήκη προπόνησης",
     "whenYesterday": "Χθες",
-    "fromRoutine": "Ξεκίνα από ρουτίνα"
+    "fromRoutine": "Ξεκίνα από ρουτίνα",
+    "holdSeconds": "Hold (δευτ)",
+    "quickPlaceholderHold": "π.χ. 12,10,8",
+    "repeatLast": "Επανάλαβε την τελευταία προπόνηση"
   },
   "programs": {
     "title": "Προγράμματα",
@@ -222,7 +225,9 @@
     "accent": "Χρώμα accent",
     "dashboardLayout": "Η Αρχική σου",
     "dashboardLayoutHint": "Διάλεξε ποιες κάρτες εμφανίζονται και με ποια σειρά. Το «Πρόσθεσε προπόνηση» μένει πάντα — μια Αρχική από την οποία δεν μπορείς να ξεκινήσεις είναι αδιέξοδο.",
-    "dashboardLocked": "Πάντα ορατό"
+    "dashboardLocked": "Πάντα ορατό",
+    "restAutoStart": "Αυτόματη εκκίνηση rest timer",
+    "restAutoStartHint": "Ξεκινάει την αντίστροφη μέτρηση μόλις καταγράψεις ένα σετ."
   },
   "common": {
     "save": "Αποθήκευση",
@@ -237,7 +242,8 @@
     "loading": "Φόρτωση…",
     "undo": "Αναίρεση",
     "pageError": "Κάτι πήγε στραβά σε αυτή τη σελίδα.",
-    "retry": "Δοκίμασε ξανά"
+    "retry": "Δοκίμασε ξανά",
+    "weight": "Βάρος"
   },
   "activity": {
     "strength": "Δύναμη",
@@ -433,7 +439,8 @@
     "weightRate": "Βάρος {{dir}} ~{{rate}} kg/εβδομάδα.",
     "gaining": "πάνω",
     "losing": "κάτω",
-    "prs": "{{count}} νέα ρεκόρ αυτόν τον μήνα."
+    "prs": "{{count}} νέα ρεκόρ αυτόν τον μήνα.",
+    "weightRateUnit": "Βάρος {{dir}} ~{{rate}} {{unit}}/εβδομάδα."
   },
   "import": {
     "title": "Εισαγωγή δεδομένων",
@@ -445,7 +452,27 @@
     "days": "μέρες",
     "needReview": "θέλουν έλεγχο",
     "doImport": "Εισαγωγή {{count}} ημερών",
-    "done": "Έτοιμο — {{added}} προστέθηκαν, {{updated}} ενημερώθηκαν."
+    "done": "Έτοιμο — {{added}} προστέθηκαν, {{updated}} ενημερώθηκαν.",
+    "subtitle": "Φέρε το ιστορικό σου από Notion, Strong ή Hevy — πρώτα preview, μετά import.",
+    "source": "Πηγή",
+    "sourceNotionCalories": "Notion θερμίδες",
+    "sourceNotionWeights": "Notion βάρος",
+    "sourceStrong": "Strong CSV",
+    "sourceHevy": "Hevy CSV",
+    "weightPlaceholder": "Επικόλλησε από το Notion εδώ…\n\nΟκτώβριος:\n- [x] 04-10-2025: 71,5\n…",
+    "csvPlaceholder": "Επικόλλησε εδώ το CSV export…",
+    "chooseFile": "Διάλεξε αρχείο CSV",
+    "weightHint": "Ο μήνας έρχεται από το ελληνικό header, όπως στις θερμίδες. Δεκαδικά με κόμμα ή τελεία, με ή χωρίς «kg».",
+    "strongHint": "Strong: Settings → Export Data. Δουλεύουν και οι δύο μορφές (iOS με κόμμα, Android με «;») — τα lbs μετατρέπονται σε kg.",
+    "hevyHint": "Hevy: Profile → Settings → Export & Import Data. Τα βάρη είναι ήδη σε kg.",
+    "workouts": "προπονήσεις",
+    "sets": "σετ",
+    "badRows": "μη αναγνώσιμες γραμμές",
+    "invalidDate": "αδύνατη ημερομηνία — δεν θα εισαχθεί",
+    "invalidDates": "αδύνατες ημερομηνίες",
+    "willCreateExercises": "Θα δημιουργηθούν {{count}} νέες ασκήσεις:",
+    "doImportWorkouts": "Import {{count}} προπονήσεων",
+    "workoutsDone": "Έγινε — {{workouts}} προπονήσεις, {{sets}} σετ, {{exercises}} νέες ασκήσεις, {{duplicates}} διπλότυπα παραλείφθηκαν."
   },
   "onboarding": {
     "title": "Anabasis",
@@ -469,7 +496,7 @@
     "target": "Στόχος",
     "bar": "Μπάρα",
     "perSide": "Ανά πλευρά",
-    "remainder": "Υπόλοιπο",
+    "remainder": "Δεν διαιρείται ακριβώς — απομένουν {{amount}}{{unit}} ανά πλευρά.",
     "empty": "Πρόσθεσε βάρος πάνω από την μπάρα."
   },
   "goals": {

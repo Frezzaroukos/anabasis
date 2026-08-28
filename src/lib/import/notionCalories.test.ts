@@ -86,4 +86,39 @@ describe('parseNotionCalories', () => {
     const { rows } = parseNotionCalories(text);
     expect(rows).toHaveLength(0);
   });
+
+  it('αδύνατη ημερομηνία (31 Φεβρουαρίου) → invalidDate, όχι σιωπηλό import', () => {
+    // Πριν: το «2025-02-31» περνούσε ατόφιο στα body_metrics — μια μέρα
+    // που δεν υπάρχει. Τώρα σημαδεύεται και το UI την αποκλείει.
+    const text = `
+Φεβρουάριος:
+- [x] 28-02-2025:2500
+- [x] 31-02-2025:2600
+`;
+    const { rows } = parseNotionCalories(text);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.invalidDate).toBe(false);
+    expect(rows[0]!.needsReview).toBe(false);
+    expect(rows[1]!.date).toBe('2025-02-31');
+    expect(rows[1]!.invalidDate).toBe(true);
+    expect(rows[1]!.needsReview).toBe(true);
+  });
+
+  it('η 29η Φεβρουαρίου ισχύει ΜΟΝΟ σε δίσεκτα έτη', () => {
+    const leap = parseNotionCalories('Φεβρουάριος:\n- [x] 29-02-2024:2500', 2024);
+    expect(leap.rows[0]!.invalidDate).toBe(false);
+    const nonLeap = parseNotionCalories('Φεβρουάριος:\n- [x] 29-02-2025:2500', 2025);
+    expect(nonLeap.rows[0]!.invalidDate).toBe(true);
+  });
+
+  it('η αδύνατη ημερομηνία δεν «καίει» τη θέση της πραγματικής στο dedup', () => {
+    const text = `
+Απρίλιος:
+- [x] 31-04-2026:2600
+- [x] 30-04-2026:2400
+`;
+    const { rows } = parseNotionCalories(text, 2026);
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.date === '2026-04-30')!.invalidDate).toBe(false);
+  });
 });

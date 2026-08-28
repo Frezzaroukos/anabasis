@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Flame, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 import { getTrainingInsights } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { kgToLb } from '@/lib/units';
 import { Card, SectionTitle } from '@/components/ui/Section';
 
 /**
@@ -12,6 +14,8 @@ import { Card, SectionTitle } from '@/components/ui/Section';
  */
 export function InsightsCard() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const ins = useLiveQuery(() => getTrainingInsights(30), []);
   if (!ins) return null;
 
@@ -40,14 +44,17 @@ export function InsightsCard() {
 
   if (ins.weightTrend && Math.abs(ins.weightTrend.ratePerWeekKg) >= 0.1) {
     const gaining = ins.weightTrend.ratePerWeekKg > 0;
+    const rateInUnit =
+      unit === 'lb' ? kgToLb(Math.abs(ins.weightTrend.ratePerWeekKg)) : Math.abs(ins.weightTrend.ratePerWeekKg);
     lines.push({
       icon: gaining ? (
         <TrendingUp className="h-4 w-4 text-sky-500" />
       ) : (
         <TrendingDown className="h-4 w-4 text-sky-500" />
       ),
-      text: t('insights.weightRate', {
-        rate: Math.abs(ins.weightTrend.ratePerWeekKg).toFixed(2),
+      text: t('insights.weightRateUnit', {
+        rate: rateInUnit.toFixed(2),
+        unit: t(`common.${unit}`),
         dir: t(gaining ? 'insights.gaining' : 'insights.losing'),
       }),
     });

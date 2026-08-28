@@ -84,7 +84,10 @@
     "whenPast": "Another day",
     "addPast": "Add workout",
     "whenYesterday": "Yesterday",
-    "fromRoutine": "Start from a routine"
+    "fromRoutine": "Start from a routine",
+    "holdSeconds": "Hold (sec)",
+    "quickPlaceholderHold": "e.g. 12,10,8",
+    "repeatLast": "Repeat last workout"
   },
   "programs": {
     "title": "Programs",
@@ -222,7 +225,9 @@
     "accent": "Accent colour",
     "dashboardLayout": "Your home screen",
     "dashboardLayoutHint": "Choose which cards appear and in what order. \"Add workout\" always stays — a home screen you cannot start from is a dead end.",
-    "dashboardLocked": "Always visible"
+    "dashboardLocked": "Always visible",
+    "restAutoStart": "Auto-start rest timer",
+    "restAutoStartHint": "Starts counting down as soon as you log a set."
   },
   "common": {
     "save": "Save",
@@ -237,7 +242,8 @@
     "loading": "Loading…",
     "undo": "Undo",
     "pageError": "Something went wrong on this page.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "weight": "Weight"
   },
   "activity": {
     "strength": "Strength",
@@ -433,7 +439,8 @@
     "weightRate": "Weight {{dir}} ~{{rate}} kg/week.",
     "gaining": "up",
     "losing": "down",
-    "prs": "{{count}} new PRs this month."
+    "prs": "{{count}} new PRs this month.",
+    "weightRateUnit": "Weight {{dir}} ~{{rate}} {{unit}}/week."
   },
   "import": {
     "title": "Import data",
@@ -445,7 +452,27 @@
     "days": "days",
     "needReview": "need review",
     "doImport": "Import {{count}} days",
-    "done": "Done — {{added}} added, {{updated}} updated."
+    "done": "Done — {{added}} added, {{updated}} updated.",
+    "subtitle": "Import history from Notion, Strong, or Hevy — preview first, then confirm.",
+    "source": "Source",
+    "sourceNotionCalories": "Notion calories",
+    "sourceNotionWeights": "Notion weight",
+    "sourceStrong": "Strong CSV",
+    "sourceHevy": "Hevy CSV",
+    "weightPlaceholder": "Paste from Notion here…\n\nΟκτώβριος:\n- [x] 04-10-2025: 71,5\n…",
+    "csvPlaceholder": "Paste the CSV export here…",
+    "chooseFile": "Choose CSV file",
+    "weightHint": "The month comes from the Greek header, same as calories. Decimals with comma or dot, with or without “kg”.",
+    "strongHint": "Strong: Settings → Export Data. Both dialects work (iOS commas, Android semicolons) — lbs are converted to kg.",
+    "hevyHint": "Hevy: Profile → Settings → Export & Import Data. Weights are already in kg.",
+    "workouts": "workouts",
+    "sets": "sets",
+    "badRows": "unreadable rows",
+    "invalidDate": "impossible date — will not be imported",
+    "invalidDates": "impossible dates",
+    "willCreateExercises": "{{count}} new exercises will be created:",
+    "doImportWorkouts": "Import {{count}} workouts",
+    "workoutsDone": "Done — {{workouts}} workouts, {{sets}} sets, {{exercises}} new exercises, {{duplicates}} duplicates skipped."
   },
   "onboarding": {
     "title": "Anabasis",
@@ -469,7 +496,7 @@
     "target": "Target",
     "bar": "Bar",
     "perSide": "Per side",
-    "remainder": "Remainder",
+    "remainder": "Doesn't divide evenly — {{amount}}{{unit}} per side left over.",
     "empty": "Add weight above the bar."
   },
   "goals": {

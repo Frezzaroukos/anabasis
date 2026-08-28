@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { getVolumeTrend } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { toDisplayWeight } from '@/lib/units';
 import { Card } from '@/components/ui/Section';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { cn } from '@/lib/utils';
@@ -15,14 +17,20 @@ import { cn } from '@/lib/utils';
  */
 export function WeeklyVolumeCard() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const trend14 = useLiveQuery(() => getVolumeTrend(14), [], []);
 
-  const thisWeek = trend14.slice(7).reduce((a, p) => a + p.volume, 0);
-  const lastWeek = trend14.slice(0, 7).reduce((a, p) => a + p.volume, 0);
-  if (thisWeek === 0 && lastWeek === 0) return null;
+  const thisWeekKg = trend14.slice(7).reduce((a, p) => a + p.volume, 0);
+  const lastWeekKg = trend14.slice(0, 7).reduce((a, p) => a + p.volume, 0);
+  if (thisWeekKg === 0 && lastWeekKg === 0) return null;
 
-  const delta = thisWeek - lastWeek;
-  const deltaPct = lastWeek > 0 ? Math.round((delta / lastWeek) * 100) : null;
+  // Ποσοστό: αναλλοίωτο ως προς τη μονάδα — υπολογίζεται πριν τη μετατροπή.
+  const delta = thisWeekKg - lastWeekKg;
+  const deltaPct = lastWeekKg > 0 ? Math.round((delta / lastWeekKg) * 100) : null;
+
+  const thisWeek = toDisplayWeight(thisWeekKg, unit, 'plate');
+  const lastWeek = toDisplayWeight(lastWeekKg, unit, 'plate');
 
   return (
     <Card>
@@ -59,11 +67,11 @@ export function WeeklyVolumeCard() {
             {Math.round(thisWeek / 1000)}
             <span className="text-lg text-muted-foreground">k</span>{' '}
             <span className="font-sans text-xs text-muted-foreground">
-              kg · {t('dashboard.thisWeek')}
+              {unit} · {t('dashboard.thisWeek')}
             </span>
           </p>
           <p className="mt-1.5 text-xs text-muted-foreground">
-            {t('dashboard.vsLastWeek')}: {Math.round(lastWeek / 1000)}k kg
+            {t('dashboard.vsLastWeek')}: {Math.round(lastWeek / 1000)}k {unit}
           </p>
         </div>
         {lastWeek > 0 && (

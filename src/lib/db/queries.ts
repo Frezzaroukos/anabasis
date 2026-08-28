@@ -52,17 +52,31 @@ function isVisibleToMe(row: { user_id: string | null }): boolean {
 
 /* ─────────── Workouts ─────────── */
 
+/**
+ * Μεσημέρι ΤΟΠΙΚΗΣ ώρας για μια ημερομηνία YYYY-MM-DD.
+ *
+ * Το UTC μεσημέρι (`${isoDay}T12:00:00.000Z`) φαίνεται «ασφαλές» αλλά δεν
+ * είναι: σε ζώνες πολύ μακριά από UTC (π.χ. UTC+13/+14) το UTC μεσημέρι
+ * πέφτει ήδη στην ΕΠΟΜΕΝΗ τοπική μέρα, οπότε ένα backdated workout
+ * καταλήγει με λάθος ημερομηνία στο ημερολόγιο/ιστορικό. Χτίζοντας το Date
+ * από τοπικά y/m/d αποφεύγουμε τελείως τον υπολογισμό μέσω UTC.
+ */
+function localNoon(isoDay: string): Date {
+  const [y, m, d] = isoDay.split('-').map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+}
+
 export async function startWorkout(
   activityKind: ActivityKind = 'strength',
   /**
    * v8: προαιρετική ημερομηνία YYYY-MM-DD για backdated workout («χθες
-   * έκανα αυτό»). Το started_at μπαίνει στο μεσημέρι εκείνης της μέρας ώστε
-   * να πέφτει σίγουρα στη σωστή τοπική ημέρα σε calendar/history.
+   * έκανα αυτό»). Το started_at μπαίνει στο ΤΟΠΙΚΟ μεσημέρι εκείνης της
+   * μέρας ώστε να πέφτει σίγουρα στη σωστή τοπική ημέρα σε calendar/history.
    */
   onDate?: string,
 ): Promise<Workout> {
   const t = now();
-  const startedAt = onDate ? `${onDate}T12:00:00.000Z` : t;
+  const startedAt = onDate ? localNoon(onDate).toISOString() : t;
   const w: Workout = {
     id: uuid(),
     user_id: getCurrentUserId(),
@@ -190,6 +204,14 @@ export async function getActiveWorkout(): Promise<Workout | undefined> {
   return candidates
     .filter((w) => w.ended_at == null && w.deleted_at == null)
     .sort((a, b) => b.started_at.localeCompare(a.started_at))[0];
+}
+
+/** Ολοκληρωμένες προπονήσεις αυτού του προφίλ, πιο πρόσφατη πρώτη — για το History. */
+export async function listCompletedWorkouts(): Promise<Workout[]> {
+  const all = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
+  return all
+    .filter((w) => w.ended_at != null && w.deleted_at == null)
+    .sort((a, b) => (b.started_at ?? '').localeCompare(a.started_at ?? ''));
 }
 
 /* ─────────── Sets ─────────── */
@@ -392,7 +414,18 @@ export async function updateSet(
   patch: Partial<
     Pick<
       SetEntry,
-      'weight_kg' | 'reps' | 'hold_seconds' | 'notes' | 'rpe' | 'rir' | 'tempo'
+      | 'weight_kg'
+      | 'reps'
+      | 'hold_seconds'
+      | 'notes'
+      | 'rpe'
+      | 'rir'
+      | 'tempo'
+      // set_type/group_id: διορθώνεις ένα ήδη καταγεγραμμένο σετ σε
+      // dropset/superset (ή το βγάζεις από την αλυσίδα) — πριν ήταν
+      // αδύνατο να αλλάξεις αυτά τα δύο μετά την καταγραφή.
+      | 'set_type'
+      | 'group_id'
     >
   >,
 ): Promise<void> {
@@ -600,12 +633,44 @@ export async function undoStep(skillId: string, stepId: string): Promise<void> {
   });
 }
 
+/**
+ * Πλήθος βημάτων + πόσα ολοκλήρωσες, ανά skill — ΜΟΝΟ για ό,τι skill βλέπει
+ * αυτό το προφίλ. Χωρίς το φιλτράρισμα σε visible skill ids, δύο προφίλ που
+ * δουλεύουν το ΙΔΙΟ seeded skill θα έβλεπαν το ποσοστό προόδου του άλλου
+ * μπλεγμένο με το δικό τους.
+ */
+export async function getSkillStepStats(): Promise<Map<string, { total: number; done: number }>> {
+  const visibleSkillIds = new Set((await listSkills(true)).map((s) => s.id));
+  const [steps, completions] = await Promise.all([
+    db.skill_steps.toArray(),
+    db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray(),
+  ]);
+  const stepToSkill = new Map(
+    steps.filter((s) => visibleSkillIds.has(s.skill_id)).map((s) => [s.id, s.skill_id]),
+  );
+
+  const out = new Map<string, { total: number; done: number }>();
+  for (const skillId of stepToSkill.values()) {
+    const cur = out.get(skillId) ?? { total: 0, done: 0 };
+    cur.total += 1;
+    out.set(skillId, cur);
+  }
+  for (const c of completions) {
+    const skillId = stepToSkill.get(c.skill_step_id);
+    if (!skillId) continue;
+    const cur = out.get(skillId) ?? { total: 0, done: 0 };
+    cur.done += 1;
+    out.set(skillId, cur);
+  }
+  return out;
+}
+
 /* ─────────── Data ownership (export / import) ─────────── */
 
-/** Πλήρες JSON backup. Local-first σημαίνει: τα δεδομένα φεύγουν όποτε θες. */
 /**
  * CSV μιας άσκησης — για δικό σου spreadsheet/ανάλυση. Το exportAll είναι
- * ολόκληρο το προφίλ σε JSON· εδώ θέλεις μόνο το squat σου σε στήλες.
+ * ολόκληρη η ΤΟΠΙΚΗ βάση σε JSON (όλα τα προφίλ μαζί — δες exportAll)· εδώ
+ * θέλεις μόνο το squat σου σε στήλες.
  */
 export async function exportExerciseCsv(exerciseId: string): Promise<string> {
   const rows = (
@@ -614,7 +679,7 @@ export async function exportExerciseCsv(exerciseId: string): Promise<string> {
     .filter((s) => s.deleted_at == null)
     .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
-  const header = 'date,set_number,weight_kg,reps,rpe,rir,e1rm,volume';
+  const header = 'date,set_number,weight_kg,reps,hold_seconds,rpe,rir,e1rm,volume';
   const csv = (v: number | string | null) => (v == null ? '' : String(v));
   const lines = rows.map((s) => {
     const est = s.weight_kg != null && s.reps != null ? Math.round(e1rm(s.weight_kg, s.reps) * 10) / 10 : null;
@@ -623,6 +688,7 @@ export async function exportExerciseCsv(exerciseId: string): Promise<string> {
       s.set_number,
       csv(s.weight_kg),
       csv(s.reps),
+      csv(s.hold_seconds),
       csv(s.rpe),
       csv(s.rir),
       csv(est),
@@ -652,6 +718,14 @@ const BACKUP_TABLES = () => ({
   activities: db.activities, goals: db.goals,
 });
 
+/**
+ * Πλήρες JSON backup — ΟΛΗ η τοπική βάση, ΟΛΑ τα προφίλ μαζί (ΔΕΝ φιλτράρει
+ * με getCurrentUserId, εξ ορισμού — βλ. `users: db.users` παραπάνω χωρίς
+ * `.where('user_id')`). Δεν είναι «export του τρέχοντος προφίλ»· είναι το
+ * μονοπάτι πλήρους αντιγράφου/μετακόμισης συσκευής — αν έχεις πολλά προφίλ
+ * σε αυτή τη συσκευή, φεύγουν όλα μαζί σε ένα αρχείο. Local-first σημαίνει:
+ * τα δεδομένα φεύγουν όποτε θες.
+ */
 export async function exportAll(): Promise<string> {
   const tables = BACKUP_TABLES();
   const names = Object.keys(tables) as (keyof ReturnType<typeof BACKUP_TABLES>)[];
@@ -1257,24 +1331,31 @@ export async function duplicateProgram(
   return copy;
 }
 
-/** Αντιγράφει την τελευταία προπόνηση ως πρόγραμμα — «κάνε ό,τι έκανα τότε». */
-export async function programFromLastWorkout(name: string): Promise<Program | null> {
-  const done = (
-    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
-  )
-    .filter((w) => w.ended_at != null && w.deleted_at == null)
-    .sort((a, b) => b.started_at.localeCompare(a.started_at));
-  const last = done[0];
-  if (!last) return null;
+export interface LastWorkoutPlanItem {
+  exercise_id: string;
+  target_sets: number;
+  target_reps: number | null;
+  target_weight_kg: number | null;
+  target_hold_seconds: number | null;
+  set_type: SetType;
+}
 
-  const sets = (await db.sets.where('workout_id').equals(last.id).toArray()).filter(
+/**
+ * Ομαδοποιεί τα (μη-warmup) σετ ενός workout ανά άσκηση σε target_* πεδία:
+ * πλήθος σετ + το βαρύτερο σετ ως στόχος. Το ΙΔΙΟ «κάνε ό,τι έκανα» θέλει
+ * να δουλεύει είτε φτιάχνεις πρόγραμμα (programFromLastWorkout) είτε
+ * ξεκινάς κατευθείαν νέο workout (startWorkoutFromLastOfKind) — μία λογική,
+ * δύο μονοπάτια εξόδου.
+ */
+async function planFromWorkoutSets(workoutId: string): Promise<LastWorkoutPlanItem[]> {
+  const sets = (await db.sets.where('workout_id').equals(workoutId).toArray()).filter(
     (s) => s.deleted_at == null && s.set_type !== 'warmup',
   );
-  if (sets.length === 0) return null;
 
-  const prog = await createProgram(name, last.activity_kind ?? 'strength');
-  // ομαδοποίηση ανά άσκηση: πλήθος σετ + το βαρύτερο ως στόχος
-  const byExercise = new Map<string, { count: number; weight: number | null; reps: number | null; hold: number | null; setType: SetType }>();
+  const byExercise = new Map<
+    string,
+    { count: number; weight: number | null; reps: number | null; hold: number | null; setType: SetType }
+  >();
   for (const s of sets) {
     const cur = byExercise.get(s.exercise_id) ?? {
       count: 0, weight: null, reps: null, hold: null, setType: s.set_type,
@@ -1290,17 +1371,63 @@ export async function programFromLastWorkout(name: string): Promise<Program | nu
     }
     byExercise.set(s.exercise_id, cur);
   }
-  for (const [exercise_id, v] of byExercise) {
-    await addProgramExercise(prog.id, {
-      exercise_id,
-      target_sets: v.count,
-      target_reps: v.reps,
-      target_weight_kg: v.weight,
-      target_hold_seconds: v.hold,
-      set_type: v.setType,
-    });
+
+  return [...byExercise.entries()].map(([exercise_id, v]) => ({
+    exercise_id,
+    target_sets: v.count,
+    target_reps: v.reps,
+    target_weight_kg: v.weight,
+    target_hold_seconds: v.hold,
+    set_type: v.setType,
+  }));
+}
+
+/** Αντιγράφει την τελευταία προπόνηση ως πρόγραμμα — «κάνε ό,τι έκανα τότε». */
+export async function programFromLastWorkout(name: string): Promise<Program | null> {
+  const done = (
+    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
+  )
+    .filter((w) => w.ended_at != null && w.deleted_at == null)
+    .sort((a, b) => b.started_at.localeCompare(a.started_at));
+  const last = done[0];
+  if (!last) return null;
+
+  const plan = await planFromWorkoutSets(last.id);
+  if (plan.length === 0) return null;
+
+  const prog = await createProgram(name, last.activity_kind ?? 'strength');
+  for (const item of plan) {
+    await addProgramExercise(prog.id, item);
   }
   return prog;
+}
+
+/**
+ * Ξεκινά νέο workout σαν την τελευταία ΟΛΟΚΛΗΡΩΜΕΝΗ προπόνηση αυτού του
+ * είδους — «κάνε ό,τι έκανα την τελευταία φορά», χωρίς να χρειάζεται
+ * αποθηκευμένο πρόγραμμα. Ίδιο σχήμα επιστροφής με startWorkoutFromProgram
+ * (workout + plan στόχων): το νέο workout ΔΕΝ γράφει σετ, το plan είναι
+ * μόνο ό,τι στόχευε η προηγούμενη φορά.
+ */
+export async function startWorkoutFromLastOfKind(
+  kind: ActivityKind,
+): Promise<{ workout: Workout; plan: LastWorkoutPlanItem[] } | null> {
+  const last = (
+    await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
+  )
+    .filter((w) => w.activity_kind === kind && w.ended_at != null && w.deleted_at == null)
+    .sort((a, b) => b.started_at.localeCompare(a.started_at))[0];
+  if (!last) return null;
+
+  const plan = await planFromWorkoutSets(last.id);
+  const w = await startWorkout(kind);
+  if (last.workout_type) {
+    await db.workouts.update(w.id, { workout_type: last.workout_type, updated_at: now() });
+  }
+  return {
+    workout: last.workout_type ? { ...w, workout_type: last.workout_type } : w,
+    plan,
+  };
 }
 
 /** Απόσταση για run/cycling/swim — γράφεται στο workout, όχι σε σετ. */
@@ -1625,6 +1752,7 @@ export async function createProfile(displayName: string): Promise<User> {
     notify_pr: true,
     notify_session_reminder: false,
     notify_rest_timer: true,
+    auto_start_rest_timer: true,
     reminder_time: null,
     reminder_days: [],
     show_e1rm: true,
@@ -1647,33 +1775,75 @@ export async function renameProfile(id: string, displayName: string): Promise<vo
  * Σβήνει το προφίλ ΚΑΙ όλα του τα δεδομένα. Μη αναστρέψιμο — το UI οφείλει
  * να ζητήσει ρητή επιβεβαίωση. Τα seeded δεδομένα (`user_id === null`)
  * είναι κοινά και δεν αγγίζονται.
+ *
+ * Ελέγχεται και τα 16 tables του schema — πριν έμεναν ορφανά goals (και θα
+ * έμεναν ορφανά skills/skill_steps για δικά σου skills, καθώς και events),
+ * γιατί η λίστα cascade δεν ακολουθούσε το σχήμα. Όλο το σβήσιμο τρέχει σε
+ * ΜΙΑ transaction: ή φεύγουν όλα μαζί ή τίποτα — ένα crash στη μέση δεν
+ * πρέπει να αφήνει το προφίλ μισοσβησμένο.
  */
 export async function deleteProfile(id: string): Promise<void> {
-  const workouts = await db.workouts.where('user_id').equals(id).toArray();
-  const workoutIds = new Set(workouts.map((w) => w.id));
+  await db.transaction(
+    'rw',
+    [
+      db.workouts,
+      db.sets,
+      db.programs,
+      db.program_exercises,
+      db.personal_records,
+      db.body_metrics,
+      db.user_skill_progress,
+      db.user_skill_step_completions,
+      db.app_settings,
+      db.exercises,
+      db.activities,
+      db.skills,
+      db.skill_steps,
+      db.goals,
+      db.events_outgoing,
+      db.users,
+    ],
+    async () => {
+      const workouts = await db.workouts.where('user_id').equals(id).toArray();
+      const workoutIds = new Set(workouts.map((w) => w.id));
 
-  const sets = await db.sets.toArray();
-  await db.sets.bulkDelete(
-    sets.filter((s) => workoutIds.has(s.workout_id)).map((s) => s.id),
+      const sets = await db.sets.toArray();
+      await db.sets.bulkDelete(
+        sets.filter((s) => workoutIds.has(s.workout_id)).map((s) => s.id),
+      );
+
+      const programs = await db.programs.where('user_id').equals(id).toArray();
+      const programIds = new Set(programs.map((p) => p.id));
+      const programExercises = await db.program_exercises.toArray();
+      await db.program_exercises.bulkDelete(
+        programExercises.filter((r) => programIds.has(r.program_id)).map((r) => r.id),
+      );
+
+      // Δικά του skills (τα seeded, user_id === null, μένουν κοινά) + τα
+      // βήματά τους — αλλιώς ένα skill_step μένει πίσω δείχνοντας σε ένα
+      // skill_id που δεν υπάρχει πια.
+      const skills = await db.skills.where('user_id').equals(id).toArray();
+      const skillIds = new Set(skills.map((s) => s.id));
+      const skillSteps = await db.skill_steps.toArray();
+      await db.skill_steps.bulkDelete(
+        skillSteps.filter((s) => skillIds.has(s.skill_id)).map((s) => s.id),
+      );
+      await db.skills.where('user_id').equals(id).delete();
+
+      await db.workouts.where('user_id').equals(id).delete();
+      await db.programs.where('user_id').equals(id).delete();
+      await db.personal_records.where('user_id').equals(id).delete();
+      await db.body_metrics.where('user_id').equals(id).delete();
+      await db.user_skill_progress.where('user_id').equals(id).delete();
+      await db.user_skill_step_completions.where('user_id').equals(id).delete();
+      await db.app_settings.where('user_id').equals(id).delete();
+      await db.exercises.where('user_id').equals(id).delete();
+      await db.activities.where('user_id').equals(id).delete();
+      await db.goals.where('user_id').equals(id).delete();
+      await db.events_outgoing.where('user_id').equals(id).delete();
+      await db.users.delete(id);
+    },
   );
-
-  const programs = await db.programs.where('user_id').equals(id).toArray();
-  const programIds = new Set(programs.map((p) => p.id));
-  const programExercises = await db.program_exercises.toArray();
-  await db.program_exercises.bulkDelete(
-    programExercises.filter((r) => programIds.has(r.program_id)).map((r) => r.id),
-  );
-
-  await db.workouts.where('user_id').equals(id).delete();
-  await db.programs.where('user_id').equals(id).delete();
-  await db.personal_records.where('user_id').equals(id).delete();
-  await db.body_metrics.where('user_id').equals(id).delete();
-  await db.user_skill_progress.where('user_id').equals(id).delete();
-  await db.user_skill_step_completions.where('user_id').equals(id).delete();
-  await db.app_settings.where('user_id').equals(id).delete();
-  await db.exercises.where('user_id').equals(id).delete();
-  await db.activities.where('user_id').equals(id).delete();
-  await db.users.delete(id);
 }
 
 /** Πόσα δεδομένα κρέμονται από ένα προφίλ — για να ξέρει ΤΙ σβήνει. */
@@ -1684,6 +1854,30 @@ export async function getProfileStats(id: string) {
     db.programs.where('user_id').equals(id).count(),
   ]);
   return { workouts, prs, programs };
+}
+
+/**
+ * Πλήθος δεδομένων του ΤΡΕΧΟΝΤΟΣ προφίλ — για οθόνες τύπου «about/data».
+ * Τα σετ δεν έχουν δικό τους `user_id` (ανήκουν σε workout), γι' αυτό
+ * περνάμε πρώτα από τα workout ids του προφίλ.
+ */
+export async function getCurrentProfileDataCounts(): Promise<{
+  workouts: number;
+  sets: number;
+  prs: number;
+  steps: number;
+}> {
+  const uid = getCurrentUserId();
+  const workoutIds = new Set(
+    (await db.workouts.where('user_id').equals(uid).toArray()).map((w) => w.id),
+  );
+  const [allSets, prs, steps] = await Promise.all([
+    db.sets.toArray(),
+    db.personal_records.where('user_id').equals(uid).count(),
+    db.user_skill_step_completions.where('user_id').equals(uid).count(),
+  ]);
+  const sets = allSets.filter((s) => workoutIds.has(s.workout_id)).length;
+  return { workouts: workoutIds.size, sets, prs, steps };
 }
 
 /* ─────────── Analytics: activity progress, insights, feel, heatmap (v7) ─────────── */

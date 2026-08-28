@@ -1,4 +1,5 @@
-import type { Activity, ActivityKind, ExerciseCategory, SetType } from '@/lib/db/types';
+import type { Activity, ActivityKind, ExerciseCategory, SetType, WeightUnit } from '@/lib/db/types';
+import { formatWeight } from '@/lib/units';
 
 export const CATEGORY_DOT: Record<ExerciseCategory, string> = {
   push: 'bg-category-push',
@@ -8,11 +9,15 @@ export const CATEGORY_DOT: Record<ExerciseCategory, string> = {
   other: 'bg-category-mixed',
 };
 
-export function formatLoad(weightKg: number | null, bodyweightKg: number | null): string {
+export function formatLoad(
+  weightKg: number | null,
+  bodyweightKg: number | null,
+  unit: WeightUnit = 'kg',
+): string {
   if (weightKg != null && bodyweightKg != null) {
-    return `BW+${weightKg}kg`;
+    return `BW+${formatWeight(weightKg, unit, { withUnit: false })}${unit}`;
   }
-  if (weightKg != null) return `${weightKg}kg`;
+  if (weightKg != null) return formatWeight(weightKg, unit, { withUnit: false }) + unit;
   return 'BW';
 }
 

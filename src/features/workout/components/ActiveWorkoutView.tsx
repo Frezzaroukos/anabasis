@@ -50,6 +50,10 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   const [plateOpen, setPlateOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [workoutType, setWorkoutType] = useState(workout.workout_type ?? '');
+  // Αυξάνει κάθε φορά που καταγράφεται νέο σετ (από οποιαδήποτε κάρτα
+  // άσκησης) — trigger για το auto-start του rest timer παρακάτω.
+  const [restSignal, setRestSignal] = useState(0);
+  const onSetLogged = () => setRestSignal((n) => n + 1);
 
   const exerciseById = useMemo(() => {
     const m = new Map<string, Exercise>();
@@ -172,6 +176,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                       }
                       chain={chain}
                       onChainChange={setChain}
+                      onSetLogged={onSetLogged}
                     />
                   );
                 })}
@@ -204,7 +209,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
       {isSetLogged && (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-4 py-3 safe-bottom backdrop-blur">
           <div className="mx-auto max-w-md">
-            <RestTimer />
+            <RestTimer restartSignal={restSignal} />
           </div>
         </div>
       )}

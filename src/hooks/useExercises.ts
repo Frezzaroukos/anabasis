@@ -1,14 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
+import { listExercises } from '@/lib/db/queries';
 import type { Exercise } from '@/lib/db/types';
 
+/**
+ * Πριν διάβαζε `db.exercises.toArray()` απευθείας, χωρίς isVisibleToMe —
+ * οι δικές σου ασκήσεις διέρρεαν σε κάθε άλλο προφίλ της συσκευής.
+ * Το listExercises() κάνει το σωστό φιλτράρισμα (seeded + δικές σου).
+ */
 export function useExercises(): Exercise[] {
-  return (
-    useLiveQuery(async () => {
-      const all = await db.exercises.toArray();
-      return all
-        .filter((e) => e.deleted_at == null && !e.is_archived)
-        .sort((a, b) => a.name.localeCompare(b.name));
-    }, []) ?? []
-  );
+  return useLiveQuery(() => listExercises(), []) ?? [];
 }

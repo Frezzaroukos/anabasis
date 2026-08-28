@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -12,6 +12,8 @@ import {
   YAxis,
 } from 'recharts';
 import { getBodyMetric, getBodyTrend, localDay, saveBodyMetric } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MacroSplit } from './components/MacroSplit';
@@ -26,6 +28,8 @@ const RANGES = [30, 60, 90, 180] as const;
  */
 export function BodyPage() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const [days, setDays] = useState<(typeof RANGES)[number]>(60);
   const today = localDay();
 
@@ -45,23 +49,30 @@ export function BodyPage() {
   // ξανασυγχρονίζονται· δεν χρειάζεται πιο στενό dep array.
   useEffect(() => {
     if (!todayMetric) return;
-    setW(todayMetric.weight_kg?.toString() ?? '');
+    setW(
+      todayMetric.weight_kg != null
+        ? String(toDisplayWeight(todayMetric.weight_kg, unit, 'body'))
+        : '',
+    );
     setCin(todayMetric.calories_in?.toString() ?? '');
     setCout(todayMetric.calories_out?.toString() ?? '');
     setProtein(todayMetric.protein_g?.toString() ?? '');
     setCarbs(todayMetric.carbs_g?.toString() ?? '');
     setFat(todayMetric.fat_g?.toString() ?? '');
     setBf(todayMetric.body_fat_pct?.toString() ?? '');
-  }, [todayMetric]);
+    // `unit` στα deps: αν ο χρήστης αλλάξει kg/lb ενώ υπάρχει ήδη σημερινή
+    // εγγραφή, το πεδίο βάρους πρέπει να ξαναδείξει τη σωστή μονάδα.
+  }, [todayMetric, unit]);
 
   const num = (s: string) => {
     const v = Number(s);
     return s.trim() !== '' && Number.isFinite(v) ? v : null;
   };
 
-  const save = () =>
+  const save = () => {
+    const weightInUnit = num(w);
     void saveBodyMetric(today, {
-      weight_kg: num(w),
+      weight_kg: weightInUnit != null ? parseWeightToKg(weightInUnit, unit) : null,
       calories_in: num(cin),
       calories_out: num(cout),
       protein_g: num(protein),
@@ -69,13 +80,29 @@ export function BodyPage() {
       fat_g: num(fat),
       body_fat_pct: num(bf),
     });
+  };
 
   // Το βάρος γεφυρώνεται (connectNulls) — οι μέρες χωρίς ζύγισμα δεν είναι μηδέν.
   const weightPoints = trend.filter((p) => p.weight != null);
   const balancePoints = trend.filter((p) => p.balance != null);
   const latest = weightPoints.at(-1)?.weight ?? null;
   const first = weightPoints[0]?.weight ?? null;
-  const delta = latest != null && first != null ? latest - first : null;
+  const deltaKg = latest != null && first != null ? latest - first : null;
+  // Η μετατροπή είναι γραμμική (χωρίς offset), άρα σωστή και για διαφορές.
+  const delta = deltaKg != null ? toDisplayWeight(deltaKg, unit, 'body') : null;
+
+  // Το chart διαβάζει `weight` απευθείας ως dataKey — μετατρέπεται ΕΔΩ ώστε
+  // ο άξονας/tooltip να δείχνουν στη σωστή μονάδα. Τα άλλα charts (λίπος,
+  // ισοζύγιο, πρωτεΐνη) δεν αγγίζουν το `weight` πεδίο, οπότε δουλεύουν πάνω
+  // στο αρχικό `trend`.
+  const weightTrend = useMemo(
+    () =>
+      trend.map((p) => ({
+        ...p,
+        weight: p.weight != null ? toDisplayWeight(p.weight, unit, 'body') : null,
+      })),
+    [trend, unit],
+  );
 
   // Πρωτεΐνη/kg σωματικού βάρους — χρησιμοποιεί το σημερινό βάρος αν
   // καταγράφηκε, αλλιώς το πιο πρόσφατο γνωστό (δεν χρειάζεται να ζυγιστείς
@@ -118,7 +145,7 @@ export function BodyPage() {
         <div className="grid grid-cols-3 gap-2">
           {(
             [
-              [t('body.weight'), w, setW, 'kg'],
+              [t('body.weight'), w, setW, unit],
               [t('body.caloriesIn'), cin, setCin, 'kcal'],
               [t('body.caloriesOut'), cout, setCout, 'kcal'],
               [t('body.protein'), protein, setProtein, 'g'],
@@ -188,13 +215,13 @@ export function BodyPage() {
                 }`}
               >
                 {delta > 0 ? '+' : ''}
-                {Math.round(delta * 10) / 10} kg
+                {delta} {unit}
               </span>
             )}
           </div>
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+              <LineChart data={weightTrend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="currentColor"
@@ -222,7 +249,7 @@ export function BodyPage() {
                     borderRadius: 8,
                     fontSize: 12,
                   }}
-                  formatter={(v: number) => [`${v} kg`, t('body.weight')]}
+                  formatter={(v: number) => [`${v} ${unit}`, t('body.weight')]}
                 />
                 <Line
                   type="monotone"

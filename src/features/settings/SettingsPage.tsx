@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
-import { exportAll, importAll, updateSettings } from '@/lib/db/queries';
+import { exportAll, getCurrentProfileDataCounts, importAll, updateSettings } from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Moon, Sun, Monitor } from 'lucide-react';
@@ -25,13 +25,10 @@ export function SettingsPage() {
     () => db.app_settings.where('user_id').equals(getCurrentUserId()).first(),
     [],
   );
+  // ΠΡΟΣΟΧΗ: db.workouts.count() κλπ χωρίς φίλτρο user_id μετρούσαν δεδομένα
+  // ΟΛΩΝ των προφίλ — «τα δικά σου» έδειχνε ξένα workouts/sets/PRs.
   const stats = useLiveQuery(
-    async () => ({
-      workouts: await db.workouts.count(),
-      sets: await db.sets.count(),
-      prs: await db.personal_records.count(),
-      steps: await db.user_skill_step_completions.count(),
-    }),
+    () => getCurrentProfileDataCounts(),
     [],
     { workouts: 0, sets: 0, prs: 0, steps: 0 },
   );
@@ -231,6 +228,35 @@ export function SettingsPage() {
             />
           </button>
         </div>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+          <div>
+            <p className="text-sm">{t('settings.restAutoStart')}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t('settings.restAutoStartHint')}
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={settings?.auto_start_rest_timer ?? true}
+            aria-label={t('settings.restAutoStart')}
+            onClick={() =>
+              void updateSettings({
+                auto_start_rest_timer: !(settings?.auto_start_rest_timer ?? true),
+              })
+            }
+            className={`h-6 w-11 shrink-0 rounded-full border border-border transition-colors ${
+              (settings?.auto_start_rest_timer ?? true) ? 'bg-primary' : 'bg-muted'
+            }`}
+          >
+            <span
+              className={`block h-4 w-4 rounded-full bg-background transition-transform ${
+                (settings?.auto_start_rest_timer ?? true)
+                  ? 'translate-x-6'
+                  : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
       </section>
 
       {/* Units */}
@@ -247,7 +273,7 @@ export function SettingsPage() {
                   : 'hover:bg-accent'
               }`}
             >
-              {u}
+              {t(`common.${u}`)}
             </button>
           ))}
         </div>

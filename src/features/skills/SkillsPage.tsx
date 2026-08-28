@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Archive, ArchiveRestore, Plus } from 'lucide-react';
-import { db } from '@/lib/db';
 import {
   createSkill,
   getAllSkillProgress,
+  getSkillStepStats,
   listSkills,
   setSkillArchived,
 } from '@/lib/db/queries';
@@ -42,32 +42,12 @@ export function SkillsPage() {
   );
   const progress = useLiveQuery(() => getAllSkillProgress(), [], new Map());
   // Πρόοδος ανά skill στη λίστα, ώστε να τη βλέπεις χωρίς να ανοίξεις το skill.
-  const stepCounts = useLiveQuery(
-    async () => {
-      const all = await db.skill_steps.toArray();
-      const m = new Map<string, number>();
-      for (const s of all) m.set(s.skill_id, (m.get(s.skill_id) ?? 0) + 1);
-      return m;
-    },
+  // Scoped query: τα raw db.* reads εδώ έδειχναν τα done-counts ΟΛΩΝ των
+  // προφίλ μπλεγμένα — δύο προφίλ στο ίδιο seeded skill μοιράζονταν πρόοδο.
+  const stepStats = useLiveQuery(
+    () => getSkillStepStats(),
     [],
-    new Map<string, number>(),
-  );
-  const doneCounts = useLiveQuery(
-    async () => {
-      const [steps, done] = await Promise.all([
-        db.skill_steps.toArray(),
-        db.user_skill_step_completions.toArray(),
-      ]);
-      const stepToSkill = new Map(steps.map((s) => [s.id, s.skill_id]));
-      const m = new Map<string, number>();
-      for (const c of done) {
-        const sid = stepToSkill.get(c.skill_step_id);
-        if (sid) m.set(sid, (m.get(sid) ?? 0) + 1);
-      }
-      return m;
-    },
-    [],
-    new Map<string, number>(),
+    new Map<string, { total: number; done: number }>(),
   );
 
   const masteredCount = [...progress.values()].filter(
@@ -225,8 +205,8 @@ export function SkillsPage() {
 
       <ul className="divide-y divide-border rounded-lg border border-border bg-card">
         {visibleSkills.map((s) => {
-          const total = stepCounts.get(s.id) ?? 0;
-          const done = doneCounts.get(s.id) ?? 0;
+          const total = stepStats.get(s.id)?.total ?? 0;
+          const done = stepStats.get(s.id)?.done ?? 0;
           const pct = total ? Math.round((done / total) * 100) : 0;
           const mastered = progress.get(s.id)?.status === 'mastered';
           const isBuiltin = BUILTIN_SKILL_IDS.has(s.id);

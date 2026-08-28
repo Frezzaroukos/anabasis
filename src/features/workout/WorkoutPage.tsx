@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ClipboardList, Play, Settings2 } from 'lucide-react';
+import { ChevronRight, ClipboardList, History, Play, Settings2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
@@ -50,6 +50,16 @@ export function WorkoutPage() {
     return all.some((w) => w.ended_at != null && w.deleted_at == null);
   }, []);
 
+  // Υπάρχει ολοκληρωμένη προπόνηση ΑΥΤΟΥ του αθλήματος; Καθορίζει αν
+  // εμφανίζεται το «Επανάλαβε την τελευταία» — χωρίς προηγούμενη, το
+  // startWorkoutFromLastOfKind δεν έχει τίποτα να επαναλάβει.
+  const hasLastOfKind = useLiveQuery(async () => {
+    const all = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
+    return all.some(
+      (w) => w.activity_kind === kind && w.ended_at != null && w.deleted_at == null,
+    );
+  }, [kind]);
+
   const onStartProgram = async (programId: string) => {
     if (starting) return;
     setStarting(true);
@@ -65,6 +75,16 @@ export function WorkoutPage() {
     setStarting(true);
     try {
       await queries.startWorkout(kind, onDate);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const onRepeatLast = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      await queries.startWorkoutFromLastOfKind(kind);
     } finally {
       setStarting(false);
     }
@@ -152,6 +172,24 @@ export function WorkoutPage() {
         <Play className="h-5 w-5" />
         {whenMode === 'now' ? t('workout.start') : t('workout.addPast')}
       </Button>
+
+      {/*
+        One-tap «κάνε ό,τι έκανα την τελευταία φορά» — χωρίς αποθηκευμένη
+        ρουτίνα. Ξεκινάει πάντα τώρα (ίδιο συμβόλαιο με startWorkoutFromProgram,
+        δεν παίρνει ημερομηνία) — γι' αυτό ζει έξω από το «Πότε» flow.
+      */}
+      {hasLastOfKind === true && (
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={() => void onRepeatLast()}
+          disabled={starting}
+        >
+          <History className="h-5 w-5" />
+          {t('workout.repeatLast')}
+        </Button>
+      )}
 
       {/*
         Ξεκίνα από αποθηκευμένη ρουτίνα. Οι ρουτίνες υπήρχαν αλλά ζούσαν σε

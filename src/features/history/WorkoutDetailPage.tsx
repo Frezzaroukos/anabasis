@@ -5,9 +5,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, ChevronRight, Pencil, Trophy } from 'lucide-react';
 import { getWorkoutDetail } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { formatWeight, toDisplayWeight } from '@/lib/units';
+import type { PRType } from '@/lib/db/types';
 import { Card, SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
 import { EditWorkoutSheet } from './components/EditWorkoutSheet';
+
+/** PR types που είναι βάρος (kg storage) — τα υπόλοιπα (reps/hold/απόσταση/pace) δεν μετατρέπονται. */
+const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
 
 /**
  * Μία προπόνηση, όπως τη διαβάζεις εκ των υστέρων.
@@ -18,6 +24,8 @@ import { EditWorkoutSheet } from './components/EditWorkoutSheet';
  */
 export function WorkoutDetailPage() {
   const { t, i18n } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const { workoutId } = useParams<{ workoutId: string }>();
   const [editOpen, setEditOpen] = useState(false);
   const detail = useLiveQuery(
@@ -74,8 +82,8 @@ export function WorkoutDetailPage() {
         <Stat label={t('history.totalSets')} value={String(totalSets)} />
         <Stat
           label={t('history.volume')}
-          value={totalVolume > 0 ? `${Math.round(totalVolume)}` : '—'}
-          unit={totalVolume > 0 ? 'kg' : undefined}
+          value={totalVolume > 0 ? `${toDisplayWeight(totalVolume, unit, 'plate')}` : '—'}
+          unit={totalVolume > 0 ? unit : undefined}
         />
         <Stat
           label={t('workout.duration')}
@@ -91,7 +99,11 @@ export function WorkoutDetailPage() {
               <li key={pr.id} className="flex items-center gap-2 text-sm">
                 <Trophy className="h-4 w-4 shrink-0 text-[hsl(var(--gold))]" />
                 <span className="flex-1 truncate">{t(`history.pr.${pr.type}`)}</span>
-                <span className="font-mono">{Math.round(pr.value * 10) / 10}</span>
+                <span className="font-mono">
+                  {WEIGHT_PR_TYPES.has(pr.type)
+                    ? formatWeight(pr.value, unit)
+                    : Math.round(pr.value * 10) / 10}
+                </span>
               </li>
             ))}
           </ul>
@@ -112,7 +124,7 @@ export function WorkoutDetailPage() {
               >
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{ex.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
-                  {Math.round(ex.volume)} kg
+                  {formatWeight(ex.volume, unit, { granularity: 'plate' })}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Link>
@@ -133,7 +145,7 @@ export function WorkoutDetailPage() {
                       </span>
                       <span className="flex-1">
                         {[
-                          s.weight_kg != null ? `${s.weight_kg} kg` : null,
+                          s.weight_kg != null ? formatWeight(s.weight_kg, unit) : null,
                           s.reps != null ? `× ${s.reps}` : null,
                           s.hold_seconds != null ? `${s.hold_seconds}s` : null,
                         ]

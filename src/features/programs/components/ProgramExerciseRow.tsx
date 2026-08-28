@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Trash2, Unlink } from 'lucide-react';
 import { updateProgramExercise } from '@/lib/db/queries';
 import type { Exercise, ProgramExercise, SetType } from '@/lib/db/types';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
@@ -38,10 +40,12 @@ export function ProgramExerciseRow({
   onDelete,
 }: ProgramExerciseRowProps) {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const [sets, setSets] = useState(item.target_sets != null ? String(item.target_sets) : '');
   const [reps, setReps] = useState(item.target_reps != null ? String(item.target_reps) : '');
   const [weight, setWeight] = useState(
-    item.target_weight_kg != null ? String(item.target_weight_kg) : '',
+    item.target_weight_kg != null ? String(toDisplayWeight(item.target_weight_kg, unit)) : '',
   );
   const [hold, setHold] = useState(
     item.target_hold_seconds != null ? String(item.target_hold_seconds) : '',
@@ -60,7 +64,7 @@ export function ProgramExerciseRow({
     const trimmed = raw.trim();
     const n = trimmed === '' ? null : Number(trimmed);
     void updateProgramExercise(item.id, {
-      target_weight_kg: n != null && Number.isFinite(n) ? n : null,
+      target_weight_kg: n != null && Number.isFinite(n) ? parseWeightToKg(n, unit) : null,
     });
   };
   const commitNotes = (raw: string) => {
@@ -150,7 +154,7 @@ export function ProgramExerciseRow({
         {showWeight ? (
           <label className="flex flex-col gap-1">
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {t('programs.targetWeight')}
+              {t('common.weight')} ({t(`common.${unit}`)})
             </span>
             <Input
               inputMode="decimal"
@@ -161,7 +165,7 @@ export function ProgramExerciseRow({
               onChange={(e) => setWeight(e.target.value)}
               onBlur={() => commitWeight(weight)}
               className="h-9 font-mono"
-              aria-label={t('programs.targetWeight')}
+              aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
             />
           </label>
         ) : (

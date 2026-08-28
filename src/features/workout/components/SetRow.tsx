@@ -3,20 +3,25 @@ import { useTranslation } from 'react-i18next';
 import { Link2, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
-import type { SetEntry } from '@/lib/db/types';
+import type { SetEntry, SetType } from '@/lib/db/types';
+import { useAppSettings } from '@/hooks/useAppSettings';
 import { AddSetInline } from './AddSetInline';
-import { formatLoad, groupColorClass } from '../utils';
+import { formatLoad, groupColorClass, isChainSetType } from '../utils';
 
 interface SetRowProps {
   set: SetEntry;
   weighted: boolean;
+  /** Άσκηση skill/isometric — δείχνει hold (δευτ) αντί για reps στο edit. */
+  holdMode?: boolean;
 }
 
 const ACTION_WIDTH = 128;
 const SWIPE_THRESHOLD = 60;
 
-export function SetRow({ set, weighted }: SetRowProps) {
+export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const [editing, setEditing] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [drag, setDrag] = useState<{ startX: number; current: number } | null>(null);
@@ -60,9 +65,22 @@ export function SetRow({ set, weighted }: SetRowProps) {
     await queries.softDeleteSet(set.id);
   };
 
-  const onSaveEdit = async (weightKg: number | null, reps: number | null) => {
-    await queries.updateSet(set.id, { weight_kg: weightKg, reps });
+  const onSaveEdit = async (
+    weightKg: number | null,
+    reps: number | null,
+    holdSeconds: number | null,
+  ) => {
+    await queries.updateSet(set.id, { weight_kg: weightKg, reps, hold_seconds: holdSeconds });
     setEditing(false);
+  };
+
+  // Αλλαγή set_type σε ήδη καταγεγραμμένο σετ (π.χ. διόρθωση σε dropset εκ
+  // των υστέρων) — commit άμεσα, δεν περιμένει το «Αποθήκευση» της φόρμας.
+  const onChangeSetType = async (nextType: SetType) => {
+    await queries.updateSet(set.id, {
+      set_type: nextType,
+      group_id: isChainSetType(nextType) ? (set.group_id ?? crypto.randomUUID()) : null,
+    });
   };
 
   if (editing) {
@@ -70,11 +88,16 @@ export function SetRow({ set, weighted }: SetRowProps) {
       <div className="rounded-md border border-border bg-background p-2">
         <AddSetInline
           weighted={weighted}
+          holdMode={holdMode}
+          unit={unit}
           initialWeight={set.weight_kg}
           initialReps={set.reps}
+          initialHoldSeconds={set.hold_seconds}
           onSave={onSaveEdit}
           onCancel={() => setEditing(false)}
           saveLabelKey="workout.save"
+          setType={set.set_type}
+          onSetTypeChange={(t) => void onChangeSetType(t)}
         />
       </div>
     );
@@ -128,8 +151,9 @@ export function SetRow({ set, weighted }: SetRowProps) {
         <div className="flex items-center gap-3 text-sm">
           <span className="w-6 text-xs text-muted-foreground">#{set.set_number}</span>
           <span className="font-medium">
-            {formatLoad(set.weight_kg, set.bodyweight_kg)}
+            {formatLoad(set.weight_kg, set.bodyweight_kg, unit)}
             {set.reps != null ? <> × {set.reps}</> : null}
+            {set.hold_seconds != null ? <> · {set.hold_seconds}s</> : null}
           </span>
           {/* Η ένταση φαίνεται μόνο όταν καταγράφηκε — αλλιώς θα ήταν
               write-only πεδίο, δηλαδή άχρηστο. */}

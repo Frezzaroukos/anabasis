@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { setCurrentUserId } from './session';
 import {
@@ -10,6 +10,7 @@ import {
   setWorkoutDate,
   softDeleteWorkout,
   startWorkout,
+  updateSet,
 } from './queries';
 import { SEED_EXERCISES } from './seeds';
 
@@ -125,5 +126,61 @@ describe('μετακίνηση & αλλαγή αθλήματος', () => {
     const w = await loggedWorkout('strength');
     await setWorkoutActivity(w.id, 'run');
     expect((await getWorkoutDetail(w.id))!.workout.activity_kind).toBe('run');
+  });
+});
+
+describe('updateSet — διόρθωση ήδη καταγεγραμμένου σετ', () => {
+  it('αποθηκεύει και ενημερώνει hold_seconds (isometric/skill holds)', async () => {
+    const w = await startWorkout('skill');
+    const set = await addSet({
+      workout_id: w.id,
+      exercise_id: squat.id,
+      weight_kg: null,
+      bodyweight_kg: null,
+      reps: null,
+      hold_seconds: 30,
+    });
+    expect(set.hold_seconds).toBe(30);
+
+    await updateSet(set.id, { hold_seconds: 45 });
+    const after = await db.sets.get(set.id);
+    expect(after!.hold_seconds).toBe(45);
+  });
+
+  it('αλλάζει set_type και group_id (π.χ. μπαίνει σε dropset εκ των υστέρων)', async () => {
+    const w = await startWorkout('strength');
+    const set = await addSet({
+      workout_id: w.id,
+      exercise_id: squat.id,
+      weight_kg: 100,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    expect(set.set_type).toBe('normal');
+    expect(set.group_id).toBeNull();
+
+    const groupId = 'dropset-group-1';
+    await updateSet(set.id, { set_type: 'dropset', group_id: groupId });
+
+    const after = await db.sets.get(set.id);
+    expect(after!.set_type).toBe('dropset');
+    expect(after!.group_id).toBe(groupId);
+  });
+});
+
+describe('startWorkout — backdated στο ΤΟΠΙΚΟ μεσημέρι, όχι στο UTC', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('πέφτει στη σωστή τοπική μέρα ακόμα και πολύ μακριά από UTC (UTC+14)', async () => {
+    vi.stubEnv('TZ', 'Pacific/Kiritimati'); // UTC+14 — το ακραίο άκρο ανατολικά
+    const w = await startWorkout('strength', '2026-08-05');
+    const started = new Date(w.started_at);
+    // Με UTC μεσημέρι, 12:00 UTC + 14ω γίνεται 02:00 της ΕΠΟΜΕΝΗΣ τοπικής
+    // μέρας — ακριβώς το bug. Με τοπικό μεσημέρι μένει στις 05/08, ώρα 12.
+    expect(localDay(started)).toBe('2026-08-05');
+    expect(started.getHours()).toBe(12);
   });
 });

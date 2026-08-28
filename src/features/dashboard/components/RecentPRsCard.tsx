@@ -3,7 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Trophy } from 'lucide-react';
 import { getRecentPRs, listActivities, listExercises } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { formatWeight } from '@/lib/units';
+import type { PRType } from '@/lib/db/types';
 import { SectionTitle } from '@/components/ui/Section';
+
+/** PR types που είναι βάρος (kg storage) — τα υπόλοιπα δεν μετατρέπονται. */
+const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
 
 /**
  * Τα τελευταία ρεκόρ.
@@ -14,6 +20,8 @@ import { SectionTitle } from '@/components/ui/Section';
  */
 export function RecentPRsCard() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const prs = useLiveQuery(() => getRecentPRs(4), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const activities = useLiveQuery(() => listActivities(true), [], []);
@@ -57,7 +65,11 @@ export function RecentPRsCard() {
                   <p className="truncate text-sm font-medium">{name}</p>
                   <p className="text-xs text-muted-foreground">{t(`history.pr.${pr.type}`)}</p>
                 </div>
-                <p className="font-mono text-sm">{Math.round(pr.value * 10) / 10}</p>
+                <p className="font-mono text-sm">
+                  {WEIGHT_PR_TYPES.has(pr.type)
+                    ? formatWeight(pr.value, unit)
+                    : Math.round(pr.value * 10) / 10}
+                </p>
               </Link>
             </li>
           );
