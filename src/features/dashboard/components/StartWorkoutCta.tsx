@@ -19,7 +19,7 @@ export function StartWorkoutCta() {
   return (
     <Link
       to="/workout"
-      className="flex items-center justify-between gap-3 rounded-xl bg-primary px-5 py-4 text-primary-foreground shadow-sm transition-transform active:scale-[0.99]"
+      className="flex items-center justify-between gap-3 rounded-xl bg-primary px-5 py-4 text-primary-foreground shadow-glow-sm transition-transform duration-200 hover:shadow-glow active:scale-[0.99]"
     >
       <span>
         <span className="block text-lg font-semibold">{t('dashboard.startCta')}</span>

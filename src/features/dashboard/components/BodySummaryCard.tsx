@@ -39,7 +39,7 @@ export function BodySummaryCard() {
   return (
     <Link
       to="/body"
-      className="block rounded-xl border border-border/70 bg-card p-4 transition-colors hover:border-primary/40"
+      className="block rounded-xl bg-card p-4 transition-colors duration-200 hover:bg-elevated"
     >
       <SectionTitle action={<span className="text-muted-foreground">→</span>}>
         {t('body.title')}
@@ -72,7 +72,7 @@ export function BodySummaryCard() {
 
 function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-md bg-muted/50 py-2">
+    <div className="rounded-md bg-elevated py-2">
       <dt className="text-[10px] uppercase text-muted-foreground">{label}</dt>
       <dd className="font-mono text-sm">{children}</dd>
     </div>

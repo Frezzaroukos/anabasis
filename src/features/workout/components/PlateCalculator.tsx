@@ -183,12 +183,20 @@ export function PlateCalculator({
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             {t('plate.perSide', 'Per side')}:{' '}
-            <span className="font-mono font-medium tabular-nums text-foreground">
+            <span className="font-mono text-base font-semibold tabular-nums text-primary">
               {result.perSide}{unit}
             </span>
           </p>
 
-          <div className="flex flex-wrap items-end gap-2" role="list" aria-label={t('plate.perSide', 'Per side')}>
+          {/* Επιφάνεια ανυψωμένη κατά ένα σκαλί από την κάρτα-γύρω — τα δισκάκια
+              «κάθονται» πάνω της αντί να επιπλέουν στο γυμνό background. Τα ίδια
+              τα χρώματα των δισκαριών ΔΕΝ είναι brand — είναι η σύμβαση γυμναστηρίου
+              (IPF-style), άρα μένουν όπως είναι για να αναγνωρίζονται. */}
+          <div
+            className="flex flex-wrap items-end gap-2 rounded-lg bg-elevated p-3"
+            role="list"
+            aria-label={t('plate.perSide', 'Per side')}
+          >
             {result.plates.map(({ plate, count }) =>
               Array.from({ length: count }, (_, i) => (
                 <div

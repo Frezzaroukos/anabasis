@@ -16,6 +16,15 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCountUp } from '@/hooks/useCountUp';
+import {
+  ACTIVE_DOT,
+  CHART_GRID,
+  CHART_STROKE,
+  CHART_STROKE_WIDTH,
+  CHART_TICK,
+  TOOLTIP_STYLE,
+} from '@/components/charts/chartTheme';
 import { MacroSplit } from './components/MacroSplit';
 
 const RANGES = [30, 60, 90, 180] as const;
@@ -90,6 +99,9 @@ export function BodyPage() {
   const deltaKg = latest != null && first != null ? latest - first : null;
   // Η μετατροπή είναι γραμμική (χωρίς offset), άρα σωστή και για διαφορές.
   const delta = deltaKg != null ? toDisplayWeight(deltaKg, unit, 'body') : null;
+  // Hero νούμερο: το βάρος «ανεβαίνει» ως την τρέχουσα τιμή αντί να αλλάζει
+  // απότομα — ίδιο μοτίβο count-up με τα υπόλοιπα hero νούμερα του app.
+  const displayWeight = useCountUp(latest ?? 0, 450, 1);
 
   // Το chart διαβάζει `weight` απευθείας ως dataKey — μετατρέπεται ΕΔΩ ώστε
   // ο άξονας/tooltip να δείχνουν στη σωστή μονάδα. Τα άλλα charts (λίπος,
@@ -123,7 +135,7 @@ export function BodyPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('body.title')}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('body.title')}</h1>
         <div className="flex gap-1">
           {RANGES.map((r) => (
             <button
@@ -140,7 +152,7 @@ export function BodyPage() {
       </header>
 
       {/* Καταγραφή σημερινής μέρας */}
-      <section className="rounded-lg border border-border bg-card p-4">
+      <section className="rounded-lg bg-card p-4">
         <p className="mb-3 text-sm font-medium">{t('body.logToday')}</p>
         <div className="grid grid-cols-3 gap-2">
           {(
@@ -205,9 +217,19 @@ export function BodyPage() {
 
       {/* Βάρος */}
       {weightPoints.length > 1 && (
-        <section className="rounded-lg border border-border bg-card p-4">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-sm font-medium">{t('body.weightTrend')}</h2>
+        <section className="rounded-lg bg-card p-4">
+          <div className="mb-3 flex items-end justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-medium text-muted-foreground">{t('body.weightTrend')}</h2>
+              {/* Hero νούμερο — count-up στο τρέχον βάρος, ίδιο μοτίβο με τα
+                  υπόλοιπα μεγάλα νούμερα του app. */}
+              <p className="font-display text-3xl font-semibold leading-none tracking-tight tabular-nums">
+                {displayWeight}
+                <span className="ml-1 font-sans text-sm font-normal text-muted-foreground">
+                  {unit}
+                </span>
+              </p>
+            </div>
             {delta != null && (
               <span
                 className={`font-mono text-xs ${
@@ -222,42 +244,32 @@ export function BodyPage() {
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weightTrend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="currentColor"
-                  className="text-border"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(d: string) => d.slice(5)}
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
+                  tick={CHART_TICK}
+                  axisLine={false}
+                  tickLine={false}
                   interval={Math.max(1, Math.floor(days / 6))}
                 />
                 <YAxis
                   domain={['dataMin - 1', 'dataMax + 1']}
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
+                  tick={CHART_TICK}
+                  axisLine={false}
+                  tickLine={false}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                   formatter={(v: number) => [`${v} ${unit}`, t('body.weight')]}
                 />
                 <Line
                   type="monotone"
                   dataKey="weight"
-                  stroke="currentColor"
-                  className="text-primary"
-                  strokeWidth={2}
+                  stroke={CHART_STROKE}
+                  strokeWidth={CHART_STROKE_WIDTH}
                   dot={false}
+                  activeDot={ACTIVE_DOT}
                   connectNulls
                 />
               </LineChart>
@@ -274,7 +286,7 @@ export function BodyPage() {
         απόλυτη θέση μετράει περισσότερο από τη σχετική διακύμανση.
       */}
       {bodyFatPoints.length > 1 && (
-        <section className="rounded-lg border border-border bg-card p-4">
+        <section className="rounded-lg bg-card p-4">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-medium">{t('body.bodyFatTrend')}</h2>
             {bfDelta != null && (
@@ -291,42 +303,25 @@ export function BodyPage() {
           <div className="h-40 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="currentColor"
-                  className="text-border"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(d: string) => d.slice(5)}
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
+                  tick={CHART_TICK}
+                  axisLine={false}
+                  tickLine={false}
                   interval={Math.max(1, Math.floor(days / 6))}
                 />
-                <YAxis
-                  domain={[0, 'dataMax + 5']}
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  formatter={(v: number) => [`${v}%`, t('body.bodyFat')]}
-                />
+                <YAxis domain={[0, 'dataMax + 5']} tick={CHART_TICK} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => [`${v}%`, t('body.bodyFat')]} />
                 <Line
                   type="monotone"
                   dataKey="bodyFatPct"
                   stroke="currentColor"
                   className="text-rose-400"
-                  strokeWidth={2}
+                  strokeWidth={CHART_STROKE_WIDTH}
                   dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
                   connectNulls
                 />
               </LineChart>
@@ -337,38 +332,24 @@ export function BodyPage() {
 
       {/* Θερμιδικό ισοζύγιο */}
       {balancePoints.length > 0 && (
-        <section className="rounded-lg border border-border bg-card p-4">
+        <section className="rounded-lg bg-card p-4">
           <h2 className="mb-3 text-sm font-medium">{t('body.calorieBalance')}</h2>
           <div className="h-40 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="currentColor"
-                  className="text-border"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(d: string) => d.slice(5)}
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
+                  tick={CHART_TICK}
+                  axisLine={false}
+                  tickLine={false}
                   interval={Math.max(1, Math.floor(days / 6))}
                 />
-                <YAxis
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
-                />
-                <ReferenceLine y={0} stroke="currentColor" className="text-border" />
+                <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} />
+                <ReferenceLine y={0} stroke={CHART_GRID} />
                 <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                   formatter={(v: number) => [`${v > 0 ? '+' : ''}${v} kcal`, t('body.balance')]}
                 />
                 <Line
@@ -376,8 +357,9 @@ export function BodyPage() {
                   dataKey="balance"
                   stroke="currentColor"
                   className="text-sky-400"
-                  strokeWidth={2}
+                  strokeWidth={CHART_STROKE_WIDTH}
                   dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
                   connectNulls
                 />
               </LineChart>
@@ -397,47 +379,30 @@ export function BodyPage() {
         η μία γραμμή θα «πλακώσει» την άλλη οπτικά χωρίς κοινό νόημα.
       */}
       {proteinPoints.length > 1 && (
-        <section className="rounded-lg border border-border bg-card p-4">
+        <section className="rounded-lg bg-card p-4">
           <h2 className="mb-3 text-sm font-medium">{t('body.proteinTrend')}</h2>
           <div className="h-40 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="currentColor"
-                  className="text-border"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(d: string) => d.slice(5)}
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
+                  tick={CHART_TICK}
+                  axisLine={false}
+                  tickLine={false}
                   interval={Math.max(1, Math.floor(days / 6))}
                 />
-                <YAxis
-                  domain={[0, 'dataMax + 20']}
-                  tick={{ fontSize: 10 }}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  formatter={(v: number) => [`${v} g`, t('body.protein')]}
-                />
+                <YAxis domain={[0, 'dataMax + 20']} tick={CHART_TICK} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => [`${v} g`, t('body.protein')]} />
                 <Line
                   type="monotone"
                   dataKey="proteinG"
                   stroke="currentColor"
                   className="text-violet-400"
-                  strokeWidth={2}
+                  strokeWidth={CHART_STROKE_WIDTH}
                   dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
                   connectNulls
                 />
               </LineChart>

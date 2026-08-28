@@ -339,6 +339,9 @@
       "goalHint": "Sessions, volume, kilometres — whatever you actually count.",
       "body": "Log your first workout",
       "bodyHint": "Everything else builds on it."
+    },
+    "hero": {
+      "streakUnit": "day streak"
     }
   },
   "setType": {

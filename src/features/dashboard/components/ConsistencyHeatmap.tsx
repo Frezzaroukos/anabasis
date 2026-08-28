@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getTrainingHeat } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
-import { Card, SectionTitle } from '@/components/ui/Section';
+import { SectionTitle } from '@/components/ui/Section';
 
 /**
  * Ημερολόγιο συνέπειας σε στυλ GitHub-contributions: 13 εβδομάδες × 7 ημέρες.
@@ -25,7 +25,7 @@ export function ConsistencyHeatmap() {
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
   return (
-    <Card>
+    <div className="rounded-xl bg-card p-4">
       <SectionTitle
         action={
           <span className="font-mono text-xs text-muted-foreground">
@@ -53,6 +53,6 @@ export function ConsistencyHeatmap() {
           </div>
         ))}
       </div>
-    </Card>
+    </div>
   );
 }

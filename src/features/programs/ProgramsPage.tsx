@@ -221,7 +221,9 @@ export function ProgramsPage() {
                     <p className="text-xs text-muted-foreground">
                       {t(`activity.${p.activity_kind}`)}
                       {' · '}
-                      {exerciseCounts.get(p.id) ?? 0} {t('workout.exercises').toLowerCase()}
+                      <span className="font-mono">
+                        {exerciseCounts.get(p.id) ?? 0} {t('workout.exercises').toLowerCase()}
+                      </span>
                     </p>
                   </Link>
                   <div className="flex shrink-0 items-center gap-1">

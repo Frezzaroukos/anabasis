@@ -7,6 +7,7 @@ import { getCurrentUserId } from '@/lib/db/session';
 import { exportAll, getCurrentProfileDataCounts, importAll, updateSettings } from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SectionTitle } from '@/components/ui/Section';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { ACCENTS, getStoredAccent, getStoredTheme, setAccent, setTheme, type Theme } from '@/lib/theme';
 import { AccountCard } from '@/features/account/AccountCard';
@@ -69,7 +70,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
           {t('settings.title')}
         </h1>
       </header>
@@ -78,7 +79,7 @@ export function SettingsPage() {
 
       <Link
         to="/profile"
-        className="flex items-center justify-between rounded-lg border border-border bg-card p-4 text-sm transition-colors hover:bg-accent"
+        className="flex items-center justify-between rounded-lg bg-card p-4 text-sm transition-colors hover:bg-accent"
       >
         <span className="font-medium">{t('profile.title')}</span>
         <span aria-hidden className="text-muted-foreground">→</span>
@@ -86,7 +87,7 @@ export function SettingsPage() {
 
       <Link
         to="/import"
-        className="flex items-center justify-between rounded-lg border border-border bg-card p-4 text-sm transition-colors hover:bg-accent"
+        className="flex items-center justify-between rounded-lg bg-card p-4 text-sm transition-colors hover:bg-accent"
       >
         <span className="font-medium">{t('import.title')}</span>
         <span aria-hidden className="text-muted-foreground">→</span>
@@ -95,8 +96,8 @@ export function SettingsPage() {
       <DashboardLayoutSettings />
 
       {/* Η βιβλιοθήκη σου — οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
-      <section className="rounded-lg border border-border bg-card p-4">
-        <p className="mb-3 text-sm font-medium">{t('settings.library')}</p>
+      <section className="rounded-lg bg-card p-4">
+        <SectionTitle>{t('settings.library')}</SectionTitle>
         <div className="grid gap-2">
           {(
             [
@@ -108,7 +109,7 @@ export function SettingsPage() {
             <Link
               key={to}
               to={to}
-              className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-accent"
+              className="flex items-center justify-between rounded-md bg-elevated px-3 py-2 text-sm transition-colors hover:bg-accent"
             >
               <span>{t(key)}</span>
               <span aria-hidden className="text-muted-foreground">→</span>
@@ -118,8 +119,8 @@ export function SettingsPage() {
       </section>
 
       {/* Theme */}
-      <section className="rounded-lg border border-border bg-card p-4">
-        <p className="mb-3 text-sm font-medium">{t('settings.theme')}</p>
+      <section className="rounded-lg bg-card p-4">
+        <SectionTitle>{t('settings.theme')}</SectionTitle>
         <div className="flex gap-2">
           {(['dark', 'light', 'auto'] as const).map((th) => {
             const Icon = th === 'dark' ? Moon : th === 'light' ? Sun : Monitor;
@@ -131,8 +132,8 @@ export function SettingsPage() {
                   setThemeState(th);
                   void updateSettings({ theme: th });
                 }}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm transition-colors ${
-                  theme === th ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                  theme === th ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -143,7 +144,9 @@ export function SettingsPage() {
         </div>
 
         {/* Accent — το κύριο χρώμα του app. Το χρυσό των ρεκόρ μένει σταθερό. */}
-        <p className="mb-2 mt-4 text-sm font-medium">{t('settings.accent')}</p>
+        <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {t('settings.accent')}
+        </p>
         <div className="flex flex-wrap gap-2">
           {ACCENTS.map((a) => (
             <button
@@ -165,17 +168,17 @@ export function SettingsPage() {
       </section>
 
       {/* Language */}
-      <section className="rounded-lg border border-border bg-card p-4">
-        <p className="mb-3 text-sm font-medium">{t('settings.language')}</p>
+      <section className="rounded-lg bg-card p-4">
+        <SectionTitle>{t('settings.language')}</SectionTitle>
         <div className="flex gap-2">
           {(['en', 'el'] as const).map((lng) => (
             <button
               key={lng}
               onClick={() => onLangChange(lng)}
-              className={`rounded-md border border-border px-3 py-1.5 text-sm transition-colors ${
+              className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
                 i18n.resolvedLanguage === lng
                   ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent'
+                  : 'bg-elevated hover:bg-accent'
               }`}
             >
               {lng.toUpperCase()}
@@ -185,24 +188,24 @@ export function SettingsPage() {
       </section>
 
       {/* Rest timer — τώρα επεξεργάσιμο */}
-      <section className="rounded-lg border border-border bg-card p-4">
-        <p className="mb-3 text-sm font-medium">{t('settings.restTimer')}</p>
+      <section className="rounded-lg bg-card p-4">
+        <SectionTitle>{t('settings.restTimer')}</SectionTitle>
         <div className="flex flex-wrap gap-2">
           {REST_PRESETS.map((s) => (
             <button
               key={s}
               onClick={() => void updateSettings({ default_rest_timer_seconds: s })}
-              className={`rounded-md border border-border px-3 py-1.5 font-mono text-sm transition-colors ${
+              className={`rounded-md px-3 py-1.5 font-mono text-sm transition-colors ${
                 settings?.default_rest_timer_seconds === s
                   ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent'
+                  : 'bg-elevated hover:bg-accent'
               }`}
             >
               {s < 60 ? `${s}s` : `${s / 60}m`}
             </button>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
           <div>
             <p className="text-sm">{t('settings.restNotify')}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -218,12 +221,12 @@ export function SettingsPage() {
                 notify_rest_timer: !(settings?.notify_rest_timer ?? true),
               })
             }
-            className={`h-6 w-11 shrink-0 rounded-full border border-border transition-colors ${
-              (settings?.notify_rest_timer ?? true) ? 'bg-primary' : 'bg-muted'
+            className={`h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+              (settings?.notify_rest_timer ?? true) ? 'bg-primary shadow-glow-sm' : 'bg-muted'
             }`}
           >
             <span
-              className={`block h-4 w-4 rounded-full bg-background transition-transform ${
+              className={`block h-4 w-4 rounded-full bg-background transition-transform duration-200 ${
                 (settings?.notify_rest_timer ?? true)
                   ? 'translate-x-6'
                   : 'translate-x-1'
@@ -231,7 +234,7 @@ export function SettingsPage() {
             />
           </button>
         </div>
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
           <div>
             <p className="text-sm">{t('settings.restAutoStart')}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -247,12 +250,12 @@ export function SettingsPage() {
                 auto_start_rest_timer: !(settings?.auto_start_rest_timer ?? true),
               })
             }
-            className={`h-6 w-11 shrink-0 rounded-full border border-border transition-colors ${
-              (settings?.auto_start_rest_timer ?? true) ? 'bg-primary' : 'bg-muted'
+            className={`h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+              (settings?.auto_start_rest_timer ?? true) ? 'bg-primary shadow-glow-sm' : 'bg-muted'
             }`}
           >
             <span
-              className={`block h-4 w-4 rounded-full bg-background transition-transform ${
+              className={`block h-4 w-4 rounded-full bg-background transition-transform duration-200 ${
                 (settings?.auto_start_rest_timer ?? true)
                   ? 'translate-x-6'
                   : 'translate-x-1'
@@ -263,17 +266,17 @@ export function SettingsPage() {
       </section>
 
       {/* Units */}
-      <section className="rounded-lg border border-border bg-card p-4">
-        <p className="mb-3 text-sm font-medium">{t('settings.units')}</p>
+      <section className="rounded-lg bg-card p-4">
+        <SectionTitle>{t('settings.units')}</SectionTitle>
         <div className="flex gap-2">
           {(['kg', 'lb'] as const).map((u) => (
             <button
               key={u}
               onClick={() => void updateSettings({ weight_unit: u })}
-              className={`rounded-md border border-border px-3 py-1.5 text-sm uppercase transition-colors ${
+              className={`rounded-md px-3 py-1.5 text-sm uppercase transition-colors ${
                 settings?.weight_unit === u
                   ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent'
+                  : 'bg-elevated hover:bg-accent'
               }`}
             >
               {t(`common.${u}`)}
@@ -283,9 +286,9 @@ export function SettingsPage() {
       </section>
 
       {/* Your data — local-first σημαίνει ότι φεύγει όποτε θες */}
-      <section className="rounded-lg border border-border bg-card p-4">
-        <p className="text-sm font-medium">{t('settings.yourData')}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+      <section className="rounded-lg bg-card p-4">
+        <SectionTitle>{t('settings.yourData')}</SectionTitle>
+        <p className="-mt-2 text-xs text-muted-foreground">
           {t('settings.dataHint')}
         </p>
         <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
@@ -297,7 +300,7 @@ export function SettingsPage() {
               ['steps', stats.steps],
             ] as const
           ).map(([k, v]) => (
-            <div key={k} className="rounded-md bg-muted/50 py-2">
+            <div key={k} className="rounded-md bg-elevated py-2">
               <dt className="text-[10px] uppercase text-muted-foreground">
                 {t(`settings.${k}`)}
               </dt>

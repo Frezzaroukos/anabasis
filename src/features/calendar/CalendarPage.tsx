@@ -117,7 +117,7 @@ export function CalendarPage() {
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight capitalize">
+          <h1 className="font-display text-2xl font-semibold tracking-tight capitalize">
             {monthLabel}
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -137,7 +137,7 @@ export function CalendarPage() {
           μήνα· ζει πλέον στο «Περισσότερα». Τα βελάκια ήταν χαρακτήρες
           «←/→» σε κουτάκια· τώρα εικονίδια, ίδιου βάρους με τα υπόλοιπα.
         */}
-        <div className="flex shrink-0 items-center rounded-lg border border-border/70 bg-card">
+        <div className="flex shrink-0 items-center rounded-lg bg-card">
           <button
             onClick={() => shift(-1)}
             aria-label={t('calendar.prev')}
@@ -165,7 +165,7 @@ export function CalendarPage() {
         </div>
       </header>
 
-      <div className="rounded-lg border border-border bg-card p-3">
+      <div className="rounded-lg bg-card p-3">
         <div className="mb-1 grid grid-cols-7 gap-1">
           {weekdays.map((w) => (
             <div
@@ -185,12 +185,12 @@ export function CalendarPage() {
                 key={c.key}
                 onClick={() => setSelected(c.key)}
                 className={cn(
-                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg border p-1 transition-colors',
-                  selected === c.key
-                    ? 'border-primary/70 bg-accent'
-                    : c.key === today
-                      ? 'border-primary/40 bg-primary/5'
-                      : 'border-transparent hover:bg-muted/40',
+                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg p-1 transition-colors',
+                  // Βάθος αντί για χρωματιστό περίγραμμα: επιλεγμένη = ανυψωμένη
+                  // επιφάνεια, σήμερα = accent ring — τα δύο συνδυάζονται όταν
+                  // η επιλεγμένη μέρα ΕΙΝΑΙ σήμερα.
+                  selected === c.key ? 'bg-elevated' : 'hover:bg-muted/40',
+                  c.key === today && 'ring-1 ring-inset ring-primary',
                 )}
               >
                 <span
@@ -224,7 +224,7 @@ export function CalendarPage() {
       </div>
 
       {/* Λεπτομέρειες επιλεγμένης ημέρας */}
-      <section className="rounded-lg border border-border bg-card p-4">
+      <section className="rounded-lg bg-card p-4">
         <h2 className="mb-3 text-sm font-medium">
           {selected
             ? new Date(selected).toLocaleDateString(i18n.resolvedLanguage, {

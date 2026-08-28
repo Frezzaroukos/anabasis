@@ -50,19 +50,19 @@ export function ActivitiesPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('activities.title')}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('activities.title')}</h1>
       </header>
 
       {active.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
           {t('activities.empty')}
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="stagger space-y-2">
           {active.map((a, index) => (
             <li
               key={a.id}
-              className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
+              className="flex items-center gap-2 rounded-lg bg-card px-3 py-2"
             >
               {/* Το χρώμα ΕΙΝΑΙ η ταυτότητα της δραστηριότητας — ίδιο σημάδι με
                   το ημερολόγιο και τα chips. Το παλιό σύμβολο (⬛ ◆ ▲) έμενε
@@ -130,7 +130,7 @@ export function ActivitiesPage() {
               {archived.map((a) => (
                 <li
                   key={a.id}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-2 opacity-70"
+                  className="flex items-center gap-2 rounded-lg bg-card/50 px-3 py-2 opacity-60"
                 >
                   <span className={cn('h-3 w-3 shrink-0 rounded-full', a.dot_class)} aria-hidden />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.label}</span>

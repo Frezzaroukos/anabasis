@@ -21,9 +21,12 @@ export function Card({
   ...rest
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
+    // Borderless: το ύψος έρχεται από τη διαφορά φωτεινότητας
+    // background→card (βλ. DESIGN-SPEC-V2 «βάθος & επιφάνειες»), όχι από
+    // περίγραμμα.
     <section
       className={cn(
-        'rounded-xl border border-border/70 bg-card p-4 shadow-[0_1px_0_0_hsl(var(--foreground)/0.02)]',
+        'rounded-xl bg-card p-4 shadow-[0_1px_0_0_hsl(var(--foreground)/0.02)]',
         className,
       )}
       {...rest}

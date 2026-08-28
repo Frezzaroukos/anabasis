@@ -89,8 +89,10 @@ function SignedOutForm() {
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <p className="mb-3 text-sm font-medium">{t('account.title')}</p>
+    <section className="rounded-lg bg-card p-4">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {t('account.title')}
+      </p>
       <div className="mb-3 flex gap-2">
         {(['login', 'signup'] as const).map((m) => (
           <button
@@ -100,8 +102,8 @@ function SignedOutForm() {
               setMode(m);
               setErrorKey(null);
             }}
-            className={`flex-1 rounded-md border border-border px-3 py-1.5 text-sm transition-colors ${
-              mode === m ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm transition-colors ${
+              mode === m ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent'
             }`}
           >
             {t(m === 'login' ? 'account.login' : 'account.signup')}
@@ -204,9 +206,11 @@ function SignedInPanel({
     : t('account.syncNever');
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
+    <section className="rounded-lg bg-card p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{title}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {title}
+        </p>
         {role === 'admin' && (
           <span className="flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
             <ShieldCheck className="h-3 w-3" aria-hidden />
@@ -215,12 +219,12 @@ function SignedInPanel({
         )}
       </div>
 
-      <p className="mt-2 text-sm text-muted-foreground">{accountEmail}</p>
+      <p className="mt-2 font-mono text-sm text-muted-foreground">{accountEmail}</p>
 
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-sm">
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3 text-sm">
         <div>
           <p>{t('account.syncStatus')}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground" role="status">
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground" role="status">
             {t(`account.syncState_${sync.state}`)} · {lastSyncLabel}
           </p>
         </div>
@@ -237,14 +241,14 @@ function SignedInPanel({
       {role === 'admin' && (
         <Link
           to="/admin"
-          className="mt-3 flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-accent"
+          className="mt-3 flex items-center justify-between rounded-md bg-elevated px-3 py-2 text-sm transition-colors hover:bg-accent"
         >
           <span>{t('account.adminLink')}</span>
           <span aria-hidden className="text-muted-foreground">→</span>
         </Link>
       )}
 
-      <div className="mt-3 border-t border-border pt-3">
+      <div className="mt-3 border-t border-border/60 pt-3">
         <button
           type="button"
           onClick={() => setShowChangePassword((v) => !v)}
@@ -287,7 +291,7 @@ function SignedInPanel({
         )}
       </div>
 
-      <div className="mt-3 border-t border-border pt-3">
+      <div className="mt-3 border-t border-border/60 pt-3">
         <Button size="sm" variant="ghost" disabled={logoutBusy} onClick={() => void onLogout()}>
           {t('account.logout')}
         </Button>

@@ -16,6 +16,14 @@ import {
   listActivities,
 } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
+import {
+  ACTIVE_DOT,
+  CHART_GRID,
+  CHART_STROKE,
+  CHART_STROKE_WIDTH,
+  CHART_TICK,
+  TOOLTIP_STYLE,
+} from '@/components/charts/chartTheme';
 
 type ActMetric = 'distanceKm' | 'paceSecPerKm';
 
@@ -65,7 +73,7 @@ export function ActivityProgress() {
       </h2>
 
       {!activityKey ? (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+        <ul className="divide-y divide-border/60 rounded-lg bg-card">
           {activities.map((a) => (
             <li key={a.key}>
               <button
@@ -73,7 +81,7 @@ export function ActivityProgress() {
                   setActivityKey(a.key);
                   setMetric(a.tracks_distance ? 'distanceKm' : 'paceSecPerKm');
                 }}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated"
               >
                 <span aria-hidden>{a.icon}</span>
                 <span className="flex-1 truncate text-sm font-medium">{a.label}</span>
@@ -95,20 +103,20 @@ export function ActivityProgress() {
             </button>
           </div>
 
-          {/* PR περίληψη */}
+          {/* PR περίληψη — χρυσό ΜΟΝΟ εδώ, είναι επίτευξη */}
           <div className="flex flex-wrap gap-2 text-xs">
             {prs.get('longest_distance') && (
-              <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-500">
+              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
                 ★ {t('progress.longestDistance')}: {prs.get('longest_distance')!.value} km
               </span>
             )}
             {prs.get('fastest_pace') && (
-              <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-500">
+              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
                 ★ {t('progress.fastestPace')}: {fmtPace(prs.get('fastest_pace')!.value)}/km
               </span>
             )}
             {prs.get('longest_duration') && (
-              <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-500">
+              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
                 ★ {Math.round(prs.get('longest_duration')!.value / 60)} min
               </span>
             )}
@@ -122,7 +130,9 @@ export function ActivityProgress() {
                   onClick={() => setMetric(m)}
                   className={cn(
                     'rounded-md border border-border px-3 py-1 text-xs transition-colors',
-                    metric === m ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                    metric === m
+                      ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
+                      : 'hover:bg-elevated',
                   )}
                 >
                   {t(m === 'distanceKm' ? 'progress.distance' : 'progress.pace')}
@@ -132,44 +142,34 @@ export function ActivityProgress() {
           )}
 
           {withData.length < 2 ? (
-            <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
               {t('progress.needMore')}
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-card p-4">
+            <div className="rounded-lg bg-card p-4">
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="currentColor"
-                      className="text-border"
-                      vertical={false}
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(d: string) => d.slice(5)}
-                      tick={{ fontSize: 10 }}
-                      stroke="currentColor"
-                      className="text-muted-foreground"
+                      tick={CHART_TICK}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <YAxis
                       domain={['dataMin', 'dataMax']}
                       reversed={metric === 'paceSecPerKm'}
-                      tick={{ fontSize: 10 }}
-                      stroke="currentColor"
-                      className="text-muted-foreground"
+                      tick={CHART_TICK}
+                      axisLine={false}
+                      tickLine={false}
                       tickFormatter={(v: number) =>
                         metric === 'paceSecPerKm' ? fmtPace(v) : String(Math.round(v * 10) / 10)
                       }
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
+                      contentStyle={TOOLTIP_STYLE}
                       labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
                       formatter={(v: number) => [
                         metric === 'paceSecPerKm' ? `${fmtPace(v)}/km` : `${v} km`,
@@ -179,10 +179,10 @@ export function ActivityProgress() {
                     <Line
                       type="monotone"
                       dataKey={metric}
-                      stroke="currentColor"
-                      className="text-primary"
-                      strokeWidth={2}
-                      dot={{ r: 2 }}
+                      stroke={CHART_STROKE}
+                      strokeWidth={CHART_STROKE_WIDTH}
+                      dot={{ r: 2, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                      activeDot={ACTIVE_DOT}
                       connectNulls
                     />
                   </LineChart>

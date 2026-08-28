@@ -13,6 +13,7 @@ import {
 import { getTrainingSummary, getVolumeTrend } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { toDisplayWeight } from '@/lib/units';
+import { CHART_GRID, CHART_STROKE, CHART_TICK, TOOLTIP_STYLE } from '@/components/charts/chartTheme';
 
 /**
  * Όγκος ανά ημέρα, 30 ημέρες. Bars (όχι line) επίτηδες: η προπόνηση είναι
@@ -42,7 +43,7 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
   if (summary.totalSets === 0) return null;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
+    <section className="rounded-lg bg-card p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h2 className="text-sm font-medium">{t('history.volumeTrend')}</h2>
         <span className="text-xs text-muted-foreground">
@@ -70,37 +71,27 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
       <div className="h-40 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={displayData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="currentColor"
-              className="text-border"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
             <XAxis
               dataKey="date"
               tickFormatter={(d: string) => d.slice(8)}
-              tick={{ fontSize: 10 }}
-              stroke="currentColor"
-              className="text-muted-foreground"
+              tick={CHART_TICK}
+              axisLine={false}
+              tickLine={false}
               interval={6}
             />
             <YAxis
-              tick={{ fontSize: 10 }}
-              stroke="currentColor"
-              className="text-muted-foreground"
+              tick={CHART_TICK}
+              axisLine={false}
+              tickLine={false}
               tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}k` : String(v))}
             />
             <Tooltip
-              contentStyle={{
-                background: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: 8,
-                fontSize: 12,
-              }}
+              contentStyle={TOOLTIP_STYLE}
               labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
               formatter={(v: number) => [`${v} ${unit}`, t('history.volume')]}
             />
-            <Bar dataKey="volume" fill="currentColor" className="text-primary" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="volume" fill={CHART_STROKE} radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

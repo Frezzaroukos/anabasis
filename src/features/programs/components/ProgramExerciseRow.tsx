@@ -180,10 +180,10 @@ export function ProgramExerciseRow({
             type="button"
             onClick={() => void updateProgramExercise(item.id, { set_type: st })}
             className={cn(
-              'rounded-md border border-border px-2 py-1 text-[11px] transition-colors',
+              'rounded-md px-2 py-1 text-[11px] transition-colors',
               item.set_type === st
                 ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-accent',
+                : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
             )}
           >
             {t(`setType.${st}`)}

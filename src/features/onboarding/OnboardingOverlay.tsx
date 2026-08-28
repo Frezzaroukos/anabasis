@@ -61,17 +61,22 @@ export function OnboardingOverlay() {
 
   const slides = [
     {
-      icon: <Logo className="h-16 w-16 text-primary" />,
+      // Το σήμα εδώ είναι brand moment, όχι απλό εικονίδιο — παίρνει τη δική
+      // του «ανυψωμένη» πλατφόρμα + λάμψη.
+      icon: <Logo className="h-14 w-14 text-primary" />,
+      mark: true,
       title: t('onboarding.slide1.title'),
       desc: t('onboarding.slide1.desc'),
     },
     {
-      icon: <Dumbbell className="h-16 w-16 text-primary" />,
+      icon: <Dumbbell className="h-14 w-14 text-primary" />,
+      mark: false,
       title: t('onboarding.slide2.title'),
       desc: t('onboarding.slide2.desc'),
     },
     {
-      icon: <Wifi className="h-16 w-16 text-primary" />,
+      icon: <Wifi className="h-14 w-14 text-primary" />,
+      mark: false,
       title: t('onboarding.slide3.title'),
       desc: t('onboarding.slide3.desc'),
     },
@@ -95,8 +100,15 @@ export function OnboardingOverlay() {
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 text-center">
-        {current.icon}
-        <h2 className="text-2xl font-semibold tracking-tight">{current.title}</h2>
+        <div
+          className={cn(
+            'flex items-center justify-center rounded-full p-6',
+            current.mark && 'bg-elevated shadow-glow',
+          )}
+        >
+          {current.icon}
+        </div>
+        <h2 className="font-display text-2xl font-semibold tracking-tight">{current.title}</h2>
         <p className="max-w-xs text-sm text-muted-foreground">{current.desc}</p>
       </div>
 
@@ -105,8 +117,8 @@ export function OnboardingOverlay() {
           <span
             key={s.title}
             className={cn(
-              'h-1.5 w-6 rounded-full transition-colors',
-              i === slide ? 'bg-primary' : 'bg-border',
+              'h-1.5 w-6 rounded-full transition-colors duration-300',
+              i === slide ? 'bg-primary' : 'bg-muted',
             )}
           />
         ))}

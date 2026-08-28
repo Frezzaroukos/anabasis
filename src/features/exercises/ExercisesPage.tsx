@@ -75,7 +75,7 @@ export function ExercisesPage() {
     <div className="space-y-4">
       <header className="flex items-baseline justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('exercises.title')}</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{t('exercises.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {allExercises.filter((e) => !e.is_archived).length} {t('exercises.available')}
           </p>
@@ -114,7 +114,7 @@ export function ExercisesPage() {
       </div>
 
       {groups.length === 0 ? (
-        <p className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
           {filter === 'archived' ? t('exercises.emptyArchived') : t('exercises.empty')}
         </p>
       ) : (
@@ -124,11 +124,17 @@ export function ExercisesPage() {
               <h3 className="px-1 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {category}
               </h3>
-              <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+              <ul className="divide-y divide-border/60 rounded-lg bg-card">
                 {items.map((ex) => {
                   const summary = summaries.get(ex.id);
                   return (
-                  <li key={ex.id} className="flex items-center gap-3 px-4 py-3">
+                  <li
+                    key={ex.id}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated',
+                      ex.is_archived && 'opacity-60',
+                    )}
+                  >
                     <span
                       className={cn('h-2 w-2 shrink-0 rounded-full', categoryDotClass(ex.category))}
                       aria-hidden
@@ -140,7 +146,7 @@ export function ExercisesPage() {
                     >
                       <p className="flex items-center gap-2 text-sm font-medium">
                         {summary?.hasPR && (
-                          <span className="shrink-0 text-amber-500" aria-hidden title="PR">★</span>
+                          <span className="shrink-0 text-gold" aria-hidden title="PR">★</span>
                         )}
                         {ex.name}
                         {ex.user_id === null ? (
