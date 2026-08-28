@@ -43,7 +43,7 @@ fn verify_password(password: &str, hash: &str) -> bool {
         .is_ok()
 }
 
-fn sha256_hex(input: &str) -> String {
+pub(crate) fn sha256_hex(input: &str) -> String {
     let digest = Sha256::digest(input.as_bytes());
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -104,6 +104,38 @@ pub struct AccountPublic {
 pub struct AuthResponse {
     token: String,
     account: AccountPublic,
+}
+
+#[derive(Deserialize)]
+pub struct ClaimAdminRequest {
+    code: String,
+}
+
+/*
+ * Προαγωγή σε admin με μυστικό κωδικό (env ANABASIS_ADMIN_CODE).
+ * Σύγκριση sha256-προς-sha256: σταθερό μήκος εισόδου στη σύγκριση, άρα το
+ * timing δεν διαρρέει πόσοι χαρακτήρες ταίριαξαν. Το endpoint κάθεται στο
+ * auth rate-limit group (10/min/IP) — brute force δεν προλαβαίνει τίποτα.
+ */
+pub async fn claim_admin(
+    State(state): State<AppState>,
+    user: AuthUser,
+    AppJson(body): AppJson<ClaimAdminRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let Some(expected) = state.admin_code_hash.as_deref() else {
+        return Err(AppError::forbidden(
+            "admin_code_not_set",
+            "Δεν έχει οριστεί admin code σε αυτόν τον server.",
+        ));
+    };
+    if sha256_hex(body.code.trim()) != expected {
+        return Err(AppError::forbidden("bad_code", "Λάθος κωδικός."));
+    }
+    sqlx::query("UPDATE accounts SET role = 'admin' WHERE id = ?")
+        .bind(&user.account_id)
+        .execute(&state.pool)
+        .await?;
+    Ok(Json(serde_json::json!({ "role": "admin" })))
 }
 
 #[derive(Deserialize)]

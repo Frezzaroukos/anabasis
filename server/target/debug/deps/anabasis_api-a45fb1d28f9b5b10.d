@@ -1,6 +1,6 @@
-/home/aggelos/code/strength-atlas/server/target/debug/deps/anabasis_api-a45fb1d28f9b5b10.d: src/main.rs Cargo.toml
+/home/aggelos/code/anabasis/server/target/debug/deps/anabasis_api-a45fb1d28f9b5b10.d: src/main.rs Cargo.toml
 
-/home/aggelos/code/strength-atlas/server/target/debug/deps/libanabasis_api-a45fb1d28f9b5b10.rmeta: src/main.rs Cargo.toml
+/home/aggelos/code/anabasis/server/target/debug/deps/libanabasis_api-a45fb1d28f9b5b10.rmeta: src/main.rs Cargo.toml
 
 src/main.rs:
 Cargo.toml:

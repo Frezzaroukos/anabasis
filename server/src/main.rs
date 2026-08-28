@@ -20,7 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(8121);
     let admin_email = std::env::var("ANABASIS_ADMIN_EMAIL").ok();
 
-    let state = build_state(db_path, admin_email).await?;
+    let admin_code = std::env::var("ANABASIS_ADMIN_CODE").ok();
+    let state = build_state(db_path, admin_email, admin_code).await?;
     let app = router(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));

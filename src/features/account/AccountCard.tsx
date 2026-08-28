@@ -13,6 +13,7 @@ import {
   signup,
   useAuth,
 } from '@/lib/api/auth';
+import { api } from '@/lib/api/client';
 import { syncNow, useSyncStatus } from '@/lib/sync';
 
 /** Server error code → i18n key (server/API-CONTRACT.md). Άγνωστος κωδικός
@@ -163,6 +164,10 @@ function SignedInPanel({
   const { t, i18n } = useTranslation();
   const sync = useSyncStatus();
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showAdminCode, setShowAdminCode] = useState(false);
+  const [adminCode, setAdminCode] = useState('');
+  const [adminBusy, setAdminBusy] = useState(false);
+  const [adminStatusKey, setAdminStatusKey] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [changeBusy, setChangeBusy] = useState(false);
@@ -188,6 +193,26 @@ function SignedInPanel({
       setChangeStatusKey(errorKeyFor(err));
     } finally {
       setChangeBusy(false);
+    }
+  };
+
+  const onClaimAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminBusy(true);
+    setAdminStatusKey(null);
+    try {
+      await api.claimAdmin(adminCode.trim());
+      setAdminStatusKey('account.adminClaimed');
+      setShowAdminCode(false);
+      setAdminCode('');
+    } catch (err) {
+      setAdminStatusKey(
+        err instanceof ApiError && err.code === 'bad_code'
+          ? 'account.errorBadCode'
+          : 'account.errorGeneric',
+      );
+    } finally {
+      setAdminBusy(false);
     }
   };
 
@@ -246,6 +271,39 @@ function SignedInPanel({
           <span>{t('account.adminLink')}</span>
           <span aria-hidden className="text-muted-foreground">→</span>
         </Link>
+      )}
+
+      {role !== 'admin' && (
+        <div className="mt-3 border-t border-border/60 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowAdminCode((v) => !v)}
+            className="text-sm text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {t('account.adminCode')}
+          </button>
+          {showAdminCode && (
+            <form onSubmit={(e) => void onClaimAdmin(e)} className="mt-3 flex gap-2">
+              <Input
+                type="password"
+                autoComplete="off"
+                required
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                placeholder={t('account.adminCodePlaceholder')}
+                aria-label={t('account.adminCode')}
+              />
+              <Button type="submit" size="sm" disabled={adminBusy}>
+                {adminBusy ? t('common.loading') : t('common.confirm')}
+              </Button>
+            </form>
+          )}
+          {adminStatusKey && (
+            <p className="mt-2 text-xs text-muted-foreground" role="status">
+              {t(adminStatusKey)}
+            </p>
+          )}
+        </div>
       )}
 
       <div className="mt-3 border-t border-border/60 pt-3">

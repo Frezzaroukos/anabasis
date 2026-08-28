@@ -23,6 +23,9 @@ pub struct AppState {
     pub db_path: PathBuf,
     /// Lowercase-normalized· πρώτο signup με αυτό το email παίρνει role 'admin'.
     pub admin_email: Option<String>,
+    /// Μυστικός κωδικός που προάγει ΟΠΟΙΟΝΔΗΠΟΤΕ λογαριασμό σε admin
+    /// (POST /api/auth/claim_admin) — συγκρίνεται μέσω sha256, όχι raw.
+    pub admin_code_hash: Option<String>,
     /// Προ-υπολογισμένο valid PHC hash — verify_password πάνω σε αυτό όταν το
     /// email δεν υπάρχει, ώστε το login να έχει ίδιο timing με λάθος password
     /// (no user enumeration μέσω timing).
@@ -33,6 +36,7 @@ pub struct AppState {
 pub async fn build_state(
     db_path: PathBuf,
     admin_email: Option<String>,
+    admin_code: Option<String>,
 ) -> Result<AppState, sqlx::Error> {
     let pool = crate::db::connect(&db_path).await?;
     let dummy_hash = Argon2::default()
@@ -44,6 +48,10 @@ pub async fn build_state(
         pool,
         db_path,
         admin_email: admin_email.map(|e| e.trim().to_lowercase()),
+        admin_code_hash: admin_code
+            .map(|c| c.trim().to_string())
+            .filter(|c| !c.is_empty())
+            .map(|c| crate::auth::sha256_hex(&c)),
         dummy_hash,
         started_at: OffsetDateTime::now_utc(),
     })
@@ -105,6 +113,7 @@ pub fn router(state: AppState) -> Router {
         .route("/login", post(auth::login))
         .route("/logout", post(auth::logout))
         .route("/change_password", post(auth::change_password))
+        .route("/claim_admin", post(auth::claim_admin))
         .layer(GovernorLayer::new(auth_governor));
 
     let sync_routes = Router::new()
