@@ -31,6 +31,7 @@ const ImportPage = lazyPage(() => import('@/features/import/ImportPage'), 'Impor
 const GoalsPage = lazyPage(() => import('@/features/goals/GoalsPage'), 'GoalsPage');
 const WorkoutDetailPage = lazyPage(() => import('@/features/history/WorkoutDetailPage'), 'WorkoutDetailPage');
 const BrandingPage = lazyPage(() => import('@/features/branding/BrandingPage'), 'BrandingPage');
+const AdminPage = lazyPage(() => import('@/features/admin/AdminPage'), 'AdminPage');
 
 /*
  * Το app σερβίρεται και από υποφάκελο (GitHub Pages: /anabasis/). Χωρίς
@@ -50,6 +51,7 @@ export const router = createBrowserRouter(
       // βρίσκεται, και μετά να πατήσει έναρξη προπόνησης.
       { index: true, element: <DashboardPage /> },
       { path: 'workout', element: <WorkoutPage /> },
+      { path: 'admin', element: <AdminPage /> },
       { path: 'programs', element: <ProgramsPage /> },
       { path: 'exercises', element: <ExercisesPage /> },
       { path: 'activities', element: <ActivitiesPage /> },

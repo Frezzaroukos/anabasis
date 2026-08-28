@@ -7,8 +7,9 @@
  */
 
 import { v4 as uuid } from 'uuid';
+import type { Table } from 'dexie';
 import { db, SCHEMA_VERSION } from './schema';
-import { getCurrentUserId } from './session';
+import { getCurrentUserId, setCurrentUserId } from './session';
 import { candidatesFromSet, candidatesFromWorkout, isNewPR } from '../domain/pr';
 import { setVolume } from '../domain/volume';
 import { e1rm } from '../domain/e1rm';
@@ -699,15 +700,19 @@ export async function exportExerciseCsv(exerciseId: string): Promise<string> {
 }
 
 /*
- * Ό,τι πίνακας κουβαλάει δεδομένα χρήστη μπαίνει ΚΑΙ στο export ΚΑΙ στο import.
- * Η v1 του format έχανε 7 πίνακες (goals, programs, body_metrics, activities,
+ * Ό,τι πίνακας κουβαλάει δεδομένα χρήστη μπαίνει ΚΑΙ στο export ΚΑΙ στο import
+ * ΚΑΙ στο server sync (ίδιο allowlist με server/API-CONTRACT.md). Η v1 του
+ * format έχανε 7 πίνακες (goals, programs, body_metrics, activities,
  * skills…) — μια «πλήρης» επαναφορά πετούσε σιωπηλά τη διατροφή, τις ρουτίνες
  * και τους στόχους. Τα skills/skill_steps μπαίνουν κι αυτά: κρατούν custom
  * skills και μετονομασίες των builtin· το bootstrap κάνει add-missing-only,
  * άρα η εισαγωγή τους δεν συγκρούεται με το seeding.
  * (Μόνο το events_outgoing μένει έξω — νεκρό sync stub, όχι δεδομένα χρήστη.)
+ *
+ * Exported ώστε migrateProfileUserId() και ο sync engine (src/lib/sync) να
+ * μη χρειάζεται να ξαναγράψουν αυτή τη λίστα.
  */
-const BACKUP_TABLES = () => ({
+export const USER_DATA_TABLES = () => ({
   users: db.users, exercises: db.exercises, workouts: db.workouts,
   sets: db.sets, personal_records: db.personal_records,
   skills: db.skills, skill_steps: db.skill_steps,
@@ -727,8 +732,8 @@ const BACKUP_TABLES = () => ({
  * τα δεδομένα φεύγουν όποτε θες.
  */
 export async function exportAll(): Promise<string> {
-  const tables = BACKUP_TABLES();
-  const names = Object.keys(tables) as (keyof ReturnType<typeof BACKUP_TABLES>)[];
+  const tables = USER_DATA_TABLES();
+  const names = Object.keys(tables) as (keyof ReturnType<typeof USER_DATA_TABLES>)[];
   const arrays = await Promise.all(names.map((n) => tables[n].toArray()));
   const data = Object.fromEntries(names.map((n, i) => [n, arrays[i]]));
   return JSON.stringify(
@@ -768,7 +773,7 @@ export async function importAll(json: string): Promise<ImportResult> {
     return { ok: false, message: 'notABackup' };
   }
 
-  const tables = BACKUP_TABLES();
+  const tables = USER_DATA_TABLES();
   const counts: Record<string, number> = {};
   try {
     await db.transaction('rw', Object.values(tables), async () => {
@@ -1878,6 +1883,52 @@ export async function getCurrentProfileDataCounts(): Promise<{
   ]);
   const sets = allSets.filter((s) => workoutIds.has(s.workout_id)).length;
   return { workouts: workoutIds.size, sets, prs, steps };
+}
+
+/**
+ * Δένει το τρέχον τοπικό προφίλ σε λογαριασμό — server API-CONTRACT.md
+ * «Binding κατά το login/signup». Ξαναγράφει το `user_id` σε όλα τα personal
+ * δεδομένα, το ίδιο το `users.id`, και μεταθέτει το ενεργό session.
+ *
+ * Τρεις πίνακες (`sets`, `skill_steps`, `program_exercises`) ΔΕΝ έχουν δικό
+ * τους `user_id` στο τοπικό schema — ανήκουν μέσω workout_id/skill_id/
+ * program_id, ίδιο μοτίβο με το `deleteProfile` παραπάνω. Αφού ο γονέας τους
+ * αλλάζει owner εδώ, ακολουθούν αυτόματα χωρίς δική τους εγγραφή.
+ *
+ * No-op όταν `oldId === newId`. Αν αυτή η συσκευή έχει ΗΔΗ ένα προφίλ δεμένο
+ * στο `newId` (προηγούμενο login σε αυτό το device), ΔΕΝ ενοποιούμε τα δύο
+ * σύνολα δεδομένων (θα συγκρούονταν τα ids) — απλώς εναλλάσσουμε session.
+ */
+export async function migrateProfileUserId(oldId: string, newId: string): Promise<void> {
+  if (oldId === newId) return;
+
+  if (await db.users.get(newId)) {
+    setCurrentUserId(newId);
+    return;
+  }
+
+  const directOwnerTables = [
+    db.exercises, db.workouts, db.personal_records, db.skills,
+    db.user_skill_progress, db.user_skill_step_completions, db.app_settings,
+    db.body_metrics, db.programs, db.activities, db.goals,
+    // Ετερόκλητα Table<T> — γενικεύουμε τον τύπο ώστε το .modify() να έχει
+    // ΜΙΑ συμβατή υπογραφή αντί για union από 11 διαφορετικές.
+  ] as unknown as Table<Record<string, unknown>, string>[];
+  const t = now();
+
+  await db.transaction('rw', [db.users, ...directOwnerTables], async () => {
+    for (const table of directOwnerTables) {
+      await table.where('user_id').equals(oldId).modify({ user_id: newId, updated_at: t });
+    }
+
+    const me = await db.users.get(oldId);
+    if (me) {
+      await db.users.add({ ...me, id: newId, updated_at: t });
+      await db.users.delete(oldId);
+    }
+  });
+
+  setCurrentUserId(newId);
 }
 
 /* ─────────── Analytics: activity progress, insights, feel, heatmap (v7) ─────────── */

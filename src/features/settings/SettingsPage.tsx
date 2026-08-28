@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { ACCENTS, getStoredAccent, getStoredTheme, setAccent, setTheme, type Theme } from '@/lib/theme';
+import { AccountCard } from '@/features/account/AccountCard';
 
 const REST_PRESETS = [60, 90, 120, 180, 240, 300];
 
@@ -72,6 +73,8 @@ export function SettingsPage() {
           {t('settings.title')}
         </h1>
       </header>
+
+      <AccountCard />
 
       <Link
         to="/profile"
