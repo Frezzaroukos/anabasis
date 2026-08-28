@@ -80,6 +80,13 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Ώστε το dev server να είναι κι αυτό same-origin σαν το production
+    // tunnel — χωρίς αυτό, τα fetch() του src/lib/api/client.ts θα έβρισκαν
+    // 404 σε `npm run dev` (η ρύθμιση Tauri μιλάει κατευθείαν στο :8121, δεν
+    // την αφορά αυτό).
+    proxy: {
+      '/api': 'http://localhost:8121',
+    },
   },
   test: {
     environment: 'jsdom',

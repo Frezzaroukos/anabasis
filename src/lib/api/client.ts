@@ -1,0 +1,195 @@
+/**
+ * Anabasis API client — thin fetch wrapper πάνω στο server/API-CONTRACT.md.
+ *
+ * Base URL: VITE_API_BASE αν οριστεί (CI/deploy override)· αλλιώς '/api' στο
+ * web app (same-origin πίσω από το Cloudflare tunnel) ή localhost:8121/api
+ * μέσα στο Tauri desktop app (μιλάει κατευθείαν στον τοπικό server, όχι μέσω
+ * webview origin).
+ *
+ * Το localStorage['anabasis.auth'] είναι η ΜΟΝΗ πηγή αλήθειας για το token —
+ * ζει εδώ (όχι στο auth store) ώστε το fetch wrapper να μπορεί να διαβάσει/
+ * καθαρίσει το token χωρίς κυκλικό import προς src/lib/api/auth.ts.
+ */
+
+import type {
+  Account,
+  AuthResponse,
+  Me,
+  SyncPullRequest,
+  SyncPullResponse,
+  SyncPushRequest,
+  SyncPushResponse,
+  AdminUser,
+  AdminStats,
+  HealthResponse,
+} from './types';
+
+export * from './types';
+
+const AUTH_STORAGE_KEY = 'anabasis.auth';
+
+/** (CustomEvent<StoredAuth | null>) — login/signup/logout/expired-token. Το
+ * auth store (src/lib/api/auth.ts) ακούει εδώ αντί να ξέρει για fetch/storage. */
+export const AUTH_CHANGED_EVENT = 'anabasis:auth-changed';
+
+export interface StoredAuth {
+  token: string;
+  account: Account;
+}
+
+function safeLocalStorage(): Storage | null {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null; // private mode / storage disabled
+  }
+}
+
+export function readStoredAuth(): StoredAuth | null {
+  try {
+    const raw = safeLocalStorage()?.getItem(AUTH_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as StoredAuth) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAuth(auth: StoredAuth | null): void {
+  try {
+    if (auth) safeLocalStorage()?.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
+    else safeLocalStorage()?.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    /* private mode — η session απλά δεν επιζεί reload */
+  }
+  globalThis.dispatchEvent?.(new CustomEvent(AUTH_CHANGED_EVENT, { detail: auth }));
+}
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+function resolveBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_API_BASE as string | undefined;
+  if (fromEnv) return fromEnv;
+  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  return isTauri ? 'http://localhost:8121/api' : '/api';
+}
+
+interface RequestOptions {
+  method?: 'GET' | 'POST';
+  body?: unknown;
+  /** login/signup: ΜΗΝ καθαρίσεις αποθηκευμένη σύνδεση σε 401 — δεν υπάρχει
+   * ήδη κάποια να ακυρωθεί, το 401 εδώ σημαίνει απλώς "λάθος κωδικός". */
+  isAuthCall?: boolean;
+}
+
+async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const stored = readStoredAuth();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (stored?.token) headers.Authorization = `Bearer ${stored.token}`;
+
+  // Δίκτυο εκτός (fetch reject) φεύγει ΩΣ ΕΧΕΙ — ο caller (sync engine) το
+  // ξεχωρίζει από ApiError για σιωπηλό offline handling.
+  const res = await fetch(`${resolveBaseUrl()}${path}`, {
+    method: opts.method ?? 'GET',
+    headers,
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  });
+
+  if (res.status === 401 && !opts.isAuthCall) {
+    writeStoredAuth(null);
+  }
+
+  if (!res.ok) {
+    let code = 'unknown_error';
+    let message = res.statusText;
+    try {
+      const errBody = (await res.json()) as { error?: string; message?: string };
+      if (errBody.error) code = errBody.error;
+      if (errBody.message) message = errBody.message;
+    } catch {
+      /* κενό/μη-JSON σώμα σφάλματος */
+    }
+    throw new ApiError(res.status, code, message);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+export const api = {
+  async signup(email: string, password: string): Promise<AuthResponse> {
+    const res = await request<AuthResponse>('/auth/signup', {
+      method: 'POST',
+      body: { email, password },
+      isAuthCall: true,
+    });
+    writeStoredAuth(res);
+    return res;
+  },
+
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const res = await request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+      isAuthCall: true,
+    });
+    writeStoredAuth(res);
+    return res;
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await request('/auth/logout', { method: 'POST' });
+    } finally {
+      // τοπικό logout πάντα, ακόμα κι αν το δίκτυο/session-revoke απέτυχε
+      writeStoredAuth(null);
+    }
+  },
+
+  me(): Promise<Me> {
+    return request<Me>('/me');
+  },
+
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return request('/auth/change_password', {
+      method: 'POST',
+      body: { current_password: currentPassword, new_password: newPassword },
+    });
+  },
+
+  syncPush(body: SyncPushRequest): Promise<SyncPushResponse> {
+    return request<SyncPushResponse>('/sync/push', { method: 'POST', body });
+  },
+
+  syncPull(body: SyncPullRequest): Promise<SyncPullResponse> {
+    return request<SyncPullResponse>('/sync/pull', { method: 'POST', body });
+  },
+
+  adminListUsers(): Promise<AdminUser[]> {
+    return request<AdminUser[]>('/admin/users');
+  },
+
+  adminSetDisabled(id: string, disabled: boolean): Promise<void> {
+    return request(`/admin/users/${id}/disable`, { method: 'POST', body: { disabled } });
+  },
+
+  adminResetPassword(id: string): Promise<{ temp_password: string }> {
+    return request(`/admin/users/${id}/reset_password`, { method: 'POST', body: {} });
+  },
+
+  adminStats(): Promise<AdminStats> {
+    return request<AdminStats>('/admin/stats');
+  },
+
+  health(): Promise<HealthResponse> {
+    return request<HealthResponse>('/health');
+  },
+};

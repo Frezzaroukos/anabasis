@@ -1,0 +1,11 @@
+/home/aggelos/code/strength-atlas/server/target/debug/deps/hybrid_array-c15f7ff914d7b2fb.d: /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/lib.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/sizes.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/flatten.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/from_fn.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/iter.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/traits.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/../README.md
+
+/home/aggelos/code/strength-atlas/server/target/debug/deps/libhybrid_array-c15f7ff914d7b2fb.rmeta: /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/lib.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/sizes.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/flatten.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/from_fn.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/iter.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/traits.rs /home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/../README.md
+
+/home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/lib.rs:
+/home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/sizes.rs:
+/home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/flatten.rs:
+/home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/from_fn.rs:
+/home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/iter.rs:
+/home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/traits.rs:
+/home/aggelos/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hybrid-array-0.4.14/src/../README.md:

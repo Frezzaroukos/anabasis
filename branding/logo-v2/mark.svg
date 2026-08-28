@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Anabasis">
+  <!--
+    Anabasis mark v2 — «rung-peak»: 4 σκαλοπάτια/rungs που στοιβάζονται σε
+    σιλουέτα κορυφής. Διπλή ανάγνωση: σκάλα (κάθε skill = σκαλί) ΚΑΙ βουνό
+    (η ανάβαση). Τα κενά ανάμεσα στα rungs κάνουν την κορυφή να διαβάζεται
+    στο negative space. Δουλεύει σε 16px favicon (4 καθαρές οριζόντιες μπάρες).
+  -->
+  <defs>
+    <linearGradient id="ascent" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#B88CFF"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#ascent)">
+    <rect x="28"  y="9"  width="8"  height="7" rx="3.5"/>
+    <rect x="21"  y="22" width="22" height="7" rx="3.5"/>
+    <rect x="14"  y="35" width="36" height="7" rx="3.5"/>
+    <rect x="7"   y="48" width="50" height="7" rx="3.5"/>
+  </g>
+</svg>
