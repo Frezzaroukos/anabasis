@@ -44,3 +44,4 @@ Thumbs.db
 src-tauri/target/
 src-tauri/gen/
 dist-tauri
+server/target/
