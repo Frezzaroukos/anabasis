@@ -41,6 +41,7 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        elevated: 'hsl(var(--elevated))',
         gold: 'hsl(var(--gold))',
         category: {
           push: 'hsl(var(--cat-push))',
@@ -56,8 +57,14 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        sans: ['Manrope Variable', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Fira Sans Condensed', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono Variable', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
+      boxShadow: {
+        // Απαλή λάμψη στο accent — active chart points, hero στοιχεία.
+        glow: '0 0 12px hsl(var(--primary) / 0.35)',
+        'glow-sm': '0 0 8px hsl(var(--primary) / 0.25)',
       },
     },
   },

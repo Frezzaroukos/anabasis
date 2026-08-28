@@ -131,7 +131,7 @@ export function ProgramDetailPage() {
           ← {t('programs.title')}
         </Link>
         <div className="flex items-baseline justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{program.name}</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{program.name}</h1>
           <span className="text-xs text-muted-foreground">
             {t(`activity.${program.activity_kind}`)}
           </span>
@@ -149,7 +149,7 @@ export function ProgramDetailPage() {
                 Math.max(0, (program.target_sessions_per_week ?? 0) - 1) || null,
               )
             }
-            className="h-7 w-7 rounded-md border border-border text-muted-foreground hover:bg-accent"
+            className="h-7 w-7 rounded-md bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             −
           </button>
@@ -162,7 +162,7 @@ export function ProgramDetailPage() {
             onClick={() =>
               void setProgramTarget(program.id, (program.target_sessions_per_week ?? 0) + 1)
             }
-            className="h-7 w-7 rounded-md border border-border text-muted-foreground hover:bg-accent"
+            className="h-7 w-7 rounded-md bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             +
           </button>
@@ -184,27 +184,26 @@ export function ProgramDetailPage() {
       </Button>
 
       {exercises.length === 0 ? (
-        <p className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
           {t('programs.noExercises')}
         </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="stagger space-y-3">
           {groups.map((group, index) => (
             <li key={group.key}>
               <div
                 className={cn(
-                  'overflow-hidden rounded-lg border',
-                  group.kind !== 'single'
-                    ? 'border-primary/50 bg-primary/5'
-                    : 'border-border bg-card',
+                  'overflow-hidden rounded-lg',
+                  group.kind !== 'single' ? 'bg-primary/5' : 'bg-card',
                 )}
               >
-                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5">
+                <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-1.5">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
                     {group.kind !== 'single' &&
                       t(group.kind === 'dropset' ? 'setType.dropset' : 'setType.superset')}
                   </span>
-                  <div className="flex items-center gap-1">
+                  {/* Πιο ήσυχα affordances: διακριτικά ως ηρεμία, ξεκάθαρα στο hover. */}
+                  <div className="flex items-center gap-1 opacity-70 transition-opacity hover:opacity-100">
                     {index > 0 && (
                       <button
                         type="button"

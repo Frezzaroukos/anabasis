@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { Flame, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { getCurrentProfile, getTrainingInsights } from '@/lib/db/queries';
 import { DEFAULT_USER_ID } from '@/lib/db/session';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { useCountUp } from '@/hooks/useCountUp';
 import { Wordmark } from '@/components/Logo';
 import { cn } from '@/lib/utils';
 import { FULL_WIDTH, resolveCardOrder, type DashboardCardKey } from './cards';
@@ -52,6 +53,9 @@ export function DashboardPage() {
 
   const insights = useLiveQuery(() => getTrainingInsights(30), [], null);
   const streakDays = insights?.streakDays ?? 0;
+  // Ανεβαίνει από 0 στην τελική τιμή όταν λύνεται το liveQuery — ο αριθμός
+  // «ζωντανεύει» αντί να εμφανίζεται απότομα (DESIGN-SPEC-V2, motion).
+  const animatedStreak = useCountUp(streakDays);
 
   const profile = useLiveQuery(() => getCurrentProfile(), [], undefined);
   // Το προεπιλεγμένο προφίλ έχει γενικό όνομα — χαιρετάμε μόνο όποιον το όρισε.
@@ -65,37 +69,43 @@ export function DashboardPage() {
        μακραίνει τη σελίδα αντί να τη γεμίζει. */
     <div className="stagger space-y-6 md:grid md:grid-cols-2 md:items-start md:gap-5 md:space-y-0">
       {/*
-        App bar: ταυτότητα αριστερά, κατάσταση + προφίλ δεξιά. Πριν υπήρχε
-        μόνο ένας τίτλος «Overview» και ένα logo να αιωρείται στη γωνία —
-        δεν έλεγε ποιος είσαι ούτε πώς πας.
+        WHOOP-style hero: ΕΝΑ μεγάλο νούμερο (το σερί) διαβάζεται από απόσταση,
+        πάνω από τα tiles — αντί για «κουτί-σε-κουτί» (γνωστό feedback).
+        Χωρίς ενεργό σερί δεν δείχνουμε ψεύτικο «0» (ίδια λογική με τις
+        υπόλοιπες κάρτες), μένει μόνο ο τίτλος.
       */}
       <header className="space-y-4 md:col-span-2">
         <div className="flex items-center justify-between gap-2 md:justify-end">
           <Wordmark className="md:hidden" />
-          <div className="flex items-center gap-2">
-            {streakDays > 0 && (
-              <span
-                className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1"
-                title={t('insights.streak', { count: streakDays })}
-              >
-                <Flame className="h-3.5 w-3.5 text-[hsl(var(--gold))]" />
-                <span className="font-mono text-xs">{streakDays}</span>
-              </span>
-            )}
-            <Link
-              to="/profile"
-              aria-label={t('profile.title')}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <User className="h-4 w-4" />
-            </Link>
-          </div>
+          <Link
+            to="/profile"
+            aria-label={t('profile.title')}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+          >
+            <User className="h-4 w-4" />
+          </Link>
         </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1
+            className={cn(
+              streakDays > 0
+                ? 'text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground'
+                : 'font-display text-2xl font-semibold tracking-tight text-foreground',
+            )}
+          >
             {profileName ? t('dashboard.welcomeBack', { name: profileName }) : t('dashboard.title')}
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
+          {streakDays > 0 && (
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="font-display text-5xl font-semibold leading-none tracking-tight tabular-nums text-foreground [filter:drop-shadow(0_0_14px_hsl(var(--primary)/0.3))]">
+                {animatedStreak}
+              </span>
+              <span className="font-display text-base font-semibold text-muted-foreground">
+                {t('dashboard.hero.streakUnit')}
+              </span>
+            </div>
+          )}
+          <p className="mt-1.5 text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
         </div>
       </header>
 

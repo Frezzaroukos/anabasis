@@ -55,6 +55,7 @@ export function SkillDetailPage() {
   const currentIdx = steps.findIndex((s) => !completions.has(s.id));
   const stepById = new Map(steps.map((s) => [s.id, s]));
   const unitSuggestions = [...new Set(steps.map((s) => s.target_unit))];
+  const masteredSkill = progress?.status === 'mastered';
 
   return (
     <div className="space-y-6">
@@ -68,7 +69,7 @@ export function SkillDetailPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <SkillIcon skill={skill.short_code} className="h-12 w-12 shrink-0 text-primary" />
-            <h1 className="text-2xl font-semibold tracking-tight">{skill.name}</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight">{skill.name}</h1>
           </div>
           <span className="font-mono text-xs text-muted-foreground">
             {skill.short_code}
@@ -100,146 +101,166 @@ export function SkillDetailPage() {
             <div
               className={cn(
                 'h-full rounded-full transition-all',
-                progress?.status === 'mastered' ? 'bg-emerald-500' : 'bg-primary',
+                progress?.status === 'mastered' ? 'bg-gold' : 'bg-primary',
               )}
               style={{ width: `${pct}%` }}
             />
           </div>
           {progress?.status === 'mastered' && (
-            <p className="mt-2 text-sm font-medium text-emerald-500">
+            <p className="mt-2 text-sm font-medium text-gold">
               ★ {t('skills.mastered')}
             </p>
           )}
         </div>
       </header>
 
-      <ol className="space-y-3">
+      {/*
+        Η σκάλα — κύκλοι συνδεδεμένοι με κάθετη γραμμή, όχι ξεχωριστές
+        κάρτες. Το κλειδωμένο βήμα ΜΕΝΕΙ ορατό (απλά υποτονισμένο): ο
+        αθλητής πρέπει να βλέπει πού πάει, όχι μόνο πού είναι.
+      */}
+      <ol className="stagger">
         {steps.map((step, i) => {
           const done = completions.get(step.id);
           const isCurrent = i === currentIdx;
           const locked = currentIdx !== -1 && i > currentIdx;
+          const isLast = i === steps.length - 1;
+          // Η κορυφή της σκάλας, όταν το skill έχει κατακτηθεί — το ένα
+          // σημείο που παίρνει χρυσό αντί για accent (gold = ΜΟΝΟ επίτευξη).
+          const isPeak = done && masteredSkill && isLast;
 
           return (
-            <li
-              key={step.id}
-              className={cn(
-                'rounded-lg border p-4 transition-colors',
-                done && 'border-emerald-500/40 bg-emerald-500/5',
-                isCurrent && 'border-primary bg-card',
-                locked && 'border-border bg-card/50 opacity-60',
-                !done && !isCurrent && !locked && 'border-border bg-card',
-              )}
-            >
-              <div className="flex items-start gap-3">
+            <li key={step.id} className="flex gap-3 pb-5 last:pb-0">
+              <div className="flex flex-col items-center">
                 <span
                   className={cn(
-                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                    done
-                      ? 'bg-emerald-500 text-white'
-                      : isCurrent
+                    'z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                    isPeak
+                      ? 'bg-gold text-background'
+                      : done
                         ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground',
+                        : isCurrent
+                          ? 'animate-ladder-step bg-elevated text-primary ring-2 ring-primary'
+                          : 'bg-muted text-muted-foreground',
                   )}
                 >
                   {done ? '✓' : step.step_number}
                 </span>
+                {!isLast && (
+                  <span
+                    aria-hidden
+                    className={cn('mt-1 w-px flex-1', done ? 'bg-primary/50' : 'bg-border')}
+                  />
+                )}
+              </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium">{step.name}</p>
-                    <div className="flex shrink-0 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditingStep(step)}
-                        aria-label={t('skills.editStep')}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteStepId(step.id)}
-                        aria-label={t('skills.deleteStep')}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{step.description}</p>
-                  <p className="mt-1 font-mono text-xs">
-                    {t('skills.target')}: {step.target_value} {step.target_unit}
+              <div
+                className={cn(
+                  'min-w-0 flex-1 rounded-lg px-3 py-2.5 transition-colors',
+                  isCurrent && 'bg-elevated',
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p
+                    className={cn(
+                      'text-sm font-medium',
+                      locked && 'text-muted-foreground',
+                    )}
+                  >
+                    {step.name}
                   </p>
-                  {/* Η αλυσίδα προαπαιτούμενων — γραμμική, ένα βήμα ξεκλειδώνει το επόμενο. */}
-                  {step.prerequisites.length > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t('skills.requires')}:{' '}
-                      {step.prerequisites
-                        .map((id) => stepById.get(id)?.name)
-                        .filter(Boolean)
-                        .join(', ')}
-                    </p>
-                  )}
-
-                  {done && (
-                    <p className="mt-2 text-xs text-emerald-500">
-                      {t('skills.achieved')}: {done.achieved_value} {step.target_unit}
-                      {' · '}
-                      {new Date(done.achieved_at).toLocaleDateString()}
-                    </p>
-                  )}
-
-                  {isCurrent && (
-                    <div className="mt-3 flex gap-2">
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        className="h-9 w-24"
-                        placeholder={String(step.target_value)}
-                        value={draft[step.id] ?? ''}
-                        onChange={(e) =>
-                          setDraft((d) => ({ ...d, [step.id]: e.target.value }))
-                        }
-                        aria-label={t('skills.achieved')}
-                      />
-                      <Button
-                        className="h-9"
-                        onClick={() => {
-                          const v = Number(draft[step.id] ?? step.target_value);
-                          void achieveStep(
-                            skillId,
-                            step.id,
-                            Number.isFinite(v) ? v : step.target_value,
-                          );
-                          setDraft((d) => ({ ...d, [step.id]: '' }));
-                        }}
-                      >
-                        {t('skills.markAchieved')}
-                      </Button>
-                    </div>
-                  )}
-
-                  {done && (
+                  <div className="flex shrink-0 gap-1">
                     <button
                       type="button"
-                      className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:underline"
-                      onClick={() => void undoStep(skillId, step.id)}
+                      onClick={() => setEditingStep(step)}
+                      aria-label={t('skills.editStep')}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     >
-                      {t('common.undo')}
+                      <Pencil className="h-3.5 w-3.5" />
                     </button>
-                  )}
-
-                  {step.benchmark_video_url && (
-                    <a
-                      href={step.benchmark_video_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStepId(step.id)}
+                      aria-label={t('skills.deleteStep')}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
                     >
-                      {t('skills.watchBenchmark')}
-                    </a>
-                  )}
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
+                <p className="text-xs text-muted-foreground">{step.description}</p>
+                <p className="mt-1 font-mono text-xs">
+                  {t('skills.target')}: {step.target_value} {step.target_unit}
+                </p>
+                {/* Η αλυσίδα προαπαιτούμενων — γραμμική, ένα βήμα ξεκλειδώνει το επόμενο. */}
+                {step.prerequisites.length > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t('skills.requires')}:{' '}
+                    {step.prerequisites
+                      .map((id) => stepById.get(id)?.name)
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                )}
+
+                {done && (
+                  <p className="mt-2 text-xs text-primary">
+                    {t('skills.achieved')}: {done.achieved_value} {step.target_unit}
+                    {' · '}
+                    {new Date(done.achieved_at).toLocaleDateString()}
+                  </p>
+                )}
+
+                {isCurrent && (
+                  <div className="mt-3 flex gap-2">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      className="h-9 w-24"
+                      placeholder={String(step.target_value)}
+                      value={draft[step.id] ?? ''}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, [step.id]: e.target.value }))
+                      }
+                      aria-label={t('skills.achieved')}
+                    />
+                    <Button
+                      className="h-9"
+                      onClick={() => {
+                        const v = Number(draft[step.id] ?? step.target_value);
+                        void achieveStep(
+                          skillId,
+                          step.id,
+                          Number.isFinite(v) ? v : step.target_value,
+                        );
+                        setDraft((d) => ({ ...d, [step.id]: '' }));
+                      }}
+                    >
+                      {t('skills.markAchieved')}
+                    </Button>
+                  </div>
+                )}
+
+                {done && (
+                  <button
+                    type="button"
+                    className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:underline"
+                    onClick={() => void undoStep(skillId, step.id)}
+                  >
+                    {t('common.undo')}
+                  </button>
+                )}
+
+                {step.benchmark_video_url && (
+                  <a
+                    href={step.benchmark_video_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
+                  >
+                    {t('skills.watchBenchmark')}
+                  </a>
+                )}
               </div>
             </li>
           );

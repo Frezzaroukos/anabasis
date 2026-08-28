@@ -15,6 +15,7 @@ import { parseQuickSets } from '../quickLog';
 import type { SetIntensity } from './AddSetInline';
 import { SetRow } from './SetRow';
 import { AddSetInline } from './AddSetInline';
+import { RungCelebration } from './RungCelebration';
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -130,22 +131,22 @@ export function ExerciseCard({
   return (
     <article
       className={cn(
-        'rounded-lg border bg-card transition-colors',
-        prCount > 0 ? 'border-gold' : 'border-border',
+        'relative rounded-lg transition-colors',
+        adding || quickMode ? 'bg-elevated' : 'bg-card',
       )}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+      <header className="flex items-center justify-between gap-2 px-3 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <span
             className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[exercise.category])}
             aria-hidden
           />
           <span className="truncate text-sm font-medium">{exercise.name}</span>
-          {/* Γιορτή ρεκόρ: χρυσό, πάλλεται μία φορά. Λειτουργικό (σε ενημερώνει
-              ότι ξεπέρασες τον εαυτό σου) + ζωντανό — όχι διακόσμηση. */}
+          {/* Γιορτή ρεκόρ: το status chip μένει (a11y — ανακοινώνεται), το
+              «wow» πλέον είναι το RungCelebration δίπλα (σκαλί-σκαλί + particles). */}
           {prCount > 0 && (
             <span
-              className="animate-pr-pulse flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-gold"
+              className="flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-gold"
               role="status"
             >
               🏆 {prCount > 1 ? `${prCount} ${t('workout.prs')}` : t('workout.pr')}
@@ -156,7 +157,7 @@ export function ExerciseCard({
         {supportsToggle && (
           <div
             role="tablist"
-            className="flex shrink-0 rounded-md border border-border p-0.5 text-[11px] font-medium"
+            className="flex shrink-0 rounded-md bg-elevated p-0.5 text-[11px] font-medium"
           >
             <button
               type="button"
@@ -186,7 +187,11 @@ export function ExerciseCard({
         )}
       </header>
 
-      <div className="divide-y divide-border">
+      {/* Γιορτή ρεκόρ (macro): «ανέβασμα σκαλιού» — αγκυρωμένο στη γωνία της
+          κάρτας ώστε να μη μετατοπίζει το layout γύρω του. */}
+      <RungCelebration active={prCount > 0} className="absolute -right-1 -top-1 z-10 h-11 w-11" />
+
+      <div className="divide-y divide-border/60">
         {visibleSets.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground">{t('workout.swipeHint')}</p>
         ) : (
@@ -196,7 +201,7 @@ export function ExerciseCard({
         )}
       </div>
 
-      <div className="border-t border-border p-2">
+      <div className="p-2">
         {quickMode ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -215,7 +220,7 @@ export function ExerciseCard({
                       ? t('workout.quickPlaceholder')
                       : t('workout.quickPlaceholderBw')
                 }
-                className="h-9 font-mono"
+                className="h-9 font-mono tabular-nums"
                 aria-label={t('workout.quickLog')}
               />
               <Button
@@ -237,7 +242,7 @@ export function ExerciseCard({
             </div>
             {/* Ζωντανή προεπισκόπηση: ο χρήστης βλέπει τι θα καταγραφεί καθώς γράφει */}
             {quickPreview.length > 0 && (
-              <p className="px-1 font-mono text-[11px] text-muted-foreground">
+              <p className="rounded-md bg-background/60 px-2 py-1 font-mono text-[11px] tabular-nums text-muted-foreground">
                 {quickPreview
                   .map((s) => {
                     const repsLabel = isHold ? `${s.reps}s` : `${s.reps}`;

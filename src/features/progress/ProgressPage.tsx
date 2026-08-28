@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download } from 'lucide-react';
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
   Label,
-  Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -26,6 +26,17 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { toDisplayWeight } from '@/lib/units';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import {
+  ACCENT_FILL_ID,
+  ACTIVE_DOT,
+  CHART_GOLD,
+  CHART_GRID,
+  CHART_STROKE,
+  CHART_STROKE_WIDTH,
+  CHART_TICK,
+  ChartGradientDefs,
+  TOOLTIP_STYLE,
+} from '@/components/charts/chartTheme';
 import { ActivityProgress } from './ActivityProgress';
 
 type Metric = 'topWeight' | 'e1rm' | 'volume';
@@ -128,7 +139,7 @@ export function ProgressPage() {
         <Link to="/history" className="text-xs text-muted-foreground hover:text-foreground">
           ← {t('history.title')}
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+        <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">
           {t('progress.title')}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('progress.hint')}</p>
@@ -142,20 +153,21 @@ export function ProgressPage() {
             onChange={(e) => setQ(e.target.value)}
             className="h-10"
           />
-          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+          <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-lg bg-card">
             {filtered.map((e) => {
               const s = summaries.get(e.id);
               return (
                 <li key={e.id}>
                   <button
                     onClick={() => setExerciseId(e.id)}
-                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated"
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      {/* ★ = έχει PR, ● = έχει προπονηθεί· αλλιώς ο χρήστης
-                          ψάχνει στα τυφλά ποια άσκηση αξίζει να ανοίξει */}
+                      {/* ★ = έχει PR (χρυσό = επίτευξη), ● = έχει προπονηθεί·
+                          αλλιώς ο χρήστης ψάχνει στα τυφλά ποια άσκηση αξίζει
+                          να ανοίξει */}
                       {s?.hasPR ? (
-                        <span className="shrink-0 text-amber-500" aria-hidden>★</span>
+                        <span className="shrink-0 text-gold" aria-hidden>★</span>
                       ) : s?.lastTrainedAt ? (
                         <span className="shrink-0 text-primary" aria-hidden>●</span>
                       ) : (
@@ -179,7 +191,7 @@ export function ProgressPage() {
           <ActivityProgress />
         </section>
       ) : (
-        <section className="space-y-4">
+        <section className="animate-rise-in space-y-4">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-lg font-medium">{selected?.name}</h2>
             <div className="flex items-center gap-3">
@@ -206,7 +218,9 @@ export function ProgressPage() {
                 onClick={() => setMetric(m)}
                 className={cn(
                   'rounded-md border border-border px-3 py-1 text-xs transition-colors',
-                  metric === m ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                  metric === m
+                    ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
+                    : 'hover:bg-elevated',
                 )}
               >
                 {t(`progress.${m}`)}
@@ -215,11 +229,11 @@ export function ProgressPage() {
           </div>
 
           {withData.length < 2 ? (
-            <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
               {t('progress.needMore')}
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-card p-4">
+            <div className="rounded-lg bg-card p-4">
               <div className="mb-2 flex justify-between text-xs text-muted-foreground">
                 <span>
                   {withData.length} {t('progress.sessions')}
@@ -232,61 +246,48 @@ export function ProgressPage() {
               </div>
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="currentColor"
-                      className="text-border"
-                      vertical={false}
-                    />
+                  <AreaChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+                    <ChartGradientDefs />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(d: string) => d.slice(5)}
-                      tick={{ fontSize: 10 }}
-                      stroke="currentColor"
-                      className="text-muted-foreground"
+                      tick={CHART_TICK}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <YAxis
                       domain={['dataMin - 2', 'dataMax + 2']}
-                      tick={{ fontSize: 10 }}
-                      stroke="currentColor"
-                      className="text-muted-foreground"
+                      tick={CHART_TICK}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
+                      contentStyle={TOOLTIP_STYLE}
                       labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
                       formatter={(v: number) => [`${v} ${unit}`, t(`progress.${metric}`)]}
                     />
                     {prValue != null && (
-                      <ReferenceLine
-                        y={prValue}
-                        stroke="currentColor"
-                        className="text-amber-500"
-                        strokeDasharray="4 3"
-                      >
+                      <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray="4 3">
                         <Label
                           value={`PR ${prValue} ${unit}`}
                           position="insideTopRight"
-                          fill="currentColor"
-                          className="fill-amber-500 text-[10px]"
+                          fill={CHART_GOLD}
+                          className="text-[10px]"
                         />
                       </ReferenceLine>
                     )}
-                    <Line
+                    <Area
                       type="monotone"
                       dataKey={metric}
-                      stroke="currentColor"
-                      className="text-primary"
-                      strokeWidth={2}
-                      dot={{ r: 2 }}
+                      stroke={CHART_STROKE}
+                      strokeWidth={CHART_STROKE_WIDTH}
+                      fill={`url(#${ACCENT_FILL_ID})`}
+                      dot={{ r: 2, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                      activeDot={ACTIVE_DOT}
                       connectNulls
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>

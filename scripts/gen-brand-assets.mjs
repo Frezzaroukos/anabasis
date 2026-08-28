@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Παράγει ΟΛΑ τα brand assets από μία πηγή γεωμετρίας (ίδια με το
- * src/components/Logo.tsx). Τρέξε μετά από αλλαγή στο σήμα:
+ * src/components/Logo.tsx / branding/logo-v2/mark.svg). Τρέξε μετά από
+ * αλλαγή στο σήμα:
  *
  *   node scripts/gen-brand-assets.mjs
  *
@@ -16,75 +17,63 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PUB = resolve(ROOT, 'public');
 mkdirSync(PUB, { recursive: true });
 
-// ── Πηγή αλήθειας: ίδια γεωμετρία με το src/components/Logo.tsx ───────────
-// «Άλφα με σκάλα»: σκέλη Λ + σκαλιά μέσα στο counter + κορυφή.
-const APEX_Y = 60;
-const FOOT_Y = 452;
-const CX = 256;
-const HALF_RUN = 196;
-const SW = 48;
-const SLOPE = HALF_RUN / (FOOT_Y - APEX_Y); // 0.5
-const H_THICK = SW * Math.sqrt(1 + SLOPE ** 2); // οριζόντιο πάχος σκέλους
+// ── Πηγή αλήθειας: ίδια γεωμετρία με branding/logo-v2/mark.svg ────────────
+// «Rung-peak»: 4 σκαλοπάτια στοιβαγμένα σε σιλουέτα κορυφής (viewBox 64).
+const RUNGS = [
+  { x: 28, y: 9, w: 8 },
+  { x: 21, y: 22, w: 22 },
+  { x: 14, y: 35, w: 36 },
+  { x: 7, y: 48, w: 50 },
+];
+const RUNG_H = 7;
+const RUNG_RX = 3.5;
 
-const LEG = `M${CX - HALF_RUN} ${FOOT_Y} L${CX} ${APEX_Y} L${CX + HALF_RUN} ${FOOT_Y}`;
+// ── Altitude Violet palette (docs/DESIGN-SPEC-V2.md) ───────────────────────
+const VIOLET_A = '#7C3AED'; // gradient stop 0 — σκοτεινότερο
+const VIOLET_B = '#B88CFF'; // gradient stop 1 — accent-glow
+const WHITE = '#F3F1F8'; // text-primary — το σήμα στο app icon
+const GOLD = '#FBBF24'; // achievement — μόνο για summit
+const BG = '#0C0A14'; // bg-base — near-black με μωβ χροιά
 
-/** Μισό πλάτος του εσωτερικού κενού σε ύψος y. */
-const counterHalf = (y) => Math.max(0, SLOPE * (y - APEX_Y) - H_THICK / 2);
-
-// inset 0 → τα σκαλιά αγγίζουν τα σκέλη, όπως στο brand sheet.
-const PRESETS = {
-  4: { top: 236, gap: 26, h: 24, inset: 0 },
-  2: { top: 282, gap: 44, h: 34, inset: 0 },
+/** Το σήμα (4 rungs) σε δεδομένο viewBox 64, χρώμα ή gradient url(#id). */
+const mark = (fill, { summit = false, gradientId } = {}) => {
+  const color = gradientId ? `url(#${gradientId})` : fill;
+  const bars = RUNGS.map((r, i) => {
+    const c = summit && i === 0 ? GOLD : color;
+    return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${RUNG_H}" rx="${RUNG_RX}" fill="${c}"/>`;
+  });
+  return `<g>${bars.join('')}</g>`;
 };
 
-const BLUE = '#2F81F7'; // Electric Blue family — ίδιο με το --primary του app
-const WHITE = '#F7F7F7'; // Ghost White — το σήμα στο app icon, όπως στο brand sheet
-const GOLD = '#E0B341';
-const BG = '#0D1117'; // Deep Charcoal
+const gradientDefs = (id) => `<defs>
+  <linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="${VIOLET_A}"/>
+    <stop offset="1" stop-color="${VIOLET_B}"/>
+  </linearGradient>
+</defs>`;
 
-const mark = (color, { summit = false, rungs = 4 } = {}) => {
-  const { top, gap, h, inset } = PRESETS[rungs];
-  const bars = [];
-  for (let i = 0, y = top; i < rungs; i++, y += h + gap) {
-    const half = counterHalf(y) - inset;
-    if (half <= 6) continue;
-    bars.push(
-      `<rect x="${(CX - half).toFixed(1)}" y="${y}" width="${(2 * half).toFixed(1)}" height="${h}" rx="3" fill="${color}"/>`,
-    );
-  }
-  const ty = top - gap - 4;
-  const th = counterHalf(ty) - inset;
-  const apex = `<path d="M${CX} ${(ty - 2 * th).toFixed(1)} L${(CX - th).toFixed(1)} ${ty} L${(CX + th).toFixed(1)} ${ty} Z" fill="${summit ? GOLD : color}"/>`;
-
-  // Το miter join προεξέχει ~54u πάνω από το apex — το 0.9 κρατά το σήμα μέσα.
-  return `<g transform="translate(256,256) scale(0.9) translate(-256,-256)">
-  <path d="${LEG}" fill="none" stroke="${color}" stroke-width="${SW}"
-        stroke-linecap="butt" stroke-linejoin="miter"/>
-  ${apex}${bars.join('')}</g>`;
-};
-
-const svg = (body, w = 512, h = 512, vb = '0 0 512 512') =>
+const svg = (body, w = 64, h = 64, vb = '0 0 64 64') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}">${body}</svg>\n`;
 
 /**
- * Το σήμα μέσα σε rounded-square. Το app icon είναι ΛΕΥΚΟ σε ανθρακί —
- * ακριβώς όπως το brand sheet (πάνελ «03 / APP ICON»). Το μπλε μένει για το
- * UI, όπου παίρνει το accent του χρήστη· ένα app icon δεν αλλάζει χρώμα.
+ * Το σήμα μέσα σε rounded-square. Λευκό σήμα σε near-black βάση — ένα app
+ * icon δεν αλλάζει χρώμα με το accent του χρήστη.
  */
-const inSquare = (scale, radius, { color = WHITE, summit = false, rungs = 4 } = {}) => `
-  <rect width="512" height="512" rx="${radius}" fill="${BG}"/>
-  <g transform="translate(256,258) scale(${scale}) translate(-256,-256)">${mark(color, { summit, rungs })}</g>`;
+const inSquare = (scale, radius, { color = WHITE, summit = false } = {}) => `
+  <rect width="64" height="64" rx="${radius}" fill="${BG}"/>
+  <g transform="translate(32,32) scale(${scale}) translate(-32,-32)">${mark(color, { summit })}</g>`;
 
 const files = {
-  // Το «γυμνό» σήμα — για inline χρήση/έγγραφα
-  'logo.svg': svg(mark(BLUE, { summit: true })),
+  // Το «γυμνό» σήμα, gradient — για inline χρήση/έγγραφα
+  'logo.svg': svg(`${gradientDefs('anabasis-logo')}${mark(null, { gradientId: 'anabasis-logo' })}`),
   'logo-white.svg': svg(mark(WHITE)),
-  // Favicon: 2 σκαλιά — στα 16px του tab τα 4 κλείνουν οπτικά μεταξύ τους
-  'favicon.svg': svg(mark(BLUE, { summit: true, rungs: 2 })),
-  // App icon (PWA/Apple): container + safe area
-  'app-icon.svg': svg(inSquare(0.78, 116)),
-  // Maskable: πιο μικρό σήμα, ώστε να αντέχει το circular crop του Android
-  'app-icon-maskable.svg': svg(inSquare(0.62, 0)),
+  // Favicon: οι 4 μπάρες διαβάζονται καθαρά ακόμα και στα 16px του tab
+  'favicon.svg': svg(`${gradientDefs('anabasis-favicon')}${mark(null, { gradientId: 'anabasis-favicon' })}`),
+  // App icon (PWA/Apple): container + λευκό σήμα σε near-black βάση
+  'app-icon.svg': svg(inSquare(0.72, 14.5), 64, 64),
+  // Maskable: μικρότερο σήμα ώστε να μένει μέσα στο 80% safe-zone circle
+  // του Android (βλ. https://web.dev/maskable-icon/) κατά το circular crop
+  'app-icon-maskable.svg': svg(inSquare(0.6, 0), 64, 64),
 };
 
 for (const [name, content] of Object.entries(files)) {
@@ -92,18 +81,20 @@ for (const [name, content] of Object.entries(files)) {
 }
 
 // ── OG / social preview 1200×630 ──────────────────────────────────────────
+// Near-black βάση, το σήμα σε gradient + «Anabasis» σε Fira Sans Condensed.
 const og = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <rect width="1200" height="630" fill="${BG}"/>
-  <g opacity="0.045" transform="translate(700,40) scale(1.05)">${mark('#FFFFFF')}</g>
-  <g transform="translate(84,132) scale(0.72)">${mark(BLUE, { summit: true })}</g>
-  <text x="470" y="292" fill="#F7F7F7" font-family="Inter, system-ui, sans-serif"
-        font-size="76" font-weight="700" letter-spacing="12">ANABASIS</text>
-  <text x="474" y="348" fill="${BLUE}" font-family="Inter, system-ui, sans-serif"
-        font-size="26" letter-spacing="6">RISE. PROGRESS. BECOME.</text>
+  ${gradientDefs('anabasis-og')}
+  <g opacity="0.05" transform="translate(760,20) scale(11)">${mark(null, { gradientId: 'anabasis-og' })}</g>
+  <g transform="translate(120,167) scale(4.7)">${mark(null, { gradientId: 'anabasis-og' })}</g>
+  <text x="470" y="292" fill="${WHITE}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
+        font-size="76" font-weight="600" letter-spacing="6">ANABASIS</text>
+  <text x="474" y="348" fill="${VIOLET_B}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
+        font-size="26" font-weight="500" letter-spacing="6">RISE. PROGRESS. BECOME.</text>
   <rect x="474" y="386" width="88" height="4" rx="2" fill="${GOLD}"/>
-  <text x="474" y="440" fill="#8A97A8" font-family="Inter, system-ui, sans-serif"
+  <text x="474" y="440" fill="#A8A2BC" font-family="Manrope, Inter, system-ui, sans-serif"
         font-size="27">Weighted calisthenics &amp; skill progression · offline-first</text>
-  <text x="474" y="484" fill="#5C6B7E" font-family="Inter, system-ui, sans-serif"
+  <text x="474" y="484" fill="#6B6480" font-family="Manrope, Inter, system-ui, sans-serif"
         font-size="24" letter-spacing="1">anabasis.axonos.dev</text>
 </svg>\n`;
 writeFileSync(resolve(PUB, 'og.svg'), og);

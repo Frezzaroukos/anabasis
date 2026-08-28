@@ -16,6 +16,7 @@ import type { Skill, SkillCategory } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SkillIcon } from '@/components/SkillIcon';
+import { RungStack } from './components/RungStack';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_DOT: Record<SkillCategory, string> = {
@@ -106,12 +107,17 @@ export function SkillsPage() {
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
             {t('skills.title')}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {visibleSkills.length} {t('skills.available')}
-            {masteredCount > 0 && ` · ${masteredCount} ★`}
+            {masteredCount > 0 && (
+              <>
+                {' · '}
+                <span className="text-gold">{masteredCount} ★</span>
+              </>
+            )}
           </p>
         </div>
         {!creating && (
@@ -123,7 +129,7 @@ export function SkillsPage() {
       </header>
 
       {creating && (
-        <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <section className="animate-rise-in space-y-3 rounded-lg bg-elevated p-4">
           <Input
             autoFocus
             value={name}
@@ -146,10 +152,10 @@ export function SkillsPage() {
                   type="button"
                   onClick={() => setCategory(c)}
                   className={cn(
-                    'rounded-md border border-border px-2.5 py-1 text-xs transition-colors',
+                    'rounded-md px-2.5 py-1 text-xs transition-colors',
                     category === c
                       ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent',
+                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                   )}
                 >
                   {c}
@@ -167,10 +173,10 @@ export function SkillsPage() {
                   type="button"
                   onClick={() => setDifficulty(d)}
                   className={cn(
-                    'h-9 w-9 rounded-md border border-border text-sm transition-colors',
+                    'h-9 w-9 rounded-md text-sm transition-colors',
                     difficulty === d
                       ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent',
+                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                   )}
                 >
                   {d}
@@ -203,7 +209,7 @@ export function SkillsPage() {
         </section>
       )}
 
-      <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+      <ul className="stagger divide-y divide-border/60 rounded-lg bg-card">
         {visibleSkills.map((s) => {
           const total = stepStats.get(s.id)?.total ?? 0;
           const done = stepStats.get(s.id)?.done ?? 0;
@@ -232,7 +238,7 @@ export function SkillsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 text-sm font-medium">
                       {s.name}
-                      {mastered && <span className="text-emerald-500">★</span>}
+                      {mastered && <span className="text-gold">★</span>}
                       <span
                         className={cn(
                           'rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide',
@@ -249,15 +255,7 @@ export function SkillsPage() {
                     </p>
                     {total > 0 && (
                       <div className="mt-2 flex items-center gap-2">
-                        <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn(
-                              'h-full rounded-full',
-                              mastered ? 'bg-emerald-500' : 'bg-primary',
-                            )}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
+                        <RungStack pct={pct / 100} mastered={mastered} />
                         <span className="font-mono text-[10px] text-muted-foreground">
                           {done}/{total}
                         </span>

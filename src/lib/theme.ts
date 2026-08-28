@@ -28,8 +28,8 @@ export const ACCENTS: AccentPreset[] = [
     dark: { primary: '212 90% 60%', fg: '212 40% 8%' }, light: { primary: '214 85% 46%', fg: '0 0% 100%' } },
   { key: 'emerald', label: 'Emerald', swatch: 'hsl(152 62% 45%)',
     dark: { primary: '152 60% 50%', fg: '152 40% 7%' }, light: { primary: '152 65% 36%', fg: '0 0% 100%' } },
-  { key: 'violet', label: 'Violet', swatch: 'hsl(265 85% 66%)',
-    dark: { primary: '265 85% 70%', fg: '265 40% 8%' }, light: { primary: '265 70% 55%', fg: '0 0% 100%' } },
+  { key: 'violet', label: 'Aurora', swatch: 'hsl(264 100% 68%)',
+    dark: { primary: '264 100% 68%', fg: '258 40% 8%' }, light: { primary: '264 85% 58%', fg: '0 0% 100%' } },
   { key: 'crimson', label: 'Crimson', swatch: 'hsl(348 83% 58%)',
     dark: { primary: '348 85% 62%', fg: '348 40% 8%' }, light: { primary: '348 75% 50%', fg: '0 0% 100%' } },
   { key: 'cyan', label: 'Cyan', swatch: 'hsl(190 85% 50%)',
@@ -40,7 +40,11 @@ export const ACCENTS: AccentPreset[] = [
     dark: { primary: '40 84% 56%', fg: '32 40% 8%' }, light: { primary: '32 78% 42%', fg: '40 40% 98%' } },
 ];
 
-const DEFAULT_ACCENT = 'blue';
+/*
+ * Aurora violet = το signature του redesign v2 (docs/DESIGN-SPEC-V2.md) —
+ * ο χρήστης μπορεί πάντα να διαλέξει άλλο, το default όμως είναι το brand.
+ */
+const DEFAULT_ACCENT = 'violet';
 
 export function getStoredAccent(): string {
   try {
@@ -96,7 +100,7 @@ export function applyTheme(theme: Theme): void {
   root.classList.toggle('dark', resolved === 'dark');
   // theme-color meta ώστε η μπάρα του browser/PWA να ταιριάζει
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0d0c0a' : '#faf9f7');
+  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0C0A14' : '#FCFBFA');
   // Το accent primary έχει διαφορετική φωτεινότητα σε dark/light — ξανα-εφάρμοσέ το.
   applyAccent(getStoredAccent());
 }

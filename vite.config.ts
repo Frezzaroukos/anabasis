@@ -25,8 +25,8 @@ export default defineConfig({
         short_name: 'Anabasis',
         description:
           'Κάθε skill είναι μια σκάλα. Offline-first tracker για weighted calisthenics και skill progressions.',
-        theme_color: '#0B1017',
-        background_color: '#0B1017',
+        theme_color: '#0C0A14',
+        background_color: '#0C0A14',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
