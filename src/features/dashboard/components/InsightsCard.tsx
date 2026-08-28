@@ -4,7 +4,7 @@ import { Flame, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 import { getTrainingInsights } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { kgToLb } from '@/lib/units';
-import { Card, SectionTitle } from '@/components/ui/Section';
+import { SectionTitle } from '@/components/ui/Section';
 
 /**
  * Rule-based insights: κάθε πρόταση εμφανίζεται ΜΟΝΟ αν περνά κατώφλι δεδομένων
@@ -23,7 +23,9 @@ export function InsightsCard() {
 
   if (ins.streakDays >= 2) {
     lines.push({
-      icon: <Flame className="h-4 w-4 text-amber-500" />,
+      // Το σερί είναι πρόοδος, όχι επίτευγμα — μένει στο ΕΝΑ accent (gold μόνο
+      // για PR/mastery), ίδια γλώσσα με το hero-νούμερο πιο πάνω στη σελίδα.
+      icon: <Flame className="h-4 w-4 text-primary" />,
       text: t('insights.streak', { count: ins.streakDays }),
     });
   }
@@ -62,7 +64,7 @@ export function InsightsCard() {
 
   if (ins.prsThisPeriod > 0) {
     lines.push({
-      icon: <Trophy className="h-4 w-4 text-amber-500" />,
+      icon: <Trophy className="h-4 w-4 text-[hsl(var(--gold))]" />,
       text: t('insights.prs', { count: ins.prsThisPeriod }),
     });
   }
@@ -70,7 +72,7 @@ export function InsightsCard() {
   if (lines.length === 0) return null;
 
   return (
-    <Card>
+    <div className="rounded-xl bg-card p-4">
       <SectionTitle>{t('insights.title')}</SectionTitle>
       <ul className="space-y-2.5">
         {lines.map((l, i) => (
@@ -80,6 +82,6 @@ export function InsightsCard() {
           </li>
         ))}
       </ul>
-    </Card>
+    </div>
   );
 }

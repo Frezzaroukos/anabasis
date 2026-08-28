@@ -56,7 +56,7 @@ export function WorkoutDetailPage() {
       <header className="space-y-2">
         <BackLink label={t('history.title')} />
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
             {workout.workout_type ?? activityLabel}
           </h1>
           {/* Η διόρθωση ζει δίπλα σε αυτό που διορθώνεις, όχι σε άλλη οθόνη. */}
@@ -92,14 +92,14 @@ export function WorkoutDetailPage() {
       </div>
 
       {prs.length > 0 && (
-        <Card className="border-[hsl(var(--gold))]/40">
+        <Card className="border-gold/40">
           <SectionTitle>{t('workout.prs')}</SectionTitle>
           <ul className="space-y-1.5">
             {prs.map((pr) => (
               <li key={pr.id} className="flex items-center gap-2 text-sm">
-                <Trophy className="h-4 w-4 shrink-0 text-[hsl(var(--gold))]" />
+                <Trophy className="h-4 w-4 shrink-0 text-gold" />
                 <span className="flex-1 truncate">{t(`history.pr.${pr.type}`)}</span>
-                <span className="font-mono">
+                <span className="font-mono text-gold">
                   {WEIGHT_PR_TYPES.has(pr.type)
                     ? formatWeight(pr.value, unit)
                     : Math.round(pr.value * 10) / 10}

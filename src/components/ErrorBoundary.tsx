@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import { Logo } from './Logo';
 
 interface Props {
   children: ReactNode;
@@ -29,14 +30,20 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-8 text-center">
-          <p className="text-sm font-medium">{this.props.message}</p>
-          <p className="max-w-xs font-mono text-xs text-muted-foreground">
+        // Borderless: το tint bg-destructive/5 αρκεί ως σήμα σφάλματος· το
+        // σήμα (mark) ξεθωριασμένο στο βάθος δίνει ταυτότητα χωρίς να
+        // ανταγωνίζεται το μήνυμα.
+        <div className="relative flex flex-col items-center gap-3 overflow-hidden rounded-lg bg-destructive/5 p-8 text-center">
+          <span aria-hidden className="pointer-events-none absolute -bottom-4 -right-4">
+            <Logo className="h-24 w-24 text-destructive opacity-[0.06]" />
+          </span>
+          <p className="relative text-sm font-medium">{this.props.message}</p>
+          <p className="relative max-w-xs font-mono text-xs text-muted-foreground">
             {this.state.error.message}
           </p>
           <button
             onClick={this.reset}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="relative rounded-md bg-gradient-to-b from-primary to-primary/85 px-4 py-2 text-sm font-medium text-primary-foreground transition-transform active:scale-[0.98]"
           >
             {this.props.retryLabel}
           </button>

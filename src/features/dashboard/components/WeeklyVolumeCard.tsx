@@ -4,7 +4,6 @@ import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { getVolumeTrend } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { toDisplayWeight } from '@/lib/units';
-import { Card } from '@/components/ui/Section';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +32,7 @@ export function WeeklyVolumeCard() {
   const lastWeek = toDisplayWeight(lastWeekKg, unit, 'plate');
 
   return (
-    <Card>
+    <div className="rounded-xl bg-card p-4">
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('dashboard.weeklyVolume')}
@@ -85,6 +84,6 @@ export function WeeklyVolumeCard() {
           />
         )}
       </div>
-    </Card>
+    </div>
   );
 }

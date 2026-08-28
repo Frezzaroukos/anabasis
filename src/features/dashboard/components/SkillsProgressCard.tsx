@@ -32,7 +32,7 @@ export function SkillsProgressCard() {
   return (
     <Link
       to="/skills"
-      className="block rounded-xl border border-border/70 bg-card p-4 transition-colors hover:border-primary/40"
+      className="block rounded-xl bg-card p-4 transition-colors duration-200 hover:bg-elevated"
     >
       <SectionTitle
         action={

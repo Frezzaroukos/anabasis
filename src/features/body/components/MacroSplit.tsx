@@ -16,14 +16,17 @@ export function MacroSplit({ metric }: { metric: BodyMetric | undefined }) {
 
   // 4 kcal/g πρωτεΐνη & υδατάνθρακες, 9 kcal/g λίπος
   const kcal = Math.round(p * 4 + c * 4 + f * 9);
+  // Χρώματα από τα ΙΔΙΑ category tokens που ήδη κουβαλάει το app (--cat-*)
+  // αντί για ασύνδετο hardcoded hex — «harmonized» με την υπόλοιπη παλέτα,
+  // παραμένουν 3 ξεχωριστά semantic tones για να διαβάζονται τα macros.
   const data = [
-    { key: 'protein', label: t('body.protein'), grams: p, color: '#38bdf8' },
-    { key: 'carbs', label: t('body.carbs'), grams: c, color: '#fbbf24' },
-    { key: 'fat', label: t('body.fat'), grams: f, color: '#f87171' },
+    { key: 'protein', label: t('body.protein'), grams: p, color: 'hsl(var(--cat-pull))' },
+    { key: 'carbs', label: t('body.carbs'), grams: c, color: 'hsl(var(--cat-core))' },
+    { key: 'fat', label: t('body.fat'), grams: f, color: 'hsl(var(--cat-push))' },
   ].filter((d) => d.grams > 0);
 
   return (
-    <div className="mt-4 flex items-center gap-4 border-t border-border pt-4">
+    <div className="mt-4 flex items-center gap-4 border-t border-border/60 pt-4">
       <div className="h-24 w-24 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

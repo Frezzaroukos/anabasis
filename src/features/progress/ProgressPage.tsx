@@ -37,6 +37,7 @@ import {
   ChartGradientDefs,
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
+import { categoryDotClass } from '@/features/exercises/utils';
 import { ActivityProgress } from './ActivityProgress';
 
 type Metric = 'topWeight' | 'e1rm' | 'volume';
@@ -175,7 +176,11 @@ export function ProgressPage() {
                       )}
                       <span className="truncate text-sm font-medium">{e.name}</span>
                     </span>
-                    <span className="shrink-0 text-[10px] uppercase text-muted-foreground">
+                    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-elevated px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+                      <span
+                        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', categoryDotClass(e.category))}
+                        aria-hidden
+                      />
                       {e.category}
                     </span>
                   </button>

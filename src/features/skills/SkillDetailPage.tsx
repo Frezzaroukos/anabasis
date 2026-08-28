@@ -92,10 +92,10 @@ export function SkillDetailPage() {
 
         <div className="pt-2">
           <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-            <span>
+            <span className="font-mono">
               {doneCount}/{steps.length} {t('skills.stepsDone')}
             </span>
-            <span>{pct}%</span>
+            <span className="font-mono">{pct}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
@@ -205,7 +205,10 @@ export function SkillDetailPage() {
 
                 {done && (
                   <p className="mt-2 text-xs text-primary">
-                    {t('skills.achieved')}: {done.achieved_value} {step.target_unit}
+                    {t('skills.achieved')}:{' '}
+                    <span className="font-mono">
+                      {done.achieved_value} {step.target_unit}
+                    </span>
                     {' · '}
                     {new Date(done.achieved_at).toLocaleDateString()}
                   </p>

@@ -99,12 +99,17 @@ export function resolveSetGroup(
   return { groupId: chain.id, chain };
 }
 
+/*
+ * Δεν είναι brand χρώματα — χρειάζονται 5 ξεχωριστές αποχρώσεις για να
+ * ξεχωρίζουν παράλληλες αλυσίδες, κάτι που το 2-accent σύστημα δεν καλύπτει.
+ * Πιο λεπτή γραμμή + διαφάνεια ώστε να μη φωνάζουν πάνω στο ήσυχο dark UI.
+ */
 const CHAIN_COLOR_CLASSES = [
-  'border-l-4 border-amber-500',
-  'border-l-4 border-sky-500',
-  'border-l-4 border-fuchsia-500',
-  'border-l-4 border-emerald-500',
-  'border-l-4 border-rose-500',
+  'border-l-2 border-amber-500/80',
+  'border-l-2 border-sky-500/80',
+  'border-l-2 border-fuchsia-500/80',
+  'border-l-2 border-emerald-500/80',
+  'border-l-2 border-rose-500/80',
 ];
 
 /** Σταθερό χρώμα ανά group_id (hash) — ίδια αλυσίδα = ίδιο χρώμα σε όλες τις κάρτες. */

@@ -92,7 +92,7 @@ export function ProfilePage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('profile.title')}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('profile.title')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('profile.deviceOnly')}</p>
       </header>
 
@@ -104,8 +104,10 @@ export function ProfilePage() {
             <div
               key={p.id}
               className={cn(
-                'rounded-lg border bg-card p-3',
-                isActive ? 'border-primary' : 'border-border',
+                // Flatten: μόνο το ενεργό προφίλ παίρνει περίγραμμα — αυτό
+                // κουβαλά νόημα (επιλογή), δεν είναι διακοσμητικό.
+                'rounded-lg bg-card p-3',
+                isActive ? 'border border-primary' : 'border border-transparent',
               )}
             >
               {editingId === p.id ? (
@@ -213,8 +215,10 @@ export function ProfilePage() {
         })}
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4">
-        <p className="mb-2 text-sm font-medium">{t('profile.newProfile')}</p>
+      <section className="rounded-lg bg-card p-4">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {t('profile.newProfile')}
+        </p>
         <div className="flex items-center gap-2">
           <Input
             value={newName}

@@ -49,8 +49,10 @@ export function DashboardLayoutSettings() {
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <p className="text-sm font-medium">{t('settings.dashboardLayout')}</p>
+    <section className="rounded-lg bg-card p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {t('settings.dashboardLayout')}
+      </p>
       <p className="mt-1 text-xs text-muted-foreground">{t('settings.dashboardLayoutHint')}</p>
 
       <ul className="mt-3 divide-y divide-border/60">
@@ -102,13 +104,13 @@ export function DashboardLayoutSettings() {
                   aria-label={t(CARD_LABEL[key as DashboardCardKey])}
                   onClick={() => toggle(index)}
                   className={cn(
-                    'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-                    visible ? 'bg-primary' : 'bg-muted',
+                    'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200',
+                    visible ? 'bg-primary shadow-glow-sm' : 'bg-muted',
                   )}
                 >
                   <span
                     className={cn(
-                      'absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform',
+                      'absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform duration-200',
                       visible ? 'translate-x-[22px]' : 'translate-x-0.5',
                     )}
                   />

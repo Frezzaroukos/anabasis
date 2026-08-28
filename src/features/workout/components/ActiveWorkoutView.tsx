@@ -104,7 +104,9 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-background safe-top">
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+      {/* Βάθος αντί για γραμμή: bg-card πάνω στο bg-background του γονιού — η
+          κεφαλίδα «ανεβαίνει» χωρίς διακοσμητικό border-b. */}
+      <header className="flex items-center justify-between gap-2 bg-card px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">
             {t('workout.active')}
@@ -207,7 +209,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
       </div>
 
       {isSetLogged && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-4 py-3 safe-bottom backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-50 bg-card/95 px-4 py-3 safe-bottom backdrop-blur">
           <div className="mx-auto max-w-md">
             <RestTimer restartSignal={restSignal} />
           </div>

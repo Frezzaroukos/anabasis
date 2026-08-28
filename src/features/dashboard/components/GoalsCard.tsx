@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getAllGoalProgress } from '@/lib/db/goals';
 import { listActivities, listExercises } from '@/lib/db/queries';
-import { Card, SectionTitle } from '@/components/ui/Section';
+import { SectionTitle } from '@/components/ui/Section';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { goalTitle } from '@/features/goals/goalTitle';
 
@@ -27,48 +27,49 @@ export function GoalsCard() {
   const shown = progress.slice(0, MAX_ON_DASHBOARD);
 
   return (
-    <Link to="/goals" className="block">
-      <Card className="transition-colors hover:border-primary/40">
-        <SectionTitle
-          action={
-            progress.length > MAX_ON_DASHBOARD ? (
-              <span className="text-xs text-muted-foreground">
-                +{progress.length - MAX_ON_DASHBOARD}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">→</span>
-            )
-          }
-        >
-          {t('goals.title')}
-        </SectionTitle>
+    <Link
+      to="/goals"
+      className="block rounded-xl bg-card p-4 transition-colors duration-200 hover:bg-elevated"
+    >
+      <SectionTitle
+        action={
+          progress.length > MAX_ON_DASHBOARD ? (
+            <span className="text-xs text-muted-foreground">
+              +{progress.length - MAX_ON_DASHBOARD}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">→</span>
+          )
+        }
+      >
+        {t('goals.title')}
+      </SectionTitle>
 
-        <div className="flex justify-around gap-2">
-          {shown.map((p) => (
-            <div key={p.goal.id} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-              <ProgressRing
-                value={p.current}
-                max={p.target}
-                size={72}
-                thickness={6}
-                label={`${Math.round(p.ratio * 100)}%`}
-                tone={p.ratio >= 1 ? 'gold' : 'primary'}
-              />
-              <span className="line-clamp-2 text-center text-[10px] leading-tight text-muted-foreground">
-                {p.goal.label ??
-                  goalTitle(t, p.goal, {
-                    activity: p.goal.activity_key
-                      ? (activities.find((a) => a.key === p.goal.activity_key)?.label ?? null)
-                      : null,
-                    exercise: p.goal.exercise_id
-                      ? (exercises.find((e) => e.id === p.goal.exercise_id)?.name ?? null)
-                      : null,
-                  })}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div className="flex justify-around gap-2">
+        {shown.map((p) => (
+          <div key={p.goal.id} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+            <ProgressRing
+              value={p.current}
+              max={p.target}
+              size={72}
+              thickness={6}
+              label={`${Math.round(p.ratio * 100)}%`}
+              tone={p.ratio >= 1 ? 'gold' : 'primary'}
+            />
+            <span className="line-clamp-2 text-center text-[10px] leading-tight text-muted-foreground">
+              {p.goal.label ??
+                goalTitle(t, p.goal, {
+                  activity: p.goal.activity_key
+                    ? (activities.find((a) => a.key === p.goal.activity_key)?.label ?? null)
+                    : null,
+                  exercise: p.goal.exercise_id
+                    ? (exercises.find((e) => e.id === p.goal.exercise_id)?.name ?? null)
+                    : null,
+                })}
+            </span>
+          </div>
+        ))}
+      </div>
     </Link>
   );
 }

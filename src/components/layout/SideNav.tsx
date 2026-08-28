@@ -16,7 +16,9 @@ export function SideNav() {
   const { t } = useTranslation();
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-6 overflow-y-auto border-r border-border bg-card/30 px-3 py-6 md:flex lg:w-60">
+    // bg-card πλήρες (όχι border-r): το βήμα φωτεινότητας απέναντι στο
+    // bg-background του περιεχομένου αρκεί ως όριο.
+    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col gap-6 overflow-y-auto bg-card px-3 py-6 md:flex lg:w-60">
       <div className="px-2">
         <Wordmark />
       </div>
@@ -27,7 +29,7 @@ export function SideNav() {
         ))}
       </nav>
 
-      <nav className="flex flex-col gap-1 border-t border-border/60 pt-4">
+      <nav className="flex flex-col gap-1 border-t border-border/40 pt-4">
         {SECONDARY_NAV.map((item) => (
           <SideLink key={item.to} item={item} label={t(item.labelKey)} />
         ))}

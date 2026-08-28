@@ -38,11 +38,12 @@ export function BottomSheet({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="flex-1 bg-black/60 animate-in fade-in"
+        className="flex-1 bg-black/60 backdrop-blur-sm animate-in fade-in"
       />
+      {/* bg-elevated: το sheet ανεβαίνει πάνω από την κάρτα — βάθος, όχι περίγραμμα. */}
       <div
         className={cn(
-          'rounded-t-2xl border-t border-border bg-card shadow-2xl',
+          'rounded-t-2xl bg-elevated shadow-2xl',
           'flex max-h-[85vh] flex-col safe-bottom animate-in slide-in-from-bottom',
           className,
         )}

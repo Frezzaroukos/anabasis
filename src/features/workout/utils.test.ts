@@ -81,7 +81,7 @@ describe('groupColorClass', () => {
   });
 
   it('παράγει έγκυρη Tailwind class', () => {
-    expect(groupColorClass('abc')).toMatch(/^border-l-4 border-\w+-500$/);
+    expect(groupColorClass('abc')).toMatch(/^border-l-2 border-\w+-500\/80$/);
   });
 });
 

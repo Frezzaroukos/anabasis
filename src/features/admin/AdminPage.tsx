@@ -79,7 +79,7 @@ export function AdminPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('admin.title')}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('admin.title')}</h1>
       </header>
 
       {stats && (
@@ -93,9 +93,9 @@ export function AdminPage() {
 
       {loadError && <p className="text-sm text-destructive">{t('admin.loadError')}</p>}
 
-      <section className="overflow-x-auto rounded-lg border border-border bg-card">
+      <section className="overflow-x-auto rounded-lg bg-card">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-border text-xs uppercase text-muted-foreground">
+          <thead className="border-b border-border/60 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-3 py-2">{t('admin.colEmail')}</th>
               <th className="px-3 py-2">{t('admin.colRole')}</th>
@@ -108,13 +108,13 @@ export function AdminPage() {
           </thead>
           <tbody>
             {(users ?? []).map((u) => (
-              <tr key={u.id} className="border-b border-border align-top last:border-0">
-                <td className="px-3 py-2">{u.email}</td>
+              <tr key={u.id} className="border-b border-border/60 align-top last:border-0">
+                <td className="px-3 py-2 font-mono">{u.email}</td>
                 <td className="px-3 py-2">{u.role}</td>
-                <td className="px-3 py-2 text-muted-foreground">
+                <td className="px-3 py-2 font-mono text-muted-foreground">
                   {new Date(u.created_at).toLocaleDateString()}
                 </td>
-                <td className="px-3 py-2 text-muted-foreground">
+                <td className="px-3 py-2 font-mono text-muted-foreground">
                   {u.last_sync_at ? new Date(u.last_sync_at).toLocaleDateString() : '—'}
                 </td>
                 <td className="px-3 py-2 font-mono">{u.row_count}</td>
@@ -141,8 +141,8 @@ export function AdminPage() {
                     </Button>
                   </div>
                   {tempPasswordFor?.id === u.id && (
-                    <div className="mt-2 flex items-center justify-end gap-2 rounded-md border border-border bg-muted/40 px-2 py-1">
-                      <code className="text-xs">{tempPasswordFor.password}</code>
+                    <div className="mt-2 flex items-center justify-end gap-2 rounded-md bg-elevated px-2 py-1">
+                      <code className="font-mono text-xs">{tempPasswordFor.password}</code>
                       <button
                         type="button"
                         className="text-xs text-primary underline-offset-2 hover:underline"
@@ -177,9 +177,9 @@ export function AdminPage() {
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-3">
+    <div className="rounded-lg bg-card p-3">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 font-mono text-lg">{value}</p>
+      <p className="mt-1 font-display text-xl font-semibold tracking-tight">{value}</p>
     </div>
   );
 }

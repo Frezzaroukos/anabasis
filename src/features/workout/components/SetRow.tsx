@@ -17,6 +17,8 @@ interface SetRowProps {
 
 const ACTION_WIDTH = 128;
 const SWIPE_THRESHOLD = 60;
+/** Διάρκεια της accent pulse γύρω από τη γραμμή που μόλις καταγράφηκε. */
+const COMMIT_GLOW_MS = 300;
 
 export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
   const { t } = useTranslation();
@@ -26,6 +28,15 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
   const [revealed, setRevealed] = useState(false);
   const [drag, setDrag] = useState<{ startX: number; current: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Η γραμμή μόνο μόλις καταγράφηκε παίρνει τη λάμψη — mount = trigger, ίδιο
+  // pattern με το animate-set-commit που ήδη υπάρχει (νέο σετ = νέο key/mount,
+  // επεξεργασία δεν remount-άρει). Το CSS keyframe παρακάτω σέβεται το
+  // prefers-reduced-motion μόνο του, οπότε δεν χρειάζεται έλεγχος εδώ.
+  const [justCommitted, setJustCommitted] = useState(true);
+  useEffect(() => {
+    const id = globalThis.setTimeout(() => setJustCommitted(false), COMMIT_GLOW_MS);
+    return () => globalThis.clearTimeout(id);
+  }, []);
 
   // Tap outside collapses the swipe.
   useEffect(() => {
@@ -85,7 +96,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
 
   if (editing) {
     return (
-      <div className="rounded-md border border-border bg-background p-2">
+      <div className="rounded-md bg-elevated p-2">
         <AddSetInline
           weighted={weighted}
           holdMode={holdMode}
@@ -139,6 +150,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
         className={cn(
           'relative flex select-none items-center justify-between bg-card px-3 py-2 transition-transform touch-pan-y',
           'animate-set-commit',
+          justCommitted && 'set-row-commit-glow',
           set.group_id && groupColorClass(set.group_id),
         )}
         style={{ transform: `translateX(${offset}px)`, transitionDuration: drag ? '0ms' : '180ms' }}
@@ -148,9 +160,22 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
         onPointerCancel={onPointerUp}
         onDoubleClick={() => setEditing(true)}
       >
+        {justCommitted && (
+          <style>{`
+            @keyframes set-row-commit-glow {
+              0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+              30% { box-shadow: 0 0 14px 1px hsl(var(--primary) / 0.45); }
+              100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+            }
+            .set-row-commit-glow { animation: set-row-commit-glow ${COMMIT_GLOW_MS}ms ease-out; }
+            @media (prefers-reduced-motion: reduce) {
+              .set-row-commit-glow { animation: none; }
+            }
+          `}</style>
+        )}
         <div className="flex items-center gap-3 text-sm">
           <span className="w-6 text-xs text-muted-foreground">#{set.set_number}</span>
-          <span className="font-medium">
+          <span className="font-mono font-semibold tabular-nums">
             {formatLoad(set.weight_kg, set.bodyweight_kg, unit)}
             {set.reps != null ? <> × {set.reps}</> : null}
             {set.hold_seconds != null ? <> · {set.hold_seconds}s</> : null}
@@ -174,7 +199,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
           )}
         </div>
         {set.set_type !== 'normal' && (
-          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span className="flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {set.group_id && <Link2 className="h-3 w-3" aria-hidden />}
             {t(`setType.${set.set_type}`)}
           </span>

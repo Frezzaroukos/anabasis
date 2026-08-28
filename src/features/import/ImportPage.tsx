@@ -176,11 +176,11 @@ export function ImportPage() {
         <Link to="/settings" className="text-xs text-muted-foreground hover:text-foreground">
           ← {t('settings.title')}
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('import.title')}</h1>
+        <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">{t('import.title')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('import.subtitle')}</p>
       </header>
 
-      <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+      <section className="space-y-3 rounded-lg bg-card p-4">
         <div className="flex flex-wrap gap-1" role="tablist" aria-label={t('import.source')}>
           {SOURCES.map((s) => (
             <button
@@ -345,7 +345,7 @@ function DailyPreview({
         </span>
       </div>
 
-      <ul className="max-h-96 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-card">
+      <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto rounded-lg bg-card">
         {rows.map((r) => (
           <li
             key={`${r.date}-${r.raw}`}
@@ -428,13 +428,13 @@ function WorkoutsPreview({
       </div>
 
       {missingExercises.length > 0 && (
-        <p className="rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+        <p className="rounded-md bg-elevated px-3 py-2 text-xs text-muted-foreground">
           {t('import.willCreateExercises', { count: missingExercises.length })}{' '}
           <span className="font-mono">{missingExercises.join(', ')}</span>
         </p>
       )}
 
-      <ul className="max-h-96 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-card">
+      <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto rounded-lg bg-card">
         {workouts.map((w) => {
           const setCount = w.exercises.reduce((n, e) => n + e.sets.length, 0);
           const suspects = w.exercises.flatMap((e) => e.sets.filter((s) => s.suspect));

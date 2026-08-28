@@ -50,7 +50,7 @@ export function EmptyDashboardHint() {
   if (steps.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-dashed border-border p-4">
+    <section className="rounded-xl bg-card p-4">
       <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('dashboard.next.title')}
       </h2>
@@ -59,7 +59,7 @@ export function EmptyDashboardHint() {
           <li key={to}>
             <Link
               to={to}
-              className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/40"
+              className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-200 hover:bg-elevated"
             >
               <Icon className="h-4 w-4 shrink-0 text-primary" />
               <span className="min-w-0 flex-1">

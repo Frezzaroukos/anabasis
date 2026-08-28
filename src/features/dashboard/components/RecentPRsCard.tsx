@@ -32,7 +32,7 @@ export function RecentPRsCard() {
   const activityLabels = new Map(activities.map((a) => [a.key, a.label]));
 
   return (
-    <section className="rounded-xl border border-border/70 bg-card p-4">
+    <section className="rounded-xl bg-card p-4">
       <SectionTitle
         action={
           <Link to="/history" className="text-xs text-muted-foreground hover:text-foreground">
@@ -58,7 +58,7 @@ export function RecentPRsCard() {
             <li key={pr.id}>
               <Link
                 to={to}
-                className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/40"
+                className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-200 hover:bg-elevated"
               >
                 <Trophy className="h-4 w-4 shrink-0 text-[hsl(var(--gold))]" aria-hidden />
                 <div className="min-w-0 flex-1">
