@@ -6,11 +6,22 @@ use serde_json::{json, Value};
 use tower::ServiceExt;
 
 async fn test_app(admin_email: Option<&str>) -> (Router, AppState, tempfile::TempDir) {
+    test_app_full(admin_email, Some("test-admin-code")).await
+}
+
+async fn test_app_full(
+    admin_email: Option<&str>,
+    admin_code: Option<&str>,
+) -> (Router, AppState, tempfile::TempDir) {
     let dir = tempfile::tempdir().expect("tempdir");
     let db_path = dir.path().join("anabasis-test.db");
-    let state = build_state(db_path, admin_email.map(str::to_string))
-        .await
-        .expect("build_state");
+    let state = build_state(
+        db_path,
+        admin_email.map(str::to_string),
+        admin_code.map(str::to_string),
+    )
+    .await
+    .expect("build_state");
     let app = router(state.clone());
     (app, state, dir)
 }
@@ -423,4 +434,53 @@ async fn change_password_invalidates_other_sessions_only() {
         StatusCode::UNAUTHORIZED,
         "τα ΑΛΛΑ sessions ακυρώνονται"
     );
+}
+
+/* ─────────── claim_admin (κωδικός προαγωγής σε admin) ─────────── */
+
+#[tokio::test]
+async fn claim_admin_with_correct_code_promotes() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (_, signup) = call(&app, "POST", "/api/auth/signup", None,
+        Some(json!({"email": "user@x.gr", "password": "password123"}))).await;
+    let token = signup["token"].as_str().unwrap().to_string();
+
+    let (status, body) = call(&app, "POST", "/api/auth/claim_admin", Some(&token),
+        Some(json!({"code": "test-admin-code"}))).await;
+    assert_eq!(status, 200);
+    assert_eq!(body["role"], "admin");
+
+    // Ο ρόλος ισχύει αμέσως: /me τον δείχνει και τα admin endpoints ανοίγουν.
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(me["role"], "admin");
+    let (status, _) = call(&app, "GET", "/api/admin/stats", Some(&token), None).await;
+    assert_eq!(status, 200);
+}
+
+#[tokio::test]
+async fn claim_admin_wrong_code_is_403_and_role_unchanged() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (_, signup) = call(&app, "POST", "/api/auth/signup", None,
+        Some(json!({"email": "user2@x.gr", "password": "password123"}))).await;
+    let token = signup["token"].as_str().unwrap().to_string();
+
+    let (status, body) = call(&app, "POST", "/api/auth/claim_admin", Some(&token),
+        Some(json!({"code": "wrong"}))).await;
+    assert_eq!(status, 403);
+    assert_eq!(body["error"], "bad_code");
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(me["role"], "user");
+}
+
+#[tokio::test]
+async fn claim_admin_without_configured_code_is_403() {
+    let (app, _state, _dir) = test_app_full(None, None).await;
+    let (_, signup) = call(&app, "POST", "/api/auth/signup", None,
+        Some(json!({"email": "user3@x.gr", "password": "password123"}))).await;
+    let token = signup["token"].as_str().unwrap().to_string();
+
+    let (status, body) = call(&app, "POST", "/api/auth/claim_admin", Some(&token),
+        Some(json!({"code": "anything"}))).await;
+    assert_eq!(status, 403);
+    assert_eq!(body["error"], "admin_code_not_set");
 }

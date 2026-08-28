@@ -165,6 +165,14 @@ export const api = {
     });
   },
 
+  async claimAdmin(code: string): Promise<void> {
+    await request('/auth/claim_admin', { method: 'POST', body: { code } });
+    // Ο ρόλος άλλαξε server-side — ενημέρωσε το cached account ώστε το UI
+    // (badge, admin link) να αντιδράσει χωρίς logout/login.
+    const auth = readStoredAuth();
+    if (auth) writeStoredAuth({ ...auth, account: { ...auth.account, role: 'admin' } });
+  },
+
   syncPush(body: SyncPushRequest): Promise<SyncPushResponse> {
     return request<SyncPushResponse>('/sync/push', { method: 'POST', body });
   },

@@ -582,7 +582,11 @@
     "changePassword": "Change password",
     "currentPassword": "Current password",
     "newPassword": "New password",
-    "logout": "Log out"
+    "logout": "Log out",
+    "adminCode": "Admin code",
+    "adminCodePlaceholder": "Enter the admin code",
+    "adminClaimed": "You are now an admin.",
+    "errorBadCode": "Wrong code."
   },
   "admin": {
     "title": "Admin",

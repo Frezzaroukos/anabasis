@@ -582,7 +582,11 @@
     "changePassword": "Άλλαξε κωδικό",
     "currentPassword": "Τρέχων κωδικός",
     "newPassword": "Νέος κωδικός",
-    "logout": "Αποσύνδεση"
+    "logout": "Αποσύνδεση",
+    "adminCode": "Κωδικός admin",
+    "adminCodePlaceholder": "Βάλε τον κωδικό admin",
+    "adminClaimed": "Είσαι πλέον admin.",
+    "errorBadCode": "Λάθος κωδικός."
   },
   "admin": {
     "title": "Διαχείριση",
