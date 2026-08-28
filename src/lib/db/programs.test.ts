@@ -14,6 +14,7 @@ import {
   reorderProgramExercises,
   softDeleteProgram,
   startWorkout,
+  startWorkoutFromLastOfKind,
   startWorkoutFromProgram,
   updateProgramExercise,
 } from './queries';
@@ -157,5 +158,37 @@ describe('πρόγραμμα από την τελευταία προπόνηση
     expect(row.target_sets).toBe(3); // 3 κανονικά, το warm-up δεν μετράει
     expect(row.target_weight_kg).toBe(100); // το βαρύτερο, όχι το 999 του warm-up
     expect(row.target_reps).toBe(3); // οι επαναλήψεις ΤΟΥ βαρύτερου σετ
+  });
+});
+
+describe('ξεκίνα σαν την τελευταία (χωρίς αποθηκευμένο πρόγραμμα)', () => {
+  it('βρίσκει την πιο πρόσφατη ΟΛΟΚΛΗΡΩΜΕΝΗ προπόνηση αυτού του είδους και ξαναδίνει το ίδιο plan', async () => {
+    const kind = 'lastkind-test';
+    const w1 = await startWorkout(kind);
+    await addSet({
+      workout_id: w1.id, exercise_id: squat().id, weight_kg: 80,
+      bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(w1.id);
+
+    // σε εξέλιξη — δεν μετράει ως "τελευταία ολοκληρωμένη"
+    await startWorkout(kind);
+
+    const started = (await startWorkoutFromLastOfKind(kind))!;
+    expect(started).toBeTruthy();
+    expect(started.workout.activity_kind).toBe(kind);
+    expect(started.workout.id).not.toBe(w1.id);
+    expect(started.plan).toHaveLength(1);
+    expect(started.plan[0]!.exercise_id).toBe(squat().id);
+    expect(started.plan[0]!.target_sets).toBe(1);
+    expect(started.plan[0]!.target_weight_kg).toBe(80);
+
+    // κρίσιμο: ίδιο συμβόλαιο με startWorkoutFromProgram — δεν γράφει σετ
+    const written = await db.sets.where('workout_id').equals(started.workout.id).count();
+    expect(written).toBe(0);
+  });
+
+  it('επιστρέφει null όταν δεν υπάρχει ολοκληρωμένη προπόνηση αυτού του είδους', async () => {
+    expect(await startWorkoutFromLastOfKind('ανύπαρκτο-είδος-ever')).toBeNull();
   });
 });

@@ -74,8 +74,10 @@
 > θερμίδες/βάρος/macros/cardio ανήκουν σε ξεχωριστό app. Αυτό **άλλαξε**:
 > το Anabasis είναι πλέον ΕΝΙΑΙΟ personal training app. Ενσωματώθηκαν:
 > βάρος, θερμίδες, macros (protein/carbs/fat), λίπος σώματος, cardio με
-> απόσταση/ρυθμό/PR, ημερολόγιο πολλαπλών δραστηριοτήτων. Ο πίνακας παρακάτω
-> κρατιέται ως ιστορικό της αρχικής απόφασης.
+> απόσταση/ρυθμό/PR, ημερολόγιο πολλαπλών δραστηριοτήτων (πίνακας `body_metrics`
+> από schema v2 — βλ. `DATABASE_SCHEMA.md`). Ο πίνακας παρακάτω κρατιέται ως
+> ιστορικό της αρχικής απόφασης. **Το §5, σημείο 5 παρακάτω ήταν ξεπερασμένο
+> σε σχέση με αυτή την αναθεώρηση — διορθώθηκε.**
 
 | Feature | Κατάσταση τώρα |
 |---|---|
@@ -92,16 +94,24 @@
 
 ## 4. Tech stack
 
-**Frontend**: Vite + React 18 + TypeScript + Tailwind CSS + shadcn/ui
-**State**: Zustand (lightweight, fits offline-first model)
+**Frontend**: Vite + React 18 + TypeScript (strict) + Tailwind CSS + shadcn/ui
+**State**: Χωρίς global store — `dexie-react-hooks` (`useLiveQuery`) διαβάζει
+απευθείας από το IndexedDB, plain React hooks για UI-local state.
+(Το Zustand ήταν στο αρχικό πλάνο, **αφαιρέθηκε** — δες `package.json`, δεν
+υπάρχει πια dependency.)
 **Storage**:
-- Local: IndexedDB via Dexie.js (offline-first)
-- Sync (Pro tier): Supabase (Postgres + Auth + RLS)
-**PWA**: Workbox για service worker, Vite PWA plugin
+- Local: IndexedDB via Dexie 4 (offline-first, πηγή αλήθειας)
+- Sync: **δικό μας backend σε Rust/Axum, self-hosted** — σε εξέλιξη τώρα
+  (accounts/auth, per-user sync, admin role). **Δεν** είναι Supabase — αυτό
+  ήταν το αρχικό πλάνο, εγκαταλείφθηκε. Βλ. `VISION-NEXT.md` για το ενεργό
+  μέτωπο και `DATABASE_SCHEMA.md` §"Server sync".
+**PWA**: Workbox για service worker, vite-plugin-pwa
 **Charts**: Recharts (lightweight, React-native)
-**Deploy**: Vercel (frontend) + Supabase (backend)
+**Desktop**: Tauri 2 (`src-tauri/`) — ίδιο frontend, native binary, χωρίς browser
+**Deploy**: Cloudflare Pages, στατικό build — ζωντανό στο `anabasis.axonos.dev`
+(**όχι** Vercel· δεν χρειάζεται server-rendering, το app είναι 100% client-side)
 
-**Why όχι native React Native**: PWA gets to launch 5x faster, no app store gatekeeping, instant updates. Wrap σε Capacitor μετά αν χρειαστεί App Store presence.
+**Why όχι native React Native**: PWA gets to launch 5x faster, no app store gatekeeping, instant updates. Το desktop κομμάτι καλύφθηκε ήδη με Tauri αντί για Capacitor/App-Store πρώτα.
 
 ---
 
@@ -111,15 +121,15 @@
 2. **Domain isolation**: Workout/Exercise/Skill data μένει σε αυτό το app. Profile data minimal (όνομα, units).
 3. **Bilingual από day 1**: EN/EL. i18next setup.
 4. **Mobile-first responsive**: Σχεδίαση 375px viewport, expand σε desktop.
-5. **No food database, no body weight UI**: Boundaries hard-enforced στο schema.
-6. **Schema versioned**: Migration system από v1.
+5. **Όχι πλήρες food database, όχι barcode scan**: το nutrition μένει σε επίπεδο macros/insights (βλ. §3) — το body-weight UI υπάρχει (`BodyPage`, `body_metrics` πίνακας από v2), δεν είναι εκτός scope πια.
+6. **Schema versioned**: Migration system από v1, δες `DATABASE_SCHEMA.md`.
 
 ---
 
 ## 6. Privacy & data
 
 - **Free tier**: All data local-only, no account needed
-- **Pro tier**: Sync via Supabase με end-to-end ownership (user can export full JSON anytime)
+- **Sync (σε εξέλιξη)**: δικό μας Rust/Axum backend, self-hosted — end-to-end ownership παραμένει (user can export full JSON anytime), δες `VISION-NEXT.md`
 - **Account deletion**: One-click, immediate, irreversible
 - **Analytics**: Plausible (privacy-friendly), no third-party trackers
 - **No ads, ever**

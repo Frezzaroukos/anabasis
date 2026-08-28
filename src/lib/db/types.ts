@@ -367,6 +367,8 @@ export interface AppSettings {
   notify_session_reminder: boolean;
   /** ήχος + δόνηση στη λήξη του rest timer — στο γυμναστήριο δεν κοιτάς οθόνη */
   notify_rest_timer: boolean;
+  /** ο rest timer ξεκινά μόνος του μόλις καταγραφεί σετ — ένα tap λιγότερο */
+  auto_start_rest_timer: boolean;
   reminder_time: string | null;
   reminder_days: number[];
   show_e1rm: boolean;

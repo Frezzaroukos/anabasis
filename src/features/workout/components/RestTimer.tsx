@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Timer } from 'lucide-react';
 import { useRestTimer } from '@/hooks/useRestTimer';
@@ -27,13 +27,21 @@ function beep() {
   }
 }
 
-export function RestTimer() {
+interface RestTimerProps {
+  /** Αυξάνει κάθε φορά που καταγράφεται νέο σετ — trigger για auto-start. */
+  restartSignal?: number;
+}
+
+export function RestTimer({ restartSignal }: RestTimerProps) {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const defaultSeconds = settings?.default_rest_timer_seconds ?? 180;
   // Οι εγκαταστάσεις πριν το schema v4 δεν έχουν το πεδίο — σιωπηλός timer
   // θα ήταν χειρότερη έκπληξη από έναν ήχο, οπότε το default είναι «ναι».
   const notifyEnabled = settings?.notify_rest_timer ?? true;
+  // Default ON: στο γυμναστήριο θέλεις να μετράει το ρεστ αυτόματα, όχι να
+  // θυμάσαι να πατήσεις start μετά από κάθε σετ.
+  const autoStartEnabled = settings?.auto_start_rest_timer ?? true;
 
   const onComplete = useCallback(() => {
     if (!notifyEnabled) return;
@@ -44,6 +52,19 @@ export function RestTimer() {
   }, [notifyEnabled]);
 
   const { remaining, running, start, stop } = useRestTimer({ defaultSeconds, onComplete });
+
+  // Πρώτο render δεν πρέπει να ξεκινάει τίποτα — μόνο πραγματικές αλλαγές
+  // του restartSignal (δηλαδή ένα καινούριο σετ καταγράφηκε).
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    if (restartSignal == null || !autoStartEnabled) return;
+    start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restartSignal]);
 
   const mm = Math.floor(remaining / 60);
   const ss = remaining % 60;

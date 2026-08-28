@@ -27,7 +27,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -234,6 +234,22 @@ export class AnabasisDB extends Dexie {
         .toCollection()
         .modify((g) => {
           g.period_anchor ??= 'rolling';
+        });
+    });
+
+    /**
+     * v10 — auto-start του rest timer μετά από κάθε σετ (default: ναι).
+     * Ίδιο pattern με το v4 notify_rest_timer: additive πεδίο σε app_settings,
+     * ??= ώστε ένα μελλοντικό opt-out να μην ξαναγυρίσει ποτέ σε true.
+     * (Το sets.hold_seconds ΔΕΝ θέλει version block: μη-indexed πεδίο,
+     * το Dexie δεν απαιτεί δήλωση και δεν υπάρχει backfill.)
+     */
+    this.version(10).upgrade(async (tx) => {
+      await tx
+        .table('app_settings')
+        .toCollection()
+        .modify((s) => {
+          s.auto_start_rest_timer ??= true;
         });
     });
   }

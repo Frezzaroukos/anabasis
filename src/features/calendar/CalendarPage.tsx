@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { getCalendar, listActivities, localDay, startWorkout } from '@/lib/db/queries';
 import type { DayActivities } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { formatWeight } from '@/lib/units';
 import { ActivityChip } from '@/components/ActivityChip';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -25,6 +27,8 @@ function monthBounds(year: number, month: number) {
 
 export function CalendarPage() {
   const { t, i18n } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const today = localDay();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -263,7 +267,7 @@ export function CalendarPage() {
         )}
         {day?.weight != null && (
           <p className="mt-3 font-mono text-xs text-muted-foreground">
-            {t('body.weight')}: {day.weight} kg
+            {t('body.weight')}: {formatWeight(day.weight, unit, { granularity: 'body' })}
           </p>
         )}
 

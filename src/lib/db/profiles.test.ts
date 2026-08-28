@@ -10,6 +10,7 @@ import {
 } from './session';
 import {
   addSet,
+  addSkillStep,
   createActivity,
   createExercise,
   createProfile,
@@ -27,6 +28,7 @@ import {
   renameProfile,
   startWorkout,
 } from './queries';
+import { createGoal } from './goals';
 
 beforeAll(async () => {
   await bootstrapDB();
@@ -178,6 +180,23 @@ describe('διαγραφή προφίλ', () => {
     setCurrentUserId(DEFAULT_USER_ID);
     await deleteProfile(doomed.id);
     expect(await db.sets.where('workout_id').equals(w.id).count()).toBe(0);
+  });
+
+  it('σβήνει goals και δικά του skills (+ τα βήματά τους) — πριν έμεναν ορφανά', async () => {
+    const doomed = await createProfile('Ορφανοί στόχοι');
+    setCurrentUserId(doomed.id);
+    await createGoal({ metric: 'sessions', target: 3, period: 'week' });
+    const skill = await createSkill({ name: 'Χαμένο Skill' });
+    const step = await addSkillStep(skill.id, { name: 'Βήμα 1' });
+
+    setCurrentUserId(DEFAULT_USER_ID);
+    await deleteProfile(doomed.id);
+
+    expect(await db.goals.where('user_id').equals(doomed.id).count()).toBe(0);
+    expect(await db.skills.where('user_id').equals(doomed.id).count()).toBe(0);
+    expect(await db.skill_steps.get(step.id)).toBeUndefined();
+    // τα seeded skills (κοινά) δεν αγγίζονται από τη διαγραφή ενός προφίλ
+    expect((await listSkills()).length).toBeGreaterThan(0);
   });
 });
 

@@ -3,7 +3,13 @@
 > Από «τοπικό εργαλείο» σε **δημόσιο προϊόν AXON**: δωρεάν, cross-device,
 > βιτρίνα ικανοτήτων για εταιρίες.
 
-**Κατάσταση:** v6 τοπικά (83 tests, offline-first PWA) · **Στόχος:** δημόσιο, cross-device, branded
+**Κατάσταση (ενημέρωση 2026-08-28):** schema v9→v10, 165+ tests, offline-first PWA ·
+**live** στο [anabasis.axonos.dev](https://anabasis.axonos.dev) · native desktop app
+(Tauri 2, `src-tauri/`) από 27/08 · **Στόχος:** cross-device, branded.
+⚠️ Το backend πλάνο παρακάτω (Supabase, §1/§Auth) είναι **ξεπερασμένο** — το
+ενεργό πλάνο είναι δικό μας **Rust/Axum backend, self-hosted** (accounts/auth,
+per-user sync, admin role) σε εξέλιξη τώρα. Δες `VISION-NEXT.md` §"ενεργό
+μέτωπο" και `PROJECT_SCOPE.md` §4 για την τρέχουσα αλήθεια.
 
 ---
 

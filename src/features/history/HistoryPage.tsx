@@ -1,28 +1,33 @@
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, } from '@/lib/db';
-import { getCurrentUserId } from '@/lib/db/session';
 import { formatHMS } from '@/hooks/useSessionTimer';
-import { getRecentPRs, listActivities } from '@/lib/db/queries';
+import { getRecentPRs, listActivities, listAllExercises, listCompletedWorkouts } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { formatWeight } from '@/lib/units';
+import type { PRType } from '@/lib/db/types';
 import { VolumeChart } from './components/VolumeChart';
 import { FeelChart } from './components/FeelChart';
 import { Link } from 'react-router-dom';
 
+/** PR types που είναι βάρος (kg storage) — τα υπόλοιπα δεν μετατρέπονται. */
+const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
+
 export function HistoryPage() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
 
-  const completed = useLiveQuery(async () => {
-    const all = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
-    return all
-      .filter((w) => w.ended_at != null && w.deleted_at == null)
-      .sort((a, b) => (b.started_at ?? '').localeCompare(a.started_at ?? ''));
-  }, []);
+  const completed = useLiveQuery(() => listCompletedWorkouts(), []);
 
   const list = completed ?? [];
 
   const prs = useLiveQuery(() => getRecentPRs(8), [], []);
+  // listAllExercises (όχι db.exercises.toArray()): οι δικές σου ασκήσεις
+  // δεν πρέπει να διαρρέουν στο ιστορικό άλλου προφίλ. Παίρνουμε ΚΑΙ τις
+  // αρχειοθετημένες γιατί ένα PR μπορεί να αναφέρεται σε άσκηση που έκτοτε
+  // αρχειοθέτησες.
   const exerciseNames = useLiveQuery(
-    async () => new Map((await db.exercises.toArray()).map((e) => [e.id, e.name])),
+    async () => new Map((await listAllExercises()).map((e) => [e.id, e.name])),
     [],
     new Map<string, string>(),
   );
@@ -75,7 +80,11 @@ export function HistoryPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-sm">{Math.round(pr.value * 10) / 10}</p>
+                  <p className="font-mono text-sm">
+                    {WEIGHT_PR_TYPES.has(pr.type)
+                      ? formatWeight(pr.value, unit)
+                      : Math.round(pr.value * 10) / 10}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">
                     {new Date(pr.achieved_at).toLocaleDateString()}
                   </p>

@@ -1,10 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatLoad,
   formatPaceMinPerKm,
   groupColorClass,
   isChainSetType,
   resolveSetGroup,
 } from './utils';
+
+describe('formatLoad', () => {
+  it('bodyweight χωρίς πρόσθετο φορτίο → "BW"', () => {
+    expect(formatLoad(null, null)).toBe('BW');
+  });
+
+  it('kg (default unit): δείχνει το βάρος όπως αποθηκεύτηκε', () => {
+    expect(formatLoad(80, null)).toBe('80kg');
+    expect(formatLoad(80, null, 'kg')).toBe('80kg');
+  });
+
+  it('BW + πρόσθετο φορτίο', () => {
+    expect(formatLoad(20, 75, 'kg')).toBe('BW+20kg');
+  });
+
+  it('lb: μετατρέπει το αποθηκευμένο kg στη μονάδα του χρήστη', () => {
+    // 100kg → 220.5lb (plate-realistic, βήμα 0.5)
+    expect(formatLoad(100, null, 'lb')).toBe('220.5lb');
+    expect(formatLoad(20, 75, 'lb')).toBe('BW+44lb');
+  });
+});
 
 describe('resolveSetGroup', () => {
   it('δεν ανοίγει αλυσίδα για normal/warmup/amrap/failure', () => {

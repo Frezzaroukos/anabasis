@@ -2,12 +2,16 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getBodyMetric, getBodyTrend, localDay } from '@/lib/db/queries';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { formatWeight, toDisplayWeight } from '@/lib/units';
 import { SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
 
 /** Βάρος / λίπος / ισοζύγιο θερμίδων — μόνο ό,τι έχει καταγραφεί. */
 export function BodySummaryCard() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const today = localDay();
   const trend = useLiveQuery(() => getBodyTrend(30), [], []);
   const todayMetric = useLiveQuery(() => getBodyMetric(today), [today]);
@@ -15,8 +19,10 @@ export function BodySummaryCard() {
   const weights = trend.filter((p) => p.weight != null);
   const latestWeight = weights.at(-1)?.weight ?? null;
   const firstWeight = weights[0]?.weight ?? null;
-  const weightDelta =
+  const weightDeltaKg =
     latestWeight != null && firstWeight != null ? latestWeight - firstWeight : null;
+  // Η μετατροπή είναι γραμμική (χωρίς offset), άρα σωστή και για διαφορές.
+  const weightDelta = weightDeltaKg != null ? toDisplayWeight(weightDeltaKg, unit, 'body') : null;
 
   const bf = trend.filter((p) => p.bodyFatPct != null);
   const latestBF = bf.at(-1)?.bodyFatPct ?? null;
@@ -41,7 +47,7 @@ export function BodySummaryCard() {
       <dl className="grid grid-cols-2 gap-2 text-center">
         {latestWeight != null && (
           <Metric label={t('dashboard.latestWeight')}>
-            {latestWeight} kg
+            {formatWeight(latestWeight, unit, { granularity: 'body' })}
             <Delta value={weightDelta} goodWhenNegative />
           </Metric>
         )}
