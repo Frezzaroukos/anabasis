@@ -115,7 +115,9 @@ export function ProgramsPage() {
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('programs.title')}</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {t('programs.title')}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {programs.length} {t('programs.title').toLowerCase()}
           </p>
@@ -129,7 +131,7 @@ export function ProgramsPage() {
       </header>
 
       {creating && (
-        <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <section className="animate-rise-in space-y-3 rounded-lg bg-elevated p-4">
           <Input
             autoFocus
             value={name}
@@ -144,8 +146,10 @@ export function ProgramsPage() {
                 type="button"
                 onClick={() => setKind(k)}
                 className={cn(
-                  'rounded-md border border-border px-3 py-1.5 text-sm transition-colors',
-                  kind === k ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                  'rounded-md px-3 py-1.5 text-sm transition-colors',
+                  kind === k
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                 )}
               >
                 {t(`activity.${k}`)}
@@ -188,9 +192,9 @@ export function ProgramsPage() {
           <p className="text-xs text-muted-foreground">{t('programs.emptyHint')}</p>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="stagger space-y-2">
           {programs.map((p) => (
-            <li key={p.id} className="rounded-lg border border-border bg-card p-3">
+            <li key={p.id} className="rounded-lg bg-card p-3">
               {renamingId === p.id ? (
                 <div className="flex gap-2">
                   <Input
@@ -213,7 +217,7 @@ export function ProgramsPage() {
               ) : (
                 <div className="flex items-center justify-between gap-3">
                   <Link to={`/programs/${p.id}`} className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{p.name}</p>
+                    <p className="truncate font-display text-sm font-semibold">{p.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {t(`activity.${p.activity_kind}`)}
                       {' · '}

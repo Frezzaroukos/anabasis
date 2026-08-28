@@ -3,41 +3,46 @@
 @tailwind utilities;
 
 /*
- * Χρωματικό σύστημα Anabasis.
+ * Χρωματικό σύστημα Anabasis v2 — «Altitude Violet» (docs/DESIGN-SPEC-V2.md).
+ *
+ * Μεταφορά: σούρουπο/aurora σε υψόμετρο — όχι ιδρώτας/φωτιά. Near-black βάση
+ * με μωβ χροιά (ποτέ pure black: halation + χάνεται το elevation layering).
+ * Βάθος = διαφορά φωτεινότητας (background → card → elevated), όχι borders.
  *
  * Δύο χρώματα με ξεχωριστές δουλειές — ποτέ εναλλάξιμα:
- *  --primary (Electric Blue) = δράση & πρόοδος (κουμπιά, ενεργά states, ring)
+ *  --primary (Aurora violet) = δράση & πρόοδος (κουμπιά, ενεργά states, ring)
  *  --gold                    = ΕΠΙΤΕΥΓΜΑ (PR, mastery, κορυφή του σήματος)
  * Αν το χρυσό γινόταν και primary, το PR θα έπαυε να ξεχωρίζει.
  * Το accent είναι εναλλάξιμο από τον χρήστη (lib/theme.ts) — το χρυσό όχι.
  */
 @layer base {
   :root {
-    --background: 210 20% 99%;
-    --foreground: 215 25% 11%;
+    --background: 40 25% 98%;
+    --foreground: 255 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 11%;
+    --card-foreground: 255 25% 12%;
+    --elevated: 255 20% 95%;
 
-    /* Πιο σκούρο μπλε σε light theme για contrast σε λευκό */
-    --primary: 214 85% 46%;
+    /* Aurora violet, σκουρεμένο για contrast σε λευκό */
+    --primary: 264 85% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 15% 95%;
-    --secondary-foreground: 215 25% 12%;
+    --secondary: 255 15% 95%;
+    --secondary-foreground: 255 25% 13%;
 
-    --muted: 214 14% 95%;
-    --muted-foreground: 215 12% 42%;
+    --muted: 255 14% 95%;
+    --muted-foreground: 255 12% 42%;
 
-    --accent: 214 30% 94%;
-    --accent-foreground: 215 25% 12%;
+    --accent: 260 30% 94%;
+    --accent-foreground: 255 25% 13%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 214 14% 88%;
-    --input: 214 14% 88%;
-    --ring: 214 85% 46%;
+    --border: 255 14% 89%;
+    --input: 255 14% 89%;
+    --ring: 264 85% 58%;
 
     /* Χρυσό επίτευξης — PR badges, mastery. Πιο λαμπερό από το primary. */
     --gold: 42 92% 50%;
@@ -53,36 +58,37 @@
 
   .dark {
     /*
-     * «Deep Charcoal» #0D1117 — ψυχρό ανθρακί, όχι ζεστό γκρι.
-     * Ήταν ζεστό όσο το accent ήταν χρυσό· με μπλε accent το ζεστό φόντο
-     * τραβούσε το μπλε προς το μωβ. Ψυχρή βάση = καθαρό μπλε + το χρυσό
-     * του PR ξεχωρίζει ακόμα περισσότερο (συμπληρωματικά).
+     * «Altitude Violet» — #0C0A14 βάση / #15121F κάρτες / #1E1A2C elevated.
+     * Το μωβ είναι το μόνο premium χρώμα που δεν χρησιμοποιεί κανείς στο
+     * fitness (όλοι: κόκκινο/πορτοκαλί/μπλε/πράσινο) → διαφοροποίηση.
      */
-    --background: 215 21% 7%;
-    --foreground: 210 17% 96%;
+    --background: 252 33% 6%;
+    --foreground: 257 33% 96%;
 
-    --card: 215 20% 11%;
-    --card-foreground: 210 17% 96%;
+    --card: 254 27% 10%;
+    --card-foreground: 257 33% 96%;
+    --elevated: 253 26% 14%;
 
-    /* Electric Blue — το accent του brand· λάμπει χωρίς να τυφλώνει στις 6πμ */
-    --primary: 212 90% 60%;
-    --primary-foreground: 215 40% 8%;
+    /* Electric amethyst #9D5CFF — λάμπει χωρίς να τυφλώνει στις 6πμ */
+    --primary: 264 100% 68%;
+    --primary-foreground: 258 40% 8%;
 
-    --secondary: 215 17% 16%;
-    --secondary-foreground: 210 17% 96%;
+    --secondary: 253 26% 14%;
+    --secondary-foreground: 257 33% 96%;
 
-    --muted: 215 17% 16%;
-    --muted-foreground: 215 12% 64%;
+    --muted: 253 26% 14%;
+    --muted-foreground: 255 14% 62%;
 
-    --accent: 215 20% 19%;
-    --accent-foreground: 210 17% 96%;
+    --accent: 253 24% 18%;
+    --accent-foreground: 257 33% 96%;
 
-    --destructive: 0 63% 48%;
-    --destructive-foreground: 0 0% 98%;
+    /* #FB7185 — πιο ξεθωριασμένο από το accent: status, όχι brand */
+    --destructive: 351 95% 71%;
+    --destructive-foreground: 351 40% 10%;
 
-    --border: 215 15% 20%;
-    --input: 215 15% 20%;
-    --ring: 212 90% 60%;
+    --border: 253 20% 15%;
+    --input: 253 20% 17%;
+    --ring: 264 100% 68%;
 
     --gold: 42 95% 58%;
 

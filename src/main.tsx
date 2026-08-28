@@ -2,6 +2,16 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import '@/i18n';
+/*
+ * Fonts: bundled τοπικά (fontsource) — offline-first app δεν φορτώνει από
+ * CDN. Fira Sans Condensed/Manrope/JetBrains Mono = τα verified με πλήρη
+ * ελληνικά subsets (τα «αθλητικά» Oswald/Bebas/Space Grotesk ΔΕΝ έχουν).
+ */
+import '@fontsource/fira-sans-condensed/500.css';
+import '@fontsource/fira-sans-condensed/600.css';
+import '@fontsource/fira-sans-condensed/700.css';
+import '@fontsource-variable/manrope';
+import '@fontsource-variable/jetbrains-mono';
 import '@/styles/globals.css';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
 

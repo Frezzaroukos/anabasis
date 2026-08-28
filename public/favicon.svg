@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><g transform="translate(256,256) scale(0.9) translate(-256,-256)">
-  <path d="M60 452 L256 60 L452 452" fill="none" stroke="#2F81F7" stroke-width="48"
-        stroke-linecap="butt" stroke-linejoin="miter"/>
-  <path d="M256 113.7 L195.8 234 L316.2 234 Z" fill="#E0B341"/><rect x="171.8" y="282" width="168.3" height="34" rx="3" fill="#2F81F7"/><rect x="132.8" y="360" width="246.3" height="34" rx="3" fill="#2F81F7"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs>
+  <linearGradient id="anabasis-favicon" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="#7C3AED"/>
+    <stop offset="1" stop-color="#B88CFF"/>
+  </linearGradient>
+</defs><g><rect x="28" y="9" width="8" height="7" rx="3.5" fill="url(#anabasis-favicon)"/><rect x="21" y="22" width="22" height="7" rx="3.5" fill="url(#anabasis-favicon)"/><rect x="14" y="35" width="36" height="7" rx="3.5" fill="url(#anabasis-favicon)"/><rect x="7" y="48" width="50" height="7" rx="3.5" fill="url(#anabasis-favicon)"/></g></svg>
