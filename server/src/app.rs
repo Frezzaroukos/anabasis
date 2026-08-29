@@ -15,7 +15,19 @@ use tower_governor::{GovernorError, GovernorLayer};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-use crate::{admin, auth, sync};
+use crate::{admin, auth, oauth, sync};
+
+/// "Sign in with Google" — παρών μόνο όταν έχουν οριστεί ΚΑΙ τα δύο env vars
+/// (ANABASIS_GOOGLE_CLIENT_ID/SECRET, βλ. main.rs)· `AppState.google_oauth ==
+/// None` σημαίνει το feature είναι πλήρως δορμάν (404 σε start/callback).
+#[derive(Debug, Clone)]
+pub struct GoogleOAuthConfig {
+    pub client_id: String,
+    pub client_secret: String,
+    /// π.χ. `https://anabasis.axonos.dev` — base για το OAuth redirect_uri
+    /// ΚΑΙ για το τελικό redirect προς τη SPA μετά το callback.
+    pub public_url: String,
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -34,12 +46,17 @@ pub struct AppState {
     /// Ταυτότητα αυτής της βάσης (meta.epoch) — αλλάζει σε restore/recreate,
     /// ώστε οι clients να μηδενίζουν cursors αντί να ξεσυγχρονίζονται σιωπηλά.
     pub epoch: String,
+    pub google_oauth: Option<GoogleOAuthConfig>,
+    /// Ένα reused reqwest::Client (κρατάει connection pool/DNS cache) — μόνο
+    /// για τα Google token/userinfo calls του oauth module.
+    pub http_client: reqwest::Client,
 }
 
 pub async fn build_state(
     db_path: PathBuf,
     admin_email: Option<String>,
     admin_code: Option<String>,
+    google_oauth: Option<GoogleOAuthConfig>,
 ) -> Result<AppState, sqlx::Error> {
     let pool = crate::db::connect(&db_path).await?;
     let epoch = crate::db::get_or_create_epoch(&pool).await?;
@@ -59,6 +76,8 @@ pub async fn build_state(
             .map(|c| crate::auth::sha256_hex(&c)),
         dummy_hash,
         started_at: OffsetDateTime::now_utc(),
+        google_oauth,
+        http_client: reqwest::Client::new(),
     })
 }
 
@@ -119,6 +138,9 @@ pub fn router(state: AppState) -> Router {
         .route("/logout", post(auth::logout))
         .route("/change_password", post(auth::change_password))
         .route("/claim_admin", post(auth::claim_admin))
+        .route("/oauth/providers", get(oauth::providers))
+        .route("/oauth/google/start", get(oauth::google_start))
+        .route("/oauth/google/callback", get(oauth::google_callback))
         .layer(GovernorLayer::new(auth_governor));
 
     let sync_routes = Router::new()

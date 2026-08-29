@@ -4,5 +4,6 @@ pub mod auth;
 pub mod db;
 pub mod error;
 pub mod json;
+pub mod oauth;
 pub mod sync;
 pub mod util;

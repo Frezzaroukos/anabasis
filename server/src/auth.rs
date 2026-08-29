@@ -23,7 +23,7 @@ const MIN_PASSWORD_LEN: usize = 8;
 const LOCKOUT_THRESHOLD: i64 = 5;
 const LOCKOUT_CAP_MINUTES: i64 = 60;
 
-fn normalize_email(email: &str) -> String {
+pub(crate) fn normalize_email(email: &str) -> String {
     email.trim().to_lowercase()
 }
 
@@ -48,13 +48,13 @@ pub(crate) fn sha256_hex(input: &str) -> String {
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn generate_token() -> String {
+pub(crate) fn generate_token() -> String {
     let mut bytes = [0u8; 32];
     rand::rng().fill_bytes(&mut bytes);
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
-async fn create_session(
+pub(crate) async fn create_session(
     pool: &sqlx::SqlitePool,
     account_id: &str,
     user_agent: Option<&str>,
@@ -87,7 +87,6 @@ struct AccountRow {
     password_hash: String,
     role: String,
     disabled: bool,
-    failed_logins: i64,
     locked_until: Option<String>,
     created_at: String,
 }
@@ -223,7 +222,7 @@ pub async fn login(
     let email = normalize_email(&body.email);
 
     let account = sqlx::query_as::<_, AccountRow>(
-        "SELECT id, email, password_hash, role, disabled, failed_logins, locked_until, created_at
+        "SELECT id, email, password_hash, role, disabled, locked_until, created_at
          FROM accounts WHERE email = ?",
     )
     .bind(&email)
@@ -250,24 +249,26 @@ pub async fn login(
     }
 
     if !verify_password(&body.password, &account.password_hash) {
-        let failed = account.failed_logins + 1;
-        let locked_until = if failed >= LOCKOUT_THRESHOLD {
-            // 2^(n-5) λεπτά, cap στο 1h· clamp το εκθέτη ώστε να μην κινδυνεύει
-            // ποτέ να κάνει overflow το i64::pow σε παρατεταμένη επίθεση.
+        // Ατομικό increment ΣΤΗ ΒΑΣΗ (όχι read-modify-write στη Rust): αλλιώς N
+        // ταυτόχρονες λάθος προσπάθειες διάβαζαν όλες το ίδιο k και έγραφαν k+1,
+        // οπότε το lockout δεν πυροδοτούσε ποτέ (παράλληλο brute force).
+        let failed: i64 = sqlx::query_scalar(
+            "UPDATE accounts SET failed_logins = failed_logins + 1              WHERE id = ? RETURNING failed_logins",
+        )
+        .bind(&account.id)
+        .fetch_one(&state.pool)
+        .await?;
+        if failed >= LOCKOUT_THRESHOLD {
+            // 2^(n-5) λεπτά, cap στο 1h· clamp τον εκθέτη κατά overflow.
             let exp = (failed - LOCKOUT_THRESHOLD).clamp(0, 10) as u32;
             let minutes = 2i64.pow(exp).min(LOCKOUT_CAP_MINUTES);
-            Some(iso_in(TimeDuration::minutes(minutes)))
-        } else {
-            None
-        };
-
-        sqlx::query("UPDATE accounts SET failed_logins = ?, locked_until = ? WHERE id = ?")
-            .bind(failed)
-            .bind(&locked_until)
-            .bind(&account.id)
-            .execute(&state.pool)
-            .await?;
-
+            let locked_until = iso_in(TimeDuration::minutes(minutes));
+            sqlx::query("UPDATE accounts SET locked_until = ? WHERE id = ?")
+                .bind(&locked_until)
+                .bind(&account.id)
+                .execute(&state.pool)
+                .await?;
+        }
         return Err(AppError::bad_credentials());
     }
 

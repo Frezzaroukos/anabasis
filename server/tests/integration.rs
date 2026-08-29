@@ -1,4 +1,4 @@
-use anabasis_api::app::{build_state, router, AppState};
+use anabasis_api::app::{build_state, router, AppState, GoogleOAuthConfig};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
@@ -13,12 +13,23 @@ async fn test_app_full(
     admin_email: Option<&str>,
     admin_code: Option<&str>,
 ) -> (Router, AppState, tempfile::TempDir) {
+    test_app_with_oauth(admin_email, admin_code, None).await
+}
+
+/// Ίδιο harness με test_app_full, με προαιρετικό Google OAuth config — μόνο
+/// για τα oauth tests, ώστε τα υπόλοιπα 17 tests να μένουν ανέγγιχτα.
+async fn test_app_with_oauth(
+    admin_email: Option<&str>,
+    admin_code: Option<&str>,
+    google_oauth: Option<GoogleOAuthConfig>,
+) -> (Router, AppState, tempfile::TempDir) {
     let dir = tempfile::tempdir().expect("tempdir");
     let db_path = dir.path().join("anabasis-test.db");
     let state = build_state(
         db_path,
         admin_email.map(str::to_string),
         admin_code.map(str::to_string),
+        google_oauth,
     )
     .await
     .expect("build_state");
@@ -441,12 +452,24 @@ async fn change_password_invalidates_other_sessions_only() {
 #[tokio::test]
 async fn claim_admin_with_correct_code_promotes() {
     let (app, _state, _dir) = test_app(None).await;
-    let (_, signup) = call(&app, "POST", "/api/auth/signup", None,
-        Some(json!({"email": "user@x.gr", "password": "password123"}))).await;
+    let (_, signup) = call(
+        &app,
+        "POST",
+        "/api/auth/signup",
+        None,
+        Some(json!({"email": "user@x.gr", "password": "password123"})),
+    )
+    .await;
     let token = signup["token"].as_str().unwrap().to_string();
 
-    let (status, body) = call(&app, "POST", "/api/auth/claim_admin", Some(&token),
-        Some(json!({"code": "test-admin-code"}))).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/claim_admin",
+        Some(&token),
+        Some(json!({"code": "test-admin-code"})),
+    )
+    .await;
     assert_eq!(status, 200);
     assert_eq!(body["role"], "admin");
 
@@ -460,12 +483,24 @@ async fn claim_admin_with_correct_code_promotes() {
 #[tokio::test]
 async fn claim_admin_wrong_code_is_403_and_role_unchanged() {
     let (app, _state, _dir) = test_app(None).await;
-    let (_, signup) = call(&app, "POST", "/api/auth/signup", None,
-        Some(json!({"email": "user2@x.gr", "password": "password123"}))).await;
+    let (_, signup) = call(
+        &app,
+        "POST",
+        "/api/auth/signup",
+        None,
+        Some(json!({"email": "user2@x.gr", "password": "password123"})),
+    )
+    .await;
     let token = signup["token"].as_str().unwrap().to_string();
 
-    let (status, body) = call(&app, "POST", "/api/auth/claim_admin", Some(&token),
-        Some(json!({"code": "wrong"}))).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/claim_admin",
+        Some(&token),
+        Some(json!({"code": "wrong"})),
+    )
+    .await;
     assert_eq!(status, 403);
     assert_eq!(body["error"], "bad_code");
     let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
@@ -475,12 +510,24 @@ async fn claim_admin_wrong_code_is_403_and_role_unchanged() {
 #[tokio::test]
 async fn claim_admin_without_configured_code_is_403() {
     let (app, _state, _dir) = test_app_full(None, None).await;
-    let (_, signup) = call(&app, "POST", "/api/auth/signup", None,
-        Some(json!({"email": "user3@x.gr", "password": "password123"}))).await;
+    let (_, signup) = call(
+        &app,
+        "POST",
+        "/api/auth/signup",
+        None,
+        Some(json!({"email": "user3@x.gr", "password": "password123"})),
+    )
+    .await;
     let token = signup["token"].as_str().unwrap().to_string();
 
-    let (status, body) = call(&app, "POST", "/api/auth/claim_admin", Some(&token),
-        Some(json!({"code": "anything"}))).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/claim_admin",
+        Some(&token),
+        Some(json!({"code": "anything"})),
+    )
+    .await;
     assert_eq!(status, 403);
     assert_eq!(body["error"], "admin_code_not_set");
 }
@@ -491,8 +538,10 @@ async fn claim_admin_without_configured_code_is_403() {
 async fn epoch_present_and_stable_across_restarts() {
     let dir = tempfile::tempdir().expect("tempdir");
     let db_path = dir.path().join("epoch-test.db");
-    let s1 = build_state(db_path.clone(), None, None).await.expect("s1");
-    let s2 = build_state(db_path, None, None).await.expect("s2");
+    let s1 = build_state(db_path.clone(), None, None, None)
+        .await
+        .expect("s1");
+    let s2 = build_state(db_path, None, None, None).await.expect("s2");
     // Ίδιο αρχείο βάσης = ίδιο epoch· νέο αρχείο θα έδινε νέο.
     assert_eq!(s1.epoch, s2.epoch);
     assert!(!s1.epoch.is_empty());
@@ -501,4 +550,175 @@ async fn epoch_present_and_stable_across_restarts() {
     let (status, health) = call(&app, "GET", "/api/health", None, None).await;
     assert_eq!(status, 200);
     assert_eq!(health["epoch"], s1.epoch.as_str());
+}
+
+/* ─────────── Google OAuth (δορμάν χωρίς config) ─────────── */
+
+fn test_google_config() -> GoogleOAuthConfig {
+    GoogleOAuthConfig {
+        client_id: "test-client-id".to_string(),
+        client_secret: "test-client-secret".to_string(),
+        public_url: "https://anabasis.axonos.dev".to_string(),
+    }
+}
+
+#[tokio::test]
+async fn google_oauth_providers_reports_disabled_by_default() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (status, body) = call(&app, "GET", "/api/auth/oauth/providers", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["google"], false);
+}
+
+#[tokio::test]
+async fn google_oauth_providers_reports_enabled_when_configured() {
+    let (app, _state, _dir) = test_app_with_oauth(None, None, Some(test_google_config())).await;
+    let (status, body) = call(&app, "GET", "/api/auth/oauth/providers", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["google"], true);
+}
+
+#[tokio::test]
+async fn google_oauth_start_is_disabled_without_config() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (status, body) = call(&app, "GET", "/api/auth/oauth/google/start", None, None).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(body["error"], "oauth_disabled");
+}
+
+#[tokio::test]
+async fn google_oauth_callback_is_disabled_without_config() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/auth/oauth/google/callback?code=whatever&state=whatever",
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(body["error"], "oauth_disabled");
+}
+
+#[tokio::test]
+async fn google_oauth_start_redirects_to_google_when_configured() {
+    let (app, _state, _dir) = test_app_with_oauth(None, None, Some(test_google_config())).await;
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/auth/oauth/google/start")
+        .header("cf-connecting-ip", "203.0.113.7")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::FOUND);
+
+    let location = res
+        .headers()
+        .get("location")
+        .expect("Location header")
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(location.starts_with("https://accounts.google.com/o/oauth2/v2/auth?"));
+    assert!(location.contains("client_id=test-client-id"));
+    assert!(location.contains("state="));
+    assert!(location.contains(
+        "redirect_uri=https%3A%2F%2Fanabasis.axonos.dev%2Fapi%2Fauth%2Foauth%2Fgoogle%2Fcallback"
+    ));
+}
+
+#[tokio::test]
+async fn google_oauth_callback_state_mismatch_is_400() {
+    let (app, _state, _dir) = test_app_with_oauth(None, None, Some(test_google_config())).await;
+
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/auth/oauth/google/callback?code=whatever&state=does-not-exist",
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_state");
+}
+
+#[tokio::test]
+async fn google_oauth_callback_missing_state_is_400() {
+    let (app, _state, _dir) = test_app_with_oauth(None, None, Some(test_google_config())).await;
+
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/auth/oauth/google/callback?code=whatever",
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_state");
+}
+
+#[tokio::test]
+async fn google_oauth_start_issued_state_is_single_use() {
+    let (app, state, _dir) = test_app_with_oauth(None, None, Some(test_google_config())).await;
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/auth/oauth/google/start")
+        .header("cf-connecting-ip", "203.0.113.7")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    let location = res
+        .headers()
+        .get("location")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    let state_token = location
+        .split("state=")
+        .nth(1)
+        .unwrap()
+        .split('&')
+        .next()
+        .unwrap()
+        .to_string();
+
+    // Ένα ΜΗ configured state DB row επιβεβαιώνει ότι το /start πράγματι
+    // το αποθήκευσε (χωρίς να χρειάζεται να χτυπήσουμε το πραγματικό Google).
+    let stored: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM oauth_states WHERE state = ?")
+        .bind(&state_token)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!(stored, 1);
+
+    // callback χωρίς `code` μετά από consume του σωστού state → missing_code,
+    // ΟΧΙ invalid_state — αποδεικνύει ότι το state validation πέρασε.
+    let (status, body) = call(
+        &app,
+        "GET",
+        &format!("/api/auth/oauth/google/callback?state={state_token}"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "missing_code");
+
+    // Δεύτερη χρήση του ΙΔΙΟΥ state → πλέον καταναλωμένο.
+    let (status, body) = call(
+        &app,
+        "GET",
+        &format!("/api/auth/oauth/google/callback?state={state_token}&code=whatever"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_state");
 }

@@ -92,8 +92,16 @@ pub async fn reset_password(
     let temp_password = generate_temp_password();
     let temp_hash = crate::auth::hash_password(&temp_password)?;
 
-    sqlx::query("UPDATE accounts SET password_hash = ? WHERE id = ?")
-        .bind(&temp_hash)
+    // Νέος κωδικός = ακύρωσε ΟΛΑ τα ενεργά sessions του χρήστη (αλλιώς ένας
+    // κλεμμένος token θα επιβίωνε του reset) και καθάρισε τυχόν lockout.
+    sqlx::query(
+        "UPDATE accounts SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?",
+    )
+    .bind(&temp_hash)
+    .bind(&id)
+    .execute(&state.pool)
+    .await?;
+    sqlx::query("DELETE FROM sessions WHERE account_id = ?")
         .bind(&id)
         .execute(&state.pool)
         .await?;

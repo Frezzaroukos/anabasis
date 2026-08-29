@@ -75,6 +75,12 @@ export interface HealthResponse {
   version: string;
 }
 
+/** GET /api/auth/oauth/providers — ποια OAuth providers είναι configured σε
+ * αυτόν τον server (config-gated· βλ. server/API-CONTRACT.md). */
+export interface OAuthProviders {
+  google: boolean;
+}
+
 /** Server error codes ανά endpoint — βλ. server/API-CONTRACT.md. Ελεύθερο
  * string ώστε άγνωστοι/μελλοντικοί κωδικοί να μην σπάνε τύπους. */
 export type ApiErrorCode =

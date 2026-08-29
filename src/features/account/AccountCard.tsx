@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
@@ -13,7 +13,7 @@ import {
   signup,
   useAuth,
 } from '@/lib/api/auth';
-import { api } from '@/lib/api/client';
+import { api, googleStart } from '@/lib/api/client';
 import { syncNow, useSyncStatus } from '@/lib/sync';
 
 /** Server error code → i18n key (server/API-CONTRACT.md). Άγνωστος κωδικός
@@ -59,6 +59,33 @@ export function AccountCard() {
   return <SignedInPanel accountEmail={auth.account.email} role={auth.account.role} title={t('account.title')} />;
 }
 
+/**
+ * GET /api/auth/oauth/providers — το κουμπί Google είναι κρυμμένο μέχρι ο
+ * server να αναφέρει `google: true` (δηλαδή μέχρι να έχουν οριστεί τα
+ * ANABASIS_GOOGLE_CLIENT_ID/SECRET). Δίκτυο εκτός/σφάλμα → σιωπηλά κρυμμένο,
+ * ΟΧΙ crash (ίδιο πνεύμα με το offline-tolerant sync).
+ */
+function useGoogleOAuthEnabled(): boolean {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .oauthProviders()
+      .then((providers) => {
+        if (!cancelled) setEnabled(providers.google);
+      })
+      .catch(() => {
+        /* server εκτός/παλιό build χωρίς το endpoint — κρύψε το κουμπί */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return enabled;
+}
+
 function SignedOutForm() {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -66,6 +93,7 @@ function SignedOutForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const googleEnabled = useGoogleOAuthEnabled();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +139,19 @@ function SignedOutForm() {
           </button>
         ))}
       </div>
+
+      {googleEnabled && (
+        <Button
+          type="button"
+          variant="secondary"
+          className="mb-3 w-full"
+          onClick={() => {
+            window.location.href = googleStart();
+          }}
+        >
+          {t('account.continueWithGoogle')}
+        </Button>
+      )}
 
       <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
         <Field label={t('account.email')}>
