@@ -640,6 +640,45 @@ export async function undoStep(skillId: string, stepId: string): Promise<void> {
  * δουλεύουν το ΙΔΙΟ seeded skill θα έβλεπαν το ποσοστό προόδου του άλλου
  * μπλεγμένο με το δικό τους.
  */
+/**
+ * Μαζεύει τα ακατέργαστα νούμερα για το gamification (lib/gamification.ts τα
+ * μετατρέπει σε XP/level/badges). Όλα scoped στο τρέχον προφίλ.
+ */
+export async function getGamificationInput(): Promise<{
+  completedWorkouts: number;
+  totalSets: number;
+  prCount: number;
+  masteredSteps: number;
+  masteredSkills: number;
+  streakDays: number;
+  longestStreakDays: number;
+}> {
+  const uid = getCurrentUserId();
+  const [workouts, prs, insights, skillStats, progress] = await Promise.all([
+    listCompletedWorkouts(),
+    db.personal_records.where('user_id').equals(uid).toArray(),
+    getTrainingInsights(30),
+    getSkillStepStats(),
+    getAllSkillProgress(),
+  ]);
+  // Τα sets ανήκουν μέσω workout_id (δεν έχουν δικό τους user_id index) —
+  // παίρνουμε μόνο όσα ανήκουν σε ΔΙΚΕΣ σου ολοκληρωμένες προπονήσεις.
+  const completedIds = workouts.map((w) => w.id);
+  const sets = await db.sets.where('workout_id').anyOf(completedIds).toArray();
+  const totalSets = sets.filter((s) => s.deleted_at == null && !s.is_warmup).length;
+  const masteredSteps = [...skillStats.values()].reduce((sum, s) => sum + s.done, 0);
+  const masteredSkills = [...progress.values()].filter((p) => p.status === 'mastered').length;
+  return {
+    completedWorkouts: workouts.length,
+    totalSets,
+    prCount: prs.length,
+    masteredSteps,
+    masteredSkills,
+    streakDays: insights.streakDays,
+    longestStreakDays: insights.longestStreakDays,
+  };
+}
+
 export async function getSkillStepStats(): Promise<Map<string, { total: number; done: number }>> {
   const visibleSkillIds = new Set((await listSkills(true)).map((s) => s.id));
   const [steps, completions] = await Promise.all([

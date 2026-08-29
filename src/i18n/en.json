@@ -642,5 +642,57 @@
       "name": "3-Day Dumbbell",
       "desc": "Everything with a pair of dumbbells — home-friendly."
     }
+  },
+  "gami": {
+    "title": "Your ascent",
+    "subtitle": "XP, altitude, and the summits you've reached.",
+    "level": "Level",
+    "toNext": "{{xp}} XP to next level",
+    "badges": "Summits",
+    "breakdown": "Where your XP comes from",
+    "emptyHint": "Log your first workout to start the climb.",
+    "xp": {
+      "workouts": "Workouts",
+      "sets": "Sets",
+      "prs": "Records",
+      "skillSteps": "Skill steps"
+    },
+    "tier": {
+      "baseCamp": "Base camp",
+      "ridge": "The ridge",
+      "alpine": "Alpine",
+      "summit": "Summit",
+      "stratosphere": "Stratosphere"
+    },
+    "badge": {
+      "firstAscent": {
+        "name": "First ascent",
+        "desc": "Complete a workout"
+      },
+      "weekStreak": {
+        "name": "Seven days",
+        "desc": "A 7-day streak"
+      },
+      "tenSessions": {
+        "name": "Ten sessions",
+        "desc": "10 workouts logged"
+      },
+      "recordBreaker": {
+        "name": "Record breaker",
+        "desc": "Set 10 personal records"
+      },
+      "firstSkill": {
+        "name": "First summit",
+        "desc": "Master a skill"
+      },
+      "century": {
+        "name": "Century",
+        "desc": "100 workouts"
+      },
+      "monthStreak": {
+        "name": "Thirty days",
+        "desc": "A 30-day streak"
+      }
+    }
   }
 }
