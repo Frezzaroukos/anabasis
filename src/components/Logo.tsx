@@ -2,26 +2,18 @@ import { useId } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Το σήμα του Anabasis v2 — «rung-peak»: 4 σκαλοπάτια/rungs στοιβαγμένα σε
- * σιλουέτα κορυφής. Διπλή ανάγνωση: σκάλα (κάθε skill = σκαλί) ΚΑΙ βουνό
- * (η ανάβαση) — τα κενά ανάμεσα στα rungs σχηματίζουν την κορυφή στο
- * negative space. Πηγή γεωμετρίας: branding/logo-v2/mark.svg (viewBox 64).
- * Δουλεύει σε 16px favicon χωρίς να κλείνει: 4 καθαρές οριζόντιες μπάρες.
+ * Το σήμα του Anabasis v3 — «Summit seal»: οροσειρά μέσα σε κυκλική σφραγίδα.
+ * Αίσθηση ορειβατικού συλλόγου / badge — σοβαρό, διαχρονικό, ταιριάζει με το
+ * Carbon. Ο δακτύλιος «περικλείει» την ανάβαση· η ψηλότερη κορυφή είναι το
+ * σημείο-στόχος. Δουλεύει σε 16px favicon: δακτύλιος + 2 κορυφές διαβάζονται.
  *
- * Χρώμα: `currentColor` by default — έτσι το σήμα ακολουθεί το accent του
- * χρήστη μέσα στο app (Ρυθμίσεις → Accent), όπως έκανε πάντα. Το `gradient`
- * ενεργοποιεί το signature Altitude Violet gradient (#7C3AED→#B88CFF) για
- * brand-fixed πλαίσια (branding showcase, splash) όπου δεν πρέπει να αλλάζει
- * με το accent του χρήστη.
+ * Χρώμα: `currentColor` by default — το σήμα ακολουθεί το accent του χρήστη
+ * (Ρυθμίσεις → Accent). `summit` βάζει χρυσό «σημαιάκι» στην κορυφή
+ * (= PR/achievement). `gradient` δίνει brand-fixed accent gradient για
+ * splash/branding όπου δεν πρέπει να αλλάζει με το accent.
  */
-const RUNGS = [
-  { x: 28, y: 9, w: 8 },
-  { x: 21, y: 22, w: 22 },
-  { x: 14, y: 35, w: 36 },
-  { x: 7, y: 48, w: 50 },
-] as const;
-const RUNG_H = 7;
-const RUNG_RX = 3.5;
+const MOUNTAINS = 'M15 43 L25 27 L31 35 L39 21 L49 43 Z';
+const SUMMIT = { x: 39, y: 21 } as const;
 
 export function Logo({
   className,
@@ -29,37 +21,29 @@ export function Logo({
   gradient = false,
 }: {
   className?: string;
-  /** Χρυσή κορυφή (= PR/achievement). Μόνο η κορυφαία (μικρότερη) ράβδος. */
+  /** Χρυσό σημαιάκι στην κορυφή (= PR/achievement). */
   summit?: boolean;
-  /** Signature violet gradient αντί για currentColor — brand-fixed χρήση. */
+  /** Signature accent gradient αντί για currentColor — brand-fixed χρήση. */
   gradient?: boolean;
 }) {
   const gradientId = useId();
-  const fill = gradient ? `url(#${gradientId})` : 'currentColor';
+  const paint = gradient ? `url(#${gradientId})` : 'currentColor';
 
   return (
     <svg viewBox="0 0 64 64" className={cn('h-6 w-6', className)} role="img" aria-label="Anabasis">
       {gradient ? (
         <defs>
           <linearGradient id={gradientId} x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#7C3AED" />
-            <stop offset="1" stopColor="#B88CFF" />
+            <stop offset="0" stopColor="#5EE6D9" />
+            <stop offset="1" stopColor="#9D5CFF" />
           </linearGradient>
         </defs>
       ) : null}
-      <g>
-        {RUNGS.map((r, i) => (
-          <rect
-            key={r.y}
-            x={r.x}
-            y={r.y}
-            width={r.w}
-            height={RUNG_H}
-            rx={RUNG_RX}
-            fill={summit && i === 0 ? 'hsl(var(--gold))' : fill}
-          />
-        ))}
-      </g>
+      {/* Δακτύλιος-σφραγίδα */}
+      <circle cx="32" cy="32" r="26" fill="none" stroke={paint} strokeWidth="4.5" />
+      {/* Οροσειρά */}
+      <path d={MOUNTAINS} fill={paint} />
+      {summit ? <circle cx={SUMMIT.x} cy={SUMMIT.y} r="4" fill="hsl(var(--gold))" /> : null}
     </svg>
   );
 }

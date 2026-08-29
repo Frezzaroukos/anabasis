@@ -227,7 +227,8 @@
     "dashboardLayoutHint": "Choose which cards appear and in what order. \"Add workout\" always stays — a home screen you cannot start from is a dead end.",
     "dashboardLocked": "Always visible",
     "restAutoStart": "Auto-start rest timer",
-    "restAutoStartHint": "Starts counting down as soon as you log a set."
+    "restAutoStartHint": "Starts counting down as soon as you log a set.",
+    "customAccent": "Custom colour"
   },
   "common": {
     "save": "Save",

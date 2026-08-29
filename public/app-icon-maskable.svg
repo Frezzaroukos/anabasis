@@ -1,3 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="0" fill="#0C0A14"/>
-  <g transform="translate(32,32) scale(0.6) translate(-32,-32)"><g><rect x="28" y="9" width="8" height="7" rx="3.5" fill="#F3F1F8"/><rect x="21" y="22" width="22" height="7" rx="3.5" fill="#F3F1F8"/><rect x="14" y="35" width="36" height="7" rx="3.5" fill="#F3F1F8"/><rect x="7" y="48" width="50" height="7" rx="3.5" fill="#F3F1F8"/></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#101013"/>
+  <circle cx="32" cy="32" r="15.5" fill="none" stroke="#E8E8EC" stroke-width="3"/>
+  <path d="M23 38 L28.5 29 L31.5 33 L35.5 26 L41 38 Z" fill="#E8E8EC"/>
+</svg>

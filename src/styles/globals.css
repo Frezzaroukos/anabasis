@@ -3,100 +3,101 @@
 @tailwind utilities;
 
 /*
- * Χρωματικό σύστημα Anabasis v2 — «Altitude Violet» (docs/DESIGN-SPEC-V2.md).
+ * Χρωματικό σύστημα Anabasis v3 — «Carbon».
  *
- * Μεταφορά: σούρουπο/aurora σε υψόμετρο — όχι ιδρώτας/φωτιά. Near-black βάση
- * με μωβ χροιά (ποτέ pure black: halation + χάνεται το elevation layering).
- * Βάθος = διαφορά φωτεινότητας (background → card → elevated), όχι borders.
+ * Σχεδόν μονόχρωμο: γραφίτης + λευκό, και ΜΟΝΟ το χρυσό των ρεκόρ ως χρώμα.
+ * Η φιλοσοφία του Strong στα άκρα — τίποτα δεν ανταγωνίζεται τους αριθμούς·
+ * όταν όλα είναι γραφίτης, το ένα χρυσό ρεκόρ φωνάζει. Ουδέτερα γκρι με
+ * ελάχιστη ψυχρή χροιά (επιλεγμένα, όχι pure). Βάθος = φωτεινότητα
+ * (background → card → elevated), όχι borders.
  *
  * Δύο χρώματα με ξεχωριστές δουλειές — ποτέ εναλλάξιμα:
- *  --primary (Aurora violet) = δράση & πρόοδος (κουμπιά, ενεργά states, ring)
- *  --gold                    = ΕΠΙΤΕΥΓΜΑ (PR, mastery, κορυφή του σήματος)
- * Αν το χρυσό γινόταν και primary, το PR θα έπαυε να ξεχωρίζει.
- * Το accent είναι εναλλάξιμο από τον χρήστη (lib/theme.ts) — το χρυσό όχι.
+ *  --primary (mono: λευκό/μαύρο) = δράση & πρόοδος (κουμπιά, ενεργά, ring)
+ *  --gold                        = ΕΠΙΤΕΥΓΜΑ (PR, mastery, κορυφή του σήματος)
+ * Ο χρήστης αλλάζει το accent σε χρώμα ή custom (lib/theme.ts, default mono)·
+ * το χρυσό ΔΕΝ αλλάζει, και η γραφίτης βάση μένει σταθερή όποιο accent κι αν διαλέξει.
  */
 @layer base {
   :root {
-    --background: 40 25% 98%;
-    --foreground: 255 25% 12%;
+    --background: 60 8% 96%;
+    --foreground: 240 6% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 255 25% 12%;
-    --elevated: 255 20% 95%;
+    --card-foreground: 240 6% 10%;
+    --elevated: 50 8% 93%;
 
-    /* Aurora violet, σκουρεμένο για contrast σε λευκό */
-    --primary: 264 85% 58%;
+    /* mono default — γραφίτης-μαύρο σε φωτεινό φόντο */
+    --primary: 240 8% 12%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 255 15% 95%;
-    --secondary-foreground: 255 25% 13%;
+    --secondary: 48 8% 93%;
+    --secondary-foreground: 240 6% 11%;
 
-    --muted: 255 14% 95%;
-    --muted-foreground: 255 12% 42%;
+    --muted: 48 8% 93%;
+    --muted-foreground: 240 4% 42%;
 
-    --accent: 260 30% 94%;
-    --accent-foreground: 255 25% 13%;
+    --accent: 45 8% 90%;
+    --accent-foreground: 240 6% 11%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 255 14% 89%;
-    --input: 255 14% 89%;
-    --ring: 264 85% 58%;
+    --border: 45 7% 88%;
+    --input: 45 7% 88%;
+    --ring: 240 8% 12%;
 
-    /* Χρυσό επίτευξης — PR badges, mastery. Πιο λαμπερό από το primary. */
-    --gold: 42 92% 50%;
+    /* Χρυσό επίτευξης — PR badges, mastery. Το ΜΟΝΟ χρώμα του Carbon. */
+    --gold: 42 88% 44%;
 
-    --cat-push: 14 90% 55%;
-    --cat-pull: 217 91% 58%;
-    --cat-legs: 142 71% 42%;
-    --cat-core: 38 92% 48%;
-    --cat-mixed: 271 81% 58%;
+    --cat-push: 14 80% 50%;
+    --cat-pull: 217 80% 52%;
+    --cat-legs: 142 60% 38%;
+    --cat-core: 38 85% 44%;
+    --cat-mixed: 271 70% 54%;
 
     --radius: 0.625rem;
   }
 
   .dark {
     /*
-     * «Altitude Violet» — #0C0A14 βάση / #15121F κάρτες / #1E1A2C elevated.
-     * Το μωβ είναι το μόνο premium χρώμα που δεν χρησιμοποιεί κανείς στο
-     * fitness (όλοι: κόκκινο/πορτοκαλί/μπλε/πράσινο) → διαφοροποίηση.
+     * «Carbon» — #101013 βάση / #1C1C21 κάρτες / #26262C elevated. Καθαρός
+     * γραφίτης, ελάχιστα ψυχρός. Το near-white primary + το χρυσό PR είναι τα
+     * μόνα φωτεινά σημεία — μέγιστη σοβαρότητα, οι αριθμοί κυριαρχούν.
      */
-    --background: 252 33% 6%;
-    --foreground: 257 33% 96%;
+    --background: 240 12% 7%;
+    --foreground: 240 10% 95%;
 
-    --card: 254 27% 10%;
-    --card-foreground: 257 33% 96%;
-    --elevated: 253 26% 14%;
+    --card: 240 9% 11%;
+    --card-foreground: 240 10% 95%;
+    --elevated: 240 8% 16%;
 
-    /* Electric amethyst #9D5CFF — λάμπει χωρίς να τυφλώνει στις 6πμ */
-    --primary: 264 100% 68%;
-    --primary-foreground: 258 40% 8%;
+    /* mono default — near-white #E8E8EC· λάμπει χωρίς χρώμα */
+    --primary: 240 9% 92%;
+    --primary-foreground: 240 8% 9%;
 
-    --secondary: 253 26% 14%;
-    --secondary-foreground: 257 33% 96%;
+    --secondary: 240 8% 16%;
+    --secondary-foreground: 240 10% 95%;
 
-    --muted: 253 26% 14%;
-    --muted-foreground: 255 14% 62%;
+    --muted: 240 8% 16%;
+    --muted-foreground: 240 6% 62%;
 
-    --accent: 253 24% 18%;
-    --accent-foreground: 257 33% 96%;
+    --accent: 240 8% 20%;
+    --accent-foreground: 240 10% 95%;
 
-    /* #FB7185 — πιο ξεθωριασμένο από το accent: status, όχι brand */
-    --destructive: 351 95% 71%;
-    --destructive-foreground: 351 40% 10%;
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 253 20% 15%;
-    --input: 253 20% 17%;
-    --ring: 264 100% 68%;
+    --border: 240 8% 18%;
+    --input: 240 8% 20%;
+    --ring: 240 9% 92%;
 
-    --gold: 42 95% 58%;
+    --gold: 42 92% 56%;
 
-    --cat-push: 14 90% 62%;
-    --cat-pull: 217 91% 66%;
-    --cat-legs: 142 65% 52%;
-    --cat-core: 38 92% 56%;
-    --cat-mixed: 271 85% 72%;
+    --cat-push: 14 85% 60%;
+    --cat-pull: 217 85% 64%;
+    --cat-legs: 142 60% 50%;
+    --cat-core: 38 88% 54%;
+    --cat-mixed: 271 75% 68%;
   }
 
   * {

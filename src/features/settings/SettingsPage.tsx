@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SectionTitle } from '@/components/ui/Section';
 import { Moon, Sun, Monitor } from 'lucide-react';
-import { ACCENTS, getStoredAccent, getStoredTheme, setAccent, setTheme, type Theme } from '@/lib/theme';
+import { ACCENTS, getStoredAccent, getStoredCustomAccent, getStoredTheme, setAccent, setCustomAccent, setTheme, type Theme } from '@/lib/theme';
 import { AccountCard } from '@/features/account/AccountCard';
 
 const REST_PRESETS = [60, 90, 120, 180, 240, 300];
@@ -22,6 +22,7 @@ export function SettingsPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [theme, setThemeState] = useState<Theme>(getStoredTheme());
   const [accent, setAccentState] = useState<string>(getStoredAccent());
+  const [customHex, setCustomHex] = useState<string | null>(getStoredCustomAccent());
 
   const settings = useLiveQuery(
     () => db.app_settings.where('user_id').equals(getCurrentUserId()).first(),
@@ -147,7 +148,7 @@ export function SettingsPage() {
         <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('settings.accent')}
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {ACCENTS.map((a) => (
             <button
               key={a.key}
@@ -164,6 +165,39 @@ export function SettingsPage() {
               style={{ background: a.swatch }}
             />
           ))}
+          {/* Custom: native color picker — ό,τι χρώμα θέλει ο χρήστης. */}
+          <label
+            title={t('settings.customAccent')}
+            className={`relative h-9 w-9 cursor-pointer overflow-hidden rounded-full border-2 transition-transform active:scale-90 ${
+              accent === 'custom' ? 'border-foreground scale-110' : 'border-transparent'
+            }`}
+            style={{
+              background:
+                customHex ??
+                'conic-gradient(from 0deg,#ff0000,#ff9900,#ffee00,#33dd00,#0099ff,#6633ff,#ff0099,#ff0000)',
+            }}
+          >
+            <input
+              type="color"
+              value={customHex ?? '#888888'}
+              onChange={(e) => {
+                if (setCustomAccent(e.target.value)) {
+                  setCustomHex(e.target.value);
+                  setAccentState('custom');
+                }
+              }}
+              className="absolute inset-0 cursor-pointer opacity-0"
+              aria-label={t('settings.customAccent')}
+            />
+            {accent !== 'custom' && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 flex items-center justify-center text-lg font-semibold text-white mix-blend-difference"
+              >
+                +
+              </span>
+            )}
+          </label>
         </div>
       </section>
 

@@ -24,6 +24,10 @@ export interface AccentPreset {
 }
 
 export const ACCENTS: AccentPreset[] = [
+  // Mono = το signature του Carbon: near-white σε dark, γραφίτης-μαύρο σε light.
+  // Πρώτο και default — τα υπόλοιπα βάφουν ΜΟΝΟ το accent, η γραφίτης βάση μένει.
+  { key: 'mono', label: 'Carbon', swatch: 'linear-gradient(135deg,#E8E8EC 50%,#101013 50%)',
+    dark: { primary: '240 9% 92%', fg: '240 8% 9%' }, light: { primary: '240 8% 12%', fg: '0 0% 100%' } },
   { key: 'blue', label: 'Ocean', swatch: 'hsl(212 90% 56%)',
     dark: { primary: '212 90% 60%', fg: '212 40% 8%' }, light: { primary: '214 85% 46%', fg: '0 0% 100%' } },
   { key: 'emerald', label: 'Emerald', swatch: 'hsl(152 62% 45%)',
@@ -41,14 +45,65 @@ export const ACCENTS: AccentPreset[] = [
 ];
 
 /*
- * Aurora violet = το signature του redesign v2 (docs/DESIGN-SPEC-V2.md) —
- * ο χρήστης μπορεί πάντα να διαλέξει άλλο, το default όμως είναι το brand.
+ * Carbon/mono = το default του brand v3 — ο χρήστης διαλέγει άλλο χρώμα ή custom.
  */
-const DEFAULT_ACCENT = 'violet';
+const DEFAULT_ACCENT = 'mono';
+const CUSTOM_ACCENT_KEY = 'anabasis.accent.custom';
+
+/**
+ * Custom accent: ο χρήστης δίνει ένα hex — το μετατρέπουμε σε HSL (τα tokens
+ * είναι σε HSL) και υπολογίζουμε το foreground (μαύρο/λευκό) από τη φωτεινότητα
+ * ώστε το κείμενο πάνω στο κουμπί να έχει contrast. Αποθηκεύεται ξεχωριστά.
+ */
+export function hexToHslParts(hex: string): { h: number; s: number; l: number } | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m?.[1]) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255,
+    g = ((n >> 8) & 255) / 255,
+    b = (n & 255) / 255;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0,
+    s = 0;
+  const d = max - min;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+export function getStoredCustomAccent(): string | null {
+  try {
+    return globalThis.localStorage?.getItem(CUSTOM_ACCENT_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCustomAccent(hex: string): boolean {
+  const hsl = hexToHslParts(hex);
+  if (!hsl) return false;
+  try {
+    globalThis.localStorage?.setItem(CUSTOM_ACCENT_KEY, hex);
+    globalThis.localStorage?.setItem(ACCENT_KEY, 'custom');
+  } catch {
+    /* noop */
+  }
+  applyAccent('custom');
+  return true;
+}
 
 export function getStoredAccent(): string {
   try {
     const v = globalThis.localStorage?.getItem(ACCENT_KEY);
+    if (v === 'custom' && getStoredCustomAccent()) return 'custom';
     if (v && ACCENTS.some((a) => a.key === v)) return v;
   } catch {
     /* private mode */
@@ -57,8 +112,23 @@ export function getStoredAccent(): string {
 }
 
 export function applyAccent(accentKey: string): void {
-  const accent = ACCENTS.find((a) => a.key === accentKey) ?? ACCENTS[0]!;
   const root = document.documentElement;
+
+  if (accentKey === 'custom') {
+    const hex = getStoredCustomAccent();
+    const hsl = hex ? hexToHslParts(hex) : null;
+    if (hsl) {
+      // Foreground: μαύρο πάνω σε ανοιχτό accent, λευκό πάνω σε σκούρο.
+      const fg = hsl.l > 62 ? '240 8% 9%' : '0 0% 100%';
+      const primary = `${hsl.h} ${hsl.s}% ${hsl.l}%`;
+      root.style.setProperty('--primary', primary);
+      root.style.setProperty('--primary-foreground', fg);
+      root.style.setProperty('--ring', primary);
+      return;
+    }
+  }
+
+  const accent = ACCENTS.find((a) => a.key === accentKey) ?? ACCENTS[0]!;
   const isDark = root.classList.contains('dark');
   const c = isDark ? accent.dark : accent.light;
   root.style.setProperty('--primary', c.primary);
@@ -100,7 +170,7 @@ export function applyTheme(theme: Theme): void {
   root.classList.toggle('dark', resolved === 'dark');
   // theme-color meta ώστε η μπάρα του browser/PWA να ταιριάζει
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0C0A14' : '#FCFBFA');
+  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#101013' : '#F7F7F5');
   // Το accent primary έχει διαφορετική φωτεινότητα σε dark/light — ξανα-εφάρμοσέ το.
   applyAccent(getStoredAccent());
 }
