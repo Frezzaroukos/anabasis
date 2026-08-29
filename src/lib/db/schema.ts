@@ -27,7 +27,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -251,6 +251,17 @@ export class AnabasisDB extends Dexie {
         .modify((s) => {
           s.auto_start_rest_timer ??= true;
         });
+    });
+
+    /*
+     * v11 — χειροκίνητα βήματα στο body_metrics (steps). Μη-indexed πεδίο,
+     * οπότε δεν χρειάζεται δήλωση stores· κρατάμε το version block για συνέπεια
+     * και για να «κλειδώσει» το SCHEMA_VERSION=11. Οι θερμίδες/μακρο ΜΕΝΟΥΝ ως
+     * στήλες (καμία καταστροφική migration) αλλά βγαίνουν από το UI — το φαγητό
+     * το χειρίζεται ξεχωριστό app.
+     */
+    this.version(11).upgrade(async () => {
+      // no-op backfill· τα νέα records παίρνουν steps από τον κώδικα (?? null)
     });
   }
 }

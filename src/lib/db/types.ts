@@ -118,6 +118,8 @@ export interface BodyMetric {
   /** v7 */
   fat_g: number | null;
   body_fat_pct: number | null;
+  /** v11: χειροκίνητα βήματα ημέρας (δεν διαβάζουμε HealthKit — ο χρήστης τα περνά) */
+  steps: number | null;
   notes: string | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
