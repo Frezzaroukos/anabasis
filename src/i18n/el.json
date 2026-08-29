@@ -343,7 +343,8 @@
     },
     "hero": {
       "streakUnit": "μέρες σερί"
-    }
+    },
+    "recentActivity": "Πρόσφατα"
   },
   "setType": {
     "normal": "Κανονικό",

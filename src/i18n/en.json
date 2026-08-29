@@ -343,7 +343,8 @@
     },
     "hero": {
       "streakUnit": "day streak"
-    }
+    },
+    "recentActivity": "Recent"
   },
   "setType": {
     "normal": "Normal",
