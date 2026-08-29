@@ -100,9 +100,8 @@ describe('DashboardPage — με δεδομένα', () => {
 
     await saveBodyMetric(localDay(), {
       weight_kg: 78.5,
-      calories_in: 2400,
-      calories_out: 2200,
       body_fat_pct: 17,
+      steps: 9200,
     });
   });
 
@@ -133,6 +132,8 @@ describe('DashboardPage — με δεδομένα', () => {
     expect(screen.getByText(/78\.5 kg/)).toBeTruthy();
     expect(screen.getByText(dashboardEn.latestBodyFat)).toBeTruthy();
     expect(screen.getByText(/17%/)).toBeTruthy();
-    expect(screen.getByText(dashboardEn.todayBalance)).toBeTruthy();
+    // Οι θερμίδες βγήκαν εκτός scope· τα βήματα είναι η νέα μετρική σώματος.
+    expect(screen.queryByText(dashboardEn.todayBalance)).toBeNull();
+    expect(screen.getByText(/9,?200/)).toBeTruthy();
   });
 });

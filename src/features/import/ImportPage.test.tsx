@@ -114,30 +114,8 @@ describe('ImportPage — Strong CSV flow', () => {
 });
 
 describe('ImportPage — Notion daily flows', () => {
-  it('θερμίδες: αδύνατη ημερομηνία = κλειδωμένο checkbox, εκτός import', async () => {
-    renderPage(); // default source: notion-calories
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'Φεβρουάριος:\n- [x] 28-02-2025:2500\n- [x] 31-02-2025:2600' },
-    });
-
-    await waitFor(() => expect(screen.getByText(/Preview · 2 days/)).toBeTruthy());
-    const invalid = screen.getByLabelText('2025-02-31') as HTMLInputElement;
-    expect(invalid.disabled).toBe(true);
-    expect(invalid.checked).toBe(false);
-    expect(screen.getByText('impossible date — will not be imported')).toBeTruthy();
-
-    // μόνο η πραγματική μέρα μετράει στο κουμπί
-    fireEvent.click(screen.getByRole('button', { name: 'Import 1 days' }));
-    await waitFor(() => expect(screen.getByText(/Done — 1 added/)).toBeTruthy());
-    const metrics = await db.body_metrics.toArray();
-    expect(metrics).toHaveLength(1);
-    expect(metrics[0]!.date).toBe('2025-02-28');
-    expect(metrics[0]!.calories_in).toBe(2500);
-  });
-
-  it('βάρος: γράφει weight_kg στα body_metrics', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('tab', { name: 'Notion weight' }));
+  it('βάρος: γράφει weight_kg στα body_metrics (default source)', async () => {
+    renderPage(); // default source πλέον: notion-weights (θερμίδες εκτός scope)
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'Οκτώβριος:\n- [x] 04-10-2025: 71,5\n- [x] 05-10-2025: 71.2' },
     });
@@ -148,7 +126,7 @@ describe('ImportPage — Notion daily flows', () => {
 
     const metrics = await db.body_metrics.toArray();
     expect(metrics.map((m) => m.weight_kg).sort()).toEqual([71.2, 71.5]);
-    // οι θερμίδες της μέρας δεν πειράζονται από το βάρος
+    // οι θερμίδες βγήκαν εκτός scope — δεν γράφονται πουθενά
     expect(metrics.every((m) => m.calories_in === null)).toBe(true);
   });
 });

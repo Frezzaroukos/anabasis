@@ -331,7 +331,7 @@ export function SettingsPage() {
               ['workouts', stats.workouts],
               ['sets', stats.sets],
               ['prs', stats.prs],
-              ['steps', stats.steps],
+              ['skillSteps', stats.steps],
             ] as const
           ).map(([k, v]) => (
             <div key={k} className="rounded-md bg-elevated py-2">

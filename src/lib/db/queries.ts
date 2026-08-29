@@ -1008,6 +1008,7 @@ export interface BodyPoint {
   balance: number | null;
   proteinG: number | null;
   bodyFatPct: number | null;
+  steps: number | null;
 }
 
 /**
@@ -1035,6 +1036,7 @@ export async function getBodyTrend(days = 60): Promise<BodyPoint[]> {
       balance: cin != null && cout != null ? cin - cout : null,
       proteinG: r?.protein_g ?? null,
       bodyFatPct: r?.body_fat_pct ?? null,
+      steps: r?.steps ?? null,
     });
   }
   return out;
