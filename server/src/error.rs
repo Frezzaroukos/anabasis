@@ -84,6 +84,26 @@ impl AppError {
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", message)
     }
+
+    /// Το Google OAuth feature δεν έχει configured env vars σε αυτόν τον server.
+    pub fn oauth_disabled() -> Self {
+        Self::new(
+            StatusCode::NOT_FOUND,
+            "oauth_disabled",
+            "Το Sign in with Google δεν είναι ενεργοποιημένο σε αυτόν τον server.",
+        )
+    }
+
+    /// Το Google endpoint (token exchange/userinfo) απάντησε με σφάλμα ή μη
+    /// αναμενόμενο σχήμα — δεν είναι δικό μας bug, αλλά ο caller δεν μπορεί
+    /// να κάνει τίποτα εκτός από retry.
+    pub fn oauth_provider_error() -> Self {
+        Self::new(
+            StatusCode::BAD_GATEWAY,
+            "oauth_provider_error",
+            "Αποτυχία επικοινωνίας με το Google. Δοκίμασε ξανά.",
+        )
+    }
 }
 
 impl IntoResponse for AppError {

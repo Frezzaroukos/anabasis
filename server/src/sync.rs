@@ -168,6 +168,7 @@ pub struct PullResponse {
     changes: Vec<PullChangeSet>,
     cursor: i64,
     has_more: bool,
+    epoch: String,
 }
 
 #[derive(sqlx::FromRow)]
@@ -235,5 +236,6 @@ pub async fn pull(
         changes,
         cursor: new_cursor,
         has_more,
+        epoch: state.epoch.clone(),
     }))
 }

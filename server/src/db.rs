@@ -34,3 +34,17 @@ pub async fn connect(db_path: &Path) -> Result<SqlitePool, sqlx::Error> {
 
     Ok(pool)
 }
+
+/// Διαβάζει ή δημιουργεί το epoch της βάσης — INSERT OR IGNORE + SELECT ώστε
+/// δύο ταυτόχρονα starts να καταλήγουν πάντα στην ίδια τιμή.
+pub async fn get_or_create_epoch(pool: &SqlitePool) -> Result<String, sqlx::Error> {
+    let candidate = uuid::Uuid::new_v4().to_string();
+    sqlx::query("INSERT OR IGNORE INTO meta (key, value) VALUES ('epoch', ?)")
+        .bind(&candidate)
+        .execute(pool)
+        .await?;
+    let (epoch,): (String,) = sqlx::query_as("SELECT value FROM meta WHERE key = 'epoch'")
+        .fetch_one(pool)
+        .await?;
+    Ok(epoch)
+}

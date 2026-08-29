@@ -24,7 +24,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = build_state(db_path, admin_email, admin_code).await?;
     let app = router(state);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    /*
+     * Default 127.0.0.1: μπροστά κάθεται ΠΑΝΤΑ το cloudflared (ίδιο host) —
+     * bind σε 0.0.0.0 εξέθετε το API σε LAN/tailnet ΧΩΡΙΣ το rate limiting
+     * του tunnel (και με πλαστογραφήσιμο CF-Connecting-IP). Override μόνο
+     * συνειδητά μέσω ANABASIS_BIND.
+     */
+    let bind_ip: std::net::IpAddr = std::env::var("ANABASIS_BIND")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or_else(|| std::net::IpAddr::from([127, 0, 0, 1]));
+    let addr = SocketAddr::from((bind_ip, port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(%addr, "anabasis-api listening");
 
