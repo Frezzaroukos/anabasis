@@ -12,7 +12,12 @@
 export const CHART_STROKE = 'hsl(var(--primary))';
 export const CHART_STROKE_WIDTH = 1.75;
 export const CHART_GRID = 'hsl(var(--border) / 0.6)';
-export const CHART_TICK = { fill: 'hsl(var(--muted-foreground))', fontSize: 11 } as const;
+export const CHART_TICK = {
+  fill: 'hsl(var(--muted-foreground))',
+  fontSize: 11,
+  fontFamily: 'JetBrains Mono Variable, JetBrains Mono, ui-monospace, monospace',
+  fontVariantNumeric: 'tabular-nums',
+} as const;
 export const CHART_GOLD = 'hsl(var(--gold))';
 
 /** id που περνάς σε fill="url(#…)" του <Area>. */

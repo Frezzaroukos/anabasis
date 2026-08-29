@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Ban, Check } from 'lucide-react';
-import { parseNotionCalories } from '@/lib/import/notionCalories';
 import { parseNotionWeights } from '@/lib/importers/notionWeights';
 import { parseStrongCsv } from '@/lib/importers/strongCsv';
 import { parseHevyCsv } from '@/lib/importers/hevyCsv';
@@ -23,10 +22,9 @@ import { cn } from '@/lib/utils';
  * ο χρήστης έχει τον έλεγχο, καμία σιωπηλή μαντεψιά.
  */
 
-type Source = 'notion-calories' | 'notion-weights' | 'strong' | 'hevy';
+type Source = 'notion-weights' | 'strong' | 'hevy';
 
 const SOURCES: Array<{ id: Source; labelKey: string }> = [
-  { id: 'notion-calories', labelKey: 'import.sourceNotionCalories' },
   { id: 'notion-weights', labelKey: 'import.sourceNotionWeights' },
   { id: 'strong', labelKey: 'import.sourceStrong' },
   { id: 'hevy', labelKey: 'import.sourceHevy' },
@@ -36,7 +34,7 @@ const SOURCES: Array<{ id: Source; labelKey: string }> = [
 interface DailyRow {
   date: string;
   display: string;
-  patch: { calories_in: number } | { weight_kg: number };
+  patch: { weight_kg: number };
   needsReview: boolean;
   invalidDate: boolean;
   raw: string;
@@ -53,7 +51,7 @@ interface WorkoutsResult extends WorkoutImportResult {
 
 export function ImportPage() {
   const { t } = useTranslation();
-  const [source, setSource] = useState<Source>('notion-calories');
+  const [source, setSource] = useState<Source>('notion-weights');
   const [text, setText] = useState('');
   const [year, setYear] = useState(2025);
   const [result, setResult] = useState<DailyResult | WorkoutsResult | null>(null);
@@ -62,23 +60,10 @@ export function ImportPage() {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const isDaily = source === 'notion-calories' || source === 'notion-weights';
+  const isDaily = source === 'notion-weights';
 
   // Ένα parse ανά αλλαγή input — τα preview components δουλεύουν πάνω σε αυτό.
   const daily = useMemo<{ rows: DailyRow[] } | null>(() => {
-    if (source === 'notion-calories') {
-      const { rows } = parseNotionCalories(text, year);
-      return {
-        rows: rows.map((r) => ({
-          date: r.date,
-          display: String(r.calories),
-          patch: { calories_in: r.calories },
-          needsReview: r.needsReview,
-          invalidDate: r.invalidDate,
-          raw: r.raw,
-        })),
-      };
-    }
     if (source === 'notion-weights') {
       const { rows } = parseNotionWeights(text, year);
       return {
@@ -222,11 +207,9 @@ export function ImportPage() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={
-            source === 'notion-calories'
-              ? t('import.placeholder')
-              : source === 'notion-weights'
-                ? t('import.weightPlaceholder')
-                : t('import.csvPlaceholder')
+            source === 'notion-weights'
+              ? t('import.weightPlaceholder')
+              : t('import.csvPlaceholder')
           }
           rows={8}
           className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
@@ -252,7 +235,6 @@ export function ImportPage() {
         )}
 
         <p className="text-xs text-muted-foreground">
-          {source === 'notion-calories' && t('import.formatHint')}
           {source === 'notion-weights' && t('import.weightHint')}
           {source === 'strong' && t('import.strongHint')}
           {source === 'hevy' && t('import.hevyHint')}

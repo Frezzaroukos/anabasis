@@ -231,7 +231,8 @@
     "dashboardLocked": "Always visible",
     "restAutoStart": "Auto-start rest timer",
     "restAutoStartHint": "Starts counting down as soon as you log a set.",
-    "customAccent": "Custom colour"
+    "customAccent": "Custom colour",
+    "skillSteps": "Skill steps"
   },
   "common": {
     "save": "Save",
@@ -293,7 +294,10 @@
     "bodyFatTrend": "Body fat trend",
     "proteinTrend": "Protein trend",
     "carbs": "Carbs",
-    "fat": "Fat"
+    "fat": "Fat",
+    "steps": "Steps",
+    "stepsTrend": "Steps",
+    "stepsAvg": "avg"
   },
   "progress": {
     "title": "Exercise progress",

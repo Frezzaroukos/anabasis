@@ -231,7 +231,8 @@
     "dashboardLocked": "Πάντα ορατό",
     "restAutoStart": "Αυτόματη εκκίνηση rest timer",
     "restAutoStartHint": "Ξεκινάει την αντίστροφη μέτρηση μόλις καταγράψεις ένα σετ.",
-    "customAccent": "Δικό σου χρώμα"
+    "customAccent": "Δικό σου χρώμα",
+    "skillSteps": "Βήματα skill"
   },
   "common": {
     "save": "Αποθήκευση",
@@ -293,7 +294,10 @@
     "bodyFatTrend": "Τάση λίπους σώματος",
     "proteinTrend": "Τάση πρωτεΐνης",
     "carbs": "Υδατάνθρακες",
-    "fat": "Λίπος"
+    "fat": "Λίπος",
+    "steps": "Βήματα",
+    "stepsTrend": "Βήματα",
+    "stepsAvg": "μ.ό."
   },
   "progress": {
     "title": "Πρόοδος άσκησης",
