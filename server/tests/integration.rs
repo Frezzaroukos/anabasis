@@ -484,3 +484,21 @@ async fn claim_admin_without_configured_code_is_403() {
     assert_eq!(status, 403);
     assert_eq!(body["error"], "admin_code_not_set");
 }
+
+/* ─────────── epoch (προστασία από restore-desync) ─────────── */
+
+#[tokio::test]
+async fn epoch_present_and_stable_across_restarts() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("epoch-test.db");
+    let s1 = build_state(db_path.clone(), None, None).await.expect("s1");
+    let s2 = build_state(db_path, None, None).await.expect("s2");
+    // Ίδιο αρχείο βάσης = ίδιο epoch· νέο αρχείο θα έδινε νέο.
+    assert_eq!(s1.epoch, s2.epoch);
+    assert!(!s1.epoch.is_empty());
+
+    let app = router(s1.clone());
+    let (status, health) = call(&app, "GET", "/api/health", None, None).await;
+    assert_eq!(status, 200);
+    assert_eq!(health["epoch"], s1.epoch.as_str());
+}

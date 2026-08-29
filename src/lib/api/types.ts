@@ -50,6 +50,7 @@ export interface SyncPullResponse {
   changes: SyncChange[];
   cursor: number;
   has_more: boolean;
+  epoch: string;
 }
 
 export interface AdminUser {

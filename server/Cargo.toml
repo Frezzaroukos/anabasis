@@ -29,6 +29,9 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sha2 = "0.11"
 base64 = "0.23"
+# rustls αντί για system OpenSSL — μηδενικό extra σύστημα-dependency στο deploy
+# (systemd unit + Docker), μόνο για το Google token/userinfo exchange.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [dev-dependencies]
 tempfile = "3"

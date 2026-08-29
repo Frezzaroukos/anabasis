@@ -239,3 +239,36 @@ describe('fullResync', () => {
     expect(cursors.pullCursor).toBe(0);
   });
 });
+
+describe('epoch (restore-desync protection)', () => {
+  it('σε αλλαγή epoch: μηδενίζει cursor, ξανασπρώχνει όλα, ξανακατεβάζει από 0', async () => {
+    // 1ο sync: server epoch 'aaa' — αποθηκεύεται.
+    stubFetch({
+      pull: () => jsonResponse({ changes: [], cursor: 7, has_more: false, epoch: 'aaa' }),
+    });
+    await syncNow();
+    expect(JSON.parse(localStorage.getItem('anabasis.sync')!)).toMatchObject({
+      epoch: 'aaa',
+      pullCursor: 7,
+    });
+
+    // 2ο sync: ο server έχει γίνει restore — νέο epoch 'bbb'. Πρέπει: push-all
+    // + pull από 0, ΟΧΙ pull από τον νεκρό cursor 7.
+    await createExercise({ name: 'Epoch Test Lift' });
+    const pullCursors: number[] = [];
+    const { calls } = stubFetch({
+      pull: (call) => {
+        const cursor = (JSON.parse(String(call.init?.body)) as { cursor: number }).cursor;
+        pullCursors.push(cursor);
+        // Πρώτη απάντηση με το νέο epoch πυροδοτεί το reset· μετά ήσυχα.
+        return jsonResponse({ changes: [], cursor: 9, has_more: false, epoch: 'bbb' });
+      },
+    });
+    await syncNow();
+
+    const pushes = calls.filter((c) => c.url.includes('/sync/push'));
+    expect(pushes.length).toBeGreaterThan(0); // ξανασπρώχτηκαν τα πάντα
+    expect(pullCursors).toContain(0); // και το κατέβασμα ξεκίνησε από 0
+    expect(JSON.parse(localStorage.getItem('anabasis.sync')!)).toMatchObject({ epoch: 'bbb' });
+  });
+});

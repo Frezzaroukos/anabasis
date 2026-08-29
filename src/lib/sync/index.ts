@@ -27,9 +27,11 @@ interface SyncCursors {
   pullCursor: number;
   lastPushAt: string | null;
   lastSyncAt: string | null;
+  /** Ταυτότητα της server βάσης — αν αλλάξει (restore/recreate), οι cursors μας δεν ισχύουν. */
+  epoch: string | null;
 }
 
-const DEFAULT_CURSORS: SyncCursors = { pullCursor: 0, lastPushAt: null, lastSyncAt: null };
+const DEFAULT_CURSORS: SyncCursors = { pullCursor: 0, lastPushAt: null, lastSyncAt: null, epoch: null };
 
 function safeLocalStorage(): Storage | null {
   try {
@@ -232,6 +234,25 @@ async function pullLoop(): Promise<void> {
   let hasMore = true;
   while (hasMore) {
     const res = await api.syncPull({ cursor, limit: PULL_LIMIT });
+
+    /*
+     * Epoch check: αν ο server έχει ΑΛΛΗ βάση από αυτήν που θυμόμαστε
+     * (restore από backup ή recreate), ο cursor μας δείχνει σε ιστορία που
+     * δεν υπάρχει — χωρίς αυτό, θα «τραβούσαμε στο κενό» σιωπηλά για πάντα.
+     * Μηδενίζουμε, ξανασπρώχνουμε ΟΛΑ τα τοπικά (η συσκευή είναι πλέον η
+     * πληρέστερη πηγή) και ξανακατεβάζουμε από την αρχή.
+     */
+    const stored = readCursors();
+    if (stored.epoch !== null && stored.epoch !== res.epoch) {
+      writeCursors({ epoch: res.epoch, pullCursor: 0, lastPushAt: null });
+      const everything = await collectPushChanges('');
+      if (everything.length > 0) await pushInBatches(everything);
+      cursor = 0;
+      hasMore = true;
+      continue;
+    }
+    if (stored.epoch === null) writeCursors({ epoch: res.epoch });
+
     if (res.changes.length > 0) await applyPulledChanges(res.changes);
     cursor = res.cursor;
     hasMore = res.has_more;

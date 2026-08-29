@@ -31,6 +31,9 @@ pub struct AppState {
     /// (no user enumeration μέσω timing).
     pub dummy_hash: String,
     pub started_at: OffsetDateTime,
+    /// Ταυτότητα αυτής της βάσης (meta.epoch) — αλλάζει σε restore/recreate,
+    /// ώστε οι clients να μηδενίζουν cursors αντί να ξεσυγχρονίζονται σιωπηλά.
+    pub epoch: String,
 }
 
 pub async fn build_state(
@@ -39,6 +42,7 @@ pub async fn build_state(
     admin_code: Option<String>,
 ) -> Result<AppState, sqlx::Error> {
     let pool = crate::db::connect(&db_path).await?;
+    let epoch = crate::db::get_or_create_epoch(&pool).await?;
     let dummy_hash = Argon2::default()
         .hash_password(b"anabasis-dummy-timing-password")
         .map(|h| h.to_string())
@@ -48,6 +52,7 @@ pub async fn build_state(
         pool,
         db_path,
         admin_email: admin_email.map(|e| e.trim().to_lowercase()),
+        epoch,
         admin_code_hash: admin_code
             .map(|c| c.trim().to_string())
             .filter(|c| !c.is_empty())
@@ -155,12 +160,14 @@ pub fn router(state: AppState) -> Router {
 struct HealthResponse {
     ok: bool,
     version: &'static str,
+    epoch: String,
 }
 
-async fn health() -> impl IntoResponse {
+async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> impl IntoResponse {
     Json(HealthResponse {
         ok: true,
         version: env!("CARGO_PKG_VERSION"),
+        epoch: state.epoch.clone(),
     })
 }
 
