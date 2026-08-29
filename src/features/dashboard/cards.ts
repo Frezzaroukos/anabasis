@@ -15,6 +15,7 @@
 export const DASHBOARD_CARD_KEYS = [
   'skillLadder',
   'cta',
+  'recentActivity',
   'goals',
   'insights',
   'heatmap',
@@ -31,6 +32,7 @@ export type DashboardCardKey = (typeof DASHBOARD_CARD_KEYS)[number];
 export const CARD_LABEL: Record<DashboardCardKey, string> = {
   skillLadder: 'dashboard.skillLadder',
   cta: 'dashboard.startCta',
+  recentActivity: 'dashboard.recentActivity',
   goals: 'goals.title',
   insights: 'insights.title',
   heatmap: 'dashboard.last91days',

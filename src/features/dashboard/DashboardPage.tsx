@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { FULL_WIDTH, resolveCardOrder, type DashboardCardKey } from './cards';
 import { SkillLadderCard } from './components/SkillLadderCard';
 import { StartWorkoutCta } from './components/StartWorkoutCta';
+import { RecentActivityCard } from './components/RecentActivityCard';
 import { GoalsCard } from './components/GoalsCard';
 import { InsightsCard } from './components/InsightsCard';
 import { ConsistencyHeatmap } from './components/ConsistencyHeatmap';
@@ -37,6 +38,7 @@ import { EmptyDashboardHint } from './components/EmptyDashboardHint';
 const CARD_COMPONENTS: Record<DashboardCardKey, React.ComponentType> = {
   skillLadder: SkillLadderCard,
   cta: StartWorkoutCta,
+  recentActivity: RecentActivityCard,
   goals: GoalsCard,
   insights: InsightsCard,
   heatmap: ConsistencyHeatmap,
