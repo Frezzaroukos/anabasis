@@ -7,18 +7,16 @@ interface RungCelebrationProps {
   className?: string;
 }
 
-/** Ίδιες αναλογίες με το brand mark (branding/logo-v2/mark.svg, viewBox 64×64):
- * 4 rungs που στοιβάζονται σε σιλουέτα κορυφής, από το στενό (κορυφή) στο
- * φαρδύ (βάση). Εδώ «γεμίζουν» ένα-ένα από κάτω προς τα πάνω — η ανάβαση. */
-const RUNGS = [
-  { x: 28, y: 9, width: 8, height: 7 },
-  { x: 21, y: 22, width: 22, height: 7 },
-  { x: 14, y: 35, width: 36, height: 7 },
-  { x: 7, y: 48, width: 50, height: 7 },
-] as const;
+/* Summit seal (brand mark, Logo.tsx, viewBox 64×64): δακτύλιος r=26 +
+ * οροσειρά + σημαία στην κορυφή. Περιφέρεια = 2π·26 ≈ 163.36 (το ίδιο νούμερο
+ * που περιμένει το summit-ring-draw στο globals.css). */
+const RING_R = 26;
+const RING_CIRC = 2 * Math.PI * RING_R;
+const MOUNTAINS = 'M15 43 L25 27 L31 35 L39 21 L49 43 Z';
+const SUMMIT = { x: 39, y: 21 } as const;
 
-const PARTICLE_COUNT = 14;
-const DURATION_MS = 600;
+const PARTICLE_COUNT = 34;
+const DURATION_MS = 900;
 
 function readGold(): string {
   if (typeof window === 'undefined') return '#FBBF24';
@@ -27,11 +25,11 @@ function readGold(): string {
 }
 
 /**
- * Macro γιορτή ρεκόρ («ανέβασμα σκαλιού», DESIGN-SPEC-V2 §Motion): το mark
- * των 4 rungs γεμίζει σκαλί-σκαλί από κάτω προς τα πάνω + σύντομο particle
- * burst σε χρυσό (hand-rolled canvas, όχι βιβλιοθήκη). Αυτόνομο component —
- * ο γονιός απλά περνάει `active` (ίδιο pattern με το prCount auto-clear που
- * ήδη υπάρχει στο ExerciseCard).
+ * Macro γιορτή ρεκόρ (θεατρικό M3): η σφραγίδα του σήματος «σχεδιάζεται» —
+ * ο δακτύλιος τραβιέται (stroke-dashoffset), η οροσειρά ανεβαίνει, μια χρυσή
+ * σημαία καρφώνεται στην κορυφή — μαζί με σύντομο particle burst σε χρυσό
+ * (hand-rolled canvas, όχι βιβλιοθήκη, ≤900ms). Αυτόνομο component — ο γονιός
+ * απλά περνάει `active` (ίδιο pattern με το prCount auto-clear στο ExerciseCard).
  */
 export function RungCelebration({ active, className }: RungCelebrationProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -101,39 +99,37 @@ export function RungCelebration({ active, className }: RungCelebrationProps) {
       className={cn('pointer-events-none relative flex items-center justify-center', className)}
       aria-hidden
     >
-      <svg viewBox="0 0 64 64" className="relative z-10 h-7 w-7">
-        <g fill="hsl(var(--gold))">
-          {RUNGS.map((r, i) => (
-            <rect
-              key={i}
-              x={r.x}
-              y={r.y}
-              width={r.width}
-              height={r.height}
-              rx={3.5}
-              className="rung-celebration-piece"
-              style={{ animationDelay: `${(RUNGS.length - 1 - i) * 100}ms` }}
-            />
-          ))}
+      <svg viewBox="0 0 64 64" className="relative z-10 h-8 w-8">
+        {/* Δακτύλιος: dasharray = περιφέρεια, dashoffset animεται προς 0 → «σχεδιάζεται».
+            Ξεκινά από την κορυφή (rotate -90) ώστε να κλείνει «ανεβαίνοντας». */}
+        <circle
+          cx="32"
+          cy="32"
+          r={RING_R}
+          fill="none"
+          stroke="hsl(var(--gold))"
+          strokeWidth="4.5"
+          className="animate-summit-ring"
+          style={{
+            strokeDasharray: RING_CIRC,
+            transform: 'rotate(-90deg)',
+            transformOrigin: '32px 32px',
+          }}
+        />
+        {/* Οροσειρά: ανεβαίνει λίγο μετά τον δακτύλιο. */}
+        <path
+          d={MOUNTAINS}
+          fill="hsl(var(--gold))"
+          className="animate-summit-mountain"
+          style={{ animationDelay: '260ms' }}
+        />
+        {/* Σημαία στην κορυφή: «καρφώνεται» τελευταία. */}
+        <g className="animate-flag-pop" style={{ animationDelay: '520ms', transformOrigin: `${SUMMIT.x}px ${SUMMIT.y}px` }}>
+          <rect x={SUMMIT.x} y={SUMMIT.y - 12} width="1.6" height="12" fill="hsl(var(--gold))" />
+          <path d={`M${SUMMIT.x + 1.6} ${SUMMIT.y - 12} l7 2.5 l-7 2.5 z`} fill="hsl(var(--gold))" />
         </g>
       </svg>
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-      <style>{`
-        @keyframes rung-celebration-fill {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .rung-celebration-piece {
-          opacity: 0;
-          animation: rung-celebration-fill 200ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .rung-celebration-piece {
-            animation-duration: 1ms;
-            animation-delay: 0ms !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

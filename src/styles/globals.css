@@ -233,4 +233,94 @@
       animation: none;
     }
   }
+
+  /*
+   * «Θεατρικό» λεξιλόγιο (M3) — για τις λίγες μεγάλες στιγμές: αλλαγή
+   * σελίδας, ρεκόρ. Ίδιο πνεύμα με πάνω (καμία μεμονωμένη κίνηση >600ms,
+   * ποτέ μπλοκάρει input), αλλά εδώ επιτρέπεται μια πιο σκηνοθετημένη,
+   * επικαλυπτόμενη ακολουθία — π.χ. η γιορτή ρεκόρ, που συνολικά δεν
+   * ξεπερνά ποτέ τα 900ms.
+   *  page-enter        → «άλλαξε η σελίδα» (ανεβαίνει + μεγαλώνει ελαφρά από 0.98)
+   *  glow-pulse         → «αυτός ο αριθμός μόλις άλλαξε» (προαιρετική κλάση)
+   *  summit-ring-draw   → ο δακτύλιος της σφραγίδας «σχεδιάζεται»
+   *  summit-mountain-rise → η οροσειρά γεμίζει
+   *  flag-pop           → η σημαία «καρφώνεται» στην κορυφή
+   */
+  @keyframes page-enter {
+    from { transform: translateY(10px) scale(0.98); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  .animate-page-enter {
+    animation: page-enter 420ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  }
+
+  /* Έμφαση αριθμού όταν αλλάζει τιμή — opt-in, το στοιχείο (π.χ. δίπλα σε
+     useCountUp) την παίρνει μόνο τη στιγμή της αλλαγής, όχι μόνιμα. */
+  @keyframes glow-pulse {
+    0% { text-shadow: 0 0 0 hsl(var(--gold) / 0); }
+    35% { text-shadow: 0 0 14px hsl(var(--gold) / 0.55); }
+    100% { text-shadow: 0 0 0 hsl(var(--gold) / 0); }
+  }
+  .animate-glow-pulse {
+    animation: glow-pulse 560ms ease-out;
+  }
+
+  /* Summit celebration (RungCelebration) — ίδιες αναλογίες με το brand mark
+     (Logo.tsx: δακτύλιος r=26 σε viewBox 64x64), άρα σταθερή περιφέρεια. */
+  @keyframes summit-ring-draw {
+    from { stroke-dashoffset: var(--ring-circumference, 163.36); }
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes summit-mountain-rise {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes flag-pop {
+    0% { opacity: 0; transform: scale(0) translateY(2px); }
+    65% { opacity: 1; transform: scale(1.3) translateY(-1px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .animate-summit-ring {
+    animation: summit-ring-draw 380ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  }
+  .animate-summit-mountain {
+    animation: summit-mountain-rise 320ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  }
+  .animate-flag-pop {
+    animation: flag-pop 260ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  }
+
+  /* Στατική χρυσή λάμψη — η ΜΟΝΗ κίνηση της γιορτής που επιτρέπεται με
+     reduced-motion (βλ. media query πιο κάτω)· by default ανενεργή. */
+  @keyframes summit-flash {
+    0% { opacity: 0; }
+    30% { opacity: 0.6; }
+    100% { opacity: 0; }
+  }
+  .animate-summit-flash {
+    animation: none;
+    opacity: 0;
+    background: radial-gradient(circle, hsl(var(--gold) / 0.9), transparent 70%);
+  }
+
+  @keyframes theatrical-reduced-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Προσβασιμότητα: το θεατρικό λεξιλόγιο καταρρέει σε ένα απλό, σύντομο
+     fade — καμία μετατόπιση/κλιμάκωση/draw, ποτέ κενή ανατροφοδότηση. Η
+     γιορτή ρεκόρ κρατά μόνο μια στατική χρυσή λάμψη. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-page-enter,
+    .animate-glow-pulse,
+    .animate-summit-ring,
+    .animate-summit-mountain,
+    .animate-flag-pop {
+      animation: theatrical-reduced-fade 150ms ease-out both;
+    }
+    .animate-summit-flash {
+      animation: summit-flash 500ms ease-out;
+    }
+  }
 }

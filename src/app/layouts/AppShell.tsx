@@ -41,11 +41,11 @@ export function AppShell() {
         >
           <Suspense fallback={<PageFallback />}>
             {/*
-              `key={pathname}` ξαναπαίζει την είσοδο σε κάθε πλοήγηση: το
-              περιεχόμενο ανεβαίνει (ανάβαση), δεν αναβοσβήνει. Χωρίς αυτό οι
-              σελίδες «κόβονταν» — σωστό αλλά άψυχο.
+              Θεατρική είσοδος σελίδας (M3): το περιεχόμενο ανεβαίνει +
+              μεγαλώνει ελαφρά από 0.98 σε κάθε πλοήγηση (key={pathname}) —
+              premium, χωρίς layout shift, καταρρέει σε fade με reduced-motion.
             */}
-            <div key={pathname} className="animate-rise-in">
+            <div key={pathname} className="animate-page-enter">
               <Outlet />
             </div>
           </Suspense>
