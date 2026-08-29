@@ -211,6 +211,58 @@ async function pushInBatches(changes: SyncChange[]): Promise<void> {
 
 /* ─────────── Pull ─────────── */
 
+type SyncRow = Record<string, unknown>;
+
+/*
+ * Τρεις πίνακες έχουν ΔΕΥΤΕΡΕΥΟΝ unique index πέρα από το PK (schema.ts):
+ * app_settings &user_id, user_skill_progress &[user_id+skill_id],
+ * body_metrics &[user_id+date]. Κάθε συσκευή φτιάχνει το δικό της
+ * app_settings με ΤΥΧΑΙΟ id (bootstrap) και μετά το login το δένει στο ίδιο
+ * user_id — άρα δύο συσκευές = δύο rows, ίδιο user_id, άλλο id. Ένα τυφλό
+ * bulkPut του ξένου row έσπαγε το unique index (ConstraintError) κι ΟΛΟ το
+ * pull transaction αποτύγχανε για πάντα → ο cursor δεν προχωρούσε ποτέ →
+ * μόνιμο κόλλημα του sync και στις δύο συσκευές. Λύση: ντετερμινιστικός
+ * νικητής (νεότερο updated_at· ισοπαλία → μικρότερο id λεξικογραφικά) — ίδιος
+ * σε ΚΑΘΕ συσκευή, άρα συγκλίνουν στο ίδιο row χωρίς να σπάει ο index.
+ */
+const UNIQUE_DUP_FINDER: Record<
+  string,
+  (t: AnyTable, r: SyncRow) => Promise<SyncRow | undefined>
+> = {
+  app_settings: (t, r) => t.where('user_id').equals(r.user_id as string).first(),
+  user_skill_progress: (t, r) =>
+    t.where('[user_id+skill_id]').equals([r.user_id, r.skill_id] as [string, string]).first(),
+  body_metrics: (t, r) =>
+    t.where('[user_id+date]').equals([r.user_id, r.date] as [string, string]).first(),
+};
+
+function incomingWins(incoming: SyncRow, existing: SyncRow): boolean {
+  const iu = String(incoming.updated_at ?? '');
+  const eu = String(existing.updated_at ?? '');
+  if (iu !== eu) return iu > eu;
+  return String(incoming.id) < String(existing.id);
+}
+
+async function putResolvingUnique(
+  table: AnyTable,
+  rows: SyncRow[],
+  findDup: (t: AnyTable, r: SyncRow) => Promise<SyncRow | undefined>,
+): Promise<void> {
+  for (const incoming of rows) {
+    const existing = await findDup(table, incoming);
+    if (existing && existing.id !== incoming.id) {
+      // Διαφορετικό id, ίδιο unique key: κράτα μόνο τον νικητή.
+      if (incomingWins(incoming, existing)) {
+        await table.delete(existing.id as string);
+        await table.put(incoming);
+      }
+      // αλλιώς ο τοπικός νικά — μην γράψεις το incoming (θα έσπαγε τον index).
+    } else {
+      await table.put(incoming);
+    }
+  }
+}
+
 async function applyPulledChanges(changes: SyncChange[]): Promise<void> {
   const tables = userDataTablesGeneric();
   const touched = changes
@@ -224,7 +276,12 @@ async function applyPulledChanges(changes: SyncChange[]): Promise<void> {
       // Tombstones (deleted=1) περνάνε κανονικά — το payload κουβαλάει ήδη
       // deleted_at, ο τοπικός κώδικας διαβάζει soft-deletes παντού.
       if (!table || rows.length === 0) continue;
-      await table.bulkPut(rows as Record<string, unknown>[]);
+      const findDup = UNIQUE_DUP_FINDER[tbl];
+      if (findDup) {
+        await putResolvingUnique(table, rows as SyncRow[], findDup);
+      } else {
+        await table.bulkPut(rows as SyncRow[]);
+      }
     }
   });
 }
@@ -278,7 +335,35 @@ function handleSyncError(err: unknown): void {
   setStatus({ state: 'offline' });
 }
 
-let inFlight = false;
+let running = false;
+let syncChain: Promise<void> = Promise.resolve();
+
+/*
+ * Ένας μόνο κύκλος sync τη φορά — και σε σειρά. Χωρίς αυτό, ένα login
+ * (fullResync) μπορούσε να τρέξει ΤΑΥΤΟΧΡΟΝΑ με ένα auto-sync (syncNow): και τα
+ * δύο έγραφαν cursors και το `finally` του ενός καθάριζε το guard του άλλου →
+ * χαμένα/διπλά rows. Τα coalesce ticks (περιοδικό/debounce) απλώς παραλείπονται
+ * όσο τρέχει κάτι· το login ΠΟΤΕ δεν παραλείπεται — μπαίνει στην ουρά.
+ */
+async function runExclusive(
+  work: () => Promise<void>,
+  opts: { coalesce: boolean },
+): Promise<void> {
+  if (opts.coalesce && running) return;
+  const prev = syncChain;
+  let release!: () => void;
+  syncChain = new Promise<void>((r) => {
+    release = r;
+  });
+  await prev;
+  running = true;
+  try {
+    await work();
+  } finally {
+    running = false;
+    release();
+  }
+}
 
 /** Κανονικός κύκλος: incremental push (5' overlap) + πλήρες pull-drain. */
 export async function syncNow(): Promise<void> {
@@ -286,8 +371,10 @@ export async function syncNow(): Promise<void> {
     setStatus({ state: 'signed-out' });
     return;
   }
-  if (inFlight) return;
-  inFlight = true;
+  return runExclusive(syncNowInner, { coalesce: true });
+}
+
+async function syncNowInner(): Promise<void> {
   setStatus({ state: 'syncing' });
   try {
     const cursors = readCursors();
@@ -307,8 +394,6 @@ export async function syncNow(): Promise<void> {
     setStatus({ state: 'idle', lastSyncAt: finishedAt });
   } catch (err) {
     handleSyncError(err);
-  } finally {
-    inFlight = false;
   }
 }
 
@@ -323,7 +408,10 @@ export async function fullResync(order: 'push-first' | 'pull-first' = 'push-firs
     setStatus({ state: 'signed-out' });
     return;
   }
-  inFlight = true;
+  return runExclusive(() => fullResyncInner(order), { coalesce: false });
+}
+
+async function fullResyncInner(order: 'push-first' | 'pull-first'): Promise<void> {
   setStatus({ state: 'syncing' });
   try {
     /*
@@ -348,8 +436,6 @@ export async function fullResync(order: 'push-first' | 'pull-first' = 'push-firs
     setStatus({ state: 'idle', lastSyncAt: finishedAt });
   } catch (err) {
     handleSyncError(err);
-  } finally {
-    inFlight = false;
   }
 }
 

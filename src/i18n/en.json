@@ -586,7 +586,8 @@
     "adminCode": "Admin code",
     "adminCodePlaceholder": "Enter the admin code",
     "adminClaimed": "You are now an admin.",
-    "errorBadCode": "Wrong code."
+    "errorBadCode": "Wrong code.",
+    "continueWithGoogle": "Continue with Google"
   },
   "admin": {
     "title": "Admin",

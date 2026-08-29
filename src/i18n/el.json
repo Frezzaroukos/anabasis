@@ -586,7 +586,8 @@
     "adminCode": "Κωδικός admin",
     "adminCodePlaceholder": "Βάλε τον κωδικό admin",
     "adminClaimed": "Είσαι πλέον admin.",
-    "errorBadCode": "Λάθος κωδικός."
+    "errorBadCode": "Λάθος κωδικός.",
+    "continueWithGoogle": "Συνέχισε με Google"
   },
   "admin": {
     "title": "Διαχείριση",

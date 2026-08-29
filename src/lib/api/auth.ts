@@ -13,6 +13,9 @@ import {
   readStoredAuth,
   AUTH_CHANGED_EVENT,
   ApiError,
+  setPendingOAuthToken,
+  completeOAuthLogin,
+  clearPendingOAuthToken,
   type StoredAuth,
 } from './client';
 import { migrateProfileUserId } from '../db/queries';
@@ -88,4 +91,34 @@ export async function logout(): Promise<void> {
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await api.changePassword(currentPassword, newPassword);
+}
+
+const OAUTH_FRAGMENT_RE = /(?:^#|&)oauth=([^&]+)/;
+
+/**
+ * Boot-time (App.tsx, δίπλα στο initAutoSync): αν το URL fragment κουβαλάει
+ * `#oauth=<token>` (μετά το redirect από server oauth/google/callback), το
+ * καθαρίζει ΑΜΕΣΩΣ από τη γραμμή διεύθυνσης/ιστορικό — ό,τι κι αν ακολουθήσει
+ * — μετά ολοκληρώνει το login: /api/me για το account, StoredAuth, και το
+ * ΙΔΙΟ bind+resync flow με login/signup. No-op χωρίς fragment.
+ */
+export async function initOAuthFragment(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const match = OAUTH_FRAGMENT_RE.exec(window.location.hash);
+  if (!match) return;
+
+  const token = decodeURIComponent(match[1]!);
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  setPendingOAuthToken(token);
+  try {
+    const me = await api.me();
+    const account: Account = { id: me.id, email: me.email, role: me.role, created_at: me.created_at };
+    completeOAuthLogin(token, account);
+    // pull-first — ίδια λογική με το κανονικό login (server API-CONTRACT.md).
+    await bindLocalProfileAndResync(account.id, 'pull-first');
+  } catch (err) {
+    clearPendingOAuthToken();
+    console.error('[oauth]', err);
+  }
 }

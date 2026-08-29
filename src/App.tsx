@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '@/app/routes';
 import { bootstrapDB } from '@/lib/db';
 import { initAutoSync } from '@/lib/sync';
+import { initOAuthFragment } from '@/lib/api/auth';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -11,8 +12,12 @@ export default function App() {
   useEffect(() => {
     let teardownAutoSync: (() => void) | undefined;
     bootstrapDB()
-      .then(() => {
+      .then(async () => {
         setReady(true);
+        // OAuth-redirect fragment (αν υπάρχει, βλ. src/lib/api/auth.ts) ΠΡΙΝ
+        // το auto-sync boot-trigger, ώστε το isLoggedIn() check του
+        // initAutoSync να δει ήδη τον συνδεδεμένο λογαριασμό.
+        await initOAuthFragment();
         // Boot-trigger του auto-sync — no-op αν δεν υπάρχει συνδεδεμένος
         // λογαριασμός (βλ. src/lib/sync). ΠΡΕΠΕΙ να τρέξει μετά το bootstrap,
         // αλλιώς τα Dexie hooks θα έπιαναν και τα seed-writes του boot. Το

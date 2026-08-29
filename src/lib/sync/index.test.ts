@@ -272,3 +272,39 @@ describe('epoch (restore-desync protection)', () => {
     expect(JSON.parse(localStorage.getItem('anabasis.sync')!)).toMatchObject({ epoch: 'bbb' });
   });
 });
+
+describe('two-device unique-index convergence (δεν κολλάει το sync)', () => {
+  it('pull ξένου app_settings (ίδιο user_id, άλλο id) ΔΕΝ σκάει — συγκλίνει στον νικητή', async () => {
+    // Το bootstrap έχει ήδη φτιάξει ΤΟΠΙΚΟ app_settings με τυχαίο id για το
+    // DEFAULT_USER_ID. Ο server στέλνει ΑΛΛΟ row: ίδιο user_id, άλλο id, νεότερο.
+    const localBefore = await db.app_settings.where('user_id').equals(DEFAULT_USER_ID).first();
+    expect(localBefore).toBeTruthy();
+    const foreign = {
+      ...localBefore,
+      id: 'device-A-settings-id',
+      updated_at: '2099-01-01T00:00:00.000Z', // νεότερο → πρέπει να νικήσει
+    };
+    stubFetch({
+      pull: (call) => {
+        const cursor = (JSON.parse(String(call.init?.body)) as { cursor: number }).cursor;
+        if (cursor === 0)
+          return jsonResponse({
+            changes: [{ tbl: 'app_settings', rows: [foreign] }],
+            cursor: 5,
+            has_more: false,
+            epoch: 'e1',
+          });
+        return jsonResponse({ changes: [], cursor: 5, has_more: false, epoch: 'e1' });
+      },
+    });
+
+    // Δεν πρέπει να throw· ο cursor πρέπει να προχωρήσει (lastSyncAt τίθεται).
+    await fullResync('pull-first');
+
+    const all = await db.app_settings.where('user_id').equals(DEFAULT_USER_ID).toArray();
+    expect(all).toHaveLength(1); // ΕΝΑ row, όχι σπασμένος index
+    expect(all[0]!.id).toBe('device-A-settings-id'); // ο νεότερος νίκησε
+    const sync = JSON.parse(localStorage.getItem('anabasis.sync')!);
+    expect(sync.lastSyncAt).not.toBeNull(); // το sync ΟΛΟΚΛΗΡΩΘΗΚΕ
+  });
+})

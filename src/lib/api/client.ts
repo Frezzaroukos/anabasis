@@ -22,6 +22,7 @@ import type {
   AdminUser,
   AdminStats,
   HealthResponse,
+  OAuthProviders,
 } from './types';
 
 export * from './types';
@@ -64,6 +65,36 @@ function writeStoredAuth(auth: StoredAuth | null): void {
   globalThis.dispatchEvent?.(new CustomEvent(AUTH_CHANGED_EVENT, { detail: auth }));
 }
 
+/**
+ * OAuth-fragment flow (src/lib/api/auth.ts initOAuthFragment) μόνο: γράφει το
+ * token ΧΩΡΙΣ account και ΧΩΡΙΣ AUTH_CHANGED_EVENT — απλά ώστε το επόμενο
+ * request() να στείλει το Authorization header για το /api/me fetch που θα
+ * συμπληρώσει το account. `account: null` περνάει τον runtime-only έλεγχο του
+ * request() (διαβάζει μόνο `stored?.token`)· το πλήρες StoredAuth γράφεται
+ * στο completeOAuthLogin παρακάτω.
+ */
+export function setPendingOAuthToken(token: string): void {
+  try {
+    safeLocalStorage()?.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ token, account: null }),
+    );
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Ολοκληρώνει το OAuth-fragment flow: πλήρες StoredAuth + κανονικό
+ * AUTH_CHANGED_EVENT — ίδιο exit point με login/signup. */
+export function completeOAuthLogin(token: string, account: Account): void {
+  writeStoredAuth({ token, account });
+}
+
+/** Καθαρίζει ένα ημιτελές OAuth token (π.χ. το /api/me μετά το redirect απέτυχε). */
+export function clearPendingOAuthToken(): void {
+  writeStoredAuth(null);
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -80,6 +111,12 @@ function resolveBaseUrl(): string {
   if (fromEnv) return fromEnv;
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
   return isTauri ? 'http://localhost:8121/api' : '/api';
+}
+
+/** Πλήρες URL για "Sign in with Google" — browser navigation
+ * (`window.location.href = googleStart()`), ΟΧΙ fetch (302 redirect). */
+export function googleStart(): string {
+  return `${resolveBaseUrl()}/auth/oauth/google/start`;
 }
 
 interface RequestOptions {
@@ -103,10 +140,6 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
 
-  if (res.status === 401 && !opts.isAuthCall) {
-    writeStoredAuth(null);
-  }
-
   if (!res.ok) {
     let code = 'unknown_error';
     let message = res.statusText;
@@ -116,6 +149,12 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       if (errBody.message) message = errBody.message;
     } catch {
       /* κενό/μη-JSON σώμα σφάλματος */
+    }
+    // 401 = καθάρισε το session — ΕΚΤΟΣ αν είναι λάθος τρέχων κωδικός
+    // (change_password επιστρέφει 401/bad_credentials· δεν πρέπει να σε βγάζει
+    // έξω) ή αν είναι το ίδιο το login/signup (isAuthCall).
+    if (res.status === 401 && !opts.isAuthCall && code !== 'bad_credentials') {
+      writeStoredAuth(null);
     }
     throw new ApiError(res.status, code, message);
   }
@@ -199,5 +238,9 @@ export const api = {
 
   health(): Promise<HealthResponse> {
     return request<HealthResponse>('/health');
+  },
+
+  oauthProviders(): Promise<OAuthProviders> {
+    return request<OAuthProviders>('/auth/oauth/providers');
   },
 };
