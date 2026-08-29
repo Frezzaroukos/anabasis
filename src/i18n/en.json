@@ -117,7 +117,10 @@
     "thisWeek": "this week",
     "increase": "Increase",
     "decrease": "Decrease",
-    "emptyHint": "Build a reusable template once, start it any time."
+    "emptyHint": "Build a reusable template once, start it any time.",
+    "fromTemplate": "From template",
+    "templatesHint": "Pick a ready-made routine — you can tweak it after.",
+    "exercisesShort": "exercises"
   },
   "history": {
     "title": "History",
@@ -613,5 +616,31 @@
     "copied": "Copied!",
     "disableConfirmTitle": "Disable this account?",
     "enableConfirmTitle": "Enable this account?"
+  },
+  "templates": {
+    "fullBody5x5": {
+      "name": "Full-Body 5×5",
+      "desc": "The classic strength starter — squat, bench, row, press, deadlift."
+    },
+    "ppl": {
+      "name": "Push / Pull / Legs",
+      "desc": "Six-day split — each muscle group hit twice a week."
+    },
+    "upperLower": {
+      "name": "Upper / Lower",
+      "desc": "Four days, balanced upper- and lower-body sessions."
+    },
+    "calisthenics": {
+      "name": "Calisthenics Foundations",
+      "desc": "Bodyweight basics toward your first skills — pulls, dips, holds."
+    },
+    "beginnerBarbell": {
+      "name": "Beginner Barbell",
+      "desc": "Three lifts, three days — the simplest way to start."
+    },
+    "dumbbell3day": {
+      "name": "3-Day Dumbbell",
+      "desc": "Everything with a pair of dumbbells — home-friendly."
+    }
   }
 }

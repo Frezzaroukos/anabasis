@@ -117,7 +117,10 @@
     "thisWeek": "αυτή την εβδομάδα",
     "increase": "Αύξηση",
     "decrease": "Μείωση",
-    "emptyHint": "Φτιάξε ένα επαναχρησιμοποιήσιμο πρότυπο μία φορά, ξεκίνα το όποτε θες."
+    "emptyHint": "Φτιάξε ένα επαναχρησιμοποιήσιμο πρότυπο μία φορά, ξεκίνα το όποτε θες.",
+    "fromTemplate": "Από πρότυπο",
+    "templatesHint": "Διάλεξε έτοιμη ρουτίνα — την προσαρμόζεις μετά.",
+    "exercisesShort": "ασκήσεις"
   },
   "history": {
     "title": "Ιστορικό",
@@ -613,5 +616,31 @@
     "copied": "Αντιγράφηκε!",
     "disableConfirmTitle": "Απενεργοποίηση αυτού του λογαριασμού;",
     "enableConfirmTitle": "Ενεργοποίηση αυτού του λογαριασμού;"
+  },
+  "templates": {
+    "fullBody5x5": {
+      "name": "Full-Body 5×5",
+      "desc": "Ο κλασικός starter δύναμης — squat, bench, row, press, deadlift."
+    },
+    "ppl": {
+      "name": "Push / Pull / Legs",
+      "desc": "Split 6 ημερών — κάθε μυϊκή ομάδα δύο φορές τη βδομάδα."
+    },
+    "upperLower": {
+      "name": "Upper / Lower",
+      "desc": "Τέσσερις μέρες, ισορροπημένο πάνω/κάτω σώμα."
+    },
+    "calisthenics": {
+      "name": "Θεμέλια Calisthenics",
+      "desc": "Βασικά με το σώμα σου προς τα πρώτα skills — έλξεις, dips, holds."
+    },
+    "beginnerBarbell": {
+      "name": "Barbell για αρχάριους",
+      "desc": "Τρεις ασκήσεις, τρεις μέρες — ο πιο απλός τρόπος να ξεκινήσεις."
+    },
+    "dumbbell3day": {
+      "name": "3ήμερο με αλτήρες",
+      "desc": "Όλα με ένα ζευγάρι αλτήρες — για το σπίτι."
+    }
   }
 }

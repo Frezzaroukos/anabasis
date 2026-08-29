@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Copy, Play, Plus, Trash2, History, ListChecks } from 'lucide-react';
+import { Copy, Play, Plus, Trash2, History, ListChecks, LayoutTemplate } from 'lucide-react';
 import {
   createProgram,
   duplicateProgram,
@@ -11,7 +11,9 @@ import {
   renameProgram,
   softDeleteProgram,
   startWorkoutFromProgram,
+  createProgramFromTemplate,
 } from '@/lib/db/queries';
+import { PROGRAM_TEMPLATES } from '@/lib/programTemplates';
 import { db } from '@/lib/db';
 import type { ActivityKind } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
@@ -59,6 +61,24 @@ export function ProgramsPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+
+  const onPickTemplate = async (templateId: string) => {
+    if (busy) return;
+    const tpl = PROGRAM_TEMPLATES.find((x) => x.id === templateId);
+    if (!tpl) return;
+    setBusy(true);
+    try {
+      const p = await createProgramFromTemplate({
+        name: t(tpl.nameKey),
+        exercises: tpl.exercises,
+      });
+      setTemplatesOpen(false);
+      navigate(`/programs/${p.id}`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onCreate = async () => {
     const trimmed = name.trim();
@@ -123,12 +143,46 @@ export function ProgramsPage() {
           </p>
         </div>
         {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" />
-            {t('programs.newProgram')}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setTemplatesOpen((v) => !v)}>
+              <LayoutTemplate className="h-4 w-4" />
+              {t('programs.fromTemplate')}
+            </Button>
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4" />
+              {t('programs.newProgram')}
+            </Button>
+          </div>
         )}
       </header>
+
+      {templatesOpen && (
+        <section className="animate-rise-in space-y-2 rounded-lg bg-elevated p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {t('programs.templatesHint')}
+          </p>
+          <ul className="grid gap-2">
+            {PROGRAM_TEMPLATES.map((tpl) => (
+              <li key={tpl.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onPickTemplate(tpl.id)}
+                  className="w-full rounded-lg bg-card p-3 text-left transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium">{t(tpl.nameKey)}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {tpl.exercises.length} {t('programs.exercisesShort')} · {tpl.daysPerWeek}×
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t(tpl.descriptionKey)}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {creating && (
         <section className="animate-rise-in space-y-3 rounded-lg bg-elevated p-4">

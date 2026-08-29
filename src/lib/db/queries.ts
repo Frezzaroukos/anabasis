@@ -1140,6 +1140,53 @@ export async function createProgram(
   return p;
 }
 
+/**
+ * Φτιάχνει πρόγραμμα από έτοιμο πρότυπο (programTemplates.ts). Οι ασκήσεις του
+ * προτύπου δίνονται με ΟΝΟΜΑ: αντιστοιχίζονται case-insensitive στη βιβλιοθήκη
+ * σου, κι ό,τι λείπει δημιουργείται ως δική σου άσκηση. Κάθε κλήση φτιάχνει
+ * ΝΕΟ πρόγραμμα (fork) — δεν κάνει dedupe, ώστε να μπορείς να το τροποποιήσεις
+ * ελεύθερα χωρίς να πειράξεις το πρότυπο.
+ */
+export async function createProgramFromTemplate(
+  template: {
+    name: string;
+    exercises: {
+      name: string;
+      target_sets: number;
+      target_reps: number | null;
+      target_hold_seconds?: number;
+      set_type?: SetType;
+      group_key?: string | null;
+    }[];
+  },
+): Promise<Program> {
+  const program = await createProgram(template.name, 'strength');
+
+  // Χάρτης ονόματος→id από τις ΔΙΚΕΣ σου ασκήσεις (scoped, όχι db.exercises.toArray()).
+  const byName = new Map(
+    (await listAllExercises()).map((e) => [e.name.trim().toLowerCase(), e.id]),
+  );
+
+  for (const te of template.exercises) {
+    const key = te.name.trim().toLowerCase();
+    let exerciseId = byName.get(key);
+    if (!exerciseId) {
+      const created = await createExercise({ name: te.name });
+      exerciseId = created.id;
+      byName.set(key, exerciseId);
+    }
+    await addProgramExercise(program.id, {
+      exercise_id: exerciseId,
+      target_sets: te.target_sets,
+      target_reps: te.target_reps,
+      target_hold_seconds: te.target_hold_seconds ?? null,
+      set_type: te.set_type,
+      group_key: te.group_key ?? null,
+    });
+  }
+  return program;
+}
+
 export async function setProgramTarget(
   programId: string,
   perWeek: number | null,
