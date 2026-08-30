@@ -28,7 +28,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -292,6 +292,20 @@ export class AnabasisDB extends Dexie {
           w.program_day_id ??= null;
         });
       });
+
+    /**
+     * v13 — διάσταση βάρους στα skills (docs/ARCHITECTURE-V4.md §4): ένα βήμα
+     * skill και μια ολοκλήρωση μπορούν να κουβαλάνε βάρος. Μη-indexed πεδία →
+     * δεν χρειάζεται δήλωση stores· backfill `??= null` για συνέπεια.
+     */
+    this.version(13).upgrade(async (tx) => {
+      await tx.table('skill_steps').toCollection().modify((st) => {
+        st.added_weight_kg ??= null;
+      });
+      await tx.table('user_skill_step_completions').toCollection().modify((c) => {
+        c.added_weight_kg ??= null;
+      });
+    });
   }
 }
 

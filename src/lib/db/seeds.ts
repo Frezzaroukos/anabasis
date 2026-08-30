@@ -788,6 +788,7 @@ export const SEED_SKILL_STEPS: SkillStep[] = SEED_SKILLS.flatMap((skill, i) => {
       target_type: def.target_type,
       target_value: def.target_value,
       target_unit: def.target_unit,
+      added_weight_kg: null,
       benchmark_video_url: null,
       prerequisites: prevId ? [prevId] : [],
       created_at: NOW,

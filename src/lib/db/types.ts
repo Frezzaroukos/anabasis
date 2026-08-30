@@ -259,6 +259,9 @@ export interface SkillStep {
   target_type: SkillTargetType;
   target_value: number;
   target_unit: string;
+  /** v13: προαιρετικό βάρος στόχου — «full front lever + 5kg». Μία ακόμα διάσταση
+   *  δυσκολίας πέρα από τον μοχλό (leverage steps): ανεβάζεις με βάρος σε διάφορα σημεία. */
+  added_weight_kg: number | null;
   benchmark_video_url: string | null;
   prerequisites: UUID[];
   created_at: ISOTimestamp;
@@ -283,6 +286,8 @@ export interface UserSkillStepCompletion {
   user_id: UUID;
   skill_step_id: UUID;
   achieved_value: number;
+  /** v13: το βάρος που χρησιμοποίησες όταν το πέτυχες (null = bodyweight) */
+  added_weight_kg: number | null;
   achieved_at: ISOTimestamp;
   workout_id: UUID | null;
   notes: string | null;
