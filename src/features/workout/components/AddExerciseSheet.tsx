@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { useExercises } from '@/hooks/useExercises';
+import { queries } from '@/lib/db';
 import type { Exercise, ExerciseCategory } from '@/lib/db/types';
 import { CATEGORY_DOT } from '../utils';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ const CATEGORY_ORDER: ExerciseCategory[] = ['push', 'pull', 'legs', 'core', 'oth
 export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: AddExerciseSheetProps) {
   const { t } = useTranslation();
   const [q, setQ] = useState('');
+  const [creating, setCreating] = useState(false);
   const all = useExercises();
 
   const grouped = useMemo(() => {
@@ -39,6 +41,28 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
 
   const totalShown = grouped.reduce((acc, g) => acc + g.items.length, 0);
 
+  // Δεν προσφέρουμε «Χρήση <name>» αν υπάρχει ήδη ΑΚΡΙΒΩΣ αυτή η άσκηση —
+  // create-on-miss, όχι διπλότυπα. Ελέγχει σε ΟΛΕΣ τις ασκήσεις (όχι μόνο
+  // τις φιλτραρισμένες), γιατί μπορεί να είναι ήδη στο workout (excluded).
+  const trimmedQuery = q.trim();
+  const hasExactMatch = all.some(
+    (e) => e.name.toLowerCase() === trimmedQuery.toLowerCase(),
+  );
+  const canCreate = trimmedQuery !== '' && !hasExactMatch;
+
+  const onCreate = async () => {
+    if (!canCreate || creating) return;
+    setCreating(true);
+    try {
+      const created = await queries.createExercise({ name: trimmedQuery });
+      onPick(created);
+      onClose();
+      setQ('');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <BottomSheet open={open} onClose={onClose} title={t('workout.addExercise')}>
       <div className="px-4 pb-2">
@@ -48,13 +72,29 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={t('workout.searchExercises')}
+            placeholder={t('workout.searchOrTypeExercise')}
             className="pl-9"
           />
         </div>
       </div>
 
-      {totalShown === 0 ? (
+      {/* Ελεύθερη καταχώρηση — ο,τιδήποτε έγραψες, όχι μόνο επιλογή από
+          κλειδωμένη λίστα. Suggestions φαίνονται από κάτω ΚΑΘΩΣ γράφεις. */}
+      {canCreate && (
+        <div className="px-4 pb-2">
+          <button
+            type="button"
+            disabled={creating}
+            onClick={() => void onCreate()}
+            className="flex w-full items-center gap-2 rounded-md border border-dashed border-primary/50 bg-primary/5 px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">{t('workout.useTyped', { name: trimmedQuery })}</span>
+          </button>
+        </div>
+      )}
+
+      {totalShown === 0 && !canCreate ? (
         <p className="p-6 text-center text-sm text-muted-foreground">
           {t('workout.noResults')}
         </p>

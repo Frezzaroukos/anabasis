@@ -1,10 +1,13 @@
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronDown, ChevronUp, CircleCheck, LineChart, Pencil, Trash2 } from 'lucide-react';
 import type { GoalProgress } from '@/lib/db/goals';
 import type { Goal } from '@/lib/db/types';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/utils';
 import { goalTitle } from '../goalTitle';
+import { GoalProgramLink } from './GoalProgramLink';
 import { GoalRing } from './GoalRing';
 
 /**
@@ -39,18 +42,52 @@ export function GoalRow({
   const decimals = Number.isInteger(p.current) ? 0 : 1;
   const displayCurrent = useCountUp(p.current, 450, decimals);
 
+  // «Μόλις έγινε» pulse — ξεχωρίζει τη ΣΤΙΓΜΗ της επίτευξης από το μόνιμο
+  // χρυσό state που ακολουθεί. Χωρίς αυτό ο στόχος περνάει σε completed
+  // αθόρυβα, ίδιο dead feeling με ό,τι ζητήθηκε να διορθωθεί.
+  const wasCompletedRef = useRef(completed);
+  const [justCompleted, setJustCompleted] = useState(false);
+  useEffect(() => {
+    if (completed && !wasCompletedRef.current) {
+      setJustCompleted(true);
+      const timer = setTimeout(() => setJustCompleted(false), 600);
+      wasCompletedRef.current = completed;
+      return () => clearTimeout(timer);
+    }
+    wasCompletedRef.current = completed;
+  }, [completed]);
+
+  const isFrequencyGoal = p.goal.metric === 'sessions' && p.goal.period === 'week';
+
   return (
-    <li className="flex items-center gap-3 rounded-lg bg-card p-4">
+    <li
+      className={cn(
+        'flex items-center gap-3 rounded-lg bg-card p-4 transition-colors',
+        completed && 'ring-1 ring-gold/25',
+      )}
+    >
       <GoalRing ratio={p.ratio} completed={completed} />
       <div className="min-w-0 flex-1">
-        <p className={cn('truncate text-sm font-medium', completed && 'text-gold')}>
-          {p.goal.label ??
-            goalTitle(t, p.goal, {
-              activity: activityLabel(p.goal.activity_key),
-              exercise: exerciseName(p.goal.exercise_id),
-            })}
-          {completed && <span className="ml-1 text-gold">★</span>}
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className={cn('min-w-0 flex-1 truncate text-sm font-medium', completed && 'text-gold')}>
+            {p.goal.label ??
+              goalTitle(t, p.goal, {
+                activity: activityLabel(p.goal.activity_key),
+                exercise: exerciseName(p.goal.exercise_id),
+              })}
+          </p>
+          {completed && (
+            <span
+              className={cn(
+                'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-gold/10 px-1.5 py-0.5 text-[10px] font-semibold text-gold',
+                justCompleted && 'animate-glow-pulse',
+              )}
+            >
+              <CircleCheck className="h-3 w-3" aria-hidden />
+              {t('goals.achieved')}
+            </span>
+          )}
+        </div>
         <p className="mt-0.5 font-mono text-xs text-muted-foreground">
           {displayCurrent} / {p.target} {p.unit}
         </p>
@@ -63,6 +100,20 @@ export function GoalRow({
               ? t('goals.daysLeft', { count: p.daysLeft })
               : t('goals.lastDay')}
         </p>
+        {/* Στόχος πάνω σε συγκεκριμένη άσκηση → deep-link στο δικό της chart
+            (PR/e1RM/reps/hold), ώστε η πρόοδος να μη μένει «νησί». */}
+        {p.goal.exercise_id != null && (
+          <Link
+            to={`/progress?exerciseId=${p.goal.exercise_id}`}
+            className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            <LineChart className="h-3 w-3" aria-hidden />
+            {t('goals.viewProgress')}
+          </Link>
+        )}
+        {/* Στόχος συχνότητας/εβδομάδα → πρόγραμμα(τα) με δικό τους weekly
+            target, ίδιο εύρος αθλήματος (ή «όλα»). */}
+        {isFrequencyGoal && <GoalProgramLink goal={p.goal} />}
       </div>
       <div className="flex shrink-0 flex-col">
         <button

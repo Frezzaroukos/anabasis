@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link2, Plus, Weight, X } from 'lucide-react';
+import { Clock, Link2, Plus, Weight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
@@ -107,11 +107,16 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
       {/* Βάθος αντί για γραμμή: bg-card πάνω στο bg-background του γονιού — η
           κεφαλίδα «ανεβαίνει» χωρίς διακοσμητικό border-b. */}
       <header className="flex items-center justify-between gap-2 bg-card px-4 py-3">
-        <div className="min-w-0">
+        {/* Ο τίτλος είναι το headline — ο χρόνος είναι απλά ένα μικρό,
+            μουντό detail δίπλα του, ΟΧΙ κυρίαρχο ρολόι (owner feedback). */}
+        <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">
             {t('workout.active')}
           </p>
-          <SessionTimer startedAt={workout.started_at} />
+          <span className="flex shrink-0 items-center gap-1 text-muted-foreground/70">
+            <Clock className="h-3 w-3" aria-hidden />
+            <SessionTimer startedAt={workout.started_at} />
+          </span>
         </div>
         <Button
           variant="destructive"

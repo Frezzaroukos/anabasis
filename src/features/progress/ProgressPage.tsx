@@ -29,14 +29,23 @@ import { cn } from '@/lib/utils';
 import {
   ACCENT_FILL_ID,
   ACTIVE_DOT,
+  CHART_CURSOR,
   CHART_GOLD,
   CHART_GRID,
   CHART_STROKE,
   CHART_STROKE_WIDTH,
   CHART_TICK,
   ChartGradientDefs,
+  REFERENCE_LINE_DASH,
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
+import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
+import {
+  CHART_RANGE_DAYS,
+  tickFormatterFor,
+  tickIntervalFor,
+  type ChartRangeKey,
+} from '@/components/charts/timeRange';
 import { categoryDotClass } from '@/features/exercises/utils';
 import { ActivityProgress } from './ActivityProgress';
 
@@ -62,6 +71,8 @@ export function ProgressPage() {
   const [q, setQ] = useState('');
   const [exerciseId, setExerciseId] = useState<string | null>(null);
   const [metric, setMetric] = useState<Metric>('topWeight');
+  // Προεπιλογή 3M — αρκετά σημεία για τάση χωρίς να πνίγει τον άξονα.
+  const [range, setRange] = useState<ChartRangeKey>('3M');
 
   // Deep-link: ?exerciseId= από τη βιβλιοθήκη ασκήσεων → άνοιξε κατευθείαν
   // το chart, χωρίς να ξαναψάξει ο χρήστης το όνομα.
@@ -81,9 +92,10 @@ export function ProgressPage() {
     [],
     new Map<string, PersonalRecord[]>(),
   );
+  const rangeDays = CHART_RANGE_DAYS[range];
   const rawPoints = useLiveQuery(
-    () => (exerciseId ? getExerciseProgress(exerciseId, 365) : Promise.resolve([])),
-    [exerciseId],
+    () => (exerciseId ? getExerciseProgress(exerciseId, rangeDays) : Promise.resolve([])),
+    [exerciseId, rangeDays],
     [],
   );
 
@@ -216,21 +228,24 @@ export function ProgressPage() {
             </div>
           </div>
 
-          <div className="flex gap-1">
-            {(['topWeight', 'e1rm', 'volume'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMetric(m)}
-                className={cn(
-                  'rounded-md border border-border px-3 py-1 text-xs transition-colors',
-                  metric === m
-                    ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
-                    : 'hover:bg-elevated',
-                )}
-              >
-                {t(`progress.${m}`)}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex gap-1">
+              {(['topWeight', 'e1rm', 'volume'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMetric(m)}
+                  className={cn(
+                    'rounded-md border border-border px-3 py-1 text-xs transition-colors',
+                    metric === m
+                      ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
+                      : 'hover:bg-elevated',
+                  )}
+                >
+                  {t(`progress.${m}`)}
+                </button>
+              ))}
+            </div>
+            <TimeRangeSelector value={range} onChange={setRange} />
           </div>
 
           {withData.length < 2 ? (
@@ -256,7 +271,8 @@ export function ProgressPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
                     <XAxis
                       dataKey="date"
-                      tickFormatter={(d: string) => d.slice(5)}
+                      tickFormatter={tickFormatterFor(range)}
+                      interval={tickIntervalFor(range, withData.length)}
                       tick={CHART_TICK}
                       axisLine={false}
                       tickLine={false}
@@ -268,12 +284,13 @@ export function ProgressPage() {
                       tickLine={false}
                     />
                     <Tooltip
+                      cursor={CHART_CURSOR}
                       contentStyle={TOOLTIP_STYLE}
                       labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
                       formatter={(v: number) => [`${v} ${unit}`, t(`progress.${metric}`)]}
                     />
                     {prValue != null && (
-                      <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray="4 3">
+                      <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray={REFERENCE_LINE_DASH}>
                         <Label
                           value={`PR ${prValue} ${unit}`}
                           position="insideTopRight"

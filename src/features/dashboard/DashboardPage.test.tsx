@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { afterEach, describe, expect, it, beforeAll, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18next from 'i18next';
@@ -8,7 +8,14 @@ import { DashboardPage } from './DashboardPage';
 import { db } from '@/lib/db';
 import { setCurrentUserId } from '@/lib/db/session';
 import { SEED_EXERCISES, SEED_SKILLS, SEED_SKILL_STEPS } from '@/lib/db/seeds';
-import { achieveStep, addSet, localDay, saveBodyMetric, startWorkout } from '@/lib/db/queries';
+import {
+  achieveStep,
+  addSet,
+  endWorkout,
+  localDay,
+  saveBodyMetric,
+  startWorkout,
+} from '@/lib/db/queries';
 
 /**
  * Ίδιο fixture-πρότυπο με SettingsPage/SkillsPage tests: i18n merged με ένα
@@ -28,6 +35,9 @@ const dashboardEn = {
   latestWeight: 'Latest weight',
   latestBodyFat: 'Latest body fat',
   todayBalance: "Today's balance",
+  // Νέα κλειδιά του hero fallback ladder (W-D) — δεν είναι ακόμα στο
+  // πραγματικό en.json (report στο team lead), ίδιο πρότυπο local-override.
+  hero: { weekUnit: 'days this week', lastSessionUnit: 'days since last session' },
 };
 
 beforeAll(async () => {
@@ -35,7 +45,16 @@ beforeAll(async () => {
     await i18next.init({
       lng: 'en',
       resources: {
-        en: { translation: { ...en, dashboard: { ...en.dashboard, ...dashboardEn } } },
+        en: {
+          translation: {
+            ...en,
+            dashboard: {
+              ...en.dashboard,
+              ...dashboardEn,
+              hero: { ...en.dashboard.hero, ...dashboardEn.hero },
+            },
+          },
+        },
       },
       interpolation: { escapeValue: false },
     });
@@ -135,5 +154,61 @@ describe('DashboardPage — με δεδομένα', () => {
     // Οι θερμίδες βγήκαν εκτός scope· τα βήματα είναι η νέα μετρική σώματος.
     expect(screen.queryByText(dashboardEn.todayBalance)).toBeNull();
     expect(screen.getByText(/9,?200/)).toBeTruthy();
+  });
+});
+
+/**
+ * Hero fallback ladder (ARCHITECTURE-V4 §7 W-D, owner feedback «να μην
+ * καταρρέει το hero»): σερί → μέρες αυτή την εβδομάδα → τελευταία προπόνηση
+ * → μόνο χωρίς ΚΑΘΟΛΟΥ ιστορικό μένει γυμνός τίτλος. Σταθερή «σήμερα»
+ * (Πέμπτη 2026-08-20, εβδομάδα Δευτ 17 → Κυρ 23) ώστε το Δευτέρα-Κυριακή
+ * παράθυρο του WeekStrip/hero να είναι προβλέψιμο.
+ */
+describe('DashboardPage — hero fallback ladder', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('χωρίς ΚΑΘΟΛΟΥ ιστορικό: γυμνός τίτλος, κανένα από τα tier labels', async () => {
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
+    setCurrentUserId('dashboard-hero-empty');
+
+    render(wrap(<DashboardPage />));
+
+    await waitFor(() => expect(screen.getByText(en.dashboard.title)).toBeTruthy());
+    expect(screen.queryByText(en.dashboard.hero.streakUnit)).toBeNull();
+    expect(screen.queryByText(dashboardEn.hero.weekUnit)).toBeNull();
+    expect(screen.queryByText(dashboardEn.hero.lastSessionUnit)).toBeNull();
+  });
+
+  it('σερί σπασμένο αλλά προπόνηση μέσα στην εβδομάδα: δείχνει "μέρες αυτή την εβδομάδα"', async () => {
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
+    setCurrentUserId('dashboard-hero-week');
+
+    // Τρίτη (18/08) — μέσα στην τρέχουσα εβδομάδα, αλλά ΟΧΙ σήμερα/χθες:
+    // το σερί σπάει (0), η εβδομάδα όχι.
+    const w = await startWorkout('strength', '2026-08-18');
+    await endWorkout(w.id);
+
+    render(wrap(<DashboardPage />));
+
+    await waitFor(() => expect(screen.getByText(dashboardEn.hero.weekUnit)).toBeTruthy());
+    expect(screen.queryByText(en.dashboard.hero.streakUnit)).toBeNull();
+    expect(screen.queryByText(dashboardEn.hero.lastSessionUnit)).toBeNull();
+  });
+
+  it('καμία προπόνηση αυτή την εβδομάδα, αλλά υπάρχει ιστορικό: δείχνει "τελευταία προπόνηση"', async () => {
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
+    setCurrentUserId('dashboard-hero-last');
+
+    // Προηγούμενη εβδομάδα (10/08) — έξω από το τρέχον Δευτέρα-Κυριακή.
+    const w = await startWorkout('strength', '2026-08-10');
+    await endWorkout(w.id);
+
+    render(wrap(<DashboardPage />));
+
+    await waitFor(() => expect(screen.getByText(dashboardEn.hero.lastSessionUnit)).toBeTruthy());
+    expect(screen.queryByText(en.dashboard.hero.streakUnit)).toBeNull();
+    expect(screen.queryByText(dashboardEn.hero.weekUnit)).toBeNull();
   });
 });

@@ -38,13 +38,12 @@ export function WeeklyVolumeCard() {
           {t('dashboard.weeklyVolume')}
         </h2>
         {deltaPct != null && (
-          // Περισσότερος όγκος = πρόοδος, γι' αυτό πράσινο στην αύξηση εδώ —
-          // αντίθετη λογική απ' το βάρος στο BodyPage, όπου η αύξηση δεν είναι
-          // αναγκαστικά «καλή». Κάθε μετρική έχει το δικό της νόημα.
+          // Κατεύθυνση = βέλος, μέγεθος = mono νούμερο — μηδέν off-palette
+          // χρώμα (Carbon: no emerald/amber). Το βέλος ΕΙΝΑΙ το νόημα.
           <span
             className={cn(
               'flex items-center gap-1 font-mono text-xs',
-              delta > 0 ? 'text-emerald-400' : delta < 0 ? 'text-amber-400' : 'text-muted-foreground',
+              delta === 0 ? 'text-muted-foreground' : 'text-foreground',
             )}
           >
             {delta > 0 ? (

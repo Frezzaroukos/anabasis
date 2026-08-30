@@ -89,7 +89,10 @@ export function ExerciseCard({
       tempo: intensity.tempo,
     });
     celebrate(res.newPRs.length);
-    setAdding(false);
+    // Η φόρμα ΜΕΝΕΙ ανοιχτή μετά το save — ήρεμη, γρήγορη καταγραφή σετ-σετ
+    // χωρίς tap «Προσθήκη σετ» κάθε φορά (owner feedback). Το AddSetInline
+    // καθαρίζει τα reps/hold και κρατάει το βάρος — το κλείσιμο γίνεται μόνο
+    // με «Άκυρο».
     onSetLogged?.();
   };
 

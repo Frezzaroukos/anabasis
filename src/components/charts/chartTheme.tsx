@@ -24,23 +24,40 @@ export const CHART_GOLD = 'hsl(var(--gold))';
 export const ACCENT_FILL_ID = 'anabasis-accent-fill';
 export const GOLD_FILL_ID = 'anabasis-gold-fill';
 
-/** Active dot με glow — πέρασέ το στο activeDot των Line/Area. */
+/**
+ * Active dot με halo: δακτύλιος στο χρώμα του background γύρω από το σημείο
+ * ώστε να «ξεκολλάει» από τη γραμμή (Whoop/Hevy grade) + το ίδιο glow που
+ * είχε πριν. r=5 αντί για 4 — πιο ευδιάκριτο σε μικρή κινητή οθόνη.
+ */
 export const ACTIVE_DOT = {
-  r: 4,
-  strokeWidth: 0,
+  r: 5,
+  strokeWidth: 2,
+  stroke: 'hsl(var(--background))',
   style: { filter: 'drop-shadow(0 0 6px hsl(var(--primary) / 0.65))' },
 } as const;
+
+/** Κάθετη crosshair γραμμή στο hover — προαιρετικό, πέρασέ το στο Tooltip `cursor`. */
+export const CHART_CURSOR = {
+  stroke: 'hsl(var(--border))',
+  strokeWidth: 1,
+  strokeDasharray: '3 3',
+} as const;
+
+/** Διακεκομμένη γραμμή αναφοράς (π.χ. PR) — μία πηγή για το strokeDasharray. */
+export const REFERENCE_LINE_DASH = '4 3';
 
 /** Βάλε ΜΙΑ φορά μέσα στο chart (πριν τα Area/Line) τα κοινά gradients. */
 export function ChartGradientDefs() {
   return (
     <defs>
       <linearGradient id={ACCENT_FILL_ID} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.18} />
+        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.22} />
+        <stop offset="45%" stopColor="hsl(var(--primary))" stopOpacity={0.07} />
         <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
       </linearGradient>
       <linearGradient id={GOLD_FILL_ID} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="hsl(var(--gold))" stopOpacity={0.16} />
+        <stop offset="0%" stopColor="hsl(var(--gold))" stopOpacity={0.18} />
+        <stop offset="45%" stopColor="hsl(var(--gold))" stopOpacity={0.06} />
         <stop offset="100%" stopColor="hsl(var(--gold))" stopOpacity={0} />
       </linearGradient>
     </defs>
