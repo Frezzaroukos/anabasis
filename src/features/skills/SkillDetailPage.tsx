@@ -4,6 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Label,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   achieveStep,
   addSkillStep,
   getSkillWithSteps,
@@ -18,8 +29,49 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SkillIcon } from '@/components/SkillIcon';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import {
+  ACCENT_FILL_ID,
+  ACTIVE_DOT,
+  CHART_GOLD,
+  CHART_GRID,
+  CHART_STROKE,
+  CHART_STROKE_WIDTH,
+  CHART_TICK,
+  ChartGradientDefs,
+  TOOLTIP_STYLE,
+} from '@/components/charts/chartTheme';
 import { StepFormSheet } from './components/StepFormSheet';
 import { cn } from '@/lib/utils';
+
+interface LadderPoint {
+  date: string;
+  stepNumber: number;
+  stepName: string;
+  value: number;
+  unit: string;
+  addedWeight: number | null;
+}
+
+interface LadderDotProps {
+  cx?: number;
+  cy?: number;
+  payload?: LadderPoint;
+}
+
+/** Χρυσή κουκκίδα όταν το βήμα κατακτήθηκε ΜΕ επιπλέον βάρος — ίδιο σήμα με τα PR. */
+function LadderDot({ cx, cy, payload }: LadderDotProps) {
+  if (cx == null || cy == null) return null;
+  const weighted = payload?.addedWeight != null;
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={weighted ? 4 : 2}
+      fill={weighted ? CHART_GOLD : 'hsl(var(--primary))'}
+      strokeWidth={0}
+    />
+  );
+}
 
 /**
  * Η «σκάλα» ενός skill — το moat του Anabasis.
@@ -31,6 +83,7 @@ export function SkillDetailPage() {
   const { t } = useTranslation();
   const { skillId = '' } = useParams();
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [weightDraft, setWeightDraft] = useState<Record<string, string>>({});
   const [addingStep, setAddingStep] = useState(false);
   const [editingStep, setEditingStep] = useState<SkillStep | null>(null);
   const [deleteStepId, setDeleteStepId] = useState<string | null>(null);
@@ -56,6 +109,24 @@ export function SkillDetailPage() {
   const stepById = new Map(steps.map((s) => [s.id, s]));
   const unitSuggestions = [...new Set(steps.map((s) => s.target_unit))];
   const masteredSkill = progress?.status === 'mastered';
+
+  // Η πρόοδος της σκάλας στον χρόνο — πότε πέτυχες κάθε βήμα, με πόσο βάρος.
+  // Αυτό είναι ΤΟ chart του skill (owner feedback: progression πρέπει να φαίνεται).
+  const ladderPoints: LadderPoint[] = steps
+    .map((step) => {
+      const c = completions.get(step.id);
+      if (!c) return null;
+      return {
+        date: c.achieved_at.slice(0, 10),
+        stepNumber: step.step_number,
+        stepName: step.name,
+        value: c.achieved_value,
+        unit: step.target_unit,
+        addedWeight: c.added_weight_kg,
+      };
+    })
+    .filter((p): p is LadderPoint => p !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="space-y-6">
@@ -191,6 +262,7 @@ export function SkillDetailPage() {
                 <p className="text-xs text-muted-foreground">{step.description}</p>
                 <p className="mt-1 font-mono text-xs">
                   {t('skills.target')}: {step.target_value} {step.target_unit}
+                  {step.added_weight_kg != null && ` + ${step.added_weight_kg}kg`}
                 </p>
                 {/* Η αλυσίδα προαπαιτούμενων — γραμμική, ένα βήμα ξεκλειδώνει το επόμενο. */}
                 {step.prerequisites.length > 0 && (
@@ -208,6 +280,9 @@ export function SkillDetailPage() {
                     {t('skills.achieved')}:{' '}
                     <span className="font-mono">
                       {done.achieved_value} {step.target_unit}
+                      {done.added_weight_kg != null && (
+                        <span className="text-gold"> + {done.added_weight_kg}kg</span>
+                      )}
                     </span>
                     {' · '}
                     {new Date(done.achieved_at).toLocaleDateString()}
@@ -215,7 +290,7 @@ export function SkillDetailPage() {
                 )}
 
                 {isCurrent && (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <Input
                       type="number"
                       inputMode="decimal"
@@ -227,16 +302,35 @@ export function SkillDetailPage() {
                       }
                       aria-label={t('skills.achieved')}
                     />
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      className="h-9 w-28"
+                      placeholder={
+                        step.added_weight_kg != null
+                          ? String(step.added_weight_kg)
+                          : t('skills.addedWeightPlaceholder')
+                      }
+                      value={weightDraft[step.id] ?? ''}
+                      onChange={(e) =>
+                        setWeightDraft((d) => ({ ...d, [step.id]: e.target.value }))
+                      }
+                      aria-label={t('skills.addedWeight')}
+                    />
                     <Button
                       className="h-9"
                       onClick={() => {
                         const v = Number(draft[step.id] ?? step.target_value);
+                        const wRaw = weightDraft[step.id]?.trim();
+                        const w = wRaw ? Number(wRaw) : null;
                         void achieveStep(
                           skillId,
                           step.id,
                           Number.isFinite(v) ? v : step.target_value,
+                          w != null && Number.isFinite(w) ? w : null,
                         );
                         setDraft((d) => ({ ...d, [step.id]: '' }));
+                        setWeightDraft((d) => ({ ...d, [step.id]: '' }));
                       }}
                     >
                       {t('skills.markAchieved')}
@@ -270,6 +364,74 @@ export function SkillDetailPage() {
         })}
       </ol>
 
+      {/* Πρόοδος στον χρόνο — πότε πέτυχες κάθε βήμα, με πόσο βάρος. Χρυσή
+          κουκκίδα = weighted completion (ίδιο σήμα με PR), χρυσή γραμμή = κορυφή. */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">{t('skills.progressOverTime')}</h2>
+        {ladderPoints.length < 2 ? (
+          <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
+            {t('progress.needMore')}
+          </div>
+        ) : (
+          <div className="rounded-lg bg-card p-4">
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={ladderPoints} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+                  <ChartGradientDefs />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => d.slice(5)}
+                    tick={CHART_TICK}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    dataKey="stepNumber"
+                    domain={[1, Math.max(steps.length, 2)]}
+                    allowDecimals={false}
+                    tick={CHART_TICK}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
+                    formatter={(_value: number, _name: string, entry: { payload?: LadderPoint }) => {
+                      const p = entry.payload;
+                      if (!p) return ['', ''];
+                      const weight = p.addedWeight != null ? ` +${p.addedWeight}kg` : '';
+                      return [`${p.value} ${p.unit}${weight}`, p.stepName];
+                    }}
+                  />
+                  {!masteredSkill && (
+                    <ReferenceLine y={steps.length} stroke={CHART_GOLD} strokeDasharray="4 3">
+                      <Label
+                        value={t('skills.mastered')}
+                        position="insideTopRight"
+                        fill={CHART_GOLD}
+                        className="text-[10px]"
+                      />
+                    </ReferenceLine>
+                  )}
+                  <Area
+                    type="stepAfter"
+                    dataKey="stepNumber"
+                    stroke={CHART_STROKE}
+                    strokeWidth={CHART_STROKE_WIDTH}
+                    fill={`url(#${ACCENT_FILL_ID})`}
+                    dot={(props: LadderDotProps) => (
+                      <LadderDot key={props.payload?.date} cx={props.cx} cy={props.cy} payload={props.payload} />
+                    )}
+                    activeDot={ACTIVE_DOT}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </section>
+
       <Button variant="outline" className="w-full" onClick={() => setAddingStep(true)}>
         <Plus className="h-4 w-4" />
         {t('skills.addStep')}
@@ -296,6 +458,7 @@ export function SkillDetailPage() {
             target_type: input.target_type ?? 'hold',
             target_value: input.target_value ?? 0,
             target_unit: input.target_unit ?? 'sec',
+            added_weight_kg: input.added_weight_kg ?? null,
             benchmark_video_url: input.benchmark_video_url ?? null,
           });
         }}

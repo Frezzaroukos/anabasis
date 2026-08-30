@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -78,6 +78,9 @@ export function AddSetInline({
   const [tempo, setTempo] = useState('');
   const [customOpen, setCustomOpen] = useState(false);
   const [customType, setCustomType] = useState('');
+  // Μετά το save ξαναπαίρνει focus το reps/hold πεδίο — γρήγορη σειριακή
+  // καταγραφή σετ-σετ χωρίς tap στο πληκτρολόγιο κάθε φορά.
+  const primaryInputRef = useRef<HTMLInputElement>(null);
 
   const numOrNull = (s: string) => {
     const v = Number(s);
@@ -107,12 +110,14 @@ export function AddSetInline({
           tempo: tempo.trim() === '' ? null : tempo.trim(),
         },
       );
-      setWeight('');
+      // Το βάρος συνήθως μένει ίδιο σετ-σετ (π.χ. ίδιο κιλό, διαφορετικά reps
+      // λόγω κόπωσης) — ΔΕΝ το σβήνουμε, μόνο τα reps/hold που αλλάζουν.
       setReps('');
       setHold('');
       setRpe('');
       setRir('');
       // Το tempo συνήθως επαναλαμβάνεται μέσα στην ίδια άσκηση — δεν το σβήνουμε.
+      primaryInputRef.current?.focus();
     } finally {
       setBusy(false);
     }
@@ -223,6 +228,7 @@ export function AddSetInline({
               {t('workout.holdSeconds')}
             </span>
             <Input
+              ref={primaryInputRef}
               inputMode="numeric"
               type="number"
               min="1"
@@ -242,6 +248,7 @@ export function AddSetInline({
               {t('workout.reps')}
             </span>
             <Input
+              ref={primaryInputRef}
               inputMode="numeric"
               type="number"
               min="1"

@@ -38,6 +38,7 @@ export function StepFormSheet({
   const [targetType, setTargetType] = useState('hold');
   const [targetValue, setTargetValue] = useState('');
   const [targetUnit, setTargetUnit] = useState('sec');
+  const [addedWeightKg, setAddedWeightKg] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +50,7 @@ export function StepFormSheet({
     setTargetType(initial?.target_type ?? 'hold');
     setTargetValue(initial ? String(initial.target_value) : '');
     setTargetUnit(initial?.target_unit ?? 'sec');
+    setAddedWeightKg(initial?.added_weight_kg != null ? String(initial.added_weight_kg) : '');
     setVideoUrl(initial?.benchmark_video_url ?? '');
   }, [open, initial]);
 
@@ -65,6 +67,7 @@ export function StepFormSheet({
         target_type: targetType.trim() || undefined,
         target_value: targetValue.trim() ? Number(targetValue) : undefined,
         target_unit: targetUnit.trim() || undefined,
+        added_weight_kg: addedWeightKg.trim() ? Number(addedWeightKg) : null,
         benchmark_video_url: videoUrl.trim() || null,
       });
       onClose();
@@ -154,6 +157,18 @@ export function StepFormSheet({
               {u}
             </button>
           ))}
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">{t('skills.addedWeight')}</p>
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={addedWeightKg}
+            onChange={(e) => setAddedWeightKg(e.target.value)}
+            placeholder={t('skills.addedWeightPlaceholder')}
+            aria-label={t('skills.addedWeight')}
+          />
         </div>
 
         <Input

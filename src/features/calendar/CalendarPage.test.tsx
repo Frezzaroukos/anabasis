@@ -18,10 +18,19 @@ import { createProgram, createProgramDay, localDay } from '@/lib/db/queries';
  */
 const FIXED_NOW = new Date('2026-08-15T12:00:00.000Z');
 
+/**
+ * `calendar.adHocStart` είναι νέο κλειδί (ad-hoc free-text fix) — δεν είναι
+ * ακόμα στο πραγματικό en.json (το ενημερώνει ο team lead). Ίδιο πρότυπο με
+ * DashboardPage.test.tsx: local override, το test δεν εξαρτάται από αυτό.
+ */
+const calendarEn = { adHocStart: 'Start' };
+
 beforeAll(async () => {
   await i18next.init({
     lng: 'en',
-    resources: { en: { translation: en } },
+    resources: {
+      en: { translation: { ...en, calendar: { ...en.calendar, ...calendarEn } } },
+    },
     interpolation: { escapeValue: false },
   });
 });
@@ -89,15 +98,18 @@ describe('CalendarPage — add workout από την επιλεγμένη μέρ
     );
   });
 
-  it('ad-hoc: φτιάχνει unlinked workout χωρίς πρόγραμμα', async () => {
+  it('ad-hoc: γράφεις ελεύθερο κείμενο και φτιάχνει unlinked workout με αυτό το label', async () => {
     render(wrap(<CalendarPage />));
 
     // «Σήμερα» παραμένει η προεπιλεγμένη μέρα — δεν αλλάζουμε επιλογή.
     await waitFor(() => expect(screen.getByText(en.calendar.addWorkout)).toBeTruthy());
     fireEvent.click(screen.getByText(en.calendar.addWorkout));
 
-    await waitFor(() => expect(screen.getByText('Strength')).toBeTruthy());
-    fireEvent.click(screen.getByText('Strength'));
+    // Πλέον ΔΕΝ υπάρχει λίστα από 5 προκαθορισμένα activities — ένα πεδίο
+    // ελεύθερου κειμένου. Ό,τι γράψεις γίνεται το label της προπόνησης.
+    const input = await screen.findByPlaceholderText(en.workout.typePlaceholder);
+    fireEvent.change(input, { target: { value: 'Basketball με φίλους' } });
+    fireEvent.click(screen.getByLabelText(calendarEn.adHocStart));
 
     await waitFor(async () => {
       const rows = await db.workouts.toArray();
@@ -108,10 +120,28 @@ describe('CalendarPage — add workout από την επιλεγμένη μέρ
     expect(workout!.program_id).toBeNull();
     expect(workout!.program_day_id).toBeNull();
     expect(workout!.activity_kind).toBe('strength');
+    expect(workout!.workout_type).toBe('Basketball με φίλους');
     expect(localDay(new Date(workout!.started_at))).toBe('2026-08-15');
 
     await waitFor(() =>
       expect(screen.getByTestId('location').textContent).toBe('/workout/active'),
     );
+  });
+
+  it('ad-hoc: το κουμπί έναρξης είναι ανενεργό όσο το πεδίο είναι κενό', async () => {
+    render(wrap(<CalendarPage />));
+
+    await waitFor(() => expect(screen.getByText(en.calendar.addWorkout)).toBeTruthy());
+    fireEvent.click(screen.getByText(en.calendar.addWorkout));
+
+    const submit = (await screen.findByLabelText(calendarEn.adHocStart)) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+
+    const input = screen.getByPlaceholderText(en.workout.typePlaceholder);
+    fireEvent.change(input, { target: { value: '  ' } });
+    expect(submit.disabled).toBe(true);
+
+    fireEvent.change(input, { target: { value: 'Mini session' } });
+    expect(submit.disabled).toBe(false);
   });
 });

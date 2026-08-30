@@ -5,7 +5,7 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
 import { ExercisesPage } from './ExercisesPage';
-import { createExercise } from '@/lib/db/queries';
+import { createExercise, createSkill } from '@/lib/db/queries';
 
 // Το namespace "exercises" δεν υπάρχει ακόμα στο πραγματικό src/i18n/en.json
 // (άλλος agent το κάνει merge) — δικό μας feature folder δεν αγγίζει
@@ -77,5 +77,29 @@ describe('ExercisesPage', () => {
     fireEvent.click(within(row as HTMLElement).getByLabelText('Archive'));
 
     await waitFor(() => expect(screen.queryByText('Isometric Wall Sit')).toBeNull());
+  });
+
+  it('η ενοποιημένη λίστα δείχνει skill δίπλα στις ασκήσεις (οργανωτικό merge, ARCHITECTURE-V4 §4)', async () => {
+    await createSkill({ name: 'Test Merge Skill', category: 'push' });
+
+    render(wrap(<ExercisesPage />));
+
+    await waitFor(() => expect(screen.getByText('Test Merge Skill')).toBeTruthy());
+    const row = screen.getByText('Test Merge Skill').closest('li');
+    expect(row).toBeTruthy();
+    // η αρχειοθέτηση δουλεύει ίδια με τις ασκήσεις (ίδιο φίλτρο, ίδιο σχήμα)
+    fireEvent.click(within(row as HTMLElement).getByLabelText('Archive'));
+    await waitFor(() => expect(screen.queryByText('Test Merge Skill')).toBeNull());
+  });
+
+  it('pencil ανοίγει επεξεργασία — το tap στο όνομα πλέον πάει στην πρόοδο', async () => {
+    await createExercise({ name: 'Row Tap Exercise', category: 'core' });
+    render(wrap(<ExercisesPage />));
+
+    await waitFor(() => expect(screen.getByText('Row Tap Exercise')).toBeTruthy());
+    const row = screen.getByText('Row Tap Exercise').closest('li') as HTMLElement;
+    fireEvent.click(within(row).getByLabelText('Edit exercise'));
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
   });
 });

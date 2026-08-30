@@ -2,14 +2,16 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, Plus } from 'lucide-react';
 import {
   countProgramDaySessions,
   getCalendar,
+  getTrainingInsights,
   listActivities,
   listProgramDays,
   listPrograms,
   localDay,
+  setWorkoutType,
   startAdHocWorkout,
   startWorkoutFromProgramDay,
 } from '@/lib/db/queries';
@@ -17,7 +19,7 @@ import type { DayActivities } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
-import { ActivityChip } from '@/components/ActivityChip';
+import { Input } from '@/components/ui/input';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
@@ -45,10 +47,13 @@ export function CalendarPage() {
   });
   const [selected, setSelected] = useState<string | null>(today);
   const [addOpen, setAddOpen] = useState(false);
+  const [adHocLabel, setAdHocLabel] = useState('');
   const navigate = useNavigate();
 
   const activities = useLiveQuery(() => listActivities(true), [], []);
-  const activeActivities = activities.filter((a) => !a.is_archived);
+  // Μόνο για το σερί στον υπότιτλο του μήνα — «glanceable» χωρίς να
+  // ανοίξεις το Home (ARCHITECTURE-V4 §6, η ίδια πηγή αλήθειας με το hero).
+  const insights = useLiveQuery(() => getTrainingInsights(30), [], null);
 
   /**
    * Κάθε πρόγραμμα → οι μέρες του, με το επόμενο αύξοντα αριθμό ήδη
@@ -84,11 +89,25 @@ export function CalendarPage() {
     setAddOpen(false);
     navigate('/workout/active');
   };
-  const onPickAdHoc = async (activityKey: string) => {
-    if (!selected) return;
-    await startAdHocWorkout(activityKey, selected === today ? undefined : selected);
+  /**
+   * Ad-hoc = ελεύθερο κείμενο, όχι επιλογή από 5 προκαθορισμένες
+   * δραστηριότητες (owner feedback: «να μπορεί να το γράψει όπως επιθυμεί»).
+   * Ό,τι γράψει γίνεται κατευθείαν το label της προπόνησης· η δραστηριότητα
+   * μένει γενική (strength) — δεν υπάρχει κατηγοριοποίηση εδώ, μόνο κείμενο.
+   */
+  const onSubmitAdHoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const label = adHocLabel.trim();
+    if (!selected || !label) return;
+    const { workout } = await startAdHocWorkout('strength', selected === today ? undefined : selected);
+    await setWorkoutType(workout.id, label);
     setAddOpen(false);
+    setAdHocLabel('');
     navigate('/workout/active');
+  };
+  const closeAddSheet = () => {
+    setAddOpen(false);
+    setAdHocLabel('');
   };
   const dotOf = (kind: string) =>
     activities.find((a) => a.key === kind)?.dot_class ?? FALLBACK_DOT;
@@ -155,13 +174,33 @@ export function CalendarPage() {
     return { workouts, kinds: kinds.size, days: days.size };
   }, [cal, cursor.year, cursor.month]);
 
+  // Το σερί έχει νόημα μόνο στον τρέχοντα πραγματικό μήνα — σε παλιό/μελλοντικό
+  // μήνα θα μπέρδευε («σερί» δίπλα σε Μάρτιο ενώ είσαι σε Αύγουστο).
+  const isCurrentMonthView = useMemo(() => {
+    const now = new Date();
+    return now.getFullYear() === cursor.year && now.getMonth() === cursor.month;
+  }, [cursor.year, cursor.month]);
+  const streakDays = isCurrentMonthView ? (insights?.streakDays ?? 0) : 0;
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-semibold tracking-tight capitalize">
-            {monthLabel}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="truncate font-display text-2xl font-semibold tracking-tight capitalize">
+              {monthLabel}
+            </h1>
+            {/* Σερί, glanceable — ίδια γλώσσα (flame + primary) με το hero του Home. */}
+            {streakDays > 1 && (
+              <span
+                aria-label={t('calendar.streakDays', { count: streakDays })}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary"
+              >
+                <Flame className="h-3 w-3" aria-hidden />
+                <span className="font-mono text-xs tabular-nums">{streakDays}</span>
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {monthStats.workouts > 0
               ? [
@@ -207,7 +246,9 @@ export function CalendarPage() {
         </div>
       </header>
 
-      <div className="rounded-lg bg-card p-3">
+      {/* key = μήνας: αλλαγή μήνα ξαναπαίζει το rise-in — «η σελίδα άλλαξε»,
+          όχι απότομο swap πλέγματος. */}
+      <div key={`${cursor.year}-${cursor.month}`} className="animate-rise-in rounded-lg bg-card p-3">
         <div className="mb-1 grid grid-cols-7 gap-1">
           {weekdays.map((w) => (
             <div
@@ -227,7 +268,7 @@ export function CalendarPage() {
                 key={c.key}
                 onClick={() => setSelected(c.key)}
                 className={cn(
-                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg p-1 transition-colors',
+                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg p-1 transition-all duration-200',
                   // Βάθος αντί για χρωματιστό περίγραμμα: επιλεγμένη = ανυψωμένη
                   // επιφάνεια, σήμερα = accent ring — τα δύο συνδυάζονται όταν
                   // η επιλεγμένη μέρα ΕΙΝΑΙ σήμερα.
@@ -237,7 +278,7 @@ export function CalendarPage() {
               >
                 <span
                   className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums',
+                    'flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums transition-colors',
                     c.key === today
                       ? 'bg-primary font-semibold text-primary-foreground'
                       : 'text-muted-foreground',
@@ -265,8 +306,9 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {/* Λεπτομέρειες επιλεγμένης ημέρας */}
-      <section className="rounded-lg bg-card p-4">
+      {/* Λεπτομέρειες επιλεγμένης ημέρας — key = μέρα ώστε η αλλαγή επιλογής
+          να «ανεβαίνει» ξανά αντί να τιναχτεί απότομα το περιεχόμενο. */}
+      <section key={selected ?? 'none'} className="animate-rise-in rounded-lg bg-card p-4">
         <h2 className="mb-3 text-sm font-medium">
           {selected
             ? new Date(selected).toLocaleDateString(i18n.resolvedLanguage, {
@@ -329,7 +371,7 @@ export function CalendarPage() {
         πλάνο + auto-αρίθμηση, (b) ad-hoc/quick → κενή προπόνηση, ελεύθερη
         προσθήκη ασκήσεων. Ένα sheet, δύο σαφή sections — όχι wizard.
       */}
-      <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title={t('calendar.addWorkout')}>
+      <BottomSheet open={addOpen} onClose={closeAddSheet} title={t('calendar.addWorkout')}>
         <div className="space-y-5 px-4 pb-4">
           <div>
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -375,12 +417,27 @@ export function CalendarPage() {
               {t('calendar.adHoc')}
             </h3>
             <p className="mb-2 text-xs text-muted-foreground">{t('calendar.adHocHint')}</p>
-            {/* Ίδια γλώσσα με το ημερολόγιο: το χρώμα ΕΙΝΑΙ η δραστηριότητα. */}
-            <div className="flex flex-wrap gap-2">
-              {activeActivities.map((a) => (
-                <ActivityChip key={a.key} activity={a} onClick={() => void onPickAdHoc(a.key)} />
-              ))}
-            </div>
+            {/*
+              Πριν: 5 σταθερά activity chips («5 μπαρούφες» — owner feedback).
+              Τώρα: ένα πεδίο ελεύθερου κειμένου· ό,τι γράψεις γίνεται το
+              label της προπόνησης, χωρίς λίστα προεπιλογών.
+            */}
+            <form onSubmit={(e) => void onSubmitAdHoc(e)} className="flex gap-2">
+              <Input
+                value={adHocLabel}
+                onChange={(e) => setAdHocLabel(e.target.value)}
+                placeholder={t('workout.typePlaceholder')}
+                className="h-11 flex-1"
+              />
+              <button
+                type="submit"
+                disabled={!adHocLabel.trim()}
+                aria-label={t('calendar.adHocStart')}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </form>
           </div>
         </div>
       </BottomSheet>

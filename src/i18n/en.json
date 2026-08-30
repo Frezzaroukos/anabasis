@@ -87,7 +87,9 @@
     "fromRoutine": "Start from a routine",
     "holdSeconds": "Hold (sec)",
     "quickPlaceholderHold": "e.g. 12,10,8",
-    "repeatLast": "Repeat last workout"
+    "repeatLast": "Repeat last workout",
+    "searchOrTypeExercise": "Search or type any exercise…",
+    "useTyped": "Use \"{{name}}\""
   },
   "programs": {
     "title": "Programs",
@@ -207,7 +209,10 @@
     "stepNamePlaceholder": "Step name",
     "stepDescriptionPlaceholder": "How to do it",
     "videoUrlPlaceholder": "Benchmark video URL (optional)",
-    "targetsAreSuggestions": "Targets are suggested starting points, not a standard — coaches and sources disagree. Edit any step to match how you train."
+    "targetsAreSuggestions": "Targets are suggested starting points, not a standard — coaches and sources disagree. Edit any step to match how you train.",
+    "addedWeight": "Added weight",
+    "addedWeightPlaceholder": "e.g. +5",
+    "progressOverTime": "Progress over time"
   },
   "settings": {
     "title": "Settings",
@@ -290,7 +295,9 @@
     "pickProgramDay": "From a program",
     "noProgramDays": "No program days yet. Add days to a program in My Programs.",
     "adHoc": "Ad-hoc / quick",
-    "adHocHint": "No plan — add exercises as you go."
+    "adHocHint": "No plan — add exercises as you go.",
+    "adHocStart": "Start",
+    "streakDays": "{{count}} day streak"
   },
   "body": {
     "weight": "Weight",
@@ -332,7 +339,14 @@
     "distance": "Distance",
     "pace": "Pace",
     "longestDistance": "Longest",
-    "fastestPace": "Fastest"
+    "fastestPace": "Fastest",
+    "range": {
+      "1m": "1M",
+      "3m": "3M",
+      "6m": "6M",
+      "1y": "1Y",
+      "all": "All"
+    }
   },
   "dashboard": {
     "title": "Overview",
@@ -367,7 +381,9 @@
       "bodyHint": "Everything else builds on it."
     },
     "hero": {
-      "streakUnit": "day streak"
+      "streakUnit": "day streak",
+      "weekUnit": "days this week",
+      "lastSessionUnit": "days since last session"
     },
     "recentActivity": "Recent"
   },
@@ -420,7 +436,12 @@
       "notesPlaceholder": "Cues, form notes…",
       "unitPlaceholder": "kg, lb, meters…"
     },
-    "viewProgress": "View progress"
+    "viewProgress": "View progress",
+    "detail": {
+      "lastPerformed": "Last performed",
+      "noHistory": "No history yet — log this exercise to see progress.",
+      "reps": "Reps"
+    }
   },
   "activities": {
     "title": "Activities",
@@ -579,7 +600,9 @@
         "day": "Today so far."
       }
     },
-    "noDeadline": "rolling window"
+    "noDeadline": "rolling window",
+    "viewProgress": "View progress",
+    "achieved": "Achieved"
   },
   "account": {
     "title": "Account & Sync",

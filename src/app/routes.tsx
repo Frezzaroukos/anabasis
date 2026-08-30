@@ -15,6 +15,7 @@ const lazyPage = <T extends Record<string, React.ComponentType<unknown>>>(
 
 const DashboardPage = lazyPage(() => import('@/features/dashboard/DashboardPage'), 'DashboardPage');
 const ActiveWorkoutRoute = lazyPage(() => import('@/features/workout/ActiveWorkoutRoute'), 'ActiveWorkoutRoute');
+const ExerciseDetailPage = lazyPage(() => import('@/features/exercises/ExerciseDetailPage'), 'ExerciseDetailPage');
 const ProgramsPage = lazyPage(() => import('@/features/programs/ProgramsPage'), 'ProgramsPage');
 const ProgramDetailPage = lazyPage(() => import('@/features/programs/ProgramDetailPage'), 'ProgramDetailPage');
 const ExercisesPage = lazyPage(() => import('@/features/exercises/ExercisesPage'), 'ExercisesPage');
@@ -59,6 +60,7 @@ export const router = createBrowserRouter(
       { path: 'achievements', element: <AchievementsPage /> },
       { path: 'programs', element: <ProgramsPage /> },
       { path: 'exercises', element: <ExercisesPage /> },
+      { path: 'exercises/:exerciseId', element: <ExerciseDetailPage /> },
       { path: 'activities', element: <ActivitiesPage /> },
       { path: 'programs/:programId', element: <ProgramDetailPage /> },
       { path: 'history', element: <HistoryPage /> },

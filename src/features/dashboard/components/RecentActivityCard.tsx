@@ -36,12 +36,26 @@ function relativeDay(iso: string, locale: string): string {
 export function RecentActivityCard() {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? 'en';
-  const workouts = useLiveQuery(() => listCompletedWorkouts(), [], []);
+  // undefined=φορτώνει, []=πραγματικά καμία προπόνηση — δύο διαφορετικά states
+  // (πριν μπέρδευαν, το «κενό» άστραφτε σαν να αποφασίστηκε αμέσως).
+  const workouts = useLiveQuery(() => listCompletedWorkouts(), [], undefined);
   const activityLabels = useLiveQuery(
     async () => new Map((await listActivities(true)).map((a) => [a.key, a.label])),
     [],
     new Map<string, string>(),
   );
+
+  if (workouts === undefined) {
+    return (
+      <section className="rounded-xl bg-card p-4">
+        <div className="mb-3 h-4 w-24 animate-pulse rounded bg-muted/40" />
+        <div className="space-y-2">
+          <div className="h-11 animate-pulse rounded-lg bg-muted/30" />
+          <div className="h-11 animate-pulse rounded-lg bg-muted/30" />
+        </div>
+      </section>
+    );
+  }
 
   const recent = workouts.slice(0, 4);
   if (recent.length === 0) return null;

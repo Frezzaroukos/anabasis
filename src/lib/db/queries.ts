@@ -1687,6 +1687,12 @@ export async function setExerciseArchived(id: string, archived: boolean): Promis
 }
 
 /** Όλες, μαζί με τις αρχειοθετημένες — για την οθόνη διαχείρισης. */
+/** Μία άσκηση με βάση το id — για τη σελίδα λεπτομερειών/προόδου. */
+export async function getExercise(id: string): Promise<Exercise | undefined> {
+  const ex = await db.exercises.get(id);
+  return ex && isVisibleToMe(ex) && ex.deleted_at == null ? ex : undefined;
+}
+
 export async function listAllExercises(): Promise<Exercise[]> {
   const all = await db.exercises.toArray();
   return all
