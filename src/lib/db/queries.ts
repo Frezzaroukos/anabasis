@@ -28,6 +28,7 @@ import type {
   PRType,
   BodyMetric,
   Program,
+  ProgramDay,
   ProgramExercise,
   Exercise,
   PersonalRecord,
@@ -75,6 +76,9 @@ export async function startWorkout(
    * μέρας ώστε να πέφτει σίγουρα στη σωστή τοπική ημέρα σε calendar/history.
    */
   onDate?: string,
+  /** v12: link σε πρόγραμμα/μέρα (ad-hoc = undefined) — για auto-numbering & calendar. */
+  programId?: string | null,
+  programDayId?: string | null,
 ): Promise<Workout> {
   const t = now();
   const startedAt = onDate ? localNoon(onDate).toISOString() : t;
@@ -87,6 +91,8 @@ export async function startWorkout(
     notes: null,
     workout_type: null,
     activity_kind: activityKind,
+    program_id: programId ?? null,
+    program_day_id: programDayId ?? null,
     distance_km: null,
     feel: null,
     created_at: t,
@@ -1289,6 +1295,7 @@ export async function getProgramWithExercises(programId: string) {
 
 export interface ProgramExerciseInput {
   exercise_id: string;
+  program_day_id?: string | null;
   target_sets?: number | null;
   target_reps?: number | null;
   target_weight_kg?: number | null;
@@ -1310,6 +1317,7 @@ export async function addProgramExercise(
   const row: ProgramExercise = {
     id: uuid(),
     program_id: programId,
+    program_day_id: input.program_day_id ?? null,
     exercise_id: input.exercise_id,
     position,
     target_sets: input.target_sets ?? null,
@@ -1343,6 +1351,7 @@ export async function addProgramExercisesBulk(
   const rows: ProgramExercise[] = exerciseIds.map((exercise_id, i) => ({
     id: uuid(),
     program_id: programId,
+    program_day_id: null,
     exercise_id,
     position: startPosition + i,
     target_sets: defaults.target_sets ?? null,
@@ -1387,12 +1396,91 @@ export async function reorderProgramExercises(orderedIds: string[]): Promise<voi
 export async function startWorkoutFromProgram(programId: string) {
   const data = await getProgramWithExercises(programId);
   if (!data) return null;
-  const w = await startWorkout(data.program.activity_kind);
+  const w = await startWorkout(data.program.activity_kind, undefined, programId, null);
   await db.workouts.update(w.id, {
     workout_type: data.program.name,
     updated_at: now(),
   });
   return { workout: { ...w, workout_type: data.program.name }, plan: data.exercises };
+}
+
+/* ─────────── Program days (v12: πρόγραμμα → μέρες → ασκήσεις) ─────────── */
+
+export async function listProgramDays(programId: string): Promise<ProgramDay[]> {
+  return db.program_days.where('program_id').equals(programId).sortBy('position');
+}
+
+export async function createProgramDay(programId: string, name: string): Promise<ProgramDay> {
+  const t = now();
+  const position = await db.program_days.where('program_id').equals(programId).count();
+  const day: ProgramDay = {
+    id: uuid(),
+    program_id: programId,
+    name: name.trim(),
+    position,
+    created_at: t,
+    updated_at: t,
+  };
+  await db.program_days.add(day);
+  return day;
+}
+
+export async function renameProgramDay(dayId: string, name: string): Promise<void> {
+  await db.program_days.update(dayId, { name: name.trim(), updated_at: now() });
+}
+
+export async function reorderProgramDays(_programId: string, orderedIds: string[]): Promise<void> {
+  const t = now();
+  await db.transaction('rw', db.program_days, async () => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.program_days.update(orderedIds[i]!, { position: i, updated_at: t });
+    }
+  });
+}
+
+/** Σβήνει μέρα + τις ασκήσεις της (οι ασκήσεις ανήκουν στη μέρα, δεν μένουν ορφανές). */
+export async function deleteProgramDay(dayId: string): Promise<void> {
+  await db.transaction('rw', db.program_days, db.program_exercises, async () => {
+    await db.program_exercises.where('program_day_id').equals(dayId).delete();
+    await db.program_days.delete(dayId);
+  });
+}
+
+export async function getProgramDayWithExercises(dayId: string) {
+  const [day, rows] = await Promise.all([
+    db.program_days.get(dayId),
+    db.program_exercises.where('[program_day_id+position]').between([dayId, -Infinity], [dayId, Infinity]).toArray(),
+  ]);
+  return day ? { day, exercises: rows.sort((a, b) => a.position - b.position) } : null;
+}
+
+/** Πόσες ΟΛΟΚΛΗΡΩΜΕΝΕΣ προπονήσεις έχεις κάνει με αυτή τη μέρα — για «3η Upper day». */
+export async function countProgramDaySessions(dayId: string): Promise<number> {
+  const rows = await db.workouts.where('program_day_id').equals(dayId).toArray();
+  return rows.filter((w) => w.deleted_at == null && w.ended_at != null).length;
+}
+
+/** Ξεκινά προπόνηση από μέρα προγράμματος — linked (auto-numbering) + pre-filled plan. */
+export async function startWorkoutFromProgramDay(dayId: string, onDate?: string) {
+  const data = await getProgramDayWithExercises(dayId);
+  if (!data) return null;
+  const program = await db.programs.get(data.day.program_id);
+  const kind = program?.activity_kind ?? 'strength';
+  const sessionNo = (await countProgramDaySessions(dayId)) + 1;
+  const label = `${data.day.name} #${sessionNo}`;
+  const w = await startWorkout(kind, onDate, data.day.program_id, dayId);
+  await db.workouts.update(w.id, { workout_type: label, updated_at: now() });
+  return {
+    workout: { ...w, workout_type: label, program_id: data.day.program_id, program_day_id: dayId },
+    plan: data.exercises,
+    sessionNo,
+  };
+}
+
+/** Ad-hoc/random προπόνηση — καμία σύνδεση με πρόγραμμα (mini/quick/for-fun). */
+export async function startAdHocWorkout(activityKind: ActivityKind = 'strength', onDate?: string) {
+  const w = await startWorkout(activityKind, onDate, null, null);
+  return { workout: w, plan: [] as ProgramExercise[] };
 }
 
 /**

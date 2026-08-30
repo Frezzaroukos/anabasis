@@ -168,6 +168,9 @@ export interface Workout {
   workout_type: string | null;
   /** v2: τι άθλημα/δραστηριότητα. Παλιές εγγραφές γίνονται 'strength'. */
   activity_kind: ActivityKind;
+  /** v12: από ποιο πρόγραμμα/μέρα ξεκίνησε (null/null = ad-hoc/random προπόνηση) */
+  program_id: UUID | null;
+  program_day_id: UUID | null;
   /** v2: για running/cycling/swim */
   distance_km: number | null;
   feel: SessionFeel | null;
@@ -444,10 +447,22 @@ export interface Program {
   deleted_at: ISOTimestamp | null;
 }
 
+export interface ProgramDay {
+  id: UUID;
+  program_id: UUID;
+  /** π.χ. «Upper», «Push», «Πόδια» */
+  name: string;
+  position: number;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+}
+
 /** Μια γραμμή του πλάνου: άσκηση + στόχοι. */
 export interface ProgramExercise {
   id: UUID;
   program_id: UUID;
+  /** v12: σε ποια μέρα του προγράμματος ανήκει (null = πρόγραμμα χωρίς ρητές μέρες) */
+  program_day_id: UUID | null;
   exercise_id: UUID;
   position: number;
   target_sets: number | null;
