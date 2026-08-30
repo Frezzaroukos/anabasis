@@ -43,10 +43,10 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
   if (summary.totalSets === 0) return null;
 
   return (
-    <section className="rounded-lg bg-card p-4">
+    <section className="rounded-xl bg-card p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h2 className="text-sm font-medium">{t('history.volumeTrend')}</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
           {t('history.lastDays', { days })}
         </span>
       </div>
@@ -63,7 +63,7 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
             <dt className="text-[10px] uppercase text-muted-foreground">
               {t(`history.${k}`)}
             </dt>
-            <dd className="font-mono text-sm">{v}</dd>
+            <dd className="font-mono text-sm tabular-nums">{v}</dd>
           </div>
         ))}
       </dl>

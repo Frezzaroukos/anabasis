@@ -125,7 +125,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
             setEditing(true);
           }}
           className={cn(
-            'pointer-events-auto flex flex-1 items-center justify-center gap-1 bg-secondary text-xs font-medium',
+            'pointer-events-auto flex flex-1 items-center justify-center gap-1 bg-secondary text-xs font-medium transition-colors hover:bg-accent',
             revealed ? '' : 'opacity-0',
           )}
           aria-label={t('common.edit')}
@@ -136,7 +136,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
           type="button"
           onClick={() => void onDelete()}
           className={cn(
-            'pointer-events-auto flex flex-1 items-center justify-center gap-1 bg-destructive text-xs font-medium text-destructive-foreground',
+            'pointer-events-auto flex flex-1 items-center justify-center gap-1 bg-destructive text-xs font-medium text-destructive-foreground transition-colors hover:opacity-90',
             revealed ? '' : 'opacity-0',
           )}
           aria-label={t('common.delete')}
@@ -174,7 +174,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
           `}</style>
         )}
         <div className="flex items-center gap-3 text-sm">
-          <span className="w-6 text-xs text-muted-foreground">#{set.set_number}</span>
+          <span className="w-6 font-mono text-xs tabular-nums text-muted-foreground">#{set.set_number}</span>
           <span className="font-mono font-semibold tabular-nums">
             {formatLoad(set.weight_kg, set.bodyweight_kg, unit)}
             {set.reps != null ? <> × {set.reps}</> : null}

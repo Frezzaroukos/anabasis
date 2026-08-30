@@ -25,7 +25,7 @@ export function SkillLadderCard() {
   return (
     <Link
       to={`/skills/${ladder.skillId}`}
-      className="block overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-card to-card p-4 transition-colors duration-200 hover:via-elevated hover:to-elevated"
+      className="block overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-card to-card p-4 ring-offset-background transition-all duration-150 hover:via-elevated hover:to-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-primary">

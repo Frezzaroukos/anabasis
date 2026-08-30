@@ -46,15 +46,29 @@ function SideLink({ item, label }: { item: NavItem; label: string }) {
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+          'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
           isActive
             ? 'bg-primary/10 font-medium text-primary'
-            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            : 'text-muted-foreground hover:bg-accent hover:text-foreground active:bg-accent/80',
         )
       }
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{label}</span>
+      {({ isActive }) => (
+        <>
+          {/* Ίδια «rung» γλώσσα με το bottom-nav — accent ράβδος στο ενεργό
+              στοιχείο, ώστε κινητό/desktop chrome να μιλάνε το ίδιο λεξιλόγιο. */}
+          <span
+            className={cn(
+              'absolute inset-y-2 left-0 w-[2px] rounded-full bg-primary transition-opacity duration-150',
+              isActive ? 'opacity-100 shadow-glow-sm' : 'opacity-0',
+            )}
+            aria-hidden
+          />
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{label}</span>
+        </>
+      )}
     </NavLink>
   );
 }

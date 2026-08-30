@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronRight, ClipboardList, History, Play, Settings2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/button';
+import { SectionTitle } from '@/components/ui/Section';
 import { Logo } from '@/components/Logo';
 import { db, queries } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
@@ -93,16 +94,14 @@ export function WorkoutPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
           {t('workout.title')}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('workout.empty')}</p>
       </header>
 
       <section>
-        <p className="mb-2 text-xs uppercase text-muted-foreground">
-          {t('workout.activityKind')}
-        </p>
+        <SectionTitle>{t('workout.activityKind')}</SectionTitle>
         <div className="flex flex-wrap gap-2">
           {activities.map((a) => (
             <ActivityChip
@@ -131,10 +130,8 @@ export function WorkoutPage() {
         το 95% των καταγραφών είναι «τώρα» ή «χθες».
       */}
       <section>
-        <p className="mb-2 text-xs uppercase text-muted-foreground">
-          {t('workout.whenLabel')}
-        </p>
-        <div className="flex items-center rounded-lg border border-border/70 bg-card p-1">
+        <SectionTitle>{t('workout.whenLabel')}</SectionTitle>
+        <div className="flex items-center rounded-lg bg-card p-1">
           {(
             [
               ['now', t('workout.whenNow')],
@@ -146,7 +143,8 @@ export function WorkoutPage() {
               key={mode}
               onClick={() => setWhenMode(mode)}
               className={cn(
-                'flex-1 rounded-md px-3 py-1.5 text-sm transition-colors',
+                'flex-1 rounded-md px-3 py-1.5 text-sm transition-colors active:scale-[0.98]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 whenMode === mode
                   ? 'bg-primary font-medium text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground',
@@ -163,7 +161,7 @@ export function WorkoutPage() {
             value={pickedDate}
             onChange={(e) => setPickedDate(e.target.value)}
             aria-label={t('workout.whenPast')}
-            className="mt-2 h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+            className="mt-2 h-10 w-full rounded-md bg-elevated px-3 font-mono text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
         )}
       </section>
@@ -198,16 +196,14 @@ export function WorkoutPage() {
       */}
       {matchingPrograms.length > 0 && (
         <section>
-          <p className="mb-2 text-xs uppercase text-muted-foreground">
-            {t('workout.fromRoutine')}
-          </p>
+          <SectionTitle>{t('workout.fromRoutine')}</SectionTitle>
           <ul className="space-y-2">
             {matchingPrograms.map((p) => (
               <li key={p.id}>
                 <button
                   onClick={() => void onStartProgram(p.id)}
                   disabled={starting}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border/70 bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40 disabled:opacity-50"
+                  className="flex w-full items-center gap-3 rounded-lg bg-card px-3 py-2.5 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:opacity-50"
                 >
                   <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.name}</span>

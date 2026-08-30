@@ -222,7 +222,7 @@ export function CalendarPage() {
           <button
             onClick={() => shift(-1)}
             aria-label={t('calendar.prev')}
-            className="rounded-l-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="rounded-l-lg px-2.5 py-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -232,14 +232,14 @@ export function CalendarPage() {
               setCursor({ year: d.getFullYear(), month: d.getMonth() });
               setSelected(today);
             }}
-            className="border-x border-border/70 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+            className="border-x border-border/70 px-3 py-1.5 text-xs font-medium ring-offset-background transition-all duration-150 hover:bg-accent active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {t('calendar.today')}
           </button>
           <button
             onClick={() => shift(1)}
             aria-label={t('calendar.next')}
-            className="rounded-r-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="rounded-r-lg px-2.5 py-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -249,11 +249,11 @@ export function CalendarPage() {
       {/* key = μήνας: αλλαγή μήνα ξαναπαίζει το rise-in — «η σελίδα άλλαξε»,
           όχι απότομο swap πλέγματος. */}
       <div key={`${cursor.year}-${cursor.month}`} className="animate-rise-in rounded-lg bg-card p-3">
-        <div className="mb-1 grid grid-cols-7 gap-1">
+        <div className="mb-1 grid grid-cols-7 gap-1 border-b border-border/60 pb-1.5">
           {weekdays.map((w) => (
             <div
               key={w}
-              className="py-1 text-center text-[10px] uppercase text-muted-foreground"
+              className="py-1 text-center text-[10px] uppercase tracking-wide text-muted-foreground"
             >
               {w}
             </div>
@@ -268,7 +268,7 @@ export function CalendarPage() {
                 key={c.key}
                 onClick={() => setSelected(c.key)}
                 className={cn(
-                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg p-1 transition-all duration-200',
+                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg p-1 ring-offset-background transition-all duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   // Βάθος αντί για χρωματιστό περίγραμμα: επιλεγμένη = ανυψωμένη
                   // επιφάνεια, σήμερα = accent ring — τα δύο συνδυάζονται όταν
                   // η επιλεγμένη μέρα ΕΙΝΑΙ σήμερα.
@@ -278,7 +278,7 @@ export function CalendarPage() {
               >
                 <span
                   className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums transition-colors',
+                    'flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs tabular-nums transition-colors',
                     c.key === today
                       ? 'bg-primary font-semibold text-primary-foreground'
                       : 'text-muted-foreground',
@@ -309,7 +309,7 @@ export function CalendarPage() {
       {/* Λεπτομέρειες επιλεγμένης ημέρας — key = μέρα ώστε η αλλαγή επιλογής
           να «ανεβαίνει» ξανά αντί να τιναχτεί απότομα το περιεχόμενο. */}
       <section key={selected ?? 'none'} className="animate-rise-in rounded-lg bg-card p-4">
-        <h2 className="mb-3 text-sm font-medium">
+        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {selected
             ? new Date(selected).toLocaleDateString(i18n.resolvedLanguage, {
                 weekday: 'long',
@@ -328,7 +328,7 @@ export function CalendarPage() {
               <li key={w.id}>
                 <Link
                   to={`/history/${w.id}`}
-                  className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
+                  className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2 ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <span className={cn('h-2 w-2 shrink-0 rounded-full', dotOf(w.kind))} />
                   <div className="min-w-0 flex-1">
@@ -358,7 +358,7 @@ export function CalendarPage() {
         {selected && (
           <button
             onClick={() => setAddOpen(true)}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-sm text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Plus className="h-4 w-4" />
             {t('calendar.addWorkout')}
@@ -395,7 +395,7 @@ export function CalendarPage() {
                         <button
                           key={programDay.id}
                           onClick={() => void onPickProgramDay(programDay.id)}
-                          className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+                          className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                           <span className="font-medium">{programDay.name}</span>
                           <span className="shrink-0 font-mono text-xs text-muted-foreground">
@@ -433,7 +433,7 @@ export function CalendarPage() {
                 type="submit"
                 disabled={!adHocLabel.trim()}
                 aria-label={t('calendar.adHocStart')}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground ring-offset-background transition-all duration-150 hover:opacity-90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-40"
               >
                 <Plus className="h-4 w-4" />
               </button>

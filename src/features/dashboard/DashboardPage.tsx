@@ -150,7 +150,7 @@ export function DashboardPage() {
           <Link
             to="/profile"
             aria-label={t('profile.title')}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-elevated hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <User className="h-4 w-4" />
           </Link>
@@ -188,6 +188,10 @@ export function DashboardPage() {
         </div>
         <WeekStrip />
       </header>
+
+      {/* Hairline: χωρίζει τη ζώνη «σήμερα» (hero+WeekStrip) από τα cards
+          από κάτω — μια λεπτή γραμμή ανάμεσα σε δύο διαφορετικές δουλειές. */}
+      <div className="h-px bg-border/60 md:col-span-2" />
 
       {order
         .filter((c) => c.visible)

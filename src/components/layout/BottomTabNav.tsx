@@ -39,6 +39,7 @@ export function BottomTabNav() {
                 className={({ isActive }) =>
                   cn(
                     'relative flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors duration-200',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                     isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                   )
                 }
@@ -50,7 +51,7 @@ export function BottomTabNav() {
                         colour-blind χρήστες, γι' αυτό μένει και το εικονίδιο accent. */}
                     <span
                       className={cn(
-                        'absolute inset-x-5 top-0 h-[3px] rounded-full transition-all duration-200',
+                        'absolute inset-x-5 top-0 h-[2px] rounded-full transition-all duration-200 ease-out',
                         isActive ? 'bg-primary opacity-100 shadow-glow-sm' : 'opacity-0',
                       )}
                     />
@@ -68,6 +69,7 @@ export function BottomTabNav() {
               aria-expanded={moreOpen}
               className={cn(
                 'flex w-full flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors duration-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 moreOpen ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -84,7 +86,7 @@ export function BottomTabNav() {
             <li key={to}>
               <button
                 onClick={() => go(to)}
-                className="flex w-full items-center gap-3 rounded-lg bg-card px-3 py-3 text-left text-sm transition-colors hover:bg-accent"
+                className="flex w-full items-center gap-3 rounded-lg bg-card px-3 py-3 text-left text-sm transition-colors duration-150 hover:bg-accent active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
               >
                 <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">{t(labelKey)}</span>

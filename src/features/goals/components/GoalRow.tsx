@@ -62,7 +62,7 @@ export function GoalRow({
   return (
     <li
       className={cn(
-        'flex items-center gap-3 rounded-lg bg-card p-4 transition-colors',
+        'flex items-center gap-3 rounded-xl bg-card p-4 transition-colors',
         completed && 'ring-1 ring-gold/25',
       )}
     >
@@ -88,7 +88,7 @@ export function GoalRow({
             </span>
           )}
         </div>
-        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+        <p className="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground">
           {displayCurrent} / {p.target} {p.unit}
         </p>
         {/* Κυλιόμενο παράθυρο δεν έχει προθεσμία — «μένουν 0 μέρες»
@@ -120,7 +120,7 @@ export function GoalRow({
           onClick={() => onMove(index, -1)}
           disabled={index === 0}
           aria-label={t('goals.moveUp')}
-          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30"
         >
           <ChevronUp className="h-4 w-4" />
         </button>
@@ -128,7 +128,7 @@ export function GoalRow({
           onClick={() => onMove(index, 1)}
           disabled={index === total - 1}
           aria-label={t('goals.moveDown')}
-          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30"
         >
           <ChevronDown className="h-4 w-4" />
         </button>
@@ -137,14 +137,14 @@ export function GoalRow({
         <button
           onClick={() => onEdit(p.goal)}
           aria-label={t('common.edit')}
-          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Pencil className="h-4 w-4" />
         </button>
         <button
           onClick={() => onDelete(p.goal.id)}
           aria-label={t('common.delete')}
-          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-destructive"
+          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-destructive active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Trash2 className="h-4 w-4" />
         </button>

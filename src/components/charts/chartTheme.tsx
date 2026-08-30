@@ -10,7 +10,7 @@
  */
 
 export const CHART_STROKE = 'hsl(var(--primary))';
-export const CHART_STROKE_WIDTH = 1.75;
+export const CHART_STROKE_WIDTH = 2;
 export const CHART_GRID = 'hsl(var(--border) / 0.6)';
 export const CHART_TICK = {
   fill: 'hsl(var(--muted-foreground))',
@@ -64,11 +64,15 @@ export function ChartGradientDefs() {
   );
 }
 
-/** Κοινό tooltip style — elevated επιφάνεια, όχι default λευκό κουτί. */
+/** Κοινό tooltip style — elevated επιφάνεια, όχι default λευκό κουτί, με
+ * απαλή ambient σκιά (ίδια κλίμακα με .shadow-elevated στο globals.css) —
+ * «floats» πάνω από το chart αντί να κολλάει επίπεδο. */
 export const TOOLTIP_STYLE = {
   backgroundColor: 'hsl(var(--elevated))',
   border: '1px solid hsl(var(--border))',
   borderRadius: 'var(--radius)',
+  boxShadow: '0 10px 28px -18px hsl(var(--foreground) / 0.4)',
   color: 'hsl(var(--foreground))',
   fontSize: 12,
+  padding: '8px 10px',
 } as const;

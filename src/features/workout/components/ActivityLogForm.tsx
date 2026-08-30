@@ -68,10 +68,14 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
             value={distance}
             onChange={(e) => setDistance(e.target.value)}
             onBlur={onDistanceBlur}
-            className="h-11 text-base"
+            className="h-11 font-mono text-base tabular-nums"
             aria-label={t('workout.distanceKm')}
           />
-          {pace && <p className="text-xs text-muted-foreground">{t('workout.pace')}: {pace}</p>}
+          {pace && (
+            <p className="text-xs text-muted-foreground">
+              {t('workout.pace')}: <span className="font-mono tabular-nums">{pace}</span>
+            </p>
+          )}
         </div>
       )}
 
@@ -88,8 +92,11 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
               aria-checked={workout.feel === f}
               onClick={() => onFeelSelect(f)}
               className={cn(
-                'h-10 flex-1 rounded-md border border-border text-sm font-medium transition-colors',
-                workout.feel === f ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                'h-10 flex-1 rounded-md text-sm font-mono font-medium tabular-nums transition-colors active:scale-[0.97]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                workout.feel === f
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-elevated text-muted-foreground hover:text-foreground',
               )}
             >
               {f}
@@ -107,7 +114,7 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
           onChange={(e) => setNotes(e.target.value)}
           onBlur={onNotesBlur}
           rows={4}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="w-full rounded-md bg-elevated px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           placeholder={t('workout.notesPlaceholder')}
         />
       </div>

@@ -5,6 +5,7 @@ import { getRecentPRs, listActivities, listAllExercises, listCompletedWorkouts }
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
 import type { PRType } from '@/lib/db/types';
+import { SectionTitle } from '@/components/ui/Section';
 import { VolumeChart } from './components/VolumeChart';
 import { FeelChart } from './components/FeelChart';
 import { Link } from 'react-router-dom';
@@ -43,14 +44,14 @@ export function HistoryPage() {
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           {t('history.title')}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 font-mono text-sm tabular-nums text-muted-foreground">
           {list.length} {t('history.completed')}
         </p>
       </header>
 
       <Link
         to="/progress"
-        className="block rounded-lg bg-card px-4 py-3 text-sm transition-colors hover:bg-elevated"
+        className="block rounded-xl bg-card px-4 py-3 text-sm transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {t('progress.title')} →
       </Link>
@@ -60,8 +61,8 @@ export function HistoryPage() {
 
       {prs.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-medium">{t('history.recentPRs')}</h2>
-          <ul className="divide-y divide-border/60 rounded-lg bg-card">
+          <SectionTitle>{t('history.recentPRs')}</SectionTitle>
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
             {prs.map((pr) => (
               <li key={pr.id} className="flex items-center gap-3 px-4 py-2.5">
                 <span className="text-gold" aria-hidden>
@@ -80,12 +81,12 @@ export function HistoryPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-sm">
+                  <p className="font-mono text-sm tabular-nums">
                     {WEIGHT_PR_TYPES.has(pr.type)
                       ? formatWeight(pr.value, unit)
                       : Math.round(pr.value * 10) / 10}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="font-mono text-[10px] tabular-nums text-muted-foreground">
                     {new Date(pr.achieved_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -96,7 +97,7 @@ export function HistoryPage() {
       )}
 
       {list.length === 0 ? (
-        <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
           {t('history.empty')}
         </div>
       ) : (
@@ -106,17 +107,17 @@ export function HistoryPage() {
             <li key={w.id}>
               <Link
                 to={`/history/${w.id}`}
-                className="block rounded-lg bg-card p-3 transition-colors hover:bg-elevated"
+                className="block rounded-xl bg-card p-3 transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="truncate text-sm font-medium">
                     {w.workout_type ?? t('workout.title')}
                   </p>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
                     {new Date(w.started_at).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="mt-1 flex gap-3 font-mono text-xs text-muted-foreground">
+                <div className="mt-1 flex gap-3 font-mono text-xs tabular-nums text-muted-foreground">
                   <span>{formatHMS(w.duration_seconds ?? 0)}</span>
                   <span>·</span>
                   <span>

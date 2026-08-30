@@ -59,7 +59,7 @@ export function EmptyDashboardHint() {
           <li key={to}>
             <Link
               to={to}
-              className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-200 hover:bg-elevated"
+              className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 ring-offset-background transition-all duration-150 hover:bg-elevated active:bg-elevated/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Icon className="h-4 w-4 shrink-0 text-primary" />
               <span className="min-w-0 flex-1">

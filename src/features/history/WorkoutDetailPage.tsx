@@ -63,7 +63,7 @@ export function WorkoutDetailPage() {
           <button
             onClick={() => setEditOpen(true)}
             aria-label={t('history.editWorkout')}
-            className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:text-foreground"
+            className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -92,14 +92,14 @@ export function WorkoutDetailPage() {
       </div>
 
       {prs.length > 0 && (
-        <Card className="border-gold/40">
+        <Card className="border border-gold/40">
           <SectionTitle>{t('workout.prs')}</SectionTitle>
           <ul className="space-y-1.5">
             {prs.map((pr) => (
               <li key={pr.id} className="flex items-center gap-2 text-sm">
                 <Trophy className="h-4 w-4 shrink-0 text-gold" />
                 <span className="flex-1 truncate">{t(`history.pr.${pr.type}`)}</span>
-                <span className="font-mono text-gold">
+                <span className="font-mono tabular-nums text-gold">
                   {WEIGHT_PR_TYPES.has(pr.type)
                     ? formatWeight(pr.value, unit)
                     : Math.round(pr.value * 10) / 10}
@@ -120,10 +120,10 @@ export function WorkoutDetailPage() {
             <Card key={ex.exerciseId}>
               <Link
                 to={`/progress?exerciseId=${ex.exerciseId}`}
-                className="-mx-1 mb-2 flex items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40"
+                className="-mx-1 mb-2 flex items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{ex.name}</span>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">
                   {formatWeight(ex.volume, unit, { granularity: 'plate' })}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -140,7 +140,7 @@ export function WorkoutDetailPage() {
                         warmup && 'text-muted-foreground',
                       )}
                     >
-                      <span className="w-6 shrink-0 text-xs text-muted-foreground">
+                      <span className="w-6 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                         {s.set_number}
                       </span>
                       <span className="flex-1">
@@ -199,7 +199,7 @@ function Stat({ label, value, unit }: { label: string; value: string; unit?: str
   return (
     <div className="rounded-lg bg-muted/40 px-3 py-2.5 text-center">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-0.5 font-mono text-lg leading-none">
+      <div className="mt-0.5 font-mono text-lg tabular-nums leading-none">
         {value}
         {unit && <span className="ml-0.5 text-xs text-muted-foreground">{unit}</span>}
       </div>

@@ -70,7 +70,7 @@ export function SkillCreateForm({ categorySuggestions, onCreated, onCancel }: Sk
               type="button"
               onClick={() => setCategory(c)}
               className={cn(
-                'rounded-md px-2.5 py-1 text-xs transition-colors',
+                'rounded-md px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 category === c
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -91,7 +91,7 @@ export function SkillCreateForm({ categorySuggestions, onCreated, onCancel }: Sk
               type="button"
               onClick={() => setDifficulty(d)}
               className={cn(
-                'h-9 w-9 rounded-md text-sm transition-colors',
+                'h-9 w-9 rounded-md font-mono text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 difficulty === d
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',

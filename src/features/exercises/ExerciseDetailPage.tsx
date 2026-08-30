@@ -130,7 +130,7 @@ export function ExerciseDetailPage() {
               type="button"
               onClick={() => setFormOpen(true)}
               aria-label={t('exercises.editTitle')}
-              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Pencil className="h-4 w-4" />
             </button>
@@ -138,7 +138,7 @@ export function ExerciseDetailPage() {
               type="button"
               onClick={() => void setExerciseArchived(exercise.id, !exercise.is_archived)}
               aria-label={t(exercise.is_archived ? 'exercises.unarchive' : 'exercises.archive')}
-              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               {exercise.is_archived ? (
                 <ArchiveRestore className="h-4 w-4" />
@@ -168,7 +168,7 @@ export function ExerciseDetailPage() {
             key={m}
             onClick={() => setMetric(m)}
             className={cn(
-              'rounded-md border border-border px-3 py-1 text-xs transition-colors',
+              'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
               metric === m
                 ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
                 : 'hover:bg-elevated',
@@ -180,18 +180,18 @@ export function ExerciseDetailPage() {
       </div>
 
       {withData.length < 2 ? (
-        <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
           {withData.length === 0 ? t('exercises.detail.noHistory') : t('progress.needMore')}
         </div>
       ) : (
-        <div className="rounded-lg bg-card p-4">
+        <div className="rounded-xl bg-card p-4">
           <div className="mb-2 flex items-baseline justify-between text-xs text-muted-foreground">
-            <span>
+            <span className="font-mono tabular-nums">
               {withData.length} {t('progress.sessions')}
             </span>
             <span
               data-testid="exercise-best-value"
-              className="font-mono text-base font-semibold text-foreground"
+              className="font-mono text-base font-semibold tabular-nums text-foreground"
             >
               {bestTicker}
               <span className="ml-1 text-xs font-normal text-muted-foreground">

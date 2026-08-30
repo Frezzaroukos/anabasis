@@ -38,13 +38,15 @@ export function BottomSheet({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="flex-1 bg-black/60 backdrop-blur-sm animate-in fade-in"
+        className="flex-1 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
       />
-      {/* bg-elevated: το sheet ανεβαίνει πάνω από την κάρτα — βάθος, όχι περίγραμμα. */}
+      {/* bg-elevated: το sheet ανεβαίνει πάνω από την κάρτα — βάθος, όχι
+          περίγραμμα γύρω-γύρω, αλλά ένα hairline top border το κόβει καθαρά
+          πάνω από το θολωμένο backdrop. */}
       <div
         className={cn(
-          'rounded-t-2xl bg-elevated shadow-2xl',
-          'flex max-h-[85vh] flex-col safe-bottom animate-in slide-in-from-bottom',
+          'rounded-t-2xl border-t border-border/60 bg-elevated shadow-elevated-lg',
+          'flex max-h-[85vh] flex-col safe-bottom animate-in slide-in-from-bottom duration-200',
           className,
         )}
       >
@@ -52,7 +54,9 @@ export function BottomSheet({
           <span className="h-1 w-10 rounded-full bg-muted" aria-hidden />
         </div>
         {title != null && (
-          <div className="px-4 pb-2 pt-3 text-base font-semibold">{title}</div>
+          <div className="border-b border-border/40 px-4 pb-2 pt-3 text-base font-semibold">
+            {title}
+          </div>
         )}
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>

@@ -94,7 +94,7 @@ export function GoalFormSheet({
 
   const chip = (active: boolean) =>
     cn(
-      'rounded-full border px-3 py-1.5 text-sm transition-colors',
+      'rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
       active
         ? 'border-primary bg-primary/10 font-medium text-foreground'
         : 'border-border/70 text-muted-foreground hover:text-foreground',
@@ -119,7 +119,7 @@ export function GoalFormSheet({
               inputMode="decimal"
               value={target}
               onChange={(e) => setTarget(e.target.value)}
-              className="h-10 font-mono"
+              className="h-10 font-mono tabular-nums"
             />
           </Field>
           <Field label={t('goals.periodLabel')} className="flex-1">
@@ -174,7 +174,7 @@ export function GoalFormSheet({
             <select
               value={exerciseId ?? ''}
               onChange={(e) => setExerciseId(e.target.value || null)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md bg-elevated px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <option value="">{t('goals.all')}</option>
               {exercises.map((e) => (

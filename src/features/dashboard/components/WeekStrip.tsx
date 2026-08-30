@@ -43,7 +43,7 @@ export function WeekStrip() {
             key={key}
             to="/calendar"
             aria-label={fullLabel}
-            className="flex flex-col items-center gap-1 rounded-lg py-1.5 transition-colors hover:bg-elevated"
+            className="flex flex-col items-center gap-1 rounded-lg py-1.5 ring-offset-background transition-all duration-150 hover:bg-elevated active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <span className="text-[9px] uppercase text-muted-foreground">{weekdayLabel}</span>
             {trained === undefined ? (
@@ -51,7 +51,7 @@ export function WeekStrip() {
             ) : (
               <span
                 className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium tabular-nums transition-colors',
+                  'flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-medium tabular-nums transition-colors',
                   trained ? 'bg-primary/15 text-primary' : 'text-muted-foreground',
                   key === today && 'ring-1 ring-inset ring-primary',
                 )}

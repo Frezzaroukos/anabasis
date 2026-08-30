@@ -52,7 +52,7 @@ export function GoalProgramLink({ goal }: { goal: Goal }) {
         >
           <CalendarCheck className="h-3 w-3 shrink-0" aria-hidden />
           {program.name} ·{' '}
-          <span className="font-mono">
+          <span className="font-mono tabular-nums">
             {adherence.completedThisWeek}/{adherence.target}
           </span>{' '}
           {t('programs.thisWeek')}

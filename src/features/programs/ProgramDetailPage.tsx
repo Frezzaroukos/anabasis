@@ -250,7 +250,10 @@ export function ProgramDetailPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <Link to="/programs" className="text-xs text-muted-foreground hover:text-foreground">
+        <Link
+          to="/programs"
+          className="inline-block rounded-md text-xs text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
           ← {t('programs.title')}
         </Link>
         <div className="flex items-baseline justify-between gap-3">
@@ -272,11 +275,11 @@ export function ProgramDetailPage() {
                 Math.max(0, (program.target_sessions_per_week ?? 0) - 1) || null,
               )
             }
-            className="h-7 w-7 rounded-md bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="h-7 w-7 rounded-md bg-muted text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-accent-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             −
           </button>
-          <span className="w-6 text-center font-mono">
+          <span className="w-6 text-center font-mono tabular-nums">
             {program.target_sessions_per_week ?? '—'}
           </span>
           <button
@@ -285,12 +288,12 @@ export function ProgramDetailPage() {
             onClick={() =>
               void setProgramTarget(program.id, (program.target_sessions_per_week ?? 0) + 1)
             }
-            className="h-7 w-7 rounded-md bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="h-7 w-7 rounded-md bg-muted text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-accent-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             +
           </button>
           {adherence && (
-            <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary">
+            <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs tabular-nums text-primary">
               {adherence.completedThisWeek}/{adherence.target} {t('programs.thisWeek')}
             </span>
           )}
@@ -309,7 +312,7 @@ export function ProgramDetailPage() {
                 aria-label={`${t('programs.day')} ${index + 1}: ${day.name}`}
                 aria-pressed={day.id === activeDayId}
                 className={cn(
-                  'shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'shrink-0 rounded-md px-3 py-2 text-sm font-medium ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   day.id === activeDayId
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -322,7 +325,7 @@ export function ProgramDetailPage() {
               type="button"
               onClick={() => setAddingDay(true)}
               aria-label={t('programs.addDay')}
-              className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -384,7 +387,7 @@ export function ProgramDetailPage() {
                       onClick={() => void moveDay(-1)}
                       disabled={days.findIndex((d) => d.id === activeDayId) === 0}
                       aria-label={t('programs.moveDayLeft')}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -393,7 +396,7 @@ export function ProgramDetailPage() {
                       onClick={() => void moveDay(1)}
                       disabled={days.findIndex((d) => d.id === activeDayId) === days.length - 1}
                       aria-label={t('programs.moveDayRight')}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -404,7 +407,7 @@ export function ProgramDetailPage() {
                         setRenameDayDraft(activeDay.name);
                       }}
                       aria-label={t('programs.renameDay')}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -412,7 +415,7 @@ export function ProgramDetailPage() {
                       type="button"
                       onClick={() => setDeleteDayId(activeDay.id)}
                       aria-label={t('programs.deleteDay')}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -436,7 +439,7 @@ export function ProgramDetailPage() {
           <button
             type="button"
             onClick={() => setAddingDay(true)}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="rounded-md text-xs text-muted-foreground underline-offset-2 ring-offset-background transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             + {t('programs.addDays')}
           </button>
@@ -483,9 +486,9 @@ export function ProgramDetailPage() {
       )}
 
       {exercises.length === 0 ? (
-        <p className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
-          {t('programs.noExercises')}
-        </p>
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-card p-6 text-center">
+          <p className="text-sm text-muted-foreground">{t('programs.noExercises')}</p>
+        </div>
       ) : (
         <ul className="stagger space-y-3">
           {groups.map((group, index) => (
@@ -508,7 +511,7 @@ export function ProgramDetailPage() {
                         type="button"
                         onClick={() => void linkWithPrevious(index)}
                         aria-label={t('programs.linkPrevious')}
-                        className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        className="rounded-md p-1 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <Link2 className="h-3.5 w-3.5" />
                       </button>
@@ -518,7 +521,7 @@ export function ProgramDetailPage() {
                       onClick={() => void moveGroup(index, -1)}
                       disabled={index === 0}
                       aria-label={t('programs.moveUp')}
-                      className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                      className="rounded-md p-1 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronUp className="h-4 w-4" />
                     </button>
@@ -527,7 +530,7 @@ export function ProgramDetailPage() {
                       onClick={() => void moveGroup(index, 1)}
                       disabled={index === groups.length - 1}
                       aria-label={t('programs.moveDown')}
-                      className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                      className="rounded-md p-1 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronDown className="h-4 w-4" />
                     </button>

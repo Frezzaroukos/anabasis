@@ -39,10 +39,12 @@ export function ConfirmDialog({
         type="button"
         aria-label="Close"
         onClick={onCancel}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
       />
-      {/* bg-elevated: το dialog είναι το πιο «ψηλό» επίπεδο — βάθος, όχι περίγραμμα. */}
-      <div className="relative z-10 w-full max-w-sm rounded-xl bg-elevated p-5 shadow-2xl">
+      {/* bg-elevated: το dialog είναι το πιο «ψηλό» επίπεδο — βάθος, όχι
+          περίγραμμα, αλλά ένα hairline border/60 το κόβει καθαρά πάνω από το
+          θολωμένο backdrop (κανόνας 3 του brief). */}
+      <div className="relative z-10 w-full max-w-sm animate-in fade-in zoom-in-95 rounded-xl border border-border/60 bg-elevated p-5 shadow-elevated-lg duration-200">
         <p className="text-base font-semibold">{title}</p>
         {description != null && (
           <p className="mt-2 text-sm text-muted-foreground">{description}</p>

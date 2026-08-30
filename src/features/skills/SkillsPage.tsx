@@ -11,6 +11,7 @@ import {
 } from '@/lib/db/queries';
 import { BUILTIN_SKILL_CATEGORIES } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/Logo';
 import { SkillCreateForm } from './components/SkillCreateForm';
 import { SkillRow } from './components/SkillRow';
 
@@ -86,18 +87,28 @@ export function SkillsPage() {
         />
       )}
 
-      <ul className="stagger divide-y divide-border/60 rounded-lg bg-card">
-        {visibleSkills.map((s) => (
-          <SkillRow
-            key={s.id}
-            skill={s}
-            mastered={progress.get(s.id)?.status === 'mastered'}
-            total={stepStats.get(s.id)?.total ?? 0}
-            done={stepStats.get(s.id)?.done ?? 0}
-            onToggleArchive={() => void setSkillArchived(s.id, !s.is_archived)}
-          />
-        ))}
-      </ul>
+      {visibleSkills.length === 0 && !creating ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
+          <Logo className="h-10 w-10 text-primary" />
+          <p className="text-sm font-medium">{t('skills.emptyTitle', 'No skills yet')}</p>
+          <p className="max-w-xs text-xs text-muted-foreground">
+            {t('skills.emptyHint', 'Add your first skill to start climbing the ladder.')}
+          </p>
+        </div>
+      ) : (
+        <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
+          {visibleSkills.map((s) => (
+            <SkillRow
+              key={s.id}
+              skill={s}
+              mastered={progress.get(s.id)?.status === 'mastered'}
+              total={stepStats.get(s.id)?.total ?? 0}
+              done={stepStats.get(s.id)?.done ?? 0}
+              onToggleArchive={() => void setSkillArchived(s.id, !s.is_archived)}
+            />
+          ))}
+        </ul>
+      )}
 
       {archivedCount > 0 && (
         <button

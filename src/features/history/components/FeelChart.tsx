@@ -34,10 +34,10 @@ export function FeelChart({ days = 60 }: { days?: number }) {
   if (withFeel.length < 2) return null;
 
   return (
-    <section className="rounded-lg bg-card p-4">
+    <section className="rounded-xl bg-card p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h2 className="text-sm font-medium">{t('history.feelTrend')}</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
           {t('history.lastDays', { days })}
         </span>
       </div>

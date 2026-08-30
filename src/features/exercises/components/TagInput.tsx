@@ -41,7 +41,7 @@ export function TagInput({ value, onChange, placeholder, label }: TagInputProps)
                 onClick={() => remove(tag)}
                 aria-label={`${tag} ×`}
                 className={cn(
-                  'rounded-full p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground',
+                  'rounded-full p-0.5 text-muted-foreground ring-offset-background transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 )}
               >
                 <X className="h-3 w-3" />

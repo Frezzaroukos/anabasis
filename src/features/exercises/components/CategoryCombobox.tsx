@@ -57,7 +57,7 @@ export function CategoryCombobox({
                   setOpen(false);
                 }}
                 className={cn(
-                  'block w-full rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-accent',
+                  'block w-full rounded-md px-2.5 py-1.5 text-left text-sm ring-offset-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 )}
               >
                 {s}

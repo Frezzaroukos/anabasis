@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
 import { formatHMS } from '@/hooks/useSessionTimer';
+import { SectionTitle } from '@/components/ui/Section';
 
 export function LastWorkoutCard() {
   const { t } = useTranslation();
@@ -30,38 +31,36 @@ export function LastWorkoutCard() {
   const { workout, setsCount, exercisesCount } = data;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-baseline justify-between">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-          {t('workout.lastWorkout')}
-        </p>
-        <p className="text-xs text-muted-foreground">
+    <section className="rounded-xl bg-card p-4">
+      <div className="mb-1 flex items-baseline justify-between">
+        <SectionTitle className="mb-0">{t('workout.lastWorkout')}</SectionTitle>
+        <p className="font-mono text-xs tabular-nums text-muted-foreground">
           {new Date(workout.ended_at ?? workout.started_at).toLocaleDateString()}
         </p>
       </div>
       {workout.workout_type && (
-        <p className="mt-1 text-sm font-medium">{workout.workout_type}</p>
+        <p className="text-sm font-medium">{workout.workout_type}</p>
       )}
       <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div>
+        <div className="rounded-lg bg-muted/40 py-2">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {t('workout.duration')}
           </dt>
-          <dd className="font-mono text-base">
+          <dd className="mt-0.5 font-mono text-base tabular-nums leading-none">
             {formatHMS(workout.duration_seconds ?? 0)}
           </dd>
         </div>
-        <div>
+        <div className="rounded-lg bg-muted/40 py-2">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {t('workout.exercises')}
           </dt>
-          <dd className="font-mono text-base">{exercisesCount}</dd>
+          <dd className="mt-0.5 font-mono text-base tabular-nums leading-none">{exercisesCount}</dd>
         </div>
-        <div>
+        <div className="rounded-lg bg-muted/40 py-2">
           <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {t('workout.sets')}
           </dt>
-          <dd className="font-mono text-base">{setsCount}</dd>
+          <dd className="mt-0.5 font-mono text-base tabular-nums leading-none">{setsCount}</dd>
         </div>
       </dl>
     </section>
