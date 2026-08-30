@@ -28,6 +28,7 @@ const PROGRAM: Program = {
 const PROGRAM_EXERCISE: ProgramExercise = {
   id: 'pe-00000000-0000-4000-8000-000000000001',
   program_id: PROGRAM.id,
+  program_day_id: null,
   exercise_id: SEED_EXERCISES[0]!.id,
   position: 0,
   target_sets: 4,

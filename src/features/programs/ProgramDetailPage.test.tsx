@@ -30,6 +30,7 @@ const DROPSET_GROUP_KEY = 'grp-dropset-1';
 const DROPSET_A: ProgramExercise = {
   id: 'pe-00000000-0000-4000-8000-000000000010',
   program_id: PROGRAM.id,
+  program_day_id: null,
   exercise_id: SEED_EXERCISES[0]!.id,
   position: 0,
   target_sets: 1,
@@ -53,6 +54,7 @@ const DROPSET_B: ProgramExercise = {
 const SINGLE: ProgramExercise = {
   id: 'pe-00000000-0000-4000-8000-000000000012',
   program_id: PROGRAM.id,
+  program_day_id: null,
   exercise_id: SEED_EXERCISES[1]!.id,
   position: 2,
   target_sets: 3,

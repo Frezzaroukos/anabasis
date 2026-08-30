@@ -13,6 +13,7 @@ import type {
   AppSettings,
   BodyMetric,
   Program,
+  ProgramDay,
   ProgramExercise,
   Exercise,
   OutgoingEvent,
@@ -27,7 +28,7 @@ import type {
   Workout,
 } from './types';
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -42,6 +43,7 @@ export class AnabasisDB extends Dexie {
   app_settings!: Table<AppSettings, string>;
   body_metrics!: Table<BodyMetric, string>;
   programs!: Table<Program, string>;
+  program_days!: Table<ProgramDay, string>;
   program_exercises!: Table<ProgramExercise, string>;
   activities!: Table<Activity, string>;
   goals!: Table<Goal, string>;
@@ -263,6 +265,33 @@ export class AnabasisDB extends Dexie {
     this.version(11).upgrade(async () => {
       // no-op backfill· τα νέα records παίρνουν steps από τον κώδικα (?? null)
     });
+
+    /**
+     * v12 — Calendar-centric restructure (docs/ARCHITECTURE-V4.md):
+     *  · νέος πίνακας `program_days` — ένα πρόγραμμα έχει πολλές μέρες (Upper/Lower…)
+     *  · `program_exercises.program_day_id` — ανήκει σε μέρα (null = single implicit day)
+     *  · `workouts.program_id` + `program_day_id` — link για auto-numbering («3η Upper day»)·
+     *    ad-hoc προπόνηση = και τα δύο null.
+     * Additive/μη-καταστροφικό: υπάρχοντα rows παίρνουν null (single-day/ad-hoc).
+     * Το program_day_id δηλώνεται ως index γιατί ερωτάμε workouts/exercises ανά μέρα.
+     */
+    this.version(12)
+      .stores({
+        program_days: 'id, program_id, position, [program_id+position]',
+        program_exercises:
+          'id, program_id, program_day_id, exercise_id, position, [program_id+position], [program_day_id+position]',
+        workouts:
+          'id, user_id, started_at, ended_at, activity_kind, program_id, program_day_id, deleted_at, [user_id+started_at]',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('program_exercises').toCollection().modify((pe) => {
+          pe.program_day_id ??= null;
+        });
+        await tx.table('workouts').toCollection().modify((w) => {
+          w.program_id ??= null;
+          w.program_day_id ??= null;
+        });
+      });
   }
 }
 
