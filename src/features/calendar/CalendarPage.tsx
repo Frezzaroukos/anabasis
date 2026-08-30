@@ -3,7 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { getCalendar, listActivities, localDay, startWorkout } from '@/lib/db/queries';
+import {
+  countProgramDaySessions,
+  getCalendar,
+  listActivities,
+  listProgramDays,
+  listPrograms,
+  localDay,
+  startAdHocWorkout,
+  startWorkoutFromProgramDay,
+} from '@/lib/db/queries';
 import type { DayActivities } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { useAppSettings } from '@/hooks/useAppSettings';
@@ -41,12 +50,45 @@ export function CalendarPage() {
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const activeActivities = activities.filter((a) => !a.is_archived);
 
+  /**
+   * Κάθε πρόγραμμα → οι μέρες του, με το επόμενο αύξοντα αριθμό ήδη
+   * υπολογισμένο («Upper #3»). Προγράμματα χωρίς ρητές μέρες (legacy/χωρίς
+   * multi-day setup ακόμα) δεν έχουν τίποτα να διαλέξεις εδώ — filtered out.
+   */
+  const programsWithDays = useLiveQuery(
+    async () => {
+      const programs = await listPrograms();
+      const withDays = await Promise.all(
+        programs.map(async (program) => {
+          const days = await listProgramDays(program.id);
+          const options = await Promise.all(
+            days.map(async (day) => ({
+              day,
+              nextNo: (await countProgramDaySessions(day.id)) + 1,
+            })),
+          );
+          return { program, days: options };
+        }),
+      );
+      return withDays.filter((entry) => entry.days.length > 0);
+    },
+    [],
+    undefined,
+  );
+
   // Προσθήκη προπόνησης στην επιλεγμένη μέρα (σήμερα = live, παλιά = backdated).
-  const onAddOnDay = async (activityKey: string) => {
+  const onPickProgramDay = async (dayId: string) => {
     if (!selected) return;
-    await startWorkout(activityKey, selected === today ? undefined : selected);
+    const result = await startWorkoutFromProgramDay(dayId, selected === today ? undefined : selected);
+    if (!result) return;
     setAddOpen(false);
-    navigate('/workout');
+    navigate('/workout/active');
+  };
+  const onPickAdHoc = async (activityKey: string) => {
+    if (!selected) return;
+    await startAdHocWorkout(activityKey, selected === today ? undefined : selected);
+    setAddOpen(false);
+    navigate('/workout/active');
   };
   const dotOf = (kind: string) =>
     activities.find((a) => a.key === kind)?.dot_class ?? FALLBACK_DOT;
@@ -282,13 +324,64 @@ export function CalendarPage() {
         )}
       </section>
 
-      {/* Επιλογή δραστηριότητας → φτιάχνει προπόνηση στην επιλεγμένη μέρα */}
+      {/*
+        Δύο δρόμοι στην επιλεγμένη μέρα: (a) πρόγραμμα → μέρα → pre-filled
+        πλάνο + auto-αρίθμηση, (b) ad-hoc/quick → κενή προπόνηση, ελεύθερη
+        προσθήκη ασκήσεων. Ένα sheet, δύο σαφή sections — όχι wizard.
+      */}
       <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title={t('calendar.addWorkout')}>
-        {/* Ίδια γλώσσα με το ημερολόγιο: το χρώμα ΕΙΝΑΙ η δραστηριότητα. */}
-        <div className="flex flex-wrap gap-2 px-4 pb-4">
-          {activeActivities.map((a) => (
-            <ActivityChip key={a.key} activity={a} onClick={() => void onAddOnDay(a.key)} />
-          ))}
+        <div className="space-y-5 px-4 pb-4">
+          <div>
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('calendar.pickProgramDay')}
+            </h3>
+            {programsWithDays === undefined ? (
+              // undefined = φορτώνει, [] = πραγματικά άδειο — δύο διαφορετικά states.
+              <div className="space-y-1.5">
+                <div className="h-11 animate-pulse rounded-md bg-muted/40" />
+                <div className="h-11 animate-pulse rounded-md bg-muted/40" />
+              </div>
+            ) : programsWithDays.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('calendar.noProgramDays')}</p>
+            ) : (
+              <div className="space-y-3">
+                {programsWithDays.map(({ program, days }) => (
+                  <div key={program.id}>
+                    <p className="mb-1 truncate text-xs text-muted-foreground">{program.name}</p>
+                    <div className="space-y-1.5">
+                      {days.map(({ day: programDay, nextNo }) => (
+                        <button
+                          key={programDay.id}
+                          onClick={() => void onPickProgramDay(programDay.id)}
+                          className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+                        >
+                          <span className="font-medium">{programDay.name}</span>
+                          <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                            #{nextNo}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="h-px bg-border/70" />
+
+          <div>
+            <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('calendar.adHoc')}
+            </h3>
+            <p className="mb-2 text-xs text-muted-foreground">{t('calendar.adHocHint')}</p>
+            {/* Ίδια γλώσσα με το ημερολόγιο: το χρώμα ΕΙΝΑΙ η δραστηριότητα. */}
+            <div className="flex flex-wrap gap-2">
+              {activeActivities.map((a) => (
+                <ActivityChip key={a.key} activity={a} onClick={() => void onPickAdHoc(a.key)} />
+              ))}
+            </div>
+          </div>
         </div>
       </BottomSheet>
     </div>

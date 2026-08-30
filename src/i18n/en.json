@@ -120,7 +120,21 @@
     "emptyHint": "Build a reusable template once, start it any time.",
     "fromTemplate": "From template",
     "templatesHint": "Pick a ready-made routine — you can tweak it after.",
-    "exercisesShort": "exercises"
+    "exercisesShort": "exercises",
+    "day": "Day",
+    "dayNamePlaceholder": "Day name",
+    "addDay": "Add day",
+    "renameDay": "Rename day",
+    "deleteDay": "Delete day",
+    "deleteDayConfirmTitle": "Delete this day?",
+    "deleteDayConfirmDesc": "This removes the day and all its exercises. This can't be undone.",
+    "startDay": "Start day",
+    "addDays": "Add days",
+    "addDaysHint": "Split this program into named days, like Upper and Lower.",
+    "dayCount": "{{count}} day",
+    "dayCount_other": "{{count}} days",
+    "moveDayLeft": "Move day earlier",
+    "moveDayRight": "Move day later"
   },
   "history": {
     "title": "History",
@@ -272,7 +286,11 @@
     "monthWorkouts_other": "{{count}} workouts this month",
     "monthDays": "{{count}} day",
     "monthDays_other": "{{count}} days",
-    "monthEmpty": "No workouts this month yet"
+    "monthEmpty": "No workouts this month yet",
+    "pickProgramDay": "From a program",
+    "noProgramDays": "No program days yet. Add days to a program in My Programs.",
+    "adHoc": "Ad-hoc / quick",
+    "adHocHint": "No plan — add exercises as you go."
   },
   "body": {
     "weight": "Weight",

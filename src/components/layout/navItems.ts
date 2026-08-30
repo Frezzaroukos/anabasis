@@ -3,7 +3,7 @@ import {
   CalendarDays,
   ClipboardList,
   Download,
-  Dumbbell,
+  Mountain,
   Home,
   LineChart,
   ListChecks,
@@ -32,19 +32,19 @@ export interface NavItem {
  */
 export const PRIMARY_NAV: NavItem[] = [
   { to: '/', labelKey: 'nav.home', Icon: Home, end: true },
-  { to: '/workout', labelKey: 'nav.workout', Icon: Dumbbell },
   { to: '/calendar', labelKey: 'nav.calendar', Icon: CalendarDays },
-  { to: '/skills', labelKey: 'nav.skills', Icon: Sparkles },
+  { to: '/programs', labelKey: 'nav.programs', Icon: ClipboardList },
+  { to: '/exercises', labelKey: 'exercises.title', Icon: ListChecks },
 ];
 
 /** Ό,τι δεν χωρά στα tabs του κινητού — με σειρά συχνότητας χρήσης. */
 export const SECONDARY_NAV: NavItem[] = [
-  { to: '/programs', labelKey: 'nav.programs', Icon: ClipboardList },
   { to: '/goals', labelKey: 'goals.title', Icon: Target },
   { to: '/progress', labelKey: 'progress.title', Icon: LineChart },
   { to: '/history', labelKey: 'history.title', Icon: Activity },
+  { to: '/skills', labelKey: 'nav.skills', Icon: Sparkles },
+  { to: '/achievements', labelKey: 'gami.title', Icon: Mountain },
   { to: '/body', labelKey: 'body.title', Icon: Scale },
-  { to: '/exercises', labelKey: 'exercises.title', Icon: ListChecks },
   { to: '/profile', labelKey: 'nav.profile', Icon: User },
   { to: '/import', labelKey: 'import.title', Icon: Download },
   { to: '/settings', labelKey: 'nav.settings', Icon: Settings },

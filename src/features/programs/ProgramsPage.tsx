@@ -15,7 +15,7 @@ import {
 } from '@/lib/db/queries';
 import { PROGRAM_TEMPLATES } from '@/lib/programTemplates';
 import { db } from '@/lib/db';
-import type { ActivityKind } from '@/lib/db/types';
+import type { ActivityKind, ProgramDay } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
@@ -51,6 +51,19 @@ export function ProgramsPage() {
     },
     [],
     new Map<string, number>(),
+  );
+  // v12: μέρες ανά πρόγραμμα — δείχνει «Upper, Lower» αντί για μετρήματα ασκήσεων
+  // σε δομημένα προγράμματα, σαν λίστα ρουτινών.
+  const programDays = useLiveQuery(
+    async () => {
+      const rows = await db.program_days.toArray();
+      const m = new Map<string, ProgramDay[]>();
+      for (const r of rows) m.set(r.program_id, [...(m.get(r.program_id) ?? []), r]);
+      for (const arr of m.values()) arr.sort((a, b) => a.position - b.position);
+      return m;
+    },
+    [],
+    new Map<string, ProgramDay[]>(),
   );
 
   const [creating, setCreating] = useState(false);
@@ -114,9 +127,15 @@ export function ProgramsPage() {
     }
   };
 
+  // Δομημένο πρόγραμμα (έχει μέρες) → δεν ξέρουμε ΠΟΙΑ μέρα, πάμε στον editor να
+  // διαλέξει· flat πρόγραμμα (καμία μέρα) → ξεκινά κατευθείαν όπως πριν το v12.
   const onStart = async (programId: string) => {
+    if ((programDays.get(programId)?.length ?? 0) > 0) {
+      navigate(`/programs/${programId}`);
+      return;
+    }
     const started = await startWorkoutFromProgram(programId);
-    if (started) navigate('/workout');
+    if (started) navigate('/workout/active');
   };
 
   // Fork: «Upper A» → «Upper A (2)», μετά ανοίγει τον editor για μετονομασία/αλλαγές.
@@ -272,12 +291,23 @@ export function ProgramsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <Link to={`/programs/${p.id}`} className="min-w-0 flex-1">
                     <p className="truncate font-display text-sm font-semibold">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-xs text-muted-foreground">
                       {t(`activity.${p.activity_kind}`)}
                       {' · '}
-                      <span className="font-mono">
-                        {exerciseCounts.get(p.id) ?? 0} {t('workout.exercises').toLowerCase()}
-                      </span>
+                      {(programDays.get(p.id)?.length ?? 0) > 0 ? (
+                        <span className="font-mono">
+                          {t('programs.dayCount', { count: programDays.get(p.id)!.length })}
+                          {' · '}
+                          {programDays
+                            .get(p.id)!
+                            .map((d) => d.name)
+                            .join(', ')}
+                        </span>
+                      ) : (
+                        <span className="font-mono">
+                          {exerciseCounts.get(p.id) ?? 0} {t('workout.exercises').toLowerCase()}
+                        </span>
+                      )}
                     </p>
                   </Link>
                   <div className="flex shrink-0 items-center gap-1">

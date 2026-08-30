@@ -14,7 +14,7 @@ const lazyPage = <T extends Record<string, React.ComponentType<unknown>>>(
 ) => lazy(() => loader().then((m) => ({ default: m[name] })));
 
 const DashboardPage = lazyPage(() => import('@/features/dashboard/DashboardPage'), 'DashboardPage');
-const WorkoutPage = lazyPage(() => import('@/features/workout/WorkoutPage'), 'WorkoutPage');
+const ActiveWorkoutRoute = lazyPage(() => import('@/features/workout/ActiveWorkoutRoute'), 'ActiveWorkoutRoute');
 const ProgramsPage = lazyPage(() => import('@/features/programs/ProgramsPage'), 'ProgramsPage');
 const ProgramDetailPage = lazyPage(() => import('@/features/programs/ProgramDetailPage'), 'ProgramDetailPage');
 const ExercisesPage = lazyPage(() => import('@/features/exercises/ExercisesPage'), 'ExercisesPage');
@@ -51,7 +51,10 @@ export const router = createBrowserRouter(
       // Το «μια ματιά» είναι η αρχική: ο χρήστης θέλει πρώτα να δει πού
       // βρίσκεται, και μετά να πατήσει έναρξη προπόνησης.
       { index: true, element: <DashboardPage /> },
-      { path: 'workout', element: <WorkoutPage /> },
+      // Η έναρξη/καταγραφή προπόνησης γίνεται πλέον από το Calendar (v4).
+      // Το /workout μένει ως legacy redirect (PWA shortcuts, παλιά links).
+      { path: 'workout', element: <Navigate to="/calendar" replace /> },
+      { path: 'workout/active', element: <ActiveWorkoutRoute /> },
       { path: 'admin', element: <AdminPage /> },
       { path: 'achievements', element: <AchievementsPage /> },
       { path: 'programs', element: <ProgramsPage /> },
