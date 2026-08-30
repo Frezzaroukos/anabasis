@@ -592,6 +592,7 @@ export async function achieveStep(
   skillId: string,
   stepId: string,
   achievedValue: number,
+  addedWeightKg: number | null = null,
 ): Promise<void> {
   const t = now();
   const steps = await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number');
@@ -610,6 +611,7 @@ export async function achieveStep(
       user_id: getCurrentUserId(),
       skill_step_id: stepId,
       achieved_value: achievedValue,
+      added_weight_kg: addedWeightKg,
       achieved_at: t,
       workout_id: null,
       notes: null,
@@ -1751,6 +1753,7 @@ export async function setSkillArchived(id: string, archived: boolean): Promise<v
 }
 
 export interface SkillStepInput {
+  added_weight_kg?: number | null;
   name: string;
   description?: string;
   target_type?: SkillTargetType;
@@ -1779,6 +1782,7 @@ export async function addSkillStep(
     target_type: input.target_type ?? 'hold',
     target_value: input.target_value ?? 0,
     target_unit: input.target_unit ?? 'sec',
+    added_weight_kg: input.added_weight_kg ?? null,
     benchmark_video_url: input.benchmark_video_url ?? null,
     prerequisites: prev ? [prev.id] : [],
     created_at: t,
