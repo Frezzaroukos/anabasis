@@ -81,12 +81,12 @@ export function ActivityProgress() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('progress.activities')}
       </h2>
 
       {!activityKey ? (
-        <ul className="divide-y divide-border/60 rounded-lg bg-card">
+        <ul className="divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
           {activities.map((a) => (
             <li key={a.key}>
               <button
@@ -94,7 +94,7 @@ export function ActivityProgress() {
                   setActivityKey(a.key);
                   setMetric(a.tracks_distance ? 'distanceKm' : 'paceSecPerKm');
                 }}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated"
+                className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
                 <span aria-hidden>{a.icon}</span>
                 <span className="flex-1 truncate text-sm font-medium">{a.label}</span>
@@ -120,17 +120,19 @@ export function ActivityProgress() {
           <div className="flex flex-wrap gap-2 text-xs">
             {prs.get('longest_distance') && (
               <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
-                ★ {t('progress.longestDistance')}: {prs.get('longest_distance')!.value} km
+                ★ {t('progress.longestDistance')}:{' '}
+                <span className="font-mono tabular-nums">{prs.get('longest_distance')!.value} km</span>
               </span>
             )}
             {prs.get('fastest_pace') && (
               <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
-                ★ {t('progress.fastestPace')}: {fmtPace(prs.get('fastest_pace')!.value)}/km
+                ★ {t('progress.fastestPace')}:{' '}
+                <span className="font-mono tabular-nums">{fmtPace(prs.get('fastest_pace')!.value)}/km</span>
               </span>
             )}
             {prs.get('longest_duration') && (
               <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
-                ★ {Math.round(prs.get('longest_duration')!.value / 60)} min
+                ★ <span className="font-mono tabular-nums">{Math.round(prs.get('longest_duration')!.value / 60)} min</span>
               </span>
             )}
           </div>
@@ -143,7 +145,7 @@ export function ActivityProgress() {
                     key={m}
                     onClick={() => setMetric(m)}
                     className={cn(
-                      'rounded-md border border-border px-3 py-1 text-xs transition-colors',
+                      'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                       metric === m
                         ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
                         : 'hover:bg-elevated',
@@ -160,11 +162,11 @@ export function ActivityProgress() {
           </div>
 
           {withData.length < 2 ? (
-            <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
               {t('progress.needMore')}
             </div>
           ) : (
-            <div className="rounded-lg bg-card p-4">
+            <div className="rounded-xl bg-card p-4">
               <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>

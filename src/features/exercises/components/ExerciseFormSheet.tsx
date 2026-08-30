@@ -128,9 +128,9 @@ export function ExerciseFormSheet({
                 type="button"
                 onClick={() => patch({ movement_type: mt })}
                 className={cn(
-                  'rounded-md border border-border px-3 py-1.5 text-sm transition-colors',
+                  'rounded-md border border-border px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   form.movement_type === mt
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'border-primary bg-primary text-primary-foreground'
                     : 'hover:bg-accent',
                 )}
               >
@@ -163,13 +163,13 @@ export function ExerciseFormSheet({
                 aria-label={t(labelKey)}
                 onClick={() => patch({ [key]: !form[key] } as Partial<FormState>)}
                 className={cn(
-                  'h-6 w-11 shrink-0 rounded-full border border-border transition-colors',
+                  'h-6 w-11 shrink-0 rounded-full border border-border ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   form[key] ? 'bg-primary' : 'bg-muted',
                 )}
               >
                 <span
                   className={cn(
-                    'block h-4 w-4 rounded-full bg-background transition-transform',
+                    'block h-4 w-4 rounded-full bg-background transition-transform duration-150',
                     form[key] ? 'translate-x-6' : 'translate-x-1',
                   )}
                 />

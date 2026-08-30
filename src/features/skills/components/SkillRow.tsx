@@ -34,10 +34,10 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
 
   return (
     <li className={cn(skill.is_archived && 'opacity-50')}>
-      <div className="flex items-center gap-2 px-4 py-3">
+      <div className="flex items-center gap-2 px-4 py-3 transition-colors hover:bg-elevated">
         <Link
           to={`/skills/${skill.id}`}
-          className="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:opacity-80"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span
             className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[skill.category] ?? 'bg-zinc-400')}
@@ -73,7 +73,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
           type="button"
           onClick={onToggleArchive}
           aria-label={skill.is_archived ? t('skills.restore') : t('skills.archive')}
-          className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {skill.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
         </button>

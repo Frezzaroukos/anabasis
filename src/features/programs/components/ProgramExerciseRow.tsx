@@ -81,7 +81,7 @@ export function ProgramExerciseRow({
               type="button"
               onClick={onUnlink}
               aria-label={t('programs.unlink')}
-              className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Unlink className="h-4 w-4" />
             </button>
@@ -90,7 +90,7 @@ export function ProgramExerciseRow({
             type="button"
             onClick={onDelete}
             aria-label={t('common.delete')}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+            className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -180,7 +180,7 @@ export function ProgramExerciseRow({
             type="button"
             onClick={() => void updateProgramExercise(item.id, { set_type: st })}
             className={cn(
-              'rounded-md px-2 py-1 text-[11px] transition-colors',
+              'rounded-md px-2 py-1 text-[11px] ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               item.set_type === st
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',

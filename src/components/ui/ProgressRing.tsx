@@ -37,12 +37,14 @@ export function ProgressRing({
   return (
     <div className={cn('relative inline-flex items-center justify-center', className)}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        {/* Το track είναι hairline (--border), όχι γεμάτο --muted — ο δακτύλιος
+            προόδου μένει το μόνο έντονο στοιχείο. */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="hsl(var(--muted))"
+          stroke="hsl(var(--border))"
           strokeWidth={thickness}
         />
         <circle
@@ -56,6 +58,9 @@ export function ProgressRing({
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - pct)}
           className="transition-[stroke-dashoffset] duration-500 ease-out motion-reduce:transition-none"
+          style={{
+            filter: `drop-shadow(0 0 6px hsl(var(--${tone === 'gold' ? 'gold' : 'primary'}) / 0.4))`,
+          }}
         />
       </svg>
       <span className="absolute flex flex-col items-center leading-none">

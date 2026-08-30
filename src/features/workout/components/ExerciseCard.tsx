@@ -168,8 +168,8 @@ export function ExerciseCard({
               aria-selected={!weighted}
               onClick={() => onWeightedChange(false)}
               className={cn(
-                'rounded px-2 py-0.5 transition-colors',
-                !weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                'rounded px-2 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                !weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {t('workout.bodyweight')}
@@ -180,8 +180,8 @@ export function ExerciseCard({
               aria-selected={weighted}
               onClick={() => onWeightedChange(true)}
               className={cn(
-                'rounded px-2 py-0.5 transition-colors',
-                weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                'rounded px-2 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {t('workout.weighted')}
@@ -194,7 +194,7 @@ export function ExerciseCard({
           κάρτας ώστε να μη μετατοπίζει το layout γύρω του. */}
       <RungCelebration active={prCount > 0} className="absolute -right-1 -top-1 z-10 h-11 w-11" />
 
-      <div className="divide-y divide-border/60">
+      <div className="divide-y divide-border/60 border-t border-border/60">
         {visibleSets.length === 0 ? (
           <p className="px-3 py-2 text-xs text-muted-foreground">{t('workout.swipeHint')}</p>
         ) : (

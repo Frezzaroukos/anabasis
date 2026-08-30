@@ -18,7 +18,7 @@ export function StartWorkoutCta() {
   return (
     <Link
       to="/calendar"
-      className="flex items-center justify-between gap-3 rounded-xl bg-primary px-5 py-4 text-primary-foreground shadow-glow-sm transition-transform duration-200 hover:shadow-glow active:scale-[0.99]"
+      className="flex items-center justify-between gap-3 rounded-xl bg-primary px-5 py-4 text-primary-foreground shadow-glow-sm ring-offset-background transition-all duration-200 hover:shadow-glow active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <span>
         <span className="block text-lg font-semibold">{t('dashboard.startCta')}</span>

@@ -140,6 +140,24 @@
   }
 
   /*
+   * Μία κλίμακα ambient elevation — «floating» επιφάνεια πάνω στο βάθος από
+   * κάτω, όχι περίγραμμα (βλ. Card.tsx: depth-by-lightness, όχι border). Δύο
+   * βαθμίδες: κάρτες (χαμηλά, πάνω από background) και overlays/modals
+   * (ψηλά, πάνω από backdrop) — ένα σημείο αλήθειας αντί για επαναλαμβανόμενο
+   * arbitrary box-shadow σε κάθε component.
+   */
+  .shadow-elevated {
+    box-shadow:
+      0 1px 0 0 hsl(var(--foreground) / 0.03),
+      0 10px 28px -18px hsl(var(--foreground) / 0.35);
+  }
+  .shadow-elevated-lg {
+    box-shadow:
+      0 1px 0 0 hsl(var(--foreground) / 0.04),
+      0 24px 60px -20px hsl(var(--foreground) / 0.45);
+  }
+
+  /*
    * Microinteractions — επιβεβαιώνουν, δεν διασκεδάζουν.
    * Ένα app που το ανοίγεις 6 φορές την ώρα δεν επιτρέπεται να σε καθυστερεί.
    */

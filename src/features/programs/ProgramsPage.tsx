@@ -158,7 +158,8 @@ export function ProgramsPage() {
             {t('programs.title')}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {programs.length} {t('programs.title').toLowerCase()}
+            <span className="font-mono tabular-nums">{programs.length}</span>{' '}
+            {t('programs.title').toLowerCase()}
           </p>
         </div>
         {!creating && (
@@ -187,7 +188,7 @@ export function ProgramsPage() {
                   type="button"
                   disabled={busy}
                   onClick={() => void onPickTemplate(tpl.id)}
-                  className="w-full rounded-lg bg-card p-3 text-left transition-colors hover:bg-accent disabled:opacity-50"
+                  className="w-full rounded-lg bg-card p-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">{t(tpl.nameKey)}</span>
@@ -219,7 +220,7 @@ export function ProgramsPage() {
                 type="button"
                 onClick={() => setKind(k)}
                 className={cn(
-                  'rounded-md px-3 py-1.5 text-sm transition-colors',
+                  'rounded-md px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   kind === k
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -260,9 +261,17 @@ export function ProgramsPage() {
 
       {programs.length === 0 && !creating ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
-          <ListChecks className="h-10 w-10 text-primary" />
-          <p className="text-sm font-medium">{t('programs.empty')}</p>
-          <p className="text-xs text-muted-foreground">{t('programs.emptyHint')}</p>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ListChecks className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-medium">{t('programs.empty')}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('programs.emptyHint')}</p>
+          </div>
+          <Button size="sm" onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" />
+            {t('programs.newProgram')}
+          </Button>
         </div>
       ) : (
         <ul className="stagger space-y-2">
@@ -289,7 +298,10 @@ export function ProgramsPage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-between gap-3">
-                  <Link to={`/programs/${p.id}`} className="min-w-0 flex-1">
+                  <Link
+                    to={`/programs/${p.id}`}
+                    className="min-w-0 flex-1 rounded-md ring-offset-background transition-all duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
                     <p className="truncate font-display text-sm font-semibold">{p.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {t(`activity.${p.activity_kind}`)}
@@ -325,7 +337,7 @@ export function ProgramsPage() {
                       type="button"
                       onClick={() => void onDuplicate(p.id)}
                       aria-label={t('programs.duplicate')}
-                      className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      className="rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Copy className="h-4 w-4" />
                     </button>
@@ -333,7 +345,7 @@ export function ProgramsPage() {
                       type="button"
                       onClick={() => setDeleteId(p.id)}
                       aria-label={t('common.delete')}
-                      className="rounded-md p-2 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                      className="rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

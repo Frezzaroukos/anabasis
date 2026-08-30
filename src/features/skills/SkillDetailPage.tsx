@@ -41,6 +41,7 @@ import {
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
 import { StepFormSheet } from './components/StepFormSheet';
+import { SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
 
 interface LadderPoint {
@@ -163,10 +164,10 @@ export function SkillDetailPage() {
 
         <div className="pt-2">
           <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-            <span className="font-mono">
+            <span className="font-mono tabular-nums">
               {doneCount}/{steps.length} {t('skills.stepsDone')}
             </span>
-            <span className="font-mono">{pct}%</span>
+            <span className="font-mono tabular-nums">{pct}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
@@ -245,7 +246,7 @@ export function SkillDetailPage() {
                       type="button"
                       onClick={() => setEditingStep(step)}
                       aria-label={t('skills.editStep')}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
@@ -253,14 +254,14 @@ export function SkillDetailPage() {
                       type="button"
                       onClick={() => setDeleteStepId(step.id)}
                       aria-label={t('skills.deleteStep')}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">{step.description}</p>
-                <p className="mt-1 font-mono text-xs">
+                <p className="mt-1 font-mono text-xs tabular-nums">
                   {t('skills.target')}: {step.target_value} {step.target_unit}
                   {step.added_weight_kg != null && ` + ${step.added_weight_kg}kg`}
                 </p>
@@ -278,7 +279,7 @@ export function SkillDetailPage() {
                 {done && (
                   <p className="mt-2 text-xs text-primary">
                     {t('skills.achieved')}:{' '}
-                    <span className="font-mono">
+                    <span className="font-mono tabular-nums">
                       {done.achieved_value} {step.target_unit}
                       {done.added_weight_kg != null && (
                         <span className="text-gold"> + {done.added_weight_kg}kg</span>
@@ -294,7 +295,7 @@ export function SkillDetailPage() {
                     <Input
                       type="number"
                       inputMode="decimal"
-                      className="h-9 w-24"
+                      className="h-9 w-24 font-mono tabular-nums"
                       placeholder={String(step.target_value)}
                       value={draft[step.id] ?? ''}
                       onChange={(e) =>
@@ -305,7 +306,7 @@ export function SkillDetailPage() {
                     <Input
                       type="number"
                       inputMode="decimal"
-                      className="h-9 w-28"
+                      className="h-9 w-28 font-mono tabular-nums"
                       placeholder={
                         step.added_weight_kg != null
                           ? String(step.added_weight_kg)
@@ -367,13 +368,13 @@ export function SkillDetailPage() {
       {/* Πρόοδος στον χρόνο — πότε πέτυχες κάθε βήμα, με πόσο βάρος. Χρυσή
           κουκκίδα = weighted completion (ίδιο σήμα με PR), χρυσή γραμμή = κορυφή. */}
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t('skills.progressOverTime')}</h2>
+        <SectionTitle>{t('skills.progressOverTime')}</SectionTitle>
         {ladderPoints.length < 2 ? (
-          <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
             {t('progress.needMore')}
           </div>
         ) : (
-          <div className="rounded-lg bg-card p-4">
+          <div className="rounded-xl bg-card p-4">
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={ladderPoints} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>

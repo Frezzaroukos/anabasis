@@ -11,7 +11,7 @@ import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutVi
 /** Διακριτικό placeholder όσο φορτώνει ένα lazy route chunk. */
 function PageFallback() {
   return (
-    <div className="flex items-center justify-center py-20">
+    <div className="flex animate-in fade-in items-center justify-center py-20 duration-300">
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-primary" />
     </div>
   );

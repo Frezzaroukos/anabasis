@@ -111,7 +111,7 @@ export function StepFormSheet({
                 type="button"
                 onClick={() => setTargetType(tt)}
                 className={cn(
-                  'rounded-md border border-border px-2.5 py-1 text-xs transition-colors',
+                  'rounded-md border border-border px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                   targetType === tt
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-accent',
@@ -131,7 +131,7 @@ export function StepFormSheet({
             onChange={(e) => setTargetValue(e.target.value)}
             placeholder={t('skills.targetValue')}
             aria-label={t('skills.targetValue')}
-            className="flex-1"
+            className="flex-1 font-mono tabular-nums"
           />
           <Input
             value={targetUnit}
@@ -148,7 +148,7 @@ export function StepFormSheet({
               type="button"
               onClick={() => setTargetUnit(u)}
               className={cn(
-                'rounded-md border border-border px-2.5 py-1 text-xs transition-colors',
+                'rounded-md border border-border px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 targetUnit === u
                   ? 'bg-primary text-primary-foreground'
                   : 'hover:bg-accent',
@@ -168,6 +168,7 @@ export function StepFormSheet({
             onChange={(e) => setAddedWeightKg(e.target.value)}
             placeholder={t('skills.addedWeightPlaceholder')}
             aria-label={t('skills.addedWeight')}
+            className="font-mono tabular-nums"
           />
         </div>
 

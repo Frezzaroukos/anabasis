@@ -110,7 +110,7 @@ export function ExercisePickerSheet({
                           }
                         }}
                         className={cn(
-                          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent',
+                          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                           mode === 'multi' && isSelected(ex.id) && 'bg-accent',
                         )}
                       >

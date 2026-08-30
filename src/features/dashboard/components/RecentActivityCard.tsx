@@ -68,7 +68,7 @@ export function RecentActivityCard() {
           {t('dashboard.viewAll')}
         </Link>
       </div>
-      <ul className="-mx-1">
+      <ul className="divide-y divide-border/60">
         {recent.map((w) => {
           const Icon = iconFor(w.activity_kind);
           const label = activityLabels.get(w.activity_kind) ?? w.workout_type ?? w.activity_kind;
@@ -79,7 +79,7 @@ export function RecentActivityCard() {
             <li key={w.id}>
               <Link
                 to={`/history/${w.id}`}
-                className="flex items-center gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-elevated"
+                className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 ring-offset-background transition-all duration-150 hover:bg-elevated active:bg-elevated/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-elevated text-muted-foreground">
                   <Icon className="h-4 w-4" />

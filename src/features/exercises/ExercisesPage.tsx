@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Archive, ArchiveRestore, Pencil, Plus, Search, Sparkles } from 'lucide-react';
+import { Archive, ArchiveRestore, Dumbbell, Pencil, Plus, Search, Sparkles } from 'lucide-react';
 import {
   getAllSkillProgress,
   getExerciseSummaries,
@@ -121,11 +121,11 @@ export function ExercisesPage() {
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t('exercises.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {activeCount} {t('exercises.available')}
+            <span className="font-mono tabular-nums">{activeCount}</span> {t('exercises.available')}
             {masteredCount > 0 && (
               <>
                 {' · '}
-                <span className="text-gold">{masteredCount} ★</span>
+                <span className="font-mono tabular-nums text-gold">{masteredCount} ★</span>
               </>
             )}
           </p>
@@ -172,8 +172,10 @@ export function ExercisesPage() {
             type="button"
             onClick={() => setFilter(f)}
             className={cn(
-              'rounded-md border border-border px-3 py-1.5 text-sm transition-colors',
-              filter === f ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+              'rounded-md border border-border px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              filter === f
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'hover:bg-accent',
             )}
           >
             {t(`exercises.filter.${f}`)}
@@ -182,14 +184,25 @@ export function ExercisesPage() {
       </div>
 
       {groups.length === 0 ? (
-        <p className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
-          {filter === 'archived' ? t('exercises.emptyArchived') : t('exercises.empty')}
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Dumbbell className="h-5 w-5" />
+          </span>
+          <p className="text-sm font-medium">
+            {filter === 'archived' ? t('exercises.emptyArchived') : t('exercises.empty')}
+          </p>
+          {filter !== 'archived' && (
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              {t('exercises.new')}
+            </Button>
+          )}
+        </div>
       ) : (
         <div className="space-y-2">
           {groups.map(({ category, items }) => (
             <section key={category}>
-              <h3 className="px-1 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="px-1 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {category}
               </h3>
               <ul className="divide-y divide-border/60 rounded-lg bg-card">
@@ -248,7 +261,11 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
   return (
     <li className={cn('flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated', exercise.is_archived && 'opacity-60')}>
       <span className={cn('h-2 w-2 shrink-0 rounded-full', categoryDotClass(exercise.category))} aria-hidden />
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="min-w-0 flex-1 rounded-sm text-left ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
         <p className="flex items-center gap-2 text-sm font-medium">
           {summary?.hasPR && (
             <span className="shrink-0 text-gold" aria-hidden title="PR">★</span>
@@ -273,7 +290,7 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
         type="button"
         onClick={onEdit}
         aria-label={t('exercises.editTitle')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <Pencil className="h-4 w-4" />
       </button>
@@ -281,7 +298,7 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
         type="button"
         onClick={() => void setExerciseArchived(exercise.id, !exercise.is_archived)}
         aria-label={t(exercise.is_archived ? 'exercises.unarchive' : 'exercises.archive')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {exercise.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
       </button>

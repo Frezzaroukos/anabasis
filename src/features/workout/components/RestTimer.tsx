@@ -84,7 +84,7 @@ export function RestTimer({ restartSignal }: RestTimerProps) {
     <button
       type="button"
       onClick={() => (running ? stop() : start())}
-      className="mx-auto flex flex-col items-center gap-1"
+      className="mx-auto flex flex-col items-center gap-1 rounded-full transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       aria-label={running ? t('workout.rest.stop') : t('workout.rest.start')}
     >
       <span className="relative flex h-24 w-24 items-center justify-center">

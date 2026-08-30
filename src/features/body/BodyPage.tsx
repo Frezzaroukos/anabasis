@@ -17,6 +17,7 @@ import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCountUp } from '@/hooks/useCountUp';
+import { cn } from '@/lib/utils';
 import {
   ACTIVE_DOT,
   CHART_GRID,
@@ -113,9 +114,11 @@ export function BodyPage() {
             <button
               key={r}
               onClick={() => setDays(r)}
-              className={`rounded-md px-2 py-1 font-mono text-xs transition-colors ${
-                days === r ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent'
-              }`}
+              className={cn(
+                'rounded-md px-2 py-1 font-mono text-xs tabular-nums transition-colors active:scale-95',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                days === r ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent',
+              )}
             >
               {r}d
             </button>
@@ -144,7 +147,7 @@ export function BodyPage() {
                 inputMode="decimal"
                 value={val}
                 onChange={(e) => set(e.target.value)}
-                className="h-9"
+                className="h-9 font-mono tabular-nums"
               />
             </label>
           ))}

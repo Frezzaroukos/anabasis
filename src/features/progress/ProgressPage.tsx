@@ -166,14 +166,14 @@ export function ProgressPage() {
             onChange={(e) => setQ(e.target.value)}
             className="h-10"
           />
-          <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-lg bg-card">
+          <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
             {filtered.map((e) => {
               const s = summaries.get(e.id);
               return (
                 <li key={e.id}>
                   <button
                     onClick={() => setExerciseId(e.id)}
-                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated"
+                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       {/* ★ = έχει PR (χρυσό = επίτευξη), ● = έχει προπονηθεί·
@@ -235,7 +235,7 @@ export function ProgressPage() {
                   key={m}
                   onClick={() => setMetric(m)}
                   className={cn(
-                    'rounded-md border border-border px-3 py-1 text-xs transition-colors',
+                    'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                     metric === m
                       ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
                       : 'hover:bg-elevated',
@@ -249,17 +249,17 @@ export function ProgressPage() {
           </div>
 
           {withData.length < 2 ? (
-            <div className="rounded-lg bg-card p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
               {t('progress.needMore')}
             </div>
           ) : (
-            <div className="rounded-lg bg-card p-4">
+            <div className="rounded-xl bg-card p-4">
               <div className="mb-2 flex justify-between text-xs text-muted-foreground">
-                <span>
+                <span className="font-mono tabular-nums">
                   {withData.length} {t('progress.sessions')}
                 </span>
                 {best != null && (
-                  <span className="font-mono">
+                  <span className="font-mono tabular-nums">
                     {t('progress.best')}: {best} {unit}
                   </span>
                 )}

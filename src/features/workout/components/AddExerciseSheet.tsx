@@ -116,7 +116,7 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
                           onClose();
                           setQ('');
                         }}
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                       >
                         <span
                           className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[ex.category])}

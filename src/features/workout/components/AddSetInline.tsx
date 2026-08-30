@@ -162,7 +162,7 @@ export function AddSetInline({
               aria-checked={setType === st}
               onClick={() => onSetTypeChange(st)}
               className={cn(
-                'rounded-full border border-border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                'rounded-full border border-border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 setType === st
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent',
@@ -217,7 +217,7 @@ export function AddSetInline({
               min="0"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="h-9"
+              className="h-9 font-mono tabular-nums"
               aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
             />
           </label>
@@ -235,7 +235,7 @@ export function AddSetInline({
               step="1"
               value={hold}
               onChange={(e) => setHold(e.target.value)}
-              className="h-9"
+              className="h-9 font-mono tabular-nums"
               aria-label={t('workout.holdSeconds')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && valid) void submit();
@@ -255,7 +255,7 @@ export function AddSetInline({
               step="1"
               value={reps}
               onChange={(e) => setReps(e.target.value)}
-              className="h-9"
+              className="h-9 font-mono tabular-nums"
               aria-label={t('workout.reps')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && valid) void submit();
@@ -301,7 +301,7 @@ export function AddSetInline({
               max="10"
               value={rpe}
               onChange={(e) => setRpe(e.target.value)}
-              className="h-9"
+              className="h-9 font-mono tabular-nums"
               aria-label={t('workout.rpe')}
             />
           </label>
@@ -316,7 +316,7 @@ export function AddSetInline({
               min="0"
               value={rir}
               onChange={(e) => setRir(e.target.value)}
-              className="h-9"
+              className="h-9 font-mono tabular-nums"
               aria-label={t('workout.rir')}
             />
           </label>
@@ -328,7 +328,7 @@ export function AddSetInline({
               value={tempo}
               onChange={(e) => setTempo(e.target.value)}
               placeholder="3-1-1-0"
-              className="h-9"
+              className="h-9 font-mono"
               aria-label={t('workout.tempo')}
             />
           </label>

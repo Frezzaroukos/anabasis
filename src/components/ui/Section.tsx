@@ -23,12 +23,9 @@ export function Card({
   return (
     // Borderless: το ύψος έρχεται από τη διαφορά φωτεινότητας
     // background→card (βλ. DESIGN-SPEC-V2 «βάθος & επιφάνειες»), όχι από
-    // περίγραμμα.
+    // περίγραμμα — shadow-elevated προσθέτει το ελάχιστο ambient lift.
     <section
-      className={cn(
-        'rounded-xl bg-card p-4 shadow-[0_1px_0_0_hsl(var(--foreground)/0.02)]',
-        className,
-      )}
+      className={cn('rounded-xl bg-card p-4 shadow-elevated', className)}
       {...rest}
     >
       {children}
@@ -76,12 +73,16 @@ export function Stat({
 }) {
   return (
     <div className={cn('rounded-lg bg-muted/40 px-3 py-2.5', className)}>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </div>
       <div
         className={cn(
           'mt-0.5 font-mono text-xl leading-none',
-          tone === 'up' && 'text-emerald-400',
-          tone === 'down' && 'text-amber-400',
+          // Mono, όχι off-palette hue — «ένα accent» (βλ. brief §4). Το 'up'
+          // παίρνει πλήρη έμφαση, το 'down' υποχωρεί ελαφρά.
+          tone === 'up' && 'text-foreground',
+          tone === 'down' && 'text-muted-foreground',
         )}
       >
         {value}

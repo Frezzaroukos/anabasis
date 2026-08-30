@@ -11,13 +11,15 @@ const buttonVariants = cva(
     variants: {
       variant: {
         // Απαλή διαβάθμιση αντί για επίπεδο γέμισμα — το κύριο κουμπί «αναπνέει».
-        default: 'bg-gradient-to-b from-primary to-primary/85 text-primary-foreground hover:opacity-90',
+        // shadow-sm σε ηρεμία, glow στο hover: το ίδιο ring token απλά βαθαίνει.
+        default:
+          'bg-gradient-to-b from-primary to-primary/85 text-primary-foreground shadow-sm hover:opacity-90 hover:shadow-glow-sm',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-accent',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         destructive:
           'bg-destructive text-destructive-foreground hover:opacity-90',
         outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+          'border border-input bg-background hover:border-foreground/20 hover:bg-accent hover:text-accent-foreground',
       },
       size: {
         default: 'h-10 px-4 py-2',
