@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Archive, ChevronDown, ChevronUp, Pencil, Plus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { reorderActivities, updateActivity } from '@/lib/db/queries';
 import type { Activity } from '@/lib/db/types';
 import { ActivityIcon } from '@/components/activityIcon';
