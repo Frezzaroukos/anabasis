@@ -297,6 +297,7 @@
     "monthDays": "{{count}} day",
     "monthDays_other": "{{count}} days",
     "monthEmpty": "No workouts this month yet",
+    "newProgram": "New program",
     "pickProgramDay": "From a program",
     "noProgramDays": "No program days yet. Add days to a program in My Programs.",
     "adHoc": "Ad-hoc / quick",
