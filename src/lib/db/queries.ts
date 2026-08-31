@@ -1200,6 +1200,54 @@ export async function getCalendar(from: string, to: string): Promise<Map<string,
   return out;
 }
 
+export interface WorkoutSummary {
+  workout: Workout;
+  setCount: number;
+  volume: number;
+  /** Η άσκηση με τα περισσότερα σετ — δίνει μια «ματιά» στη σύνθεση. */
+  topExercise: string | null;
+}
+
+/**
+ * Το ιστορικό με αρκετά για να αναγνωρίσεις μια προπόνηση χωρίς να την ανοίξεις:
+ * σετ, όγκος, κυρίαρχη άσκηση — αντί για μόνο ημερομηνία/διάρκεια. Μία σάρωση
+ * σετ, όχι N ερωτήματα ανά προπόνηση.
+ */
+export async function listWorkoutSummaries(): Promise<WorkoutSummary[]> {
+  const [workouts, allSets, exercises] = await Promise.all([
+    db.workouts.where('user_id').equals(getCurrentUserId()).toArray(),
+    db.sets.toArray(),
+    listAllExercises(),
+  ]);
+  const nameById = new Map(exercises.map((e) => [e.id, e.name]));
+  const agg = new Map<string, { setCount: number; volume: number; byExercise: Map<string, number> }>();
+  for (const s of allSets) {
+    if (s.deleted_at != null || s.is_warmup || s.set_type === 'warmup') continue;
+    const cur = agg.get(s.workout_id) ?? { setCount: 0, volume: 0, byExercise: new Map() };
+    cur.setCount += 1;
+    cur.volume += setVolume(s);
+    cur.byExercise.set(s.exercise_id, (cur.byExercise.get(s.exercise_id) ?? 0) + 1);
+    agg.set(s.workout_id, cur);
+  }
+  return workouts
+    .filter((w) => w.ended_at != null && w.deleted_at == null)
+    .sort((a, b) => (b.started_at ?? '').localeCompare(a.started_at ?? ''))
+    .map((w) => {
+      const a = agg.get(w.id);
+      let topExercise: string | null = null;
+      if (a && a.byExercise.size > 0) {
+        const [topId] = [...a.byExercise.entries()].sort((x, y) => y[1] - x[1])[0]!;
+        topExercise = nameById.get(topId) ?? null;
+      }
+      return {
+        workout: w,
+        setCount: a?.setCount ?? 0,
+        volume: Math.round(a?.volume ?? 0),
+        topExercise,
+      };
+    });
+}
+
 /* ─────────── Programs / routines ─────────── */
 
 export async function listPrograms(): Promise<Program[]> {

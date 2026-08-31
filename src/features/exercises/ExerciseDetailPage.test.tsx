@@ -72,8 +72,11 @@ describe('ExerciseDetailPage', () => {
     expect(screen.getByText(/2 sessions/)).toBeTruthy();
     // best (top weight) = 80kg, ΟΧΙ 70 (το τελευταίο) — απόδειξη ότι δείχνει
     // το καλύτερο της περιόδου, δεν είναι απλά «τελευταίο σετ»
-    await waitFor(() =>
-      expect(screen.getByTestId('exercise-best-value').textContent).toContain('80'),
+    // Το headline είναι count-up animation (0→80)· υπό φόρτο τεστ το rAF
+    // αργεί, οπότε δίνουμε γενναιόδωρο παράθυρο αντί να πιάνουμε ενδιάμεση τιμή.
+    await waitFor(
+      () => expect(screen.getByTestId('exercise-best-value').textContent).toContain('80'),
+      { timeout: 3000 },
     );
     // «last performed» δείχνει το ΤΕΛΕΥΤΑΙΟ σετ (70kg), διαφορετικό από το best
     expect(screen.getByText(/Last performed/)).toBeTruthy();
