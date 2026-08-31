@@ -567,6 +567,7 @@
     "periodLabel": "Ανά",
     "activityLabel": "Δραστηριότητα",
     "exerciseLabel": "Άσκηση",
+    "exerciseAllHint": "Άφησέ το κενό για όλες τις ασκήσεις",
     "nameLabel": "Όνομα (προαιρετικό)",
     "daysLeft": "μένει {{count}} μέρα σε αυτή την περίοδο",
     "daysLeft_other": "μένουν {{count}} μέρες σε αυτή την περίοδο",

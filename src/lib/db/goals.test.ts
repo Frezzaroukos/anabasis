@@ -251,3 +251,40 @@ describe('goals — περίοδος στόχου', () => {
     expect((await getGoalProgress(roll, wed)).current).toBe(1);
   });
 });
+
+describe('sessions στοχευμένες σε άσκηση', () => {
+  it('μετρά μόνο προπονήσεις που περιείχαν την άσκηση, όχι όλες', async () => {
+    await loggedWorkout('strength', [{ exercise_id: bench.id, weight: 60, reps: 5 }]);
+    await loggedWorkout('strength', [{ exercise_id: squat.id, weight: 100, reps: 5 }]);
+    await loggedWorkout('strength', [
+      { exercise_id: bench.id, weight: 62, reps: 5 },
+      { exercise_id: squat.id, weight: 100, reps: 5 },
+    ]);
+
+    const allSessions = await createGoal({ metric: 'sessions', target: 5, period: 'week' });
+    expect((await getGoalProgress(allSessions)).current).toBe(3);
+
+    const benchSessions = await createGoal({
+      metric: 'sessions',
+      target: 2,
+      period: 'week',
+      exercise_id: bench.id,
+    });
+    // 2 από τις 3 προπονήσεις είχαν bench
+    expect((await getGoalProgress(benchSessions)).current).toBe(2);
+  });
+
+  it('warm-up-only άσκηση δεν μετρά τη session', async () => {
+    await loggedWorkout('strength', [
+      { exercise_id: bench.id, weight: 40, reps: 10, warmup: true },
+      { exercise_id: squat.id, weight: 100, reps: 5 },
+    ]);
+    const benchSessions = await createGoal({
+      metric: 'sessions',
+      target: 1,
+      period: 'week',
+      exercise_id: bench.id,
+    });
+    expect((await getGoalProgress(benchSessions)).current).toBe(0);
+  });
+});
