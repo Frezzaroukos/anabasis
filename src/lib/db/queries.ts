@@ -1594,9 +1594,24 @@ export async function duplicateProgram(
     newName?.trim() || `${data.program.name} (2)`,
     data.program.activity_kind,
   );
+  if (data.program.target_sessions_per_week != null) {
+    await db.programs.update(copy.id, {
+      target_sessions_per_week: data.program.target_sessions_per_week,
+      updated_at: now(),
+    });
+  }
+  // Αντιγράφουμε τις ΜΕΡΕΣ (νέα ids) και κρατάμε χάρτη παλιό→νέο, ώστε οι
+  // ασκήσεις να μείνουν στη μέρα τους — αλλιώς το «save as template»/reuse
+  // ισοπέδωνε κάθε δομημένο πρόγραμμα σε flat.
+  const dayMap = new Map<string, string>();
+  for (const d of await listProgramDays(programId)) {
+    const nd = await createProgramDay(copy.id, d.name);
+    dayMap.set(d.id, nd.id);
+  }
   for (const row of data.exercises) {
     await addProgramExercise(copy.id, {
       exercise_id: row.exercise_id,
+      program_day_id: row.program_day_id != null ? (dayMap.get(row.program_day_id) ?? null) : null,
       target_sets: row.target_sets,
       target_reps: row.target_reps,
       target_weight_kg: row.target_weight_kg,
