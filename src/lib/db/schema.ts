@@ -10,6 +10,8 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   Activity,
+  CustomTracker,
+  CustomTrackerEntry,
   AppSettings,
   BodyMetric,
   Program,
@@ -47,6 +49,8 @@ export class AnabasisDB extends Dexie {
   program_exercises!: Table<ProgramExercise, string>;
   activities!: Table<Activity, string>;
   goals!: Table<Goal, string>;
+  custom_trackers!: Table<CustomTracker, string>;
+  custom_tracker_entries!: Table<CustomTrackerEntry, string>;
   events_outgoing!: Table<OutgoingEvent, string>;
 
   constructor() {
@@ -306,6 +310,51 @@ export class AnabasisDB extends Dexie {
         c.added_weight_kg ??= null;
       });
     });
+
+    /**
+     * v14 — Custom Trackers: επαναχρησιμοποιήσιμοι μετρητές + append-only entries
+     * αντί για ιδιωτικό scalar σε ένα goal row. Migration: κάθε παλιός custom
+     * στόχος (manual_value) γίνεται tracker + ένα seed entry, και ο στόχος πλέον
+     * τον ΑΝΑΦΕΡΕΙ (custom_tracker_id).
+     */
+    this.version(14)
+      .stores({
+        custom_trackers: 'id, user_id, display_order, is_archived, deleted_at',
+        custom_tracker_entries: 'id, user_id, tracker_id, logged_at, deleted_at, [tracker_id+logged_at]',
+      })
+      .upgrade(async (tx) => {
+        const t = new Date().toISOString();
+        const goals = await tx.table('goals').toArray();
+        for (const g of goals) {
+          if (g.metric !== 'custom' || g.custom_tracker_id) continue;
+          const trackerId = crypto.randomUUID();
+          await tx.table('custom_trackers').add({
+            id: trackerId,
+            user_id: g.user_id,
+            name: g.label || 'Custom',
+            unit: null,
+            display_order: 0,
+            is_archived: false,
+            created_at: t,
+            updated_at: t,
+            deleted_at: null,
+          });
+          const seed = g.manual_value ?? 0;
+          if (seed !== 0) {
+            await tx.table('custom_tracker_entries').add({
+              id: crypto.randomUUID(),
+              user_id: g.user_id,
+              tracker_id: trackerId,
+              amount: seed,
+              logged_at: t,
+              created_at: t,
+              updated_at: t,
+              deleted_at: null,
+            });
+          }
+          await tx.table('goals').update(g.id, { custom_tracker_id: trackerId, updated_at: t });
+        }
+      });
   }
 }
 

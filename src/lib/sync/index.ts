@@ -109,6 +109,7 @@ const DIRECT_OWNER_TABLES = [
   'exercises', 'workouts', 'personal_records', 'skills',
   'user_skill_progress', 'user_skill_step_completions', 'app_settings',
   'body_metrics', 'programs', 'activities', 'goals',
+  'custom_trackers', 'custom_tracker_entries',
 ] as const;
 
 /**

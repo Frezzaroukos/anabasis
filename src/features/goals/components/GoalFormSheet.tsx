@@ -5,6 +5,7 @@ import { BottomSheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createGoal, updateGoal, getSkillStepStats, MILESTONE_METRICS } from '@/lib/db/goals';
+import { createTracker, listTrackers } from '@/lib/db/trackers';
 import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
 import {
   BUILTIN_GOAL_METRICS,
@@ -43,6 +44,7 @@ export function GoalFormSheet({
   const activities = useLiveQuery(() => listActivities(), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(), [], []);
+  const trackers = useLiveQuery(() => listTrackers(), [], []);
 
   const [metric, setMetric] = useState<GoalMetric>('sessions');
   const [period, setPeriod] = useState<GoalPeriod>('week');
@@ -52,6 +54,8 @@ export function GoalFormSheet({
   const [activityKey, setActivityKey] = useState<string | null>(null);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
   const [exerciseQuery, setExerciseQuery] = useState('');
+  const [trackerId, setTrackerId] = useState<string | null>(null);
+  const [trackerQuery, setTrackerQuery] = useState('');
   const [label, setLabel] = useState('');
 
   useEffect(() => {
@@ -64,6 +68,8 @@ export function GoalFormSheet({
     setActivityKey(goal?.activity_key ?? null);
     setExerciseId(goal?.exercise_id ?? null);
     setExerciseQuery('');
+    setTrackerId(goal?.custom_tracker_id ?? null);
+    setTrackerQuery('');
     setLabel(goal?.label ?? '');
   }, [open, goal]);
 
@@ -79,20 +85,35 @@ export function GoalFormSheet({
   useEffect(() => {
     if (!exerciseScoped) setExerciseId(null);
     if (!isSkillGoal) setSkillId(null);
-    if (isMilestone) setActivityKey(null);
-  }, [metric, exerciseScoped, isSkillGoal, isMilestone]);
+    if (!isCustom) setTrackerId(null);
+    if (isMilestone || isCustom) setActivityKey(null);
+  }, [metric, exerciseScoped, isSkillGoal, isMilestone, isCustom]);
 
   const selectedExercise = exercises.find((e) => e.id === exerciseId) ?? null;
   const exerciseMatches = exercises
     .filter((e) => e.name.toLowerCase().includes(exerciseQuery.trim().toLowerCase()))
     .slice(0, 8);
   const selectedSkill = skills.find((s) => s.id === skillId) ?? null;
+  const selectedTracker = trackers.find((tr) => tr.id === trackerId) ?? null;
+  const trackerMatches = trackers.filter((tr) =>
+    tr.name.toLowerCase().includes(trackerQuery.trim().toLowerCase()),
+  );
+  const trackerExact = trackers.some(
+    (tr) => tr.name.toLowerCase() === trackerQuery.trim().toLowerCase(),
+  );
 
   // Διάλεξες skill → ο στόχος προτείνεται στα συνολικά του σκαλιά (κατάκτηση).
   const pickSkill = async (id: string) => {
     setSkillId(id);
     const stats = await getSkillStepStats(id);
     if (stats.total > 0) setTarget(String(stats.total));
+  };
+  // «Φτιάξ' το επί τόπου»: αν δεν υπάρχει tracker με αυτό το όνομα, δημιουργείται
+  // (μένει μόνιμα, επαναχρησιμοποιήσιμο σε άλλους στόχους) και επιλέγεται.
+  const createTrackerNow = async (name: string) => {
+    const tr = await createTracker(name);
+    setTrackerId(tr.id);
+    setTrackerQuery('');
   };
 
   const targetNum = Number(target.replace(',', '.'));
@@ -101,7 +122,7 @@ export function GoalFormSheet({
     targetNum > 0 &&
     (!isSkillGoal || skillId != null) &&
     (!isWeightTarget || exerciseId != null) &&
-    (!isCustom || label.trim() !== '');
+    (!isCustom || trackerId != null);
 
   const preview = goalTitle(
     t,
@@ -110,6 +131,7 @@ export function GoalFormSheet({
       activity: activityKey ? (activities.find((a) => a.key === activityKey)?.label ?? null) : null,
       exercise: exerciseId ? (exercises.find((e) => e.id === exerciseId)?.name ?? null) : null,
       skill: selectedSkill?.name ?? null,
+      custom: selectedTracker?.name ?? null,
     },
   );
 
@@ -120,10 +142,10 @@ export function GoalFormSheet({
       target: targetNum,
       period,
       period_anchor: anchor,
-      activity_key: isMilestone ? null : activityKey,
-      exercise_id: isSkillGoal ? null : exerciseId,
+      activity_key: isMilestone || isCustom ? null : activityKey,
+      exercise_id: isSkillGoal || isCustom ? null : exerciseId,
       skill_id: isSkillGoal ? skillId : null,
-      manual_value: isCustom ? (goal?.manual_value ?? 0) : null,
+      custom_tracker_id: isCustom ? trackerId : null,
       label: label.trim() || null,
     };
     if (goal) await updateGoal(goal.id, payload);
@@ -153,16 +175,83 @@ export function GoalFormSheet({
         </Field>
 
         {isCustom ? (
-          // Δικός σου μετρητής: όνομα (υποχρεωτικό, παρακάτω) + στόχος. Καμία
-          // αυτόματη μέτρηση — ανεβάζεις το progress μόνος σου από τη λίστα.
-          <Field label={t('goals.customTargetLabel')} className="w-40">
-            <Input
-              inputMode="decimal"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              className="h-10 font-mono tabular-nums"
-            />
-          </Field>
+          // Δικός σου μετρητής: διάλεξε/φτιάξε tracker (μένει μόνιμα) + στόχο
+          // + περίοδο. Το progress το ανεβάζεις με +/− στη λίστα στόχων.
+          <>
+            <Field label={t('goals.trackerLabel')}>
+              {selectedTracker ? (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium">
+                    {selectedTracker.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setTrackerId(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    value={trackerQuery}
+                    onChange={(e) => setTrackerQuery(e.target.value)}
+                    placeholder={t('goals.customNamePlaceholder')}
+                    className="h-10"
+                  />
+                  {trackerQuery.trim() !== '' && (
+                    <ul className="max-h-40 divide-y divide-border/60 overflow-y-auto rounded-md bg-elevated">
+                      {trackerMatches.map((tr) => (
+                        <li key={tr.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTrackerId(tr.id);
+                              setTrackerQuery('');
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                          >
+                            {tr.name}
+                          </button>
+                        </li>
+                      ))}
+                      {!trackerExact && (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => void createTrackerNow(trackerQuery)}
+                            className="w-full px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-accent"
+                          >
+                            {t('goals.createTracker', { name: trackerQuery.trim() })}
+                          </button>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </Field>
+            <div className="flex gap-3">
+              <Field label={t('goals.customTargetLabel')} className="w-28">
+                <Input
+                  inputMode="decimal"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  className="h-10 font-mono tabular-nums"
+                />
+              </Field>
+              <Field label={t('goals.periodLabel')} className="flex-1">
+                <div className="flex flex-wrap gap-2">
+                  {BUILTIN_GOAL_PERIODS.map((p) => (
+                    <button key={p} type="button" onClick={() => setPeriod(p)} className={chip(period === p)}>
+                      {t(`goals.period.${p}`)}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+          </>
         ) : isWeightTarget ? (
           // Στόχος φορτίου («70kg weighted pull-up»): διάλεξε άσκηση (παρακάτω)
           // + βάρος-στόχο. Milestone — χωρίς περίοδο.
@@ -335,11 +424,11 @@ export function GoalFormSheet({
           </Field>
         )}
 
-        <Field label={isCustom ? t('goals.customNameLabel') : t('goals.nameLabel')}>
+        <Field label={t('goals.nameLabel')}>
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder={isCustom ? t('goals.customNamePlaceholder') : preview}
+            placeholder={preview}
             className="h-10"
           />
         </Field>

@@ -791,6 +791,7 @@ export const USER_DATA_TABLES = () => ({
   app_settings: db.app_settings, body_metrics: db.body_metrics,
   programs: db.programs, program_exercises: db.program_exercises,
   activities: db.activities, goals: db.goals,
+  custom_trackers: db.custom_trackers, custom_tracker_entries: db.custom_tracker_entries,
 });
 
 /**

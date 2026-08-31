@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp, CircleCheck, LineChart, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { setGoalManualValue, type GoalProgress } from '@/lib/db/goals';
+import type { GoalProgress } from '@/lib/db/goals';
+import { addTrackerEntry } from '@/lib/db/trackers';
 import type { Goal } from '@/lib/db/types';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ export function GoalRow({
   activityLabel,
   exerciseName,
   skillName,
+  trackerName,
   onMove,
   onEdit,
   onDelete,
@@ -33,6 +35,7 @@ export function GoalRow({
   activityLabel: (key: string | null) => string | null;
   exerciseName: (id: string | null) => string | null;
   skillName: (id: string | null | undefined) => string | null;
+  trackerName: (id: string | null | undefined) => string | null;
   onMove: (index: number, delta: number) => void;
   onEdit: (goal: Goal) => void;
   onDelete: (id: string) => void;
@@ -77,6 +80,7 @@ export function GoalRow({
                 activity: activityLabel(p.goal.activity_key),
                 exercise: exerciseName(p.goal.exercise_id),
                 skill: skillName(p.goal.skill_id),
+                custom: trackerName(p.goal.custom_tracker_id),
               })}
           </p>
           {completed && (
@@ -96,20 +100,21 @@ export function GoalRow({
             {displayCurrent} / {p.target} {p.unit}
           </p>
           {/* Custom μετρητής: το progress το ανεβάζεις εσύ, χειροκίνητα. */}
-          {p.goal.metric === 'custom' && (
+          {p.goal.metric === 'custom' && p.goal.custom_tracker_id && (
             <span className="flex items-center gap-1">
               <button
                 type="button"
                 aria-label={t('goals.decrement')}
-                onClick={() => void setGoalManualValue(p.goal.id, (p.goal.manual_value ?? 0) - 1)}
-                className="flex h-6 w-6 items-center justify-center rounded-md bg-elevated text-muted-foreground transition-colors hover:text-foreground active:scale-95"
+                disabled={p.current <= 0}
+                onClick={() => void addTrackerEntry(p.goal.custom_tracker_id!, -1)}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-elevated text-muted-foreground transition-colors hover:text-foreground active:scale-95 disabled:opacity-30"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
                 aria-label={t('goals.increment')}
-                onClick={() => void setGoalManualValue(p.goal.id, (p.goal.manual_value ?? 0) + 1)}
+                onClick={() => void addTrackerEntry(p.goal.custom_tracker_id!, 1)}
                 className="flex h-6 w-6 items-center justify-center rounded-md bg-elevated text-muted-foreground transition-colors hover:text-foreground active:scale-95"
               >
                 <Plus className="h-3.5 w-3.5" />

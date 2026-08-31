@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Target } from 'lucide-react';
 import { deleteGoal, getAllGoalProgress, listGoals, reorderGoals } from '@/lib/db/goals';
 import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
+import { listTrackers } from '@/lib/db/trackers';
 import type { Goal } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { GoalFormSheet } from './components/GoalFormSheet';
@@ -26,6 +27,7 @@ export function GoalsPage() {
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(true), [], []);
+  const trackers = useLiveQuery(() => listTrackers(true), [], []);
 
   const activityLabel = (key: string | null) =>
     key == null ? null : (activities.find((a) => a.key === key)?.label ?? key);
@@ -33,6 +35,8 @@ export function GoalsPage() {
     id == null ? null : (exercises.find((e) => e.id === id)?.name ?? null);
   const skillName = (id: string | null | undefined) =>
     id == null ? null : (skills.find((s) => s.id === id)?.name ?? null);
+  const trackerName = (id: string | null | undefined) =>
+    id == null ? null : (trackers.find((tr) => tr.id === id)?.name ?? null);
 
   const move = async (index: number, delta: number) => {
     const goals = await listGoals();
@@ -82,6 +86,7 @@ export function GoalsPage() {
               activityLabel={activityLabel}
               exerciseName={exerciseName}
               skillName={skillName}
+              trackerName={trackerName}
               onMove={(i, delta) => void move(i, delta)}
               onEdit={openEdit}
               onDelete={(id) => void deleteGoal(id)}

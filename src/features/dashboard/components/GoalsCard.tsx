@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getAllGoalProgress } from '@/lib/db/goals';
 import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
+import { listTrackers } from '@/lib/db/trackers';
 import { SectionTitle } from '@/components/ui/Section';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { goalTitle } from '@/features/goals/goalTitle';
@@ -23,6 +24,7 @@ export function GoalsCard() {
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(true), [], []);
+  const trackers = useLiveQuery(() => listTrackers(true), [], []);
 
   if (progress.length === 0) return null;
   const shown = progress.slice(0, MAX_ON_DASHBOARD);
@@ -68,6 +70,9 @@ export function GoalsCard() {
                     : null,
                   skill: p.goal.skill_id
                     ? (skills.find((s) => s.id === p.goal.skill_id)?.name ?? null)
+                    : null,
+                  custom: p.goal.custom_tracker_id
+                    ? (trackers.find((tr) => tr.id === p.goal.custom_tracker_id)?.name ?? null)
                     : null,
                 })}
             </span>

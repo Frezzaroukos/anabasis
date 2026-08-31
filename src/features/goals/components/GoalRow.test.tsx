@@ -92,6 +92,7 @@ const renderRow = (progress: GoalProgress) =>
           activityLabel={() => null}
           exerciseName={() => null}
           skillName={() => null}
+          trackerName={() => null}
           onMove={() => {}}
           onEdit={() => {}}
           onDelete={() => {}}
