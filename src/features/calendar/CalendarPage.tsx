@@ -331,7 +331,7 @@ export function CalendarPage() {
                 })()}
                 {cal.get(c.key)?.weight != null && (
                   <span className="font-mono text-[9px] text-muted-foreground">
-                    {cal.get(c.key)!.weight}
+                    {formatWeight(cal.get(c.key)!.weight!, unit, { granularity: 'body', withUnit: false })}
                   </span>
                 )}
               </button>

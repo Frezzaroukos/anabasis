@@ -84,7 +84,9 @@ export function BodyPage() {
   const first = weightPoints[0]?.weight ?? null;
   const deltaKg = latest != null && first != null ? latest - first : null;
   const delta = deltaKg != null ? toDisplayWeight(deltaKg, unit, 'body') : null;
-  const displayWeight = useCountUp(latest ?? 0, 450, 1);
+  // Το latest είναι σε kg· ο τίτλος δείχνει τη ΜΟΝΑΔΑ του χρήστη, οπότε
+  // μετράμε τη ΜΕΤΑΤΡΑΜΜΕΝΗ τιμή (αλλιώς lb-χρήστες βλέπουν kg με ετικέτα lb).
+  const displayWeight = useCountUp(latest != null ? toDisplayWeight(latest, unit, 'body') : 0, 450, 1);
 
   const weightTrend = useMemo(
     () =>
