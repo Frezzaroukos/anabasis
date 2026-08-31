@@ -93,10 +93,11 @@ export const METRIC_UNIT: Record<GoalMetric, string> = {
   distance_km: 'km',
   duration_min: 'min',
   skill_steps: '',
+  top_weight: 'kg',
 };
 
 /** Milestone metrics — μετρώνται όλη-την-ώρα (κατάκτηση), όχι σε παράθυρο χρόνου. */
-export const MILESTONE_METRICS: readonly GoalMetric[] = ['skill_steps'];
+export const MILESTONE_METRICS: readonly GoalMetric[] = ['skill_steps', 'top_weight'];
 
 /**
  * Πόσα σκαλιά ενός skill έχεις κατακτήσει και πόσα συνολικά. Ζει εδώ (κι όχι
@@ -213,6 +214,30 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
       target: goal.target,
       ratio: goal.target > 0 ? Math.min(1, current / goal.target) : 0,
       unit: METRIC_UNIT.skill_steps,
+      daysLeft: null,
+    };
+  }
+
+  // Στόχος φορτίου («70kg weighted pull-up»): το ΚΑΛΥΤΕΡΟ φορτίο (σωματικό +
+  // πρόσθετο) που έχεις πιάσει σε αυτή την άσκηση — milestone, all-time.
+  if (goal.metric === 'top_weight') {
+    let best = 0;
+    if (goal.exercise_id) {
+      const sets = (await db.sets.where('exercise_id').equals(goal.exercise_id).toArray()).filter(
+        (s) => s.deleted_at == null && s.set_type !== 'warmup' && !s.is_warmup,
+      );
+      for (const s of sets) {
+        const load = (s.weight_kg ?? 0) + (s.bodyweight_kg ?? 0);
+        if (load > best) best = load;
+      }
+    }
+    const current = Math.round(best * 10) / 10;
+    return {
+      goal,
+      current,
+      target: goal.target,
+      ratio: goal.target > 0 ? Math.min(1, current / goal.target) : 0,
+      unit: METRIC_UNIT.top_weight,
       daysLeft: null,
     };
   }

@@ -573,6 +573,8 @@
     "stepsTargetLabel": "Σκαλιά",
     "noSkills": "Δεν υπάρχουν skills ακόμα.",
     "skillGoalTitle": "Κατάκτησε το {{skill}} · {{count}} σκαλιά",
+    "loadTargetLabel": "Φορτίο-στόχος (kg)",
+    "loadGoalTitle": "Φτάσε {{load}} kg · {{exercise}}",
     "nameLabel": "Όνομα (προαιρετικό)",
     "daysLeft": "μένει {{count}} μέρα σε αυτή την περίοδο",
     "daysLeft_other": "μένουν {{count}} μέρες σε αυτή την περίοδο",
@@ -586,7 +588,8 @@
       "reps": "Επαναλήψεις",
       "distance_km": "Απόσταση",
       "duration_min": "Διάρκεια",
-      "skill_steps": "Skill"
+      "skill_steps": "Skill",
+      "top_weight": "Βάρος-στόχος"
     },
     "period": {
       "day": "μέρα",
