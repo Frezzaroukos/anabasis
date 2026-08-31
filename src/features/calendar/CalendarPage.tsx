@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Flame, Plus } from 'lucide-react';
 import {
   countProgramDaySessions,
   getCalendar,
+  getProgramWithExercises,
   getTrainingInsights,
   listActivities,
   listProgramDays,
@@ -13,6 +14,7 @@ import {
   localDay,
   setWorkoutType,
   startAdHocWorkout,
+  startWorkoutFromProgram,
   startWorkoutFromProgramDay,
 } from '@/lib/db/queries';
 import type { DayActivities } from '@/lib/db/queries';
@@ -63,7 +65,7 @@ export function CalendarPage() {
   const programsWithDays = useLiveQuery(
     async () => {
       const programs = await listPrograms();
-      const withDays = await Promise.all(
+      const entries = await Promise.all(
         programs.map(async (program) => {
           const days = await listProgramDays(program.id);
           const options = await Promise.all(
@@ -72,10 +74,16 @@ export function CalendarPage() {
               nextNo: (await countProgramDaySessions(day.id)) + 1,
             })),
           );
-          return { program, days: options };
+          // Πρόγραμμα χωρίς ρητές μέρες (flat) αλλά ΜΕ ασκήσεις: ξεκινά ολόκληρο
+          // ως μία επιλογή — αλλιώς «εξαφανιζόταν» εδώ και έβγαινε το μήνυμα
+          // «δεν έχεις μέρες προγράμματος» (owner bug).
+          const exerciseCount =
+            days.length === 0 ? (await getProgramWithExercises(program.id))?.exercises.length ?? 0 : 0;
+          return { program, days: options, exerciseCount };
         }),
       );
-      return withDays.filter((entry) => entry.days.length > 0);
+      // Κράτα ό,τι έχει κάτι να ξεκινήσεις — μέρες ή flat ασκήσεις.
+      return entries.filter((entry) => entry.days.length > 0 || entry.exerciseCount > 0);
     },
     [],
     undefined,
@@ -85,6 +93,14 @@ export function CalendarPage() {
   const onPickProgramDay = async (dayId: string) => {
     if (!selected) return;
     const result = await startWorkoutFromProgramDay(dayId, selected === today ? undefined : selected);
+    if (!result) return;
+    setAddOpen(false);
+    navigate('/workout/active');
+  };
+  // Flat πρόγραμμα (χωρίς μέρες) — ξεκινά ολόκληρο.
+  const onPickProgram = async (programId: string) => {
+    if (!selected) return;
+    const result = await startWorkoutFromProgram(programId, selected === today ? undefined : selected);
     if (!result) return;
     setAddOpen(false);
     navigate('/workout/active');
@@ -387,25 +403,37 @@ export function CalendarPage() {
               <p className="text-sm text-muted-foreground">{t('calendar.noProgramDays')}</p>
             ) : (
               <div className="space-y-3">
-                {programsWithDays.map(({ program, days }) => (
-                  <div key={program.id}>
-                    <p className="mb-1 truncate text-xs text-muted-foreground">{program.name}</p>
-                    <div className="space-y-1.5">
-                      {days.map(({ day: programDay, nextNo }) => (
-                        <button
-                          key={programDay.id}
-                          onClick={() => void onPickProgramDay(programDay.id)}
-                          className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        >
-                          <span className="font-medium">{programDay.name}</span>
-                          <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                            #{nextNo}
-                          </span>
-                        </button>
-                      ))}
+                {programsWithDays.map(({ program, days }) =>
+                  days.length > 0 ? (
+                    <div key={program.id}>
+                      <p className="mb-1 truncate text-xs text-muted-foreground">{program.name}</p>
+                      <div className="space-y-1.5">
+                        {days.map(({ day: programDay, nextNo }) => (
+                          <button
+                            key={programDay.id}
+                            onClick={() => void onPickProgramDay(programDay.id)}
+                            className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            <span className="font-medium">{programDay.name}</span>
+                            <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                              #{nextNo}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ) : (
+                    // Flat πρόγραμμα: μία επιλογή που ξεκινά ολόκληρο το πρόγραμμα.
+                    <button
+                      key={program.id}
+                      onClick={() => void onPickProgram(program.id)}
+                      className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <span className="min-w-0 truncate font-medium">{program.name}</span>
+                      <Plus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    </button>
+                  ),
+                )}
               </div>
             )}
           </div>

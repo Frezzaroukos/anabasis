@@ -167,6 +167,8 @@
     "editWorkout": "Επεξεργασία προπόνησης",
     "workoutName": "Όνομα",
     "workoutDate": "Ημερομηνία",
+    "workoutDuration": "Διάρκεια (λεπτά)",
+    "workoutDurationPlaceholder": "Προαιρετικό — π.χ. 45",
     "deleteWorkout": "Διαγραφή προπόνησης",
     "deleteConfirmTitle": "Διαγραφή αυτής της προπόνησης;",
     "deleteConfirmDesc": "Σβήνονται και τα σετ της και όσα ρεκόρ γέννησε. Δεν αναιρείται από την εφαρμογή."

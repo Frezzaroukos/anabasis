@@ -8,6 +8,7 @@ import {
   localDay,
   setWorkoutActivity,
   setWorkoutDate,
+  setWorkoutDuration,
   softDeleteWorkout,
   startWorkout,
   updateSet,
@@ -182,5 +183,27 @@ describe('startWorkout — backdated στο ΤΟΠΙΚΟ μεσημέρι, όχ�
     // μέρας — ακριβώς το bug. Με τοπικό μεσημέρι μένει στις 05/08, ώρα 12.
     expect(localDay(started)).toBe('2026-08-05');
     expect(started.getHours()).toBe(12);
+  });
+});
+
+describe('setWorkoutDuration — χειροκίνητη/προαιρετική διάρκεια', () => {
+  it('θέτει λεπτά→δευτερόλεπτα, καθαρίζει με null, αγνοεί μη-θετικά', async () => {
+    const w = await loggedWorkout();
+    await setWorkoutDuration(w.id, 45 * 60);
+    expect((await getWorkoutDetail(w.id))!.workout.duration_seconds).toBe(2700);
+
+    await setWorkoutDuration(w.id, null);
+    expect((await getWorkoutDetail(w.id))!.workout.duration_seconds).toBeNull();
+
+    await setWorkoutDuration(w.id, 0);
+    expect((await getWorkoutDetail(w.id))!.workout.duration_seconds).toBeNull();
+  });
+
+  it('δίνει διάρκεια σε backdated προπόνηση που δεν είχε (endWorkout την άφησε null)', async () => {
+    const w = await loggedWorkout('strength', '2026-06-01');
+    // backdated → endWorkout βάζει null
+    expect((await getWorkoutDetail(w.id))!.workout.duration_seconds).toBeNull();
+    await setWorkoutDuration(w.id, 30 * 60);
+    expect((await getWorkoutDetail(w.id))!.workout.duration_seconds).toBe(1800);
   });
 });
