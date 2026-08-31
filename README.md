@@ -7,7 +7,7 @@
 **Weighted-calisthenics & skill-progression tracker.**
 Offline-first PWA · native desktop · optional accounts & sync · TypeScript strict · bilingual (EN/EL)
 
-![tests](https://img.shields.io/badge/tests-302%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-310%20passing-brightgreen)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![backend](https://img.shields.io/badge/backend-Rust%2FAxum-orange)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -72,7 +72,7 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 302 tests concentrated on migrations, the goal
+**Testing where it pays.** 310 tests concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
 Monday" does not depend on the day CI runs), PR detection, the card-order
 resolver, and the sync engine (push/pull cursors, epoch handling, last-write-wins
@@ -109,7 +109,7 @@ i18next · Vitest
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 302 tests
+npm test         # 310 tests
 npm run build    # production + service worker
 ```
 

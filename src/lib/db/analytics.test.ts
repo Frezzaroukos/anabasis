@@ -1,7 +1,14 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { db } from './index';
 import { SEED_EXERCISES } from './seeds';
-import { addSet, getTrainingSummary, getVolumeTrend, startWorkout } from './queries';
+import {
+  addSet,
+  getTrainingSummary,
+  getVolumeTrend,
+  hasAnyCompletedWorkout,
+  startWorkout,
+} from './queries';
+import { getCurrentUserId, setCurrentUserId } from './session';
 
 /**
  * Το chart είναι εύκολο να ψεύδεται: αν οι κενές ημέρες παραλείπονται,
@@ -39,5 +46,44 @@ describe('getVolumeTrend', () => {
       weight_kg: 999, bodyweight_kg: null, reps: 99, hold_seconds: null, is_warmup: true,
     });
     expect((await getTrainingSummary(14)).totalVolume).toBe(afterWorking);
+  });
+});
+
+/**
+ * Το «κατέγραψε την πρώτη σου προπόνηση» hint βασιζόταν σε 30-μερο παράθυρο —
+ * κάποιος με ιστορικό παλαιότερο από 30 μέρες το ξανάβλεπε σαν αρχάριος.
+ * Ο έλεγχος πρέπει να είναι all-time.
+ */
+describe('hasAnyCompletedWorkout', () => {
+  // Τα test files μοιράζονται μία fake-indexeddb + το global currentUserId,
+  // οπότε επαναφέρουμε το προφίλ μετά ώστε να μη μολυνθούν επόμενα suites.
+  let original: string;
+  beforeAll(() => {
+    original = getCurrentUserId();
+    setCurrentUserId('analytics-has-workout-profile');
+  });
+  afterAll(() => {
+    setCurrentUserId(original);
+  });
+
+  it('κενό προφίλ → false', async () => {
+    expect(await hasAnyCompletedWorkout()).toBe(false);
+  });
+
+  it('ολοκληρωμένη προπόνηση >30 μερών → true, ενώ το 30-μερο totalSets μένει 0', async () => {
+    const long = new Date(Date.now() - 60 * 86_400_000).toISOString();
+    const w = await startWorkout();
+    await db.workouts.update(w.id, { started_at: long, ended_at: long });
+
+    expect(await hasAnyCompletedWorkout()).toBe(true);
+    // Καμία δραστηριότητα στις τελευταίες 30 μέρες — ακριβώς η περίπτωση του bug.
+    expect((await getTrainingSummary(30)).totalSets).toBe(0);
+  });
+
+  it('διαγραμμένη προπόνηση δεν μετρά', async () => {
+    setCurrentUserId('analytics-deleted-workout-profile');
+    const w = await startWorkout();
+    await db.workouts.update(w.id, { ended_at: new Date().toISOString(), deleted_at: new Date().toISOString() });
+    expect(await hasAnyCompletedWorkout()).toBe(false);
   });
 });

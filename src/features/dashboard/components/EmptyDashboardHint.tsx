@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowRight, Sparkles, Target, Scale } from 'lucide-react';
-import { getTrainingSummary } from '@/lib/db/queries';
+import { hasAnyCompletedWorkout } from '@/lib/db/queries';
 import { listGoals } from '@/lib/db/goals';
 import { getAllSkillProgress } from '@/lib/db/queries';
 
@@ -16,11 +16,13 @@ import { getAllSkillProgress } from '@/lib/db/queries';
  */
 export function EmptyDashboardHint() {
   const { t } = useTranslation();
-  const summary30 = useLiveQuery(() => getTrainingSummary(30), [], null);
   const goals = useLiveQuery(() => listGoals(), [], []);
   const skillProgress = useLiveQuery(() => getAllSkillProgress(), [], new Map());
+  // All-time, όχι 30-μερο: αλλιώς κάποιος με ιστορικό >30 μερών ξαναβλέπει
+  // «κατέγραψε την πρώτη σου προπόνηση» σαν να μην έχει προπονηθεί ποτέ.
+  const hasWorkout = useLiveQuery(() => hasAnyCompletedWorkout(), [], undefined);
 
-  if (!summary30) return null;
+  if (hasWorkout === undefined) return null;
 
   const steps = [
     {
@@ -38,7 +40,7 @@ export function EmptyDashboardHint() {
       hint: t('dashboard.next.goalHint'),
     },
     {
-      done: summary30.totalSets > 0,
+      done: hasWorkout,
       to: '/body',
       Icon: Scale,
       title: t('dashboard.next.body'),
