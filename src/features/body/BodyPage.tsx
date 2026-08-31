@@ -13,11 +13,10 @@ import {
 } from 'recharts';
 import { getBodyMetric, getBodyTrend, localDay, saveBodyMetric } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
+import { formatWeight, parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCountUp } from '@/hooks/useCountUp';
-import { cn } from '@/lib/utils';
 import {
   ACTIVE_DOT,
   CHART_GRID,
@@ -27,7 +26,9 @@ import {
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
 
-const RANGES = [30, 60, 90, 180] as const;
+// Χωρίς 30/60/90/180 επιλογέα (owner: περιττός) — δείχνουμε ό,τι υπάρχει,
+// ένα χρόνο πίσω· τα κενά γεμίζουν, οπότε το εύρος δεν «ψεύδεται».
+const TREND_DAYS = 365;
 
 /**
  * Σώμα: βάρος, ποσοστό λίπους και χειροκίνητα βήματα. Το φαγητό/θερμίδες τα
@@ -43,7 +44,7 @@ export function BodyPage() {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
-  const [days, setDays] = useState<(typeof RANGES)[number]>(60);
+  const days = TREND_DAYS;
   const today = localDay();
 
   const trend = useLiveQuery(() => getBodyTrend(days), [days], []);
@@ -109,21 +110,18 @@ export function BodyPage() {
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-2">
         <h1 className="font-display text-2xl font-semibold tracking-tight">{t('body.title')}</h1>
-        <div className="flex gap-1">
-          {RANGES.map((r) => (
-            <button
-              key={r}
-              onClick={() => setDays(r)}
-              className={cn(
-                'rounded-md px-2 py-1 font-mono text-xs tabular-nums transition-colors active:scale-95',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                days === r ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent',
-              )}
-            >
-              {r}d
-            </button>
-          ))}
-        </div>
+        {/* Τρέχον σωματικό βάρος πάντα ορατό (ακόμα κι από ένα ζύγισμα) — είναι
+            η τιμή που τροφοδοτεί το φορτίο των ασκήσεων σωματικού βάρους. */}
+        {latest != null && (
+          <div className="text-right">
+            <p className="font-mono text-lg font-semibold tabular-nums leading-none">
+              {formatWeight(latest, unit)}
+            </p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {t('body.current')}
+            </p>
+          </div>
+        )}
       </header>
 
       {/* Καταγραφή σημερινής μέρας — βάρος, λίπος, βήματα */}
