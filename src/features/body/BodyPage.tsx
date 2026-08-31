@@ -155,6 +155,11 @@ export function BodyPage() {
         <Button className="mt-3 h-9" onClick={save}>
           {t('body.save')}
         </Button>
+        {/* Σύνδεση με την προπόνηση: το βάρος εδώ είναι το bodyweight που μπαίνει
+            στο φορτίο των ασκήσεων σωματικού βάρους (bw + πρόσθετο). */}
+        <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
+          {t('body.weightFeedsLoad')}
+        </p>
       </section>
 
       {/* Βάρος */}

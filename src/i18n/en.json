@@ -310,6 +310,7 @@
     "out": "out",
     "title": "Body",
     "logToday": "Log today",
+    "weightFeedsLoad": "Your bodyweight here counts as load in bodyweight exercises (bodyweight + added).",
     "caloriesIn": "Calories in",
     "caloriesOut": "Calories out",
     "save": "Save",
