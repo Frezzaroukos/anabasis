@@ -302,15 +302,25 @@ export function CalendarPage() {
                 >
                   {c.day}
                 </span>
-                {/* μία κουκκίδα ανά δραστηριότητα — 3 αθλήματα = 3 κουκκίδες */}
-                <span className="flex flex-wrap justify-center gap-0.5">
-                  {(cal.get(c.key)?.workouts ?? []).slice(0, 4).map((w) => (
-                    <span
-                      key={w.id}
-                      className={cn('h-1.5 w-1.5 rounded-full', dotOf(w.kind))}
-                    />
-                  ))}
-                </span>
+                {/* Μία κουκκίδα ανά δραστηριότητα — 3 αθλήματα = 3 κουκκίδες.
+                    Πάνω από 4: 3 κουκκίδες + «+N» αντί να κόβονται σιωπηλά. */}
+                {(() => {
+                  const ws = cal.get(c.key)?.workouts ?? [];
+                  const overflow = ws.length > 4;
+                  const shown = overflow ? ws.slice(0, 3) : ws.slice(0, 4);
+                  return (
+                    <span className="flex flex-wrap items-center justify-center gap-0.5">
+                      {shown.map((w) => (
+                        <span key={w.id} className={cn('h-1.5 w-1.5 rounded-full', dotOf(w.kind))} />
+                      ))}
+                      {overflow && (
+                        <span className="font-mono text-[8px] leading-none text-muted-foreground">
+                          +{ws.length - 3}
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
                 {cal.get(c.key)?.weight != null && (
                   <span className="font-mono text-[9px] text-muted-foreground">
                     {cal.get(c.key)!.weight}
