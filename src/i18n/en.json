@@ -567,6 +567,7 @@
     "periodLabel": "Per",
     "activityLabel": "Activity",
     "exerciseLabel": "Exercise",
+    "exerciseAllHint": "Leave empty to count all exercises",
     "nameLabel": "Name (optional)",
     "daysLeft": "{{count}} day left in this period",
     "daysLeft_other": "{{count}} days left in this period",

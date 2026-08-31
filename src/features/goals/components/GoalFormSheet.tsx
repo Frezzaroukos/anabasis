@@ -15,8 +15,12 @@ import type { Goal, GoalMetric, GoalPeriod, GoalPeriodAnchor } from '@/lib/db/ty
 import { goalTitle } from '../goalTitle';
 import { cn } from '@/lib/utils';
 
-/** Μετρικές που αφορούν σετ — μόνο εκεί βγάζει νόημα να διαλέξεις άσκηση. */
-const SET_LEVEL: GoalMetric[] = ['volume_kg', 'sets', 'reps'];
+/**
+ * Μετρικές που μπορούν να στοχεύσουν συγκεκριμένη άσκηση: τα σετ (όγκος/σετ/
+ * επαναλήψεις) ΚΑΙ οι προπονήσεις («κάνε bench 2×/εβδομάδα»). Απόσταση/διάρκεια
+ * δεν δένουν με άσκηση.
+ */
+const EXERCISE_SCOPED: GoalMetric[] = ['sessions', 'volume_kg', 'sets', 'reps'];
 
 /**
  * Σύνθεση στόχου από τους τέσσερις άξονες.
@@ -45,6 +49,7 @@ export function GoalFormSheet({
   const [target, setTarget] = useState('4');
   const [activityKey, setActivityKey] = useState<string | null>(null);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
+  const [exerciseQuery, setExerciseQuery] = useState('');
   const [label, setLabel] = useState('');
 
   useEffect(() => {
@@ -55,14 +60,19 @@ export function GoalFormSheet({
     setTarget(String(goal?.target ?? 4));
     setActivityKey(goal?.activity_key ?? null);
     setExerciseId(goal?.exercise_id ?? null);
+    setExerciseQuery('');
     setLabel(goal?.label ?? '');
   }, [open, goal]);
 
-  // Αλλάζοντας σε μετρική που δεν αφορά σετ, η επιλογή άσκησης παύει να έχει
-  // νόημα — την καθαρίζουμε αντί να την κρατάμε κρυφά ενεργή.
+  // Μετρική που δεν δένει με άσκηση (απόσταση/διάρκεια) → καθάρισε την επιλογή.
   useEffect(() => {
-    if (!SET_LEVEL.includes(metric)) setExerciseId(null);
+    if (!EXERCISE_SCOPED.includes(metric)) setExerciseId(null);
   }, [metric]);
+
+  const selectedExercise = exercises.find((e) => e.id === exerciseId) ?? null;
+  const exerciseMatches = exercises
+    .filter((e) => e.name.toLowerCase().includes(exerciseQuery.trim().toLowerCase()))
+    .slice(0, 8);
 
   const targetNum = Number(target.replace(',', '.'));
   const valid = Number.isFinite(targetNum) && targetNum > 0;
@@ -169,20 +179,58 @@ export function GoalFormSheet({
           </div>
         </Field>
 
-        {SET_LEVEL.includes(metric) && (
+        {EXERCISE_SCOPED.includes(metric) && (
           <Field label={t('goals.exerciseLabel')}>
-            <select
-              value={exerciseId ?? ''}
-              onChange={(e) => setExerciseId(e.target.value || null)}
-              className="h-10 w-full rounded-md bg-elevated px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <option value="">{t('goals.all')}</option>
-              {exercises.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
+            {selectedExercise ? (
+              // Επιλεγμένη άσκηση — δείχνεται σαν chip με «καθάρισμα», όχι χαμένη
+              // μέσα σε ένα dropdown.
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium">
+                  {selectedExercise.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExerciseId(null);
+                    setExerciseQuery('');
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {t('goals.all')}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  value={exerciseQuery}
+                  onChange={(e) => setExerciseQuery(e.target.value)}
+                  placeholder={t('workout.searchExercises')}
+                  className="h-10"
+                />
+                {exerciseQuery.trim() !== '' && (
+                  <ul className="max-h-44 divide-y divide-border/60 overflow-y-auto rounded-md bg-elevated">
+                    {exerciseMatches.map((e) => (
+                      <li key={e.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExerciseId(e.id);
+                            setExerciseQuery('');
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        >
+                          {e.name}
+                        </button>
+                      </li>
+                    ))}
+                    {exerciseMatches.length === 0 && (
+                      <li className="px-3 py-2 text-sm text-muted-foreground">{t('progress.noMatch')}</li>
+                    )}
+                  </ul>
+                )}
+                <p className="text-[11px] text-muted-foreground">{t('goals.exerciseAllHint')}</p>
+              </div>
+            )}
           </Field>
         )}
 

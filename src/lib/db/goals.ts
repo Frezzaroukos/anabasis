@@ -190,7 +190,24 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
   let current = 0;
 
   if (goal.metric === 'sessions') {
-    current = workouts.length;
+    // Στοχευμένο σε άσκηση («κάνε bench 2×/εβδομάδα») → μέτρα ΠΡΟΠΟΝΗΣΕΙΣ που
+    // περιείχαν τουλάχιστον ένα σετ αυτής της άσκησης, όχι όλες.
+    if (goal.exercise_id == null) {
+      current = workouts.length;
+    } else {
+      const ids = workouts.map((w) => w.id);
+      const sets =
+        ids.length > 0
+          ? (await db.sets.where('workout_id').anyOf(ids).toArray()).filter(
+              (s) =>
+                s.deleted_at == null &&
+                s.set_type !== 'warmup' &&
+                !s.is_warmup &&
+                s.exercise_id === goal.exercise_id,
+            )
+          : [];
+      current = new Set(sets.map((s) => s.workout_id)).size;
+    }
   } else if (goal.metric === 'distance_km') {
     current = workouts.reduce((a, w) => a + (w.distance_km ?? 0), 0);
   } else if (goal.metric === 'duration_min') {
