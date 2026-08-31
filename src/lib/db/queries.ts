@@ -1176,7 +1176,9 @@ export async function getCalendar(from: string, to: string): Promise<Map<string,
 
   const out = new Map<string, DayActivities>();
   for (const w of workouts) {
-    if (w.deleted_at != null) continue;
+    // Μόνο ολοκληρωμένες — αλλιώς μια εγκαταλειμμένη/ενεργή προπόνηση φούσκωνε
+    // τα month stats και διαφωνούσε με το Ιστορικό.
+    if (w.deleted_at != null || w.ended_at == null) continue;
     const day = localDay(new Date(w.started_at));
     if (day < from || day > to) continue;
     const entry =
@@ -1360,7 +1362,9 @@ export async function getProgramAdherence(
     (w) =>
       w.deleted_at == null &&
       w.ended_at != null &&
-      w.workout_type === program.name &&
+      // Δένουμε με το program_id, όχι με το όνομα: οι μέρες γράφουν workout_type
+      // «<μέρα> #N» (ποτέ == program.name → πάντα 0) και η μετονομασία το έσπαγε.
+      w.program_id === programId &&
       w.started_at >= weekStart,
   ).length;
 

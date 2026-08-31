@@ -235,8 +235,19 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
   if (goal.metric === 'top_weight') {
     let best = 0;
     if (goal.exercise_id) {
+      // Scope στα ΔΙΚΑ σου workouts: τα sets δεν έχουν user_id, οπότε ένα
+      // builtin exercise (κοινό) θα διέρρεε τα βαριά σετ άλλου προφίλ.
+      const myWorkoutIds = new Set(
+        (await db.workouts.where('user_id').equals(getCurrentUserId()).toArray())
+          .filter((w) => w.deleted_at == null)
+          .map((w) => w.id),
+      );
       const sets = (await db.sets.where('exercise_id').equals(goal.exercise_id).toArray()).filter(
-        (s) => s.deleted_at == null && s.set_type !== 'warmup' && !s.is_warmup,
+        (s) =>
+          s.deleted_at == null &&
+          s.set_type !== 'warmup' &&
+          !s.is_warmup &&
+          myWorkoutIds.has(s.workout_id),
       );
       for (const s of sets) {
         const load = (s.weight_kg ?? 0) + (s.bodyweight_kg ?? 0);

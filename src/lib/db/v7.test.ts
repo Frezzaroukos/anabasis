@@ -181,10 +181,11 @@ describe('F10 — στόχος συχνότητας ανά πρόγραμμα', 
     const p = await createProgram('Weekly PPL');
     await setProgramTarget(p.id, 3);
 
-    // δύο ολοκληρωμένες προπονήσεις με το όνομα του προγράμματος
+    // δύο ολοκληρωμένες προπονήσεις ΣΥΝΔΕΔΕΜΕΝΕΣ με το πρόγραμμα (program_id),
+    // όχι με ταίριασμα ονόματος — έτσι δουλεύει και για day-based προγράμματα.
     for (let i = 0; i < 2; i++) {
       const w = await startWorkout('strength');
-      await db.workouts.update(w.id, { workout_type: 'Weekly PPL' });
+      await db.workouts.update(w.id, { program_id: p.id });
       await endWorkout(w.id);
     }
 
