@@ -8,6 +8,7 @@ import {
   localDay,
   setWorkoutActivity,
   setWorkoutDate,
+  setWorkoutDuration,
   setWorkoutType,
   softDeleteWorkout,
 } from '@/lib/db/queries';
@@ -43,13 +44,18 @@ export function EditWorkoutSheet({
   const [label, setLabel] = useState('');
   const [kind, setKind] = useState(workout.activity_kind);
   const [day, setDay] = useState(localDay(new Date(workout.started_at)));
+  const [minutes, setMinutes] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const initialMinutes = (w: Workout) =>
+    w.duration_seconds != null ? String(Math.round(w.duration_seconds / 60)) : '';
 
   useEffect(() => {
     if (!open) return;
     setLabel(workout.workout_type ?? '');
     setKind(workout.activity_kind);
     setDay(localDay(new Date(workout.started_at)));
+    setMinutes(initialMinutes(workout));
     setConfirmingDelete(false);
   }, [open, workout]);
 
@@ -61,6 +67,13 @@ export function EditWorkoutSheet({
     }
     if (workout.activity_kind !== kind) await setWorkoutActivity(workout.id, kind);
     if (localDay(new Date(workout.started_at)) !== day) await setWorkoutDate(workout.id, day);
+    if (minutes.trim() !== initialMinutes(workout)) {
+      const mins = Number(minutes);
+      await setWorkoutDuration(
+        workout.id,
+        minutes.trim() !== '' && Number.isFinite(mins) && mins > 0 ? mins * 60 : null,
+      );
+    }
     onClose();
   };
 
@@ -111,6 +124,23 @@ export function EditWorkoutSheet({
             max={localDay()}
             onChange={(e) => setDay(e.target.value || day)}
             className="h-10 w-full rounded-md bg-elevated px-3 font-mono text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+        </label>
+
+        {/* Χειροκίνητη διάρκεια — προαιρετική. Δεν χρειάζεται ζωντανό χρονόμετρο·
+            γράψε πόσα λεπτά κράτησε, ή άφησέ το κενό. */}
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {t('history.workoutDuration')}
+          </span>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value)}
+            placeholder={t('history.workoutDurationPlaceholder')}
+            className="h-10 font-mono tabular-nums"
           />
         </label>
 

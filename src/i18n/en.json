@@ -167,6 +167,8 @@
     "editWorkout": "Edit workout",
     "workoutName": "Name",
     "workoutDate": "Date",
+    "workoutDuration": "Duration (min)",
+    "workoutDurationPlaceholder": "Optional — e.g. 45",
     "deleteWorkout": "Delete this workout",
     "deleteConfirmTitle": "Delete this workout?",
     "deleteConfirmDesc": "Its sets and any personal records it produced are removed too. This cannot be undone from the app."

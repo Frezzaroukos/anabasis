@@ -194,6 +194,19 @@ export async function setWorkoutDate(workoutId: string, isoDay: string): Promise
   await db.workouts.update(workoutId, patch);
 }
 
+/**
+ * Χειροκίνητη διάρκεια προπόνησης — ο χρόνος γίνεται προαιρετικός: δεν είσαι
+ * υποχρεωμένος να τρέξεις ζωντανό χρονόμετρο. Βάζεις όσα λεπτά κράτησε (ή το
+ * αφήνεις κενό = χωρίς διάρκεια). Δέχεται δευτερόλεπτα· `null` καθαρίζει.
+ */
+export async function setWorkoutDuration(
+  workoutId: string,
+  seconds: number | null,
+): Promise<void> {
+  const value = seconds != null && Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds) : null;
+  await db.workouts.update(workoutId, { duration_seconds: value, updated_at: now() });
+}
+
 /** Αλλάζει το άθλημα μιας καταγεγραμμένης προπόνησης. */
 export async function setWorkoutActivity(
   workoutId: string,
@@ -1423,10 +1436,10 @@ export async function reorderProgramExercises(orderedIds: string[]): Promise<voi
  * Ξεκινά workout από πρόγραμμα. ΔΕΝ γράφει σετ — ένα σετ σημαίνει «το έκανα».
  * Το πλάνο επιστρέφεται ώστε ο logger να δείξει τους στόχους προς εκτέλεση.
  */
-export async function startWorkoutFromProgram(programId: string) {
+export async function startWorkoutFromProgram(programId: string, onDate?: string) {
   const data = await getProgramWithExercises(programId);
   if (!data) return null;
-  const w = await startWorkout(data.program.activity_kind, undefined, programId, null);
+  const w = await startWorkout(data.program.activity_kind, onDate, programId, null);
   await db.workouts.update(w.id, {
     workout_type: data.program.name,
     updated_at: now(),
