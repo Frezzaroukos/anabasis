@@ -6,6 +6,7 @@ import { Copy, Play, Plus, Trash2, History, ListChecks, LayoutTemplate } from 'l
 import {
   createProgram,
   duplicateProgram,
+  listActivities,
   listPrograms,
   programFromLastWorkout,
   renameProgram,
@@ -19,18 +20,7 @@ import type { ActivityKind, ProgramDay } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
-
-const KINDS: ActivityKind[] = [
-  'strength',
-  'skill',
-  'run',
-  'basketball',
-  'cycling',
-  'swim',
-  'mobility',
-  'other',
-];
+import { ActivityChip } from '@/components/ActivityChip';
 
 /**
  * Λίστα προγραμμάτων — πρότυπα προπόνησης που ο αθλητής φτιάχνει μία φορά και
@@ -42,6 +32,9 @@ export function ProgramsPage() {
   const navigate = useNavigate();
 
   const programs = useLiveQuery(() => listPrograms(), [], []);
+  // Οι δραστηριότητες του ΧΡΗΣΤΗ (καμία σταθερή λίστα) — ίδια πηγή με τον
+  // logger· ό,τι φτιάξει στο «Δραστηριότητες» εμφανίζεται κι εδώ.
+  const activities = useLiveQuery(() => listActivities(true), [], []);
   const exerciseCounts = useLiveQuery(
     async () => {
       const rows = await db.program_exercises.toArray();
@@ -214,20 +207,13 @@ export function ProgramsPage() {
             aria-label={t('programs.namePlaceholder')}
           />
           <div className="flex flex-wrap gap-2">
-            {KINDS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setKind(k)}
-                className={cn(
-                  'rounded-md px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  kind === k
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                )}
-              >
-                {t(`activity.${k}`)}
-              </button>
+            {activities.map((a) => (
+              <ActivityChip
+                key={a.key}
+                activity={a}
+                selected={kind === a.key}
+                onClick={() => setKind(a.key)}
+              />
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -304,7 +290,7 @@ export function ProgramsPage() {
                   >
                     <p className="truncate font-display text-sm font-semibold">{p.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {t(`activity.${p.activity_kind}`)}
+                      {activities.find((a) => a.key === p.activity_kind)?.label ?? p.activity_kind}
                       {' · '}
                       {(programDays.get(p.id)?.length ?? 0) > 0 ? (
                         <span className="font-mono">
