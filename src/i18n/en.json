@@ -573,6 +573,8 @@
     "stepsTargetLabel": "Steps",
     "noSkills": "No skills yet.",
     "skillGoalTitle": "Master {{skill}} · {{count}} steps",
+    "loadTargetLabel": "Target load (kg)",
+    "loadGoalTitle": "Reach {{load}} kg · {{exercise}}",
     "nameLabel": "Name (optional)",
     "daysLeft": "{{count}} day left in this period",
     "daysLeft_other": "{{count}} days left in this period",
@@ -586,7 +588,8 @@
       "reps": "Reps",
       "distance_km": "Distance",
       "duration_min": "Duration",
-      "skill_steps": "Skill"
+      "skill_steps": "Skill",
+      "top_weight": "Target weight"
     },
     "period": {
       "day": "day",

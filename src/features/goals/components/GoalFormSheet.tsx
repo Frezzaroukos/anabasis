@@ -68,14 +68,18 @@ export function GoalFormSheet({
   }, [open, goal]);
 
   const isMilestone = MILESTONE_METRICS.includes(metric);
+  const isSkillGoal = metric === 'skill_steps';
+  const isWeightTarget = metric === 'top_weight';
+  // Ο στόχος φορτίου δένει κι αυτός με συγκεκριμένη άσκηση (ποιανής το φορτίο).
+  const exerciseScoped = EXERCISE_SCOPED.includes(metric) || isWeightTarget;
 
-  // Μετρική που δεν δένει με άσκηση (απόσταση/διάρκεια/skill) → καθάρισε την
-  // επιλογή άσκησης· milestone → καθάρισε άθλημα/άσκηση.
+  // Καθάρισμα άσχετων αξόνων ανά μετρική: skill μόνο σε skill goal, exercise
+  // μόνο όπου δένει, άθλημα μόνο σε μετρικές παραθύρου.
   useEffect(() => {
-    if (!EXERCISE_SCOPED.includes(metric)) setExerciseId(null);
-    if (!isMilestone) setSkillId(null);
-    else setActivityKey(null);
-  }, [metric, isMilestone]);
+    if (!exerciseScoped) setExerciseId(null);
+    if (!isSkillGoal) setSkillId(null);
+    if (isMilestone) setActivityKey(null);
+  }, [metric, exerciseScoped, isSkillGoal, isMilestone]);
 
   const selectedExercise = exercises.find((e) => e.id === exerciseId) ?? null;
   const exerciseMatches = exercises
@@ -91,7 +95,11 @@ export function GoalFormSheet({
   };
 
   const targetNum = Number(target.replace(',', '.'));
-  const valid = Number.isFinite(targetNum) && targetNum > 0 && (!isMilestone || skillId != null);
+  const valid =
+    Number.isFinite(targetNum) &&
+    targetNum > 0 &&
+    (!isSkillGoal || skillId != null) &&
+    (!isWeightTarget || exerciseId != null);
 
   const preview = goalTitle(
     t,
@@ -111,8 +119,8 @@ export function GoalFormSheet({
       period,
       period_anchor: anchor,
       activity_key: isMilestone ? null : activityKey,
-      exercise_id: isMilestone ? null : exerciseId,
-      skill_id: isMilestone ? skillId : null,
+      exercise_id: isSkillGoal ? null : exerciseId,
+      skill_id: isSkillGoal ? skillId : null,
       label: label.trim() || null,
     };
     if (goal) await updateGoal(goal.id, payload);
@@ -141,7 +149,18 @@ export function GoalFormSheet({
           </div>
         </Field>
 
-        {isMilestone ? (
+        {isWeightTarget ? (
+          // Στόχος φορτίου («70kg weighted pull-up»): διάλεξε άσκηση (παρακάτω)
+          // + βάρος-στόχο. Milestone — χωρίς περίοδο.
+          <Field label={t('goals.loadTargetLabel')} className="w-40">
+            <Input
+              inputMode="decimal"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              className="h-10 font-mono tabular-nums"
+            />
+          </Field>
+        ) : isSkillGoal ? (
           // Milestone: επίλεξε skill + πόσα σκαλιά (προτείνεται το σύνολο).
           // Χωρίς περίοδο/anchor/άθλημα — η κατάκτηση δεν έχει προθεσμία.
           <>
@@ -247,7 +266,7 @@ export function GoalFormSheet({
           </>
         )}
 
-        {EXERCISE_SCOPED.includes(metric) && (
+        {exerciseScoped && (
           <Field label={t('goals.exerciseLabel')}>
             {selectedExercise ? (
               // Επιλεγμένη άσκηση — δείχνεται σαν chip με «καθάρισμα», όχι χαμένη

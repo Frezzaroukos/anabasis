@@ -309,6 +309,7 @@ export const BUILTIN_GOAL_METRICS = [
   'distance_km',
   'duration_min',
   'skill_steps', // σκαλιά ενός skill που έχεις κατακτήσει (milestone, χωρίς παράθυρο)
+  'top_weight', // φτάσε X φορτίο (bw+πρόσθετο) σε μια άσκηση — π.χ. «70kg weighted pull-up» (milestone)
 ] as const;
 export type GoalMetric = (typeof BUILTIN_GOAL_METRICS)[number];
 

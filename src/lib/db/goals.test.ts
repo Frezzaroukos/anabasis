@@ -324,3 +324,29 @@ describe('skill milestone goals (skill_steps)', () => {
     expect((await getGoalProgress(goal)).current).toBe(0);
   });
 });
+
+describe('weight-target goals (top_weight — «70kg weighted pull-up»)', () => {
+  it('current = καλύτερο φορτίο (σωματικό+πρόσθετο) της άσκησης, all-time', async () => {
+    const w = await startWorkout('strength');
+    // weighted pull-up: σωματικό 72 + πρόσθετο 20 = 92· και ένα ελαφρύτερο
+    await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 20, bodyweight_kg: 72, reps: 3, hold_seconds: null });
+    await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 10, bodyweight_kg: 72, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+
+    const goal = await createGoal({ metric: 'top_weight', target: 90, period: 'week', exercise_id: bench.id });
+    const p = await getGoalProgress(goal);
+    expect(p.current).toBe(92); // 72+20, όχι μόνο 20
+    expect(p.ratio).toBe(1); // 92 >= 90 → πιάστηκε
+    expect(p.unit).toBe('kg');
+    expect(p.daysLeft).toBeNull(); // milestone
+  });
+
+  it('αγνοεί warm-up και άλλες ασκήσεις', async () => {
+    const w = await startWorkout('strength');
+    await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 999, bodyweight_kg: 72, reps: 1, hold_seconds: null, set_type: 'warmup', is_warmup: true });
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 200, bodyweight_kg: null, reps: 1, hold_seconds: null });
+    await endWorkout(w.id);
+    const goal = await createGoal({ metric: 'top_weight', target: 100, period: 'week', exercise_id: bench.id });
+    expect((await getGoalProgress(goal)).current).toBe(0); // μόνο warm-up bench → 0
+  });
+});

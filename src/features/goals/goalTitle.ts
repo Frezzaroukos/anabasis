@@ -23,6 +23,12 @@ export function goalTitle(
     return t('goals.skillGoalTitle', { skill, count: goal.target });
   }
 
+  // Milestone φορτίου: «Φτάσε 70 kg · Weighted Pull-up» — χωρίς περίοδο.
+  if (goal.metric === 'top_weight') {
+    const exercise = names.exercise ?? t('goals.metric.top_weight');
+    return t('goals.loadGoalTitle', { load: goal.target, exercise });
+  }
+
   const unit = METRIC_UNIT[goal.metric];
 
   // Με μονάδα, η μονάδα λέει ήδη τι μετράμε («20 km») — η λέξη «απόσταση»
