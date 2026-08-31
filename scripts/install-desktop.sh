@@ -26,25 +26,14 @@ Exec=$BIN_DST
 Icon=anabasis
 Terminal=false
 Categories=Utility;Sports;
-StartupWMClass=Anabasis
+StartupWMClass=anabasis
 Keywords=fitness;calisthenics;workout;training;skills;
 EOF
 
-# Fallback entry: το παλιό Brave app-window στο :8120 — εκεί ζουν τα δεδομένα
-# πριν τη μετάβαση (Ρυθμίσεις → Εξαγωγή στο web, Εισαγωγή στο native).
-cat > "$APPS_DIR/anabasis-web.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Anabasis (Web)
-GenericName=Calisthenics Tracker (browser)
-Comment=Παλιό web wrapper (:8120) — για export των υπαρχόντων δεδομένων
-Exec=brave --app=http://localhost:8120 --class=anabasis-web --name=anabasis-web
-Icon=anabasis
-Terminal=false
-Categories=Utility;Sports;
-StartupWMClass=anabasis-web
-NoDisplay=false
-EOF
+# Καθάρισε το παλιό Brave web-wrapper entry (:8120): μπέρδευε τον launcher
+# (Mod+D «anabasis» → άνοιγε το web wrapper με stale service-worker cache και
+# «έδειχνε παλιά έκδοση»). Το native είναι η μόνη είσοδος πλέον.
+rm -f "$APPS_DIR/anabasis-web.desktop"
 
 command -v update-desktop-database >/dev/null && update-desktop-database "$APPS_DIR" || true
-echo "✅ Εγκαταστάθηκε: $BIN_DST + anabasis.desktop (native) + anabasis-web.desktop (fallback)"
+echo "✅ Εγκαταστάθηκε: $BIN_DST + anabasis.desktop (native, μόνο αυτό)"
