@@ -9,6 +9,7 @@ import {
   reorderProgramDays,
   deleteProgramDay,
   addProgramExercise,
+  duplicateProgram,
   getProgramDayWithExercises,
   startWorkoutFromProgramDay,
   startAdHocWorkout,
@@ -83,3 +84,25 @@ describe('program days', () => {
     expect(plan).toHaveLength(0);
   });
 });
+
+describe('duplicateProgram — κρατά τη δομή των ημερών', () => {
+  it('αντιγράφει μέρες (νέα ids) και βάζει τις ασκήσεις στη σωστή μέρα', async () => {
+    const p = await createProgram('Structured');
+    const upper = await createProgramDay(p.id, 'Upper');
+    const lower = await createProgramDay(p.id, 'Lower');
+    await addProgramExercise(p.id, { exercise_id: 'ex-a', program_day_id: upper.id, target_sets: 3 });
+    await addProgramExercise(p.id, { exercise_id: 'ex-b', program_day_id: lower.id, target_sets: 4 });
+
+    const copy = await duplicateProgram(p.id);
+    expect(copy).not.toBeNull();
+    const copyDays = await listProgramDays(copy!.id);
+    expect(copyDays.map((d) => d.name)).toEqual(['Upper', 'Lower']);
+    // νέα ids (όχι ίδια με του original)
+    expect(copyDays.some((d) => d.id === upper.id)).toBe(false);
+
+    const copyUpper = await getProgramDayWithExercises(copyDays[0]!.id);
+    const copyLower = await getProgramDayWithExercises(copyDays[1]!.id);
+    expect(copyUpper!.exercises.map((e) => e.exercise_id)).toEqual(['ex-a']);
+    expect(copyLower!.exercises.map((e) => e.exercise_id)).toEqual(['ex-b']);
+  });
+})
