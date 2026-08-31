@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { reorderActivities, updateActivity } from '@/lib/db/queries';
 import type { Activity } from '@/lib/db/types';
+import { ActivityIcon } from '@/components/activityIcon';
 import { useActivities } from './useActivities';
 import { ActivityFormSheet } from './components/ActivityFormSheet';
 
@@ -67,7 +68,7 @@ export function ActivitiesPage() {
               {/* Το χρώμα ΕΙΝΑΙ η ταυτότητα της δραστηριότητας — ίδιο σημάδι με
                   το ημερολόγιο και τα chips. Το παλιό σύμβολο (⬛ ◆ ▲) έμενε
                   μόνο εδώ και έσπαγε τη συνέπεια. */}
-              <span className={cn('h-3 w-3 shrink-0 rounded-full', a.dot_class)} aria-hidden />
+              <ActivityIcon activity={a} className="h-4 w-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.label}</span>
               <div className="flex shrink-0 items-center gap-0.5">
                 <button
@@ -132,7 +133,7 @@ export function ActivitiesPage() {
                   key={a.id}
                   className="flex items-center gap-2 rounded-lg bg-card/50 px-3 py-2 opacity-60"
                 >
-                  <span className={cn('h-3 w-3 shrink-0 rounded-full', a.dot_class)} aria-hidden />
+                  <ActivityIcon activity={a} className="h-4 w-4 shrink-0" />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.label}</span>
                   <button
                     type="button"

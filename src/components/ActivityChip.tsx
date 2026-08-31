@@ -1,5 +1,6 @@
 import type { Activity } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
+import { ActivityIcon } from './activityIcon';
 
 /**
  * Επιλογή δραστηριότητας — μία εμφάνιση, παντού.
@@ -21,7 +22,7 @@ export function ActivityChip({
   onClick,
   className,
 }: {
-  activity: Pick<Activity, 'key' | 'label' | 'dot_class'>;
+  activity: Pick<Activity, 'key' | 'label' | 'dot_class' | 'icon'>;
   selected?: boolean;
   onClick?: () => void;
   className?: string;
@@ -39,13 +40,9 @@ export function ActivityChip({
         className,
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          'h-2.5 w-2.5 shrink-0 rounded-full transition-transform',
-          activity.dot_class,
-          selected && 'scale-125',
-        )}
+      <ActivityIcon
+        activity={activity}
+        className={cn('h-4 w-4 shrink-0 transition-transform', selected && 'scale-110')}
       />
       <span className="truncate">{activity.label}</span>
     </button>

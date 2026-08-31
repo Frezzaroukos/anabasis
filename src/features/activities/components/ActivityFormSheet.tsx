@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { createActivity, updateActivity } from '@/lib/db/queries';
 import type { Activity } from '@/lib/db/types';
+import { ACTIVITY_ICONS, ACTIVITY_ICON_NAMES } from '@/components/activityIcon';
 import { ACTIVITY_DOT_COLORS } from '../utils';
 
 interface ActivityFormSheetProps {
@@ -16,7 +17,7 @@ interface ActivityFormSheetProps {
 }
 
 const DEFAULTS = {
-  icon: '•',
+  icon: 'dumbbell',
   dot_class: ACTIVITY_DOT_COLORS[0],
 };
 
@@ -93,6 +94,36 @@ export function ActivityFormSheet({ open, onClose, activity = null }: ActivityFo
               className="h-10"
             />
           </label>
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {t('activities.icon')}
+          </span>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('activities.icon')}>
+            {ACTIVITY_ICON_NAMES.map((name) => {
+              const Icon = ACTIVITY_ICONS[name]!;
+              const active = icon === name;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={name}
+                  onClick={() => setIcon(name)}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
+                    active
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border/70 text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="space-y-1.5">
