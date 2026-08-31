@@ -39,7 +39,7 @@ import {
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
 import { ExerciseFormSheet } from './components/ExerciseFormSheet';
-import { categoryDotClass } from './utils';
+import { CategoryBadge } from '@/components/CategoryBadge';
 import { cn } from '@/lib/utils';
 
 type Metric = 'reps' | 'topWeight' | 'e1rm' | 'volume';
@@ -118,12 +118,9 @@ export function ExerciseDetailPage() {
           ← {t('exercises.title')}
         </Link>
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span
-              className={cn('h-3 w-3 shrink-0 rounded-full', categoryDotClass(exercise.category))}
-              aria-hidden
-            />
-            <h1 className="font-display text-2xl font-semibold tracking-tight">{exercise.name}</h1>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <h1 className="truncate font-display text-2xl font-semibold tracking-tight">{exercise.name}</h1>
+            <CategoryBadge category={exercise.category} />
           </div>
           <div className="flex shrink-0 gap-1">
             <button

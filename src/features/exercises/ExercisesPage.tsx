@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Archive, ArchiveRestore, Dumbbell, Pencil, Plus, Search, Sparkles } from 'lucide-react';
+import { Archive, ArchiveRestore, Dumbbell, Pencil, Plus, Search, Sparkles, Trophy } from 'lucide-react';
 import {
   getAllSkillProgress,
   getExerciseSummaries,
@@ -22,7 +22,6 @@ import { SkillCreateForm } from '@/features/skills/components/SkillCreateForm';
 import { SkillRow } from '@/features/skills/components/SkillRow';
 import { ExerciseFormSheet } from './components/ExerciseFormSheet';
 import {
-  categoryDotClass,
   groupLibraryByCategory,
   matchesLibraryFilter,
   normalizeSkillCategory,
@@ -260,7 +259,6 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
 
   return (
     <li className={cn('flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated', exercise.is_archived && 'opacity-60')}>
-      <span className={cn('h-2 w-2 shrink-0 rounded-full', categoryDotClass(exercise.category))} aria-hidden />
       <button
         type="button"
         onClick={onOpen}
@@ -268,7 +266,7 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
       >
         <p className="flex items-center gap-2 text-sm font-medium">
           {summary?.hasPR && (
-            <span className="shrink-0 text-gold" aria-hidden title="PR">★</span>
+            <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />
           )}
           {exercise.name}
           {exercise.user_id === null ? (

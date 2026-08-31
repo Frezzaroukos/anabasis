@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Download } from 'lucide-react';
+import { Download, Trophy } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -46,7 +46,7 @@ import {
   tickIntervalFor,
   type ChartRangeKey,
 } from '@/components/charts/timeRange';
-import { categoryDotClass } from '@/features/exercises/utils';
+import { CategoryBadge } from '@/components/CategoryBadge';
 import { ActivityProgress } from './ActivityProgress';
 
 type Metric = 'topWeight' | 'e1rm' | 'volume';
@@ -176,25 +176,19 @@ export function ProgressPage() {
                     className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      {/* ★ = έχει PR (χρυσό = επίτευξη), ● = έχει προπονηθεί·
-                          αλλιώς ο χρήστης ψάχνει στα τυφλά ποια άσκηση αξίζει
-                          να ανοίξει */}
-                      {s?.hasPR ? (
-                        <span className="shrink-0 text-gold" aria-hidden>★</span>
-                      ) : s?.lastTrainedAt ? (
-                        <span className="shrink-0 text-primary" aria-hidden>●</span>
-                      ) : (
-                        <span className="shrink-0 text-transparent" aria-hidden>·</span>
-                      )}
+                      {/* Trophy (χρυσό) = έχει PR· διακριτική κουκκίδα = έχει
+                          προπονηθεί· αλλιώς κενό — καθαρό εικονίδιο αντί για
+                          ανάμεικτα Unicode σύμβολα. */}
+                      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden>
+                        {s?.hasPR ? (
+                          <Trophy className="h-3.5 w-3.5 text-gold" />
+                        ) : s?.lastTrainedAt ? (
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                        ) : null}
+                      </span>
                       <span className="truncate text-sm font-medium">{e.name}</span>
                     </span>
-                    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-elevated px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
-                      <span
-                        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', categoryDotClass(e.category))}
-                        aria-hidden
-                      />
-                      {e.category}
-                    </span>
+                    <CategoryBadge category={e.category} />
                   </button>
                 </li>
               );

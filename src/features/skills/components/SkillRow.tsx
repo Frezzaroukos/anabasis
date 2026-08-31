@@ -1,18 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Archive, ArchiveRestore } from 'lucide-react';
-import type { Skill, SkillCategory } from '@/lib/db/types';
+import { Archive, ArchiveRestore, Trophy } from 'lucide-react';
+import type { Skill } from '@/lib/db/types';
 import { SkillIcon } from '@/components/SkillIcon';
+import { CategoryBadge } from '@/components/CategoryBadge';
 import { RungStack } from './RungStack';
 import { cn } from '@/lib/utils';
-
-const CATEGORY_DOT: Record<SkillCategory, string> = {
-  push: 'bg-category-push',
-  pull: 'bg-category-pull',
-  lower: 'bg-category-legs',
-  core: 'bg-category-core',
-  mixed: 'bg-category-mixed',
-};
 
 interface SkillRowProps {
   skill: Skill;
@@ -39,15 +32,12 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
           to={`/skills/${skill.id}`}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span
-            className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[skill.category] ?? 'bg-zinc-400')}
-            aria-hidden
-          />
           <SkillIcon skill={skill.short_code} className="h-5 w-5 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-2 text-sm font-medium">
               {skill.name}
-              {mastered && <span className="text-gold">★</span>}
+              {mastered && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />}
+              <CategoryBadge category={skill.category} />
               <span
                 className={cn(
                   'rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide',
