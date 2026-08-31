@@ -122,6 +122,8 @@
     "decrease": "Decrease",
     "emptyHint": "Build a reusable template once, start it any time.",
     "fromTemplate": "From template",
+    "reuseTitle": "Your programs",
+    "reuseHint": "Tap to start a copy you can tweak",
     "templatesHint": "Pick a ready-made routine — you can tweak it after.",
     "exercisesShort": "exercises",
     "day": "Day",

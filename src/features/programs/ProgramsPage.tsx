@@ -171,6 +171,42 @@ export function ProgramsPage() {
 
       {templatesOpen && (
         <section className="animate-rise-in space-y-2 rounded-lg bg-elevated p-4">
+          {/* Ένα πρόγραμμα ΕΙΝΑΙ ήδη αποθηκευμένο, επαναχρησιμοποιήσιμο πρότυπο:
+              το πατάς εδώ και φτιάχνει ένα αντίγραφο που προσαρμόζεις. Έτσι
+              «αποθήκευση custom template» = απλώς φτιάχνεις ένα πρόγραμμα. */}
+          {programs.length > 0 && (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {t('programs.reuseTitle')}
+              </p>
+              <ul className="grid gap-2">
+                {programs.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setTemplatesOpen(false);
+                        void onDuplicate(p.id);
+                      }}
+                      className="w-full rounded-lg bg-card p-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                    >
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="font-medium">{p.name}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                          {(programDays.get(p.id)?.length ?? 0) > 0
+                            ? t('programs.dayCount', { count: programDays.get(p.id)!.length })
+                            : `${exerciseCounts.get(p.id) ?? 0} ${t('programs.exercisesShort')}`}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{t('programs.reuseHint')}</p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="h-px bg-border/60" />
+            </>
+          )}
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             {t('programs.templatesHint')}
           </p>
