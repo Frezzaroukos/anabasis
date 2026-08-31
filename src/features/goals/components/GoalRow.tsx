@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronUp, CircleCheck, LineChart, Pencil, Trash2 } from 'lucide-react';
-import type { GoalProgress } from '@/lib/db/goals';
+import { ChevronDown, ChevronUp, CircleCheck, LineChart, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { setGoalManualValue, type GoalProgress } from '@/lib/db/goals';
 import type { Goal } from '@/lib/db/types';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/utils';
@@ -91,9 +91,32 @@ export function GoalRow({
             </span>
           )}
         </div>
-        <p className="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground">
-          {displayCurrent} / {p.target} {p.unit}
-        </p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <p className="font-mono text-xs tabular-nums text-muted-foreground">
+            {displayCurrent} / {p.target} {p.unit}
+          </p>
+          {/* Custom μετρητής: το progress το ανεβάζεις εσύ, χειροκίνητα. */}
+          {p.goal.metric === 'custom' && (
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label={t('goals.decrement')}
+                onClick={() => void setGoalManualValue(p.goal.id, (p.goal.manual_value ?? 0) - 1)}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-elevated text-muted-foreground transition-colors hover:text-foreground active:scale-95"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={t('goals.increment')}
+                onClick={() => void setGoalManualValue(p.goal.id, (p.goal.manual_value ?? 0) + 1)}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-elevated text-muted-foreground transition-colors hover:text-foreground active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          )}
+        </div>
         {/* Κυλιόμενο παράθυρο δεν έχει προθεσμία — «μένουν 0 μέρες»
             θα ήταν ψέμα, όχι πληροφορία. */}
         <p className="mt-0.5 text-[11px] text-muted-foreground">

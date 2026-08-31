@@ -29,6 +29,11 @@ export function goalTitle(
     return t('goals.loadGoalTitle', { load: goal.target, exercise });
   }
 
+  // Custom μετρητής: ο τίτλος είναι το όνομα που έδωσε ο χρήστης + ο στόχος.
+  if (goal.metric === 'custom') {
+    return `${t('goals.metric.custom')} · ${goal.target}`;
+  }
+
   const unit = METRIC_UNIT[goal.metric];
 
   // Με μονάδα, η μονάδα λέει ήδη τι μετράμε («20 km») — η λέξη «απόσταση»
