@@ -21,6 +21,7 @@ import {
   getProgramAdherence,
   getProgramDayWithExercises,
   getProgramWithExercises,
+  listActivities,
   listProgramDays,
   renameProgramDay,
   reorderProgramDays,
@@ -68,6 +69,7 @@ export function ProgramDetailPage() {
     [allExercises],
   );
   const days = useLiveQuery(() => listProgramDays(programId), [programId], []);
+  const activities = useLiveQuery(() => listActivities(true), [], []);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -259,7 +261,7 @@ export function ProgramDetailPage() {
         <div className="flex items-baseline justify-between gap-3">
           <h1 className="font-display text-2xl font-semibold tracking-tight">{program.name}</h1>
           <span className="text-xs text-muted-foreground">
-            {t(`activity.${program.activity_kind}`)}
+            {activities.find((a) => a.key === program.activity_kind)?.label ?? program.activity_kind}
           </span>
         </div>
 
