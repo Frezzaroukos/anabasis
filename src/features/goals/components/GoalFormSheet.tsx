@@ -4,8 +4,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { createGoal, updateGoal } from '@/lib/db/goals';
-import { listActivities, listExercises } from '@/lib/db/queries';
+import { createGoal, updateGoal, getSkillStepStats, MILESTONE_METRICS } from '@/lib/db/goals';
+import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
 import {
   BUILTIN_GOAL_METRICS,
   BUILTIN_GOAL_PERIODS,
@@ -42,11 +42,13 @@ export function GoalFormSheet({
   const { t } = useTranslation();
   const activities = useLiveQuery(() => listActivities(), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
+  const skills = useLiveQuery(() => listSkills(), [], []);
 
   const [metric, setMetric] = useState<GoalMetric>('sessions');
   const [period, setPeriod] = useState<GoalPeriod>('week');
   const [anchor, setAnchor] = useState<GoalPeriodAnchor>('calendar');
   const [target, setTarget] = useState('4');
+  const [skillId, setSkillId] = useState<string | null>(null);
   const [activityKey, setActivityKey] = useState<string | null>(null);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
   const [exerciseQuery, setExerciseQuery] = useState('');
@@ -58,24 +60,38 @@ export function GoalFormSheet({
     setPeriod(goal?.period ?? 'week');
     setAnchor(goal?.period_anchor ?? 'calendar');
     setTarget(String(goal?.target ?? 4));
+    setSkillId(goal?.skill_id ?? null);
     setActivityKey(goal?.activity_key ?? null);
     setExerciseId(goal?.exercise_id ?? null);
     setExerciseQuery('');
     setLabel(goal?.label ?? '');
   }, [open, goal]);
 
-  // Μετρική που δεν δένει με άσκηση (απόσταση/διάρκεια) → καθάρισε την επιλογή.
+  const isMilestone = MILESTONE_METRICS.includes(metric);
+
+  // Μετρική που δεν δένει με άσκηση (απόσταση/διάρκεια/skill) → καθάρισε την
+  // επιλογή άσκησης· milestone → καθάρισε άθλημα/άσκηση.
   useEffect(() => {
     if (!EXERCISE_SCOPED.includes(metric)) setExerciseId(null);
-  }, [metric]);
+    if (!isMilestone) setSkillId(null);
+    else setActivityKey(null);
+  }, [metric, isMilestone]);
 
   const selectedExercise = exercises.find((e) => e.id === exerciseId) ?? null;
   const exerciseMatches = exercises
     .filter((e) => e.name.toLowerCase().includes(exerciseQuery.trim().toLowerCase()))
     .slice(0, 8);
+  const selectedSkill = skills.find((s) => s.id === skillId) ?? null;
+
+  // Διάλεξες skill → ο στόχος προτείνεται στα συνολικά του σκαλιά (κατάκτηση).
+  const pickSkill = async (id: string) => {
+    setSkillId(id);
+    const stats = await getSkillStepStats(id);
+    if (stats.total > 0) setTarget(String(stats.total));
+  };
 
   const targetNum = Number(target.replace(',', '.'));
-  const valid = Number.isFinite(targetNum) && targetNum > 0;
+  const valid = Number.isFinite(targetNum) && targetNum > 0 && (!isMilestone || skillId != null);
 
   const preview = goalTitle(
     t,
@@ -83,6 +99,7 @@ export function GoalFormSheet({
     {
       activity: activityKey ? (activities.find((a) => a.key === activityKey)?.label ?? null) : null,
       exercise: exerciseId ? (exercises.find((e) => e.id === exerciseId)?.name ?? null) : null,
+      skill: selectedSkill?.name ?? null,
     },
   );
 
@@ -93,8 +110,9 @@ export function GoalFormSheet({
       target: targetNum,
       period,
       period_anchor: anchor,
-      activity_key: activityKey,
-      exercise_id: exerciseId,
+      activity_key: isMilestone ? null : activityKey,
+      exercise_id: isMilestone ? null : exerciseId,
+      skill_id: isMilestone ? skillId : null,
       label: label.trim() || null,
     };
     if (goal) await updateGoal(goal.id, payload);
@@ -123,61 +141,111 @@ export function GoalFormSheet({
           </div>
         </Field>
 
-        <div className="flex gap-3">
-          <Field label={t('goals.targetLabel')} className="w-28">
-            <Input
-              inputMode="decimal"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              className="h-10 font-mono tabular-nums"
-            />
-          </Field>
-          <Field label={t('goals.periodLabel')} className="flex-1">
-            <div className="flex flex-wrap gap-2">
-              {BUILTIN_GOAL_PERIODS.map((p) => (
-                <button key={p} type="button" onClick={() => setPeriod(p)} className={chip(period === p)}>
-                  {t(`goals.period.${p}`)}
-                </button>
-              ))}
+        {isMilestone ? (
+          // Milestone: επίλεξε skill + πόσα σκαλιά (προτείνεται το σύνολο).
+          // Χωρίς περίοδο/anchor/άθλημα — η κατάκτηση δεν έχει προθεσμία.
+          <>
+            <Field label={t('goals.skillLabel')}>
+              {selectedSkill ? (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium">
+                    {selectedSkill.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSkillId(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              ) : (
+                <ul className="max-h-56 divide-y divide-border/60 overflow-y-auto rounded-md bg-elevated">
+                  {skills.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        onClick={() => void pickSkill(s.id)}
+                        className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      >
+                        {s.name}
+                      </button>
+                    </li>
+                  ))}
+                  {skills.length === 0 && (
+                    <li className="px-3 py-2 text-sm text-muted-foreground">{t('goals.noSkills')}</li>
+                  )}
+                </ul>
+              )}
+            </Field>
+            <Field label={t('goals.stepsTargetLabel')} className="w-32">
+              <Input
+                inputMode="numeric"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                className="h-10 font-mono tabular-nums"
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <div className="flex gap-3">
+              <Field label={t('goals.targetLabel')} className="w-28">
+                <Input
+                  inputMode="decimal"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  className="h-10 font-mono tabular-nums"
+                />
+              </Field>
+              <Field label={t('goals.periodLabel')} className="flex-1">
+                <div className="flex flex-wrap gap-2">
+                  {BUILTIN_GOAL_PERIODS.map((p) => (
+                    <button key={p} type="button" onClick={() => setPeriod(p)} className={chip(period === p)}>
+                      {t(`goals.period.${p}`)}
+                    </button>
+                  ))}
+                </div>
+              </Field>
             </div>
-          </Field>
-        </div>
 
-        {/*
-          Πότε μηδενίζει ο μετρητής. Δύο εξίσου σωστές νοοτροπίες, οπότε
-          διαλέγει ο χρήστης — και εξηγούμε τη διαφορά από κάτω, γιατί
-          «ημερολογιακό/κυλιόμενο» δεν λέει τίποτα από μόνο του.
-        */}
-        <Field label={t('goals.anchorLabel')}>
-          <div className="flex gap-2">
-            {BUILTIN_PERIOD_ANCHORS.map((a) => (
-              <button key={a} type="button" onClick={() => setAnchor(a)} className={chip(anchor === a)}>
-                {t(`goals.anchor.${a}`)}
-              </button>
-            ))}
-          </div>
-          <span className="mt-1 text-[11px] leading-snug text-muted-foreground">
-            {t(`goals.anchorHint.${anchor}.${period}`)}
-          </span>
-        </Field>
+            {/*
+              Πότε μηδενίζει ο μετρητής. Δύο εξίσου σωστές νοοτροπίες, οπότε
+              διαλέγει ο χρήστης — και εξηγούμε τη διαφορά από κάτω, γιατί
+              «ημερολογιακό/κυλιόμενο» δεν λέει τίποτα από μόνο του.
+            */}
+            <Field label={t('goals.anchorLabel')}>
+              <div className="flex gap-2">
+                {BUILTIN_PERIOD_ANCHORS.map((a) => (
+                  <button key={a} type="button" onClick={() => setAnchor(a)} className={chip(anchor === a)}>
+                    {t(`goals.anchor.${a}`)}
+                  </button>
+                ))}
+              </div>
+              <span className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                {t(`goals.anchorHint.${anchor}.${period}`)}
+              </span>
+            </Field>
 
-        <Field label={t('goals.activityLabel')}>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setActivityKey(null)} className={chip(activityKey === null)}>
-              {t('goals.all')}
-            </button>
-            {activities.map((a) => (
-              <button
-                key={a.key}
-                type="button"
-                onClick={() => setActivityKey(a.key)}
-                className={chip(activityKey === a.key)}
-              >
-                {a.label}
-              </button>
-            ))}
-          </div>
-        </Field>
+            <Field label={t('goals.activityLabel')}>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setActivityKey(null)} className={chip(activityKey === null)}>
+                  {t('goals.all')}
+                </button>
+                {activities.map((a) => (
+                  <button
+                    key={a.key}
+                    type="button"
+                    onClick={() => setActivityKey(a.key)}
+                    className={chip(activityKey === a.key)}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          </>
+        )}
 
         {EXERCISE_SCOPED.includes(metric) && (
           <Field label={t('goals.exerciseLabel')}>

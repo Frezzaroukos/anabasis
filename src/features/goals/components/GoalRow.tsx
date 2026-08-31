@@ -22,6 +22,7 @@ export function GoalRow({
   total,
   activityLabel,
   exerciseName,
+  skillName,
   onMove,
   onEdit,
   onDelete,
@@ -31,6 +32,7 @@ export function GoalRow({
   total: number;
   activityLabel: (key: string | null) => string | null;
   exerciseName: (id: string | null) => string | null;
+  skillName: (id: string | null | undefined) => string | null;
   onMove: (index: number, delta: number) => void;
   onEdit: (goal: Goal) => void;
   onDelete: (id: string) => void;
@@ -74,6 +76,7 @@ export function GoalRow({
               goalTitle(t, p.goal, {
                 activity: activityLabel(p.goal.activity_key),
                 exercise: exerciseName(p.goal.exercise_id),
+                skill: skillName(p.goal.skill_id),
               })}
           </p>
           {completed && (
@@ -109,6 +112,16 @@ export function GoalRow({
           >
             <LineChart className="h-3 w-3" aria-hidden />
             {t('goals.viewProgress')}
+          </Link>
+        )}
+        {/* Milestone skill goal → σύνδεσμος στη σκάλα του skill (σκαλιά/πρόοδος). */}
+        {p.goal.skill_id != null && (
+          <Link
+            to={`/skills/${p.goal.skill_id}`}
+            className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            <LineChart className="h-3 w-3" aria-hidden />
+            {t('goals.viewSkill')}
           </Link>
         )}
         {/* Στόχος συχνότητας/εβδομάδα → πρόγραμμα(τα) με δικό τους weekly

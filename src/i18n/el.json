@@ -569,6 +569,10 @@
     "activityLabel": "Δραστηριότητα",
     "exerciseLabel": "Άσκηση",
     "exerciseAllHint": "Άφησέ το κενό για όλες τις ασκήσεις",
+    "skillLabel": "Skill",
+    "stepsTargetLabel": "Σκαλιά",
+    "noSkills": "Δεν υπάρχουν skills ακόμα.",
+    "skillGoalTitle": "Κατάκτησε το {{skill}} · {{count}} σκαλιά",
     "nameLabel": "Όνομα (προαιρετικό)",
     "daysLeft": "μένει {{count}} μέρα σε αυτή την περίοδο",
     "daysLeft_other": "μένουν {{count}} μέρες σε αυτή την περίοδο",
@@ -581,7 +585,8 @@
       "sets": "Σετ",
       "reps": "Επαναλήψεις",
       "distance_km": "Απόσταση",
-      "duration_min": "Διάρκεια"
+      "duration_min": "Διάρκεια",
+      "skill_steps": "Skill"
     },
     "period": {
       "day": "μέρα",
@@ -607,6 +612,7 @@
     },
     "noDeadline": "κυλιόμενο παράθυρο",
     "viewProgress": "Δες την πρόοδο",
+    "viewSkill": "Δες τη σκάλα του skill",
     "achieved": "Πέτυχες"
   },
   "account": {
