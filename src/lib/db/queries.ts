@@ -221,6 +221,16 @@ export async function listCompletedWorkouts(): Promise<Workout[]> {
     .sort((a, b) => (b.started_at ?? '').localeCompare(a.started_at ?? ''));
 }
 
+/**
+ * Έχει ποτέ καταγράψει προπόνηση; All-time — όχι παράθυρο ημερών: το «κατέγραψε
+ * την πρώτη σου προπόνηση» hint δεν πρέπει να ξαναεμφανίζεται σε κάποιον που
+ * έχει ιστορικό παλαιότερο από τις τελευταίες 30 μέρες. Σταματά στο πρώτο match.
+ */
+export async function hasAnyCompletedWorkout(): Promise<boolean> {
+  const rows = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
+  return rows.some((w) => w.ended_at != null && w.deleted_at == null);
+}
+
 /* ─────────── Sets ─────────── */
 
 export interface AddSetInput {
