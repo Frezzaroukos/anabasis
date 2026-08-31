@@ -5,13 +5,14 @@
 # Anabasis · Ἀνάβασις
 
 **Weighted-calisthenics & skill-progression tracker.**
-Offline-first PWA · TypeScript strict · bilingual (EN/EL)
+Offline-first PWA · native desktop · optional accounts & sync · TypeScript strict · bilingual (EN/EL)
 
-![tests](https://img.shields.io/badge/tests-234%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-302%20passing-brightgreen)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
+![backend](https://img.shields.io/badge/backend-Rust%2FAxum-orange)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
-**[▶ Live demo](https://anabasis.axonos.dev)** · no signup, no backend, data stays on your device
+**[▶ Live demo](https://anabasis.axonos.dev)** · works offline, no signup required — an account is optional, only to sync across devices
 
 <img src="docs/screenshots/hero.png" alt="Dashboard, goals, workout and calendar screens" width="100%">
 
@@ -37,26 +38,31 @@ pistol squats) **and** skill progressions.
 | | |
 |---|---|
 | **Skill ladders** | 8 skills, 4–6 steps each. Locked steps stay **visible** — you see the road, not just your rung. The active ladder leads the home screen. |
-| **Workout logger** | Live set logging, separate bodyweight + added weight, session & rest timers, RPE/RIR/tempo, warm-up and failure flags, quick-log parsing (`80 5,4,3,2`). |
-| **Goals in your own terms** | A goal is four independent axes — *what you count × how much × over what window × for which activity or exercise*. "4 sessions a week", "20 km a month" and "100 pull-up sets a month" are the same feature, not three. Calendar or rolling windows. |
+| **Calendar-centric** | The calendar is the home of logging: pick a program day (*upper*, *legs & core*, …) or start an ad-hoc session on any date. Set-by-set logging with buttons — separate bodyweight + added weight, RPE/RIR/tempo, warm-up and failure flags, quick-log parsing (`80 5,4,3,2`). |
+| **Goals in your own terms** | A goal is four independent axes — *what you count × how much × over what window × for which activity or exercise*. "4 sessions a week", "20 km a month" and "100 pull-up sets a month" are the same feature, not three. Wired to programs, exercises and live progress. |
 | **PR tracking** | 8 PR types across strength and non-set activities (distance, duration, pace). Warm-ups excluded. e1RM via Epley/Brzycki. |
-| **Your data** | Full JSON export/import. No account, no server, nothing locked in. |
+| **Sync when you want it** | Local-first by default. Create an account and your training follows you to any device and to the desktop app — row-level last-write-wins sync over a Rust backend. Full JSON export/import stays; nothing is locked in. |
 | **Customisable home** | Hide and reorder every card. A hidden card never mounts and never queries. |
 
 ## Engineering notes
 
 The parts worth reading, and why they are the way they are.
 
-**Local-first, and honest about it.** Everything lives in IndexedDB (Dexie).
-There is no backend, so there is no "syncing…" lie — but every write stamps
-`updated_at` and deletes are soft (`deleted_at`), so a future sync has what it
-needs.
+**Local-first, then sync — no lie in between.** Everything lives in IndexedDB
+(Dexie) and the app is fully usable with no account. Every write stamps
+`updated_at` and deletes are soft (`deleted_at`), which is exactly what the
+optional sync layer needs: row-level last-write-wins against a Rust/Axum +
+SQLite backend, with a per-account monotonic `seq` cursor and a DB `epoch` that
+protects against restore-desync. Auth is argon2id + opaque bearer tokens in a
+session table (not JWTs — revocation matters; not cookies — the Tauri
+production-cookie trap).
 
-**Schema migrations, v1 → v9.** Each version ships its own `.upgrade()` with
-backfills; all additive, no data loss. v9 is the interesting one: existing
-goals are backfilled to *rolling* windows because that is how they were already
-counting — migrating them to *calendar* would have silently changed the meaning
-of a goal the user had already set.
+**Schema migrations, v1 → v13.** Each version ships its own `.upgrade()` with
+backfills; all additive, no data loss. v9 backfilled existing goals to *rolling*
+windows because that is how they were already counting — migrating them to
+*calendar* would have silently changed the meaning of a goal already set. v12–13
+grew the calendar-centric structure: program days, workout↔program links, and a
+weight dimension on skill steps (skills and exercises are now one library).
 
 **Components never touch `db.*`.** All access goes through `lib/db/queries.ts`
 and `lib/db/goals.ts`. `lib/domain/` is pure functions (e1rm, pr, volume) with
@@ -66,35 +72,44 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 234 tests concentrated on migrations, the goal
+**Testing where it pays.** 302 tests concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
-Monday" does not depend on the day CI runs), PR detection, and the card-order
-resolver — each of its cases matching a change that will actually happen
-(a card added, a card removed, corrupted preferences).
+Monday" does not depend on the day CI runs), PR detection, the card-order
+resolver, and the sync engine (push/pull cursors, epoch handling, last-write-wins
+merges) — each case matching a change that will actually happen
+(a card added, a card removed, corrupted preferences, a restore mid-sync).
 
 ```
 src/
-├── app/          routes + AppShell (bottom tab nav)
+├── app/          routes + AppShell (calendar-centric nav)
 ├── features/     one folder per surface; dashboard cards are independent
 │                 components that query for themselves
 ├── components/   shared primitives (Logo, Card, ProgressRing, ActivityChip)
 ├── lib/
 │   ├── db/       Dexie schema, migrations, typed queries, seeds
+│   ├── sync/     push/pull engine, cursors, epoch, last-write-wins  ← tested
+│   ├── api/      auth store + typed client (opaque bearer tokens)
 │   └── domain/   pure logic: e1rm · pr · volume  ← unit-tested
 └── i18n/         en.json · el.json
+
+server/           Rust · Axum · SQLite (sqlx) — accounts, sync, admin, OAuth scaffold
+src-tauri/        Tauri 2 desktop shell (WebKit; PWA layer off in-app)
 ```
 
 ## Stack
 
-Vite 5 · React 18 · **TypeScript (strict)** · Tailwind 3 · **Dexie 4** (IndexedDB) ·
-React Router 6 · Recharts · vite-plugin-pwa + Workbox · i18next · Vitest
+**Frontend** — Vite 5 · React 18 · **TypeScript (strict)** · Tailwind 3 ·
+**Dexie 4** (IndexedDB) · React Router 6 · Recharts · vite-plugin-pwa + Workbox ·
+i18next · Vitest
+**Backend** — **Rust · Axum 0.8 · SQLite (sqlx)** · argon2id · tower_governor rate limiting
+**Desktop** — **Tauri 2** (same frontend, ~13MB native binary)
 
 ## Run it
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 234 tests
+npm test         # 302 tests
 npm run build    # production + service worker
 ```
 
@@ -103,6 +118,12 @@ Or as a native desktop app (Tauri 2 — same frontend, no browser, ~13MB binary)
 ```bash
 npm run tauri build -- --no-bundle   # needs Rust + webkit2gtk
 ./scripts/install-desktop.sh         # installs binary + .desktop entry (Linux)
+```
+
+Optional sync backend (accounts stay optional — the app is fully usable without it):
+
+```bash
+cd server && cargo run --release     # Axum + SQLite on :8121
 ```
 
 Screenshots in this README are generated, not hand-taken:
@@ -114,15 +135,18 @@ node scripts/gen-brand-assets.mjs   # favicon/PWA/OG from one source of truth
 
 ## Status
 
-Working: skill ladders, workout logger, goals, PR tracking, calendar, body
-metrics, programs, progress charts, export/import, i18n, PWA, multiple local
+Working: calendar-centric logging, skill ladders (merged into one exercise
+library), goals wired to programs/exercises/progress, PR tracking, body metrics,
+programs with days, progress charts, export/import, i18n, PWA, multiple local
 profiles.
 
-Also working: native desktop app via Tauri 2 (`src-tauri/`) — the same
-offline-first frontend in a WebKit window, PWA layer switched off there.
+Also working: native desktop app via Tauri 2 (`src-tauri/`) — the same frontend
+in a WebKit window, PWA layer off; and the **Rust/Axum backend** (`server/`) —
+accounts (argon2id), a unique admin, row-level cross-device sync, rate limiting,
+restic-backed DB snapshots.
 
-Not built: accounts and cross-device sync (would unlock friends and
-leaderboards), mobile native builds.
+In progress: Google OAuth (server scaffold in place), friends & leaderboards,
+mobile native builds.
 
 ---
 
