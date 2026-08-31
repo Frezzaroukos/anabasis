@@ -8,6 +8,7 @@ import {
   listGoals,
   deleteGoal,
   reorderGoals,
+  setGoalManualValue,
 } from './goals';
 import { addSet, endWorkout, startWorkout } from './queries';
 import { SEED_EXERCISES } from './seeds';
@@ -350,3 +351,21 @@ describe('weight-target goals (top_weight — «70kg weighted pull-up»)', () =>
     expect((await getGoalProgress(goal)).current).toBe(0); // μόνο warm-up bench → 0
   });
 });
+
+describe('custom goals (χειροκίνητος μετρητής)', () => {
+  it('progress = manual_value· +/− μέσω setGoalManualValue· δεν πέφτει κάτω από 0', async () => {
+    const g = await createGoal({ metric: 'custom', target: 30, period: 'week', label: 'Cold showers', manual_value: 0 });
+    let p = await getGoalProgress(g);
+    expect(p.current).toBe(0);
+    expect(p.daysLeft).toBeNull();
+
+    await setGoalManualValue(g.id, 5);
+    p = await getGoalProgress((await listGoals()).find((x) => x.id === g.id)!);
+    expect(p.current).toBe(5);
+    expect(p.ratio).toBeCloseTo(5 / 30);
+
+    await setGoalManualValue(g.id, -3); // clamp
+    p = await getGoalProgress((await listGoals()).find((x) => x.id === g.id)!);
+    expect(p.current).toBe(0);
+  });
+})

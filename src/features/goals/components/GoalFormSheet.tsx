@@ -70,6 +70,7 @@ export function GoalFormSheet({
   const isMilestone = MILESTONE_METRICS.includes(metric);
   const isSkillGoal = metric === 'skill_steps';
   const isWeightTarget = metric === 'top_weight';
+  const isCustom = metric === 'custom';
   // Ο στόχος φορτίου δένει κι αυτός με συγκεκριμένη άσκηση (ποιανής το φορτίο).
   const exerciseScoped = EXERCISE_SCOPED.includes(metric) || isWeightTarget;
 
@@ -99,7 +100,8 @@ export function GoalFormSheet({
     Number.isFinite(targetNum) &&
     targetNum > 0 &&
     (!isSkillGoal || skillId != null) &&
-    (!isWeightTarget || exerciseId != null);
+    (!isWeightTarget || exerciseId != null) &&
+    (!isCustom || label.trim() !== '');
 
   const preview = goalTitle(
     t,
@@ -121,6 +123,7 @@ export function GoalFormSheet({
       activity_key: isMilestone ? null : activityKey,
       exercise_id: isSkillGoal ? null : exerciseId,
       skill_id: isSkillGoal ? skillId : null,
+      manual_value: isCustom ? (goal?.manual_value ?? 0) : null,
       label: label.trim() || null,
     };
     if (goal) await updateGoal(goal.id, payload);
@@ -149,7 +152,18 @@ export function GoalFormSheet({
           </div>
         </Field>
 
-        {isWeightTarget ? (
+        {isCustom ? (
+          // Δικός σου μετρητής: όνομα (υποχρεωτικό, παρακάτω) + στόχος. Καμία
+          // αυτόματη μέτρηση — ανεβάζεις το progress μόνος σου από τη λίστα.
+          <Field label={t('goals.customTargetLabel')} className="w-40">
+            <Input
+              inputMode="decimal"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              className="h-10 font-mono tabular-nums"
+            />
+          </Field>
+        ) : isWeightTarget ? (
           // Στόχος φορτίου («70kg weighted pull-up»): διάλεξε άσκηση (παρακάτω)
           // + βάρος-στόχο. Milestone — χωρίς περίοδο.
           <Field label={t('goals.loadTargetLabel')} className="w-40">
@@ -321,11 +335,11 @@ export function GoalFormSheet({
           </Field>
         )}
 
-        <Field label={t('goals.nameLabel')}>
+        <Field label={isCustom ? t('goals.customNameLabel') : t('goals.nameLabel')}>
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder={preview}
+            placeholder={isCustom ? t('goals.customNamePlaceholder') : preview}
             className="h-10"
           />
         </Field>

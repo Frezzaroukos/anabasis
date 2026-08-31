@@ -310,6 +310,7 @@ export const BUILTIN_GOAL_METRICS = [
   'duration_min',
   'skill_steps', // σκαλιά ενός skill που έχεις κατακτήσει (milestone, χωρίς παράθυρο)
   'top_weight', // φτάσε X φορτίο (bw+πρόσθετο) σε μια άσκηση — π.χ. «70kg weighted pull-up» (milestone)
+  'custom', // δικός σου μετρητής: όνομα + χειροκίνητο progress που ανεβάζεις μόνος σου
 ] as const;
 export type GoalMetric = (typeof BUILTIN_GOAL_METRICS)[number];
 
@@ -359,6 +360,8 @@ export interface Goal {
   exercise_id: UUID | null;
   /** Το skill-στόχος (μόνο σε metric `skill_steps`)· null αλλιώς. */
   skill_id?: UUID | null;
+  /** Χειροκίνητη τιμή προόδου — μόνο σε metric `custom` (ο χρήστης την ανεβάζει). */
+  manual_value?: number | null;
   display_order: number;
   is_archived: boolean;
   created_at: ISOTimestamp;
