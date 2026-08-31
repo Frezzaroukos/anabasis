@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Plus, Zap } from 'lucide-react';
+import { Check, Plus, Weight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
@@ -21,6 +22,8 @@ interface ExerciseCardProps {
   exercise: Exercise;
   workoutId: string;
   sets: SetEntry[];
+  /** Σωματικό βάρος τη μέρα του workout (snapshot) — φορτίο = bw + πρόσθετο. */
+  bodyweightKg: number | null;
   weighted: boolean;
   onWeightedChange: (next: boolean) => void;
   chain: SetChain | null;
@@ -33,6 +36,7 @@ export function ExerciseCard({
   exercise,
   workoutId,
   sets,
+  bodyweightKg,
   weighted,
   onWeightedChange,
   chain,
@@ -60,6 +64,11 @@ export function ExerciseCard({
   const supportsToggle = exercise.is_bodyweight; // bodyweight exercises can be done with or without added load
   const isHold = exercise.default_unit === 'sec'; // skill/isometric άσκηση — reps γίνεται hold σε δευτερόλεπτα
   const visibleSets = sets;
+  // Άσκηση σωματικού βάρους → κάθε σετ «φωτογραφίζει» το σωματικό βάρος, ώστε
+  // το φορτίο (bw + πρόσθετο) να είναι σωστό στα charts. Μηδέν σε άσκηση με
+  // εξωτερικό βάρος (μπάρα): εκεί το φορτίο είναι μόνο το weight_kg.
+  const setBodyweight = exercise.is_bodyweight ? bodyweightKg : null;
+  const needsBodyweight = exercise.is_bodyweight && bodyweightKg == null;
 
   // «Τι έκανα την τελευταία φορά» — προ-γεμίζει τα inputs ώστε το τυπικό
   // «ίδιο βάρος με πέρσι» να μη θέλει καθόλου πληκτρολόγηση.
@@ -77,7 +86,7 @@ export function ExerciseCard({
       workout_id: workoutId,
       exercise_id: exercise.id,
       weight_kg: weightKg,
-      bodyweight_kg: null,
+      bodyweight_kg: setBodyweight,
       reps,
       hold_seconds: holdSeconds,
       set_type: setType,
@@ -113,7 +122,7 @@ export function ExerciseCard({
           workout_id: workoutId,
           exercise_id: exercise.id,
           weight_kg: weighted ? s.weightKg : null,
-          bodyweight_kg: null,
+          bodyweight_kg: setBodyweight,
           reps: isHold ? null : s.reps,
           hold_seconds: isHold ? s.reps : null,
         });
@@ -193,6 +202,16 @@ export function ExerciseCard({
       {/* Γιορτή ρεκόρ (macro): «ανέβασμα σκαλιού» — αγκυρωμένο στη γωνία της
           κάρτας ώστε να μη μετατοπίζει το layout γύρω του. */}
       <RungCelebration active={prCount > 0} className="absolute -right-1 -top-1 z-10 h-11 w-11" />
+
+      {needsBodyweight && (
+        <Link
+          to="/body"
+          className="flex items-center gap-1.5 border-t border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-primary"
+        >
+          <Weight className="h-3 w-3 shrink-0" aria-hidden />
+          {t('workout.setBodyweightHint')}
+        </Link>
+      )}
 
       <div className="divide-y divide-border/60 border-t border-border/60">
         {visibleSets.length === 0 ? (

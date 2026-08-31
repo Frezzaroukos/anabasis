@@ -11,7 +11,7 @@ import { useExercises } from '@/hooks/useExercises';
 import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
 import { isSetLoggedActivity, type SetChain } from '../utils';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getActivity } from '@/lib/db/queries';
+import { getActivity, getLatestBodyweight, localDay } from '@/lib/db/queries';
 import { useWakeLock } from '../useWakeLock';
 import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
@@ -34,6 +34,13 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     [workout.activity_kind],
   );
   const isSetLogged = isSetLoggedActivity(activity, workout.activity_kind);
+  // Σωματικό βάρος τη μέρα του workout — «φωτογραφίζεται» σε κάθε σετ άσκησης
+  // σωματικού βάρους ώστε το φορτίο (bw + πρόσθετο) να είναι αληθινό στα charts.
+  const bodyweightKg = useLiveQuery(
+    () => getLatestBodyweight(localDay(new Date(workout.started_at))),
+    [workout.started_at],
+    null,
+  );
   const sets = useWorkoutSets(workout.id);
   const persistedExerciseIds = useWorkoutExerciseIds(workout.id);
   const exercises = useExercises();
@@ -178,6 +185,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                       exercise={ex}
                       workoutId={workout.id}
                       sets={exSets}
+                      bodyweightKg={bodyweightKg}
                       weighted={weighted}
                       onWeightedChange={(next) =>
                         setWeightedById((cur) => ({ ...cur, [id]: next }))
