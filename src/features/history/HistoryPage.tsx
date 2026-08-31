@@ -1,7 +1,15 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Clock, Dumbbell, Layers, Trophy } from 'lucide-react';
 import { formatHMS } from '@/hooks/useSessionTimer';
-import { getRecentPRs, listActivities, listAllExercises, listCompletedWorkouts } from '@/lib/db/queries';
+import {
+  getRecentPRs,
+  listActivities,
+  listAllExercises,
+  listWorkoutSummaries,
+  type WorkoutSummary,
+} from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
 import type { PRType } from '@/lib/db/types';
@@ -18,9 +26,20 @@ export function HistoryPage() {
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
 
-  const completed = useLiveQuery(() => listCompletedWorkouts(), []);
-
+  const completed = useLiveQuery(() => listWorkoutSummaries(), []);
   const list = completed ?? [];
+
+  // Ομαδοποίηση ανά μήνα — ένα μεγάλο αδιάσπαστο feed χάνει τον χρόνο.
+  const months = useMemo(() => {
+    const groups = new Map<string, WorkoutSummary[]>();
+    for (const s of list) {
+      const key = s.workout.started_at.slice(0, 7); // YYYY-MM
+      const arr = groups.get(key) ?? [];
+      arr.push(s);
+      groups.set(key, arr);
+    }
+    return [...groups.entries()];
+  }, [list]);
 
   const prs = useLiveQuery(() => getRecentPRs(8), [], []);
   // listAllExercises (όχι db.exercises.toArray()): οι δικές σου ασκήσεις
@@ -65,9 +84,7 @@ export function HistoryPage() {
           <ul className="divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
             {prs.map((pr) => (
               <li key={pr.id} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="text-gold" aria-hidden>
-                  ★
-                </span>
+                <Trophy className="h-4 w-4 shrink-0 text-gold" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {pr.exercise_id
@@ -101,36 +118,67 @@ export function HistoryPage() {
           {t('history.empty')}
         </div>
       ) : (
-        <ul className="stagger space-y-2">
-          {/* Κάθε γραμμή ανοίγει την προπόνηση — πριν ήταν στατικό κείμενο. */}
-          {list.map((w) => (
-            <li key={w.id}>
-              <Link
-                to={`/history/${w.id}`}
-                className="block rounded-xl bg-card p-3 transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="truncate text-sm font-medium">
-                    {w.workout_type ?? t('workout.title')}
-                  </p>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {new Date(w.started_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="mt-1 flex gap-3 font-mono text-xs tabular-nums text-muted-foreground">
-                  <span>{formatHMS(w.duration_seconds ?? 0)}</span>
-                  <span>·</span>
-                  <span>
-                    {new Date(w.started_at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-              </Link>
-            </li>
+        <div className="space-y-5">
+          {months.map(([key, items]) => (
+            <section key={key}>
+              <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {new Date(`${key}-01T12:00:00`).toLocaleDateString(undefined, {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </h2>
+              <ul className="stagger space-y-2">
+                {items.map(({ workout: w, setCount, volume, topExercise }) => {
+                  const activity = activityLabels.get(w.activity_kind) ?? w.activity_kind;
+                  const hasMeta = setCount > 0 || volume > 0 || w.duration_seconds != null;
+                  return (
+                    <li key={w.id}>
+                      <Link
+                        to={`/history/${w.id}`}
+                        className="block rounded-xl bg-card p-3 transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="truncate text-sm font-medium">
+                            {w.workout_type ?? activity}
+                          </p>
+                          <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                            {new Date(w.started_at).toLocaleDateString(undefined, {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
+                        </div>
+                        {hasMeta && (
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs tabular-nums text-muted-foreground">
+                            {setCount > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Layers className="h-3 w-3" aria-hidden />
+                                {setCount}
+                              </span>
+                            )}
+                            {volume > 0 && <span>{formatWeight(volume, unit)}</span>}
+                            {w.duration_seconds ? (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" aria-hidden />
+                                {formatHMS(w.duration_seconds)}
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                        {topExercise && (
+                          <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                            <Dumbbell className="h-3 w-3 shrink-0" aria-hidden />
+                            {topExercise}
+                          </p>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
