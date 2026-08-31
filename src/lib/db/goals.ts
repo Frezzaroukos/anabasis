@@ -92,7 +92,27 @@ export const METRIC_UNIT: Record<GoalMetric, string> = {
   reps: '',
   distance_km: 'km',
   duration_min: 'min',
+  skill_steps: '',
 };
+
+/** Milestone metrics — μετρώνται όλη-την-ώρα (κατάκτηση), όχι σε παράθυρο χρόνου. */
+export const MILESTONE_METRICS: readonly GoalMetric[] = ['skill_steps'];
+
+/**
+ * Πόσα σκαλιά ενός skill έχεις κατακτήσει και πόσα συνολικά. Ζει εδώ (κι όχι
+ * στο queries.ts) γιατί το χρειάζεται μόνο η μηχανή στόχων — για την προτεινόμενη
+ * τιμή ενός milestone goal («κατέκτησε το skill = όλα τα N σκαλιά»).
+ */
+export async function getSkillStepStats(
+  skillId: string,
+): Promise<{ cleared: number; total: number }> {
+  const steps = await db.skill_steps.where('skill_id').equals(skillId).toArray();
+  const stepIds = new Set(steps.map((s) => s.id));
+  const completions = (
+    await db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray()
+  ).filter((r) => stepIds.has(r.skill_step_id));
+  return { cleared: completions.length, total: steps.length };
+}
 
 /* ─────────────────────────── CRUD ─────────────────────────── */
 
@@ -105,7 +125,7 @@ export async function listGoals(includeArchived = false): Promise<Goal[]> {
 
 export async function createGoal(
   input: Pick<Goal, 'metric' | 'target' | 'period'> &
-    Partial<Pick<Goal, 'label' | 'activity_key' | 'exercise_id' | 'period_anchor'>>,
+    Partial<Pick<Goal, 'label' | 'activity_key' | 'exercise_id' | 'skill_id' | 'period_anchor'>>,
 ): Promise<Goal> {
   const t = now();
   const existing = await listGoals(true);
@@ -121,6 +141,7 @@ export async function createGoal(
     period_anchor: input.period_anchor ?? 'calendar',
     activity_key: input.activity_key ?? null,
     exercise_id: input.exercise_id ?? null,
+    skill_id: input.skill_id ?? null,
     display_order: existing.length,
     is_archived: false,
     created_at: t,
@@ -172,6 +193,30 @@ export interface GoalProgress {
  * ανέβαζε τον δείκτη και μετά θα τον κατέβαζε αν την ακύρωνες.
  */
 export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promise<GoalProgress> {
+  // Milestone (κατάκτηση skill): όλη-την-ώρα, χωρίς παράθυρο/προθεσμία. Τα
+  // σκαλιά που κλείνεις μένουν κλειστά, οπότε ένα εβδομαδιαίο παράθυρο δεν
+  // βγάζει νόημα — μετράμε τα συνολικά κατακτημένα σκαλιά του skill.
+  if (goal.metric === 'skill_steps') {
+    let cleared = 0;
+    if (goal.skill_id) {
+      const steps = await db.skill_steps.where('skill_id').equals(goal.skill_id).toArray();
+      const stepIds = new Set(steps.map((s) => s.id));
+      const completions = (
+        await db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray()
+      ).filter((r) => stepIds.has(r.skill_step_id));
+      cleared = completions.length;
+    }
+    const current = cleared;
+    return {
+      goal,
+      current,
+      target: goal.target,
+      ratio: goal.target > 0 ? Math.min(1, current / goal.target) : 0,
+      unit: METRIC_UNIT.skill_steps,
+      daysLeft: null,
+    };
+  }
+
   const win = goalWindow(goal.period, goal.period_anchor, now);
   const startIso = win.start.toISOString();
   const endIso = win.end.toISOString();

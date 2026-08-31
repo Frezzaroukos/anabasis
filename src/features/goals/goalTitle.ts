@@ -14,8 +14,15 @@ import { METRIC_UNIT } from '@/lib/db/goals';
 export function goalTitle(
   t: TFunction,
   goal: Pick<Goal, 'metric' | 'target' | 'period' | 'activity_key' | 'exercise_id'>,
-  names: { activity?: string | null; exercise?: string | null } = {},
+  names: { activity?: string | null; exercise?: string | null; skill?: string | null } = {},
 ): string {
+  // Milestone skill goal: «Κατέκτησε το Front Lever» — χωρίς περίοδο, το
+  // ζητούμενο είναι το skill, όχι ένας ρυθμός.
+  if (goal.metric === 'skill_steps') {
+    const skill = names.skill ?? t('goals.metric.skill_steps');
+    return t('goals.skillGoalTitle', { skill, count: goal.target });
+  }
+
   const unit = METRIC_UNIT[goal.metric];
 
   // Με μονάδα, η μονάδα λέει ήδη τι μετράμε («20 km») — η λέξη «απόσταση»

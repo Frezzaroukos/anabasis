@@ -569,6 +569,10 @@
     "activityLabel": "Activity",
     "exerciseLabel": "Exercise",
     "exerciseAllHint": "Leave empty to count all exercises",
+    "skillLabel": "Skill",
+    "stepsTargetLabel": "Steps",
+    "noSkills": "No skills yet.",
+    "skillGoalTitle": "Master {{skill}} · {{count}} steps",
     "nameLabel": "Name (optional)",
     "daysLeft": "{{count}} day left in this period",
     "daysLeft_other": "{{count}} days left in this period",
@@ -581,7 +585,8 @@
       "sets": "Sets",
       "reps": "Reps",
       "distance_km": "Distance",
-      "duration_min": "Duration"
+      "duration_min": "Duration",
+      "skill_steps": "Skill"
     },
     "period": {
       "day": "day",
@@ -607,6 +612,7 @@
     },
     "noDeadline": "rolling window",
     "viewProgress": "View progress",
+    "viewSkill": "View skill ladder",
     "achieved": "Achieved"
   },
   "account": {

@@ -288,3 +288,39 @@ describe('sessions στοχευμένες σε άσκηση', () => {
     expect((await getGoalProgress(benchSessions)).current).toBe(0);
   });
 });
+
+describe('skill milestone goals (skill_steps)', () => {
+  it('μετρά κατακτημένα σκαλιά ενός skill, χωρίς προθεσμία', async () => {
+    const t = new Date().toISOString();
+    const skillId = 'skill-goal-test';
+    const stepIds = ['sg-s1', 'sg-s2', 'sg-s3'];
+    await db.skill_steps.bulkPut(
+      stepIds.map((id, i) => ({
+        id, skill_id: skillId, step_number: i + 1, name: `Step ${i + 1}`, description: '',
+        target_type: 'hold', target_value: 10, target_unit: 's',
+        added_weight_kg: null, benchmark_video_url: null, prerequisites: [],
+        created_at: t, updated_at: t,
+      })),
+    );
+    // κατέκτησε 2 από τα 3 σκαλιά
+    await db.user_skill_step_completions.bulkPut(
+      ['sg-s1', 'sg-s2'].map((sid, i) => ({
+        id: `c-${i}`, user_id: 'goals-test-profile', skill_step_id: sid,
+        achieved_value: 10, added_weight_kg: null, achieved_at: t, workout_id: null,
+        notes: null, created_at: t,
+      })),
+    );
+
+    const goal = await createGoal({ metric: 'skill_steps', target: 3, period: 'week', skill_id: skillId });
+    const p = await getGoalProgress(goal);
+    expect(p.current).toBe(2);
+    expect(p.target).toBe(3);
+    expect(p.ratio).toBeCloseTo(2 / 3);
+    expect(p.daysLeft).toBeNull(); // milestone → χωρίς προθεσμία
+  });
+
+  it('skill goal χωρίς skill_id → 0 (δεν σκάει)', async () => {
+    const goal = await createGoal({ metric: 'skill_steps', target: 5, period: 'week' });
+    expect((await getGoalProgress(goal)).current).toBe(0);
+  });
+});

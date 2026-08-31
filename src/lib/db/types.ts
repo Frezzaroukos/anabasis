@@ -308,6 +308,7 @@ export const BUILTIN_GOAL_METRICS = [
   'reps', // πλήθος επαναλήψεων
   'distance_km',
   'duration_min',
+  'skill_steps', // σκαλιά ενός skill που έχεις κατακτήσει (milestone, χωρίς παράθυρο)
 ] as const;
 export type GoalMetric = (typeof BUILTIN_GOAL_METRICS)[number];
 
@@ -355,6 +356,8 @@ export interface Goal {
   activity_key: ActivityKind | null;
   /** null = όλες οι ασκήσεις (έχει νόημα σε volume/sets/reps) */
   exercise_id: UUID | null;
+  /** Το skill-στόχος (μόνο σε metric `skill_steps`)· null αλλιώς. */
+  skill_id?: UUID | null;
   display_order: number;
   is_archived: boolean;
   created_at: ISOTimestamp;
