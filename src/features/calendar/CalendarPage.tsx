@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronLeft, ChevronRight, Flame, Plus } from 'lucide-react';
 import {
   countProgramDaySessions,
+  createProgram,
   getCalendar,
   getProgramWithExercises,
   getTrainingInsights,
@@ -124,6 +125,13 @@ export function CalendarPage() {
   const closeAddSheet = () => {
     setAddOpen(false);
     setAdHocLabel('');
+  };
+  // Γρήγορη δημιουργία προγράμματος από το ημερολόγιο: φτιάχνει κενό και πάει
+  // κατευθείαν στον editor του, ώστε να το χτίσεις χωρίς να ψάχνεις το section.
+  const onCreateProgram = async () => {
+    const p = await createProgram(t('programs.namePlaceholder'));
+    setAddOpen(false);
+    navigate(`/programs/${p.id}`);
   };
   const dotOf = (kind: string) =>
     activities.find((a) => a.key === kind)?.dot_class ?? FALLBACK_DOT;
@@ -400,9 +408,19 @@ export function CalendarPage() {
       <BottomSheet open={addOpen} onClose={closeAddSheet} title={t('calendar.addWorkout')}>
         <div className="space-y-5 px-4 pb-4">
           <div>
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('calendar.pickProgramDay')}
-            </h3>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('calendar.pickProgramDay')}
+              </h3>
+              <button
+                type="button"
+                onClick={() => void onCreateProgram()}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:opacity-80"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                {t('calendar.newProgram')}
+              </button>
+            </div>
             {programsWithDays === undefined ? (
               // undefined = φορτώνει, [] = πραγματικά άδειο — δύο διαφορετικά states.
               <div className="space-y-1.5">
