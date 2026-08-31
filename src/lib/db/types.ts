@@ -360,10 +360,43 @@ export interface Goal {
   exercise_id: UUID | null;
   /** Το skill-στόχος (μόνο σε metric `skill_steps`)· null αλλιώς. */
   skill_id?: UUID | null;
-  /** Χειροκίνητη τιμή προόδου — μόνο σε metric `custom` (ο χρήστης την ανεβάζει). */
+  /** @deprecated v14: αντικαταστάθηκε από custom_tracker_id + entries. Μένει για migration. */
   manual_value?: number | null;
+  /** Ο custom tracker που μετρά ο στόχος (μόνο σε metric `custom`)· null αλλιώς. */
+  custom_tracker_id?: UUID | null;
   display_order: number;
   is_archived: boolean;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+  deleted_at: ISOTimestamp | null;
+}
+
+/**
+ * Δικός σου μετρητής — «φτιάξ' τον επί τόπου, μένει σαν επιλογή» (όπως τα
+ * activities). Επαναχρησιμοποιήσιμος σε πολλούς στόχους. Η πρόοδος αθροίζεται
+ * από entries (append-only) ώστε να συγχρονίζεται καθαρά (κάθε +1 = δική του
+ * γραμμή, χωρίς LWW-απώλειες) και να «κλείνει» ανά περίοδο σαν κάθε metric.
+ */
+export interface CustomTracker {
+  id: UUID;
+  user_id: UUID;
+  name: string;
+  /** Μονάδα εμφάνισης (π.χ. «min», «σελίδες») — προαιρετική. */
+  unit: string | null;
+  display_order: number;
+  is_archived: boolean;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+  deleted_at: ISOTimestamp | null;
+}
+
+export interface CustomTrackerEntry {
+  id: UUID;
+  user_id: UUID;
+  tracker_id: UUID;
+  /** Ποσό (προσημασμένο: +1 / −1 / +N) — αθροίζεται μέσα στο παράθυρο. */
+  amount: number;
+  logged_at: ISOTimestamp;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
   deleted_at: ISOTimestamp | null;

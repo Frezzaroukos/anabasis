@@ -8,10 +8,10 @@ import {
   listGoals,
   deleteGoal,
   reorderGoals,
-  setGoalManualValue,
 } from './goals';
 import { addSet, endWorkout, startWorkout } from './queries';
 import { SEED_EXERCISES } from './seeds';
+import { createTracker, addTrackerEntry } from './trackers';
 
 /**
  * Ο υπολογιστής προόδου είναι ΕΝΑΣ για κάθε συνδυασμό μέτρου/περιόδου/εύρους,
@@ -352,20 +352,29 @@ describe('weight-target goals (top_weight — «70kg weighted pull-up»)', () =>
   });
 });
 
-describe('custom goals (χειροκίνητος μετρητής)', () => {
-  it('progress = manual_value· +/− μέσω setGoalManualValue· δεν πέφτει κάτω από 0', async () => {
-    const g = await createGoal({ metric: 'custom', target: 30, period: 'week', label: 'Cold showers', manual_value: 0 });
+describe('custom goals (tracker + windowed entries)', () => {
+  it('progress = άθροισμα entries στο παράθυρο· append-only +/−· windowed', async () => {
+    const tr = await createTracker('Cold showers');
+    const g = await createGoal({ metric: 'custom', target: 30, period: 'week', custom_tracker_id: tr.id });
+
     let p = await getGoalProgress(g);
     expect(p.current).toBe(0);
-    expect(p.daysLeft).toBeNull();
+    expect(p.daysLeft).not.toBeNull(); // windowed (calendar week) → έχει προθεσμία
 
-    await setGoalManualValue(g.id, 5);
-    p = await getGoalProgress((await listGoals()).find((x) => x.id === g.id)!);
-    expect(p.current).toBe(5);
-    expect(p.ratio).toBeCloseTo(5 / 30);
+    await addTrackerEntry(tr.id, 5);
+    await addTrackerEntry(tr.id, 3);
+    await addTrackerEntry(tr.id, -1);
+    p = await getGoalProgress(g);
+    expect(p.current).toBe(7); // 5+3-1, entries μέσα στο τρέχον παράθυρο
+    expect(p.ratio).toBeCloseTo(7 / 30);
+  });
 
-    await setGoalManualValue(g.id, -3); // clamp
-    p = await getGoalProgress((await listGoals()).find((x) => x.id === g.id)!);
-    expect(p.current).toBe(0);
+  it('ο ίδιος tracker μοιράζεται σε πολλούς στόχους (reusable)', async () => {
+    const tr = await createTracker('Meditation');
+    await addTrackerEntry(tr.id, 10);
+    const weekly = await createGoal({ metric: 'custom', target: 20, period: 'week', custom_tracker_id: tr.id });
+    const monthly = await createGoal({ metric: 'custom', target: 80, period: 'month', custom_tracker_id: tr.id });
+    expect((await getGoalProgress(weekly)).current).toBe(10);
+    expect((await getGoalProgress(monthly)).current).toBe(10);
   });
 })

@@ -97,8 +97,10 @@ export const METRIC_UNIT: Record<GoalMetric, string> = {
   custom: '',
 };
 
-/** Milestone metrics — μετρώνται όλη-την-ώρα (κατάκτηση), όχι σε παράθυρο χρόνου. */
-export const MILESTONE_METRICS: readonly GoalMetric[] = ['skill_steps', 'top_weight', 'custom'];
+/** Milestone metrics — μετρώνται όλη-την-ώρα (κατάκτηση), όχι σε παράθυρο χρόνου.
+ *  Το `custom` ΔΕΝ είναι εδώ: αθροίζει tracker entries μέσα στο παράθυρο σαν
+ *  κάθε άλλο windowed metric («meditate 20 min/εβδομάδα» κλείνει εβδομαδιαία). */
+export const MILESTONE_METRICS: readonly GoalMetric[] = ['skill_steps', 'top_weight'];
 
 /**
  * Πόσα σκαλιά ενός skill έχεις κατακτήσει και πόσα συνολικά. Ζει εδώ (κι όχι
@@ -128,7 +130,10 @@ export async function listGoals(includeArchived = false): Promise<Goal[]> {
 export async function createGoal(
   input: Pick<Goal, 'metric' | 'target' | 'period'> &
     Partial<
-      Pick<Goal, 'label' | 'activity_key' | 'exercise_id' | 'skill_id' | 'manual_value' | 'period_anchor'>
+      Pick<
+        Goal,
+        'label' | 'activity_key' | 'exercise_id' | 'skill_id' | 'custom_tracker_id' | 'period_anchor'
+      >
     >,
 ): Promise<Goal> {
   const t = now();
@@ -146,7 +151,8 @@ export async function createGoal(
     activity_key: input.activity_key ?? null,
     exercise_id: input.exercise_id ?? null,
     skill_id: input.skill_id ?? null,
-    manual_value: input.manual_value ?? null,
+    custom_tracker_id: input.custom_tracker_id ?? null,
+    manual_value: null,
     display_order: existing.length,
     is_archived: false,
     created_at: t,
@@ -162,14 +168,6 @@ export async function updateGoal(
   patch: Partial<Omit<Goal, 'id' | 'user_id' | 'created_at'>>,
 ): Promise<void> {
   await db.goals.update(id, { ...patch, updated_at: now() });
-}
-
-/**
- * Χειροκίνητη τιμή ενός custom στόχου — ο χρήστης την ανεβάζει/κατεβάζει
- * (+/−) ή τη θέτει. Δεν πέφτει ποτέ κάτω από 0.
- */
-export async function setGoalManualValue(id: string, value: number): Promise<void> {
-  await db.goals.update(id, { manual_value: Math.max(0, value), updated_at: now() });
 }
 
 /** Soft delete — ίδια σημασιολογία με τον υπόλοιπο κώδικα. */
@@ -265,20 +263,6 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
     };
   }
 
-  // Δικός σου μετρητής: η πρόοδος είναι ό,τι έχεις βάλει χειροκίνητα, τίποτα
-  // αυτόματο — ο χρήστης οδηγεί, εμείς απλώς κρατάμε την τιμή.
-  if (goal.metric === 'custom') {
-    const current = goal.manual_value ?? 0;
-    return {
-      goal,
-      current,
-      target: goal.target,
-      ratio: goal.target > 0 ? Math.min(1, current / goal.target) : 0,
-      unit: METRIC_UNIT.custom,
-      daysLeft: null,
-    };
-  }
-
   const win = goalWindow(goal.period, goal.period_anchor, now);
   const startIso = win.start.toISOString();
   const endIso = win.end.toISOString();
@@ -295,6 +279,32 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
   );
 
   let current = 0;
+
+  // Custom tracker: άθροισμα των entries μέσα στο παράθυρο (scoped στον χρήστη
+  // και στον tracker του στόχου). Append-only → καθαρό sync + windowed reset.
+  if (goal.metric === 'custom') {
+    if (goal.custom_tracker_id) {
+      const entries = (
+        await db.custom_tracker_entries.where('tracker_id').equals(goal.custom_tracker_id).toArray()
+      ).filter(
+        (e) =>
+          e.deleted_at == null &&
+          e.user_id === getCurrentUserId() &&
+          e.logged_at >= startIso &&
+          e.logged_at < endIso,
+      );
+      current = entries.reduce((a, e) => a + e.amount, 0);
+    }
+    current = Math.round(current * 10) / 10;
+    return {
+      goal,
+      current,
+      target: goal.target,
+      ratio: goal.target > 0 ? Math.min(1, current / goal.target) : 0,
+      unit: METRIC_UNIT.custom,
+      daysLeft: win.daysLeft,
+    };
+  }
 
   if (goal.metric === 'sessions') {
     // Στοχευμένο σε άσκηση («κάνε bench 2×/εβδομάδα») → μέτρα ΠΡΟΠΟΝΗΣΕΙΣ που

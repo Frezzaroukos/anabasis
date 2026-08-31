@@ -14,7 +14,12 @@ import { METRIC_UNIT } from '@/lib/db/goals';
 export function goalTitle(
   t: TFunction,
   goal: Pick<Goal, 'metric' | 'target' | 'period' | 'activity_key' | 'exercise_id'>,
-  names: { activity?: string | null; exercise?: string | null; skill?: string | null } = {},
+  names: {
+    activity?: string | null;
+    exercise?: string | null;
+    skill?: string | null;
+    custom?: string | null;
+  } = {},
 ): string {
   // Milestone skill goal: «Κατέκτησε το Front Lever» — χωρίς περίοδο, το
   // ζητούμενο είναι το skill, όχι ένας ρυθμός.
@@ -29,9 +34,11 @@ export function goalTitle(
     return t('goals.loadGoalTitle', { load: goal.target, exercise });
   }
 
-  // Custom μετρητής: ο τίτλος είναι το όνομα που έδωσε ο χρήστης + ο στόχος.
+  // Custom tracker: «Κρύα ντους · 30 / εβδομάδα» — το όνομα του tracker + στόχος
+  // + περίοδος (πλέον windowed σαν κάθε metric).
   if (goal.metric === 'custom') {
-    return `${t('goals.metric.custom')} · ${goal.target}`;
+    const name = names.custom ?? t('goals.metric.custom');
+    return `${name} · ${goal.target} / ${t(`goals.period.${goal.period}`)}`;
   }
 
   const unit = METRIC_UNIT[goal.metric];

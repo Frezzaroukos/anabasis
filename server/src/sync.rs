@@ -29,6 +29,8 @@ const ALLOWED_TABLES: &[&str] = &[
     "program_exercises",
     "activities",
     "goals",
+    "custom_trackers",
+    "custom_tracker_entries",
 ];
 
 const MAX_PUSH_ROWS: usize = 5000;
