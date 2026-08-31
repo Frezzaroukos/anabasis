@@ -29,6 +29,7 @@
     "noExercises": "Καμία άσκηση ακόμα. Πάτα παρακάτω για να προσθέσεις.",
     "weighted": "Με βάρος",
     "bodyweight": "Bodyweight",
+    "setBodyweightHint": "Πρόσθεσε το σωματικό σου βάρος για συνολικό φορτίο",
     "addSet": "Προσθήκη set",
     "set": "Set",
     "weightKg": "Βάρος (kg)",

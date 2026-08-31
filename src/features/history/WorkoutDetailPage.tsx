@@ -7,6 +7,7 @@ import { getWorkoutDetail } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight, toDisplayWeight } from '@/lib/units';
+import { formatLoad } from '@/features/workout/utils';
 import type { PRType } from '@/lib/db/types';
 import { Card, SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
@@ -145,7 +146,9 @@ export function WorkoutDetailPage() {
                       </span>
                       <span className="flex-1">
                         {[
-                          s.weight_kg != null ? formatWeight(s.weight_kg, unit) : null,
+                          s.weight_kg != null || s.bodyweight_kg != null
+                            ? formatLoad(s.weight_kg, s.bodyweight_kg, unit)
+                            : null,
                           s.reps != null ? `× ${s.reps}` : null,
                           s.hold_seconds != null ? `${s.hold_seconds}s` : null,
                         ]

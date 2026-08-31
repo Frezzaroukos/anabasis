@@ -29,6 +29,7 @@
     "noExercises": "No exercises yet. Tap below to add one.",
     "weighted": "Weighted",
     "bodyweight": "Bodyweight",
+    "setBodyweightHint": "Add your bodyweight to track total load",
     "addSet": "Add set",
     "set": "Set",
     "weightKg": "Weight (kg)",

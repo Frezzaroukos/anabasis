@@ -974,6 +974,24 @@ export async function getBodyMetric(date: string): Promise<BodyMetric | undefine
 }
 
 /**
+ * Το πιο πρόσφατο καταγεγραμμένο σωματικό βάρος έως (και) μια ημερομηνία.
+ *
+ * Γιατί υπάρχει: ένα σετ σε άσκηση σωματικού βάρους (έλξεις, βυθίσεις,
+ * planche) έχει πραγματικό φορτίο = σωματικό βάρος + πρόσθετο. Ο logger
+ * «φωτογραφίζει» εδώ το βάρος της στιγμής ώστε τα charts (total load / e1RM /
+ * όγκος) να λένε την αλήθεια — το βάρος αλλάζει σε βάθος μηνών, οπότε κρατάμε
+ * την τιμή ΤΟΤΕ, όχι τη σημερινή. `null` αν δεν έχει καταγραφεί ποτέ βάρος.
+ */
+export async function getLatestBodyweight(onOrBeforeDate?: string): Promise<number | null> {
+  const cutoff = onOrBeforeDate ?? localDay();
+  const rows = await db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray();
+  const candidates = rows
+    .filter((r) => r.weight_kg != null && r.date <= cutoff)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  return candidates[0]?.weight_kg ?? null;
+}
+
+/**
  * Μαζική εισαγωγή ιστορικών μετρήσεων (π.χ. 11 μήνες θερμίδων από Notion).
  * Upsert ανά ημερομηνία — υπάρχουσα μέρα ενημερώνεται, δεν διπλασιάζεται.
  * Επιστρέφει πόσες προστέθηκαν/ενημερώθηκαν ώστε το UI να δείξει τι έγινε.

@@ -46,6 +46,7 @@ describe('ExerciseCard — set-by-set logging stays calm', () => {
           exercise={squat}
           workoutId={workout.id}
           sets={[]}
+          bodyweightKg={null}
           weighted
           onWeightedChange={vi.fn()}
           chain={null}
