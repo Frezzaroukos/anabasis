@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Dumbbell, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 /** localStorage key: αν υπάρχει, ο χρήστης έχει ήδη δει το onboarding. */
 export const ONBOARDING_STORAGE_KEY = 'anabasis.onboarded';
@@ -32,6 +33,8 @@ export function OnboardingOverlay() {
   const [dismissed, setDismissed] = useState(hasOnboarded);
   const [slide, setSlide] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(containerRef, !dismissed);
 
   if (dismissed) return null;
 
@@ -86,7 +89,9 @@ export function OnboardingOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-background safe-top safe-bottom"
+      ref={containerRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-[100] flex flex-col bg-background safe-top safe-bottom focus:outline-none"
       role="dialog"
       aria-modal="true"
       aria-label={t('onboarding.title')}
