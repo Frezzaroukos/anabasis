@@ -25,6 +25,7 @@ import { formatWeight } from '@/lib/units';
 import { Input } from '@/components/ui/input';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { DOT_SIZE_CLASS, dotSizeOf, weekAdherenceTint } from './calendarMath';
 
 /**
  * Τα χρώματα/σύμβολα ΔΕΝ είναι πια hardcoded — έρχονται από τον πίνακα
@@ -161,6 +162,19 @@ export function CalendarPage() {
     return out;
   }, [cursor.year, cursor.month, first, last]);
 
+  // Adherence overlay: ένα tint ανά εβδομάδα (7 συνεχόμενα κελιά) — πόσες
+  // μέρες προπονήθηκες αυτή την εβδομάδα, ως απαλό background wash. Το ίδιο
+  // tier σε κάθε κελί της εβδομάδας κάνει το flat grid να διαβάζεται σαν
+  // ζώνες, χωρίς να χρειάζεται να το ξαναχτίσουμε σε per-week rows.
+  const weekTints = useMemo(() => {
+    const out: string[] = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      const week = cells.slice(i, i + 7).map((c) => c?.key ?? null);
+      out.push(weekAdherenceTint(week, cal));
+    }
+    return out;
+  }, [cells, cal]);
+
   const monthLabel = first.toLocaleDateString(i18n.resolvedLanguage, {
     month: 'long',
     year: 'numeric',
@@ -294,6 +308,9 @@ export function CalendarPage() {
                 onClick={() => setSelected(c.key)}
                 className={cn(
                   'flex min-h-[56px] flex-col items-center gap-1 rounded-lg p-1 ring-offset-background transition-all duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  // Adherence overlay πρώτα (resting background) — η επιλεγμένη/
+                  // hover κατάσταση παρακάτω τη σκεπάζει κανονικά (twMerge).
+                  weekTints[Math.floor(i / 7)],
                   // Βάθος αντί για χρωματιστό περίγραμμα: επιλεγμένη = ανυψωμένη
                   // επιφάνεια, σήμερα = accent ring — τα δύο συνδυάζονται όταν
                   // η επιλεγμένη μέρα ΕΙΝΑΙ σήμερα.
@@ -320,7 +337,11 @@ export function CalendarPage() {
                   return (
                     <span className="flex flex-wrap items-center justify-center gap-0.5">
                       {shown.map((w) => (
-                        <span key={w.id} className={cn('h-1.5 w-1.5 rounded-full', dotOf(w.kind))} />
+                        <span
+                          key={w.id}
+                          title={t('calendar.magnitudeHint')}
+                          className={cn('rounded-full', DOT_SIZE_CLASS[dotSizeOf(w)], dotOf(w.kind))}
+                        />
                       ))}
                       {overflow && (
                         <span className="font-mono text-[8px] leading-none text-muted-foreground">
