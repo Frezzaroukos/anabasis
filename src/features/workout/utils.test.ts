@@ -4,6 +4,7 @@ import {
   formatPaceMinPerKm,
   groupColorClass,
   isChainSetType,
+  isEmptyDraftWorkout,
   resolveSetGroup,
 } from './utils';
 
@@ -25,6 +26,21 @@ describe('formatLoad', () => {
     // 100kg → 220.5lb (plate-realistic, βήμα 0.5)
     expect(formatLoad(100, null, 'lb')).toBe('220.5lb');
     expect(formatLoad(20, 75, 'lb')).toBe('BW+44lb');
+  });
+});
+
+describe('isEmptyDraftWorkout', () => {
+  it('set-logged χωρίς κανένα σετ → draft (discard, όχι finish)', () => {
+    expect(isEmptyDraftWorkout(true, 0)).toBe(true);
+  });
+
+  it('set-logged με τουλάχιστον ένα σετ → όχι draft', () => {
+    expect(isEmptyDraftWorkout(true, 1)).toBe(false);
+    expect(isEmptyDraftWorkout(true, 5)).toBe(false);
+  });
+
+  it('δραστηριότητα χωρίς σετ (run/bike/...) → ποτέ draft, ακόμα και με 0 "σετ"', () => {
+    expect(isEmptyDraftWorkout(false, 0)).toBe(false);
   });
 });
 

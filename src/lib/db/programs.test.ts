@@ -134,6 +134,16 @@ describe('έναρξη προπόνησης από πρόγραμμα', () => {
   it('επιστρέφει null για ανύπαρκτο πρόγραμμα', async () => {
     expect(await startWorkoutFromProgram('δεν-υπάρχει')).toBeNull();
   });
+
+  it('guard: αρνείται δεύτερη έναρξη όσο υπάρχει ήδη ενεργή προπόνηση', async () => {
+    const p = await createProgram('Leg day', 'strength');
+    await addProgramExercise(p.id, { exercise_id: squat().id, target_sets: 5, target_reps: 5 });
+
+    const w = await startWorkout('strength');
+    expect(await startWorkoutFromProgram(p.id)).toBeNull();
+    // Καθαρίζουμε — αυτό το αρχείο δεν κάνει reset του db.workouts ανά test.
+    await endWorkout(w.id);
+  });
 });
 
 describe('πρόγραμμα από την τελευταία προπόνηση', () => {

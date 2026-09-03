@@ -116,8 +116,9 @@ export function CalendarPage() {
     e.preventDefault();
     const label = adHocLabel.trim();
     if (!selected || !label) return;
-    const { workout } = await startAdHocWorkout('strength', selected === today ? undefined : selected);
-    await setWorkoutType(workout.id, label);
+    const result = await startAdHocWorkout('strength', selected === today ? undefined : selected);
+    if (!result) return;
+    await setWorkoutType(result.workout.id, label);
     setAddOpen(false);
     setAdHocLabel('');
     navigate('/workout/active');

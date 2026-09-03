@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import type { Exercise, Workout } from '@/lib/db/types';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
-import { isSetLoggedActivity, type SetChain } from '../utils';
+import { isEmptyDraftWorkout, isSetLoggedActivity, type SetChain } from '../utils';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getActivity, getLatestBodyweight, localDay } from '@/lib/db/queries';
 import { useWakeLock } from '../useWakeLock';
@@ -104,9 +104,16 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     void queries.setWorkoutType(workout.id, trimmed === '' ? null : trimmed);
   };
 
+  // Βλ. isEmptyDraftWorkout σχόλιο — άδειο draft απορρίπτεται, δεν «τελειώνει».
+  const isEmpty = isEmptyDraftWorkout(isSetLogged, sets.length);
+
   const onConfirmEnd = async () => {
     setConfirmEnd(false);
-    await queries.endWorkout(workout.id);
+    if (isEmpty) {
+      await queries.softDeleteWorkout(workout.id);
+    } else {
+      await queries.endWorkout(workout.id);
+    }
   };
 
   return (
@@ -133,7 +140,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           className="shrink-0"
         >
           <X className="h-4 w-4" />
-          {t('workout.end')}
+          {isEmpty ? t('workout.discard') : t('workout.end')}
         </Button>
       </header>
 
@@ -249,9 +256,9 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
 
       <ConfirmDialog
         open={confirmEnd}
-        title={t('workout.endConfirmTitle')}
-        description={t('workout.endConfirmDesc')}
-        confirmLabel={t('workout.end')}
+        title={isEmpty ? t('workout.discardConfirmTitle') : t('workout.endConfirmTitle')}
+        description={isEmpty ? t('workout.discardConfirmDesc') : t('workout.endConfirmDesc')}
+        confirmLabel={isEmpty ? t('workout.discard') : t('workout.end')}
         cancelLabel={t('common.cancel')}
         destructive
         onConfirm={() => void onConfirmEnd()}

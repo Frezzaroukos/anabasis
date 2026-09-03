@@ -121,6 +121,21 @@ export function groupColorClass(groupId: string): string {
   return CHAIN_COLOR_CLASSES[hash % CHAIN_COLOR_CLASSES.length]!;
 }
 
+/**
+ * Ένα set-logged workout χωρίς κανένα σετ είναι ένα καθαρό draft — π.χ. μια
+ * backdated έναρξη από μέρα προγράμματος που ξεχάστηκε/ξανασκέφτηκε. Αν
+ * «κλείσει» σαν κανονική προπόνηση, μένει για πάντα μια φανταστική
+ * ολοκληρωμένη εγγραφή με μηδέν σετ (μολύνει calendar/history/adherence) —
+ * και όσο μένει ανοιχτή, μπλοκάρει την ΕΠΟΜΕΝΗ πραγματική προπόνηση (μία
+ * ενεργή τη φορά, βλ. startWorkoutFromProgram guard). Γι' αυτό αποφασίζουμε
+ * να απορριφθεί (soft delete) αντί να «τελειώσει». Δεν εφαρμόζεται σε
+ * δραστηριότητες χωρίς σετ (run/bike/...) — εκεί δεν υπάρχει αξιόπιστος
+ * τρόπος να ξέρουμε αν είναι «άδειο» χωρίς να αγνοήσουμε νόμιμα δεδομένα.
+ */
+export function isEmptyDraftWorkout(isSetLogged: boolean, setsCount: number): boolean {
+  return isSetLogged && setsCount === 0;
+}
+
 /** Ρυθμός σε min:ss/km. null αν δεν υπάρχει έγκυρη απόσταση ή χρόνος. */
 export function formatPaceMinPerKm(elapsedSeconds: number, km: number): string | null {
   if (!(km > 0) || !(elapsedSeconds > 0)) return null;

@@ -1490,6 +1490,12 @@ export async function reorderProgramExercises(orderedIds: string[]): Promise<voi
  * Το πλάνο επιστρέφεται ώστε ο logger να δείξει τους στόχους προς εκτέλεση.
  */
 export async function startWorkoutFromProgram(programId: string, onDate?: string) {
+  // Guard: μία ενεργή προπόνηση τη φορά. Χωρίς αυτό, μια δεύτερη έναρξη (π.χ.
+  // backdated πρόγραμμα-μέρα από το Calendar) θα δημιουργούσε μια ΔΕΥΤΕΡΗ
+  // ανοιχτή εγγραφή που θα «χτυπιόταν» με την ήδη ενεργή στο useActiveWorkout
+  // resume-logic — ένα ξεχασμένο backdated draft θα μπορούσε να παραμείνει
+  // ανοιχτό για πάντα και να μπλοκάρει τη σημερινή, πραγματική προπόνηση.
+  if (await getActiveWorkout()) return null;
   const data = await getProgramWithExercises(programId);
   if (!data) return null;
   const w = await startWorkout(data.program.activity_kind, onDate, programId, null);
@@ -1558,6 +1564,8 @@ export async function countProgramDaySessions(dayId: string): Promise<number> {
 
 /** Ξεκινά προπόνηση από μέρα προγράμματος — linked (auto-numbering) + pre-filled plan. */
 export async function startWorkoutFromProgramDay(dayId: string, onDate?: string) {
+  // Ίδιο guard με startWorkoutFromProgram — δες σχόλιο εκεί.
+  if (await getActiveWorkout()) return null;
   const data = await getProgramDayWithExercises(dayId);
   if (!data) return null;
   const program = await db.programs.get(data.day.program_id);
@@ -1574,7 +1582,12 @@ export async function startWorkoutFromProgramDay(dayId: string, onDate?: string)
 }
 
 /** Ad-hoc/random προπόνηση — καμία σύνδεση με πρόγραμμα (mini/quick/for-fun). */
-export async function startAdHocWorkout(activityKind: ActivityKind = 'strength', onDate?: string) {
+export async function startAdHocWorkout(
+  activityKind: ActivityKind = 'strength',
+  onDate?: string,
+): Promise<{ workout: Workout; plan: ProgramExercise[] } | null> {
+  // Ίδιο guard με startWorkoutFromProgram — δες σχόλιο εκεί.
+  if (await getActiveWorkout()) return null;
   const w = await startWorkout(activityKind, onDate, null, null);
   return { workout: w, plan: [] as ProgramExercise[] };
 }
