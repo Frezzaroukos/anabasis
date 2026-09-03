@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Button } from './button';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -22,6 +23,9 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
+
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -44,7 +48,11 @@ export function ConfirmDialog({
       {/* bg-elevated: το dialog είναι το πιο «ψηλό» επίπεδο — βάθος, όχι
           περίγραμμα, αλλά ένα hairline border/60 το κόβει καθαρά πάνω από το
           θολωμένο backdrop (κανόνας 3 του brief). */}
-      <div className="relative z-10 w-full max-w-sm animate-in fade-in zoom-in-95 rounded-xl border border-border/60 bg-elevated p-5 shadow-elevated-lg duration-200">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative z-10 w-full max-w-sm animate-in fade-in zoom-in-95 rounded-xl border border-border/60 bg-elevated p-5 shadow-elevated-lg duration-200 focus:outline-none"
+      >
         <p className="text-base font-semibold">{title}</p>
         {description != null && (
           <p className="mt-2 text-sm text-muted-foreground">{description}</p>

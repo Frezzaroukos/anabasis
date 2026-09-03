@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface BottomSheetProps {
   open: boolean;
@@ -17,6 +18,9 @@ export function BottomSheet({
   children,
   className,
 }: BottomSheetProps) {
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
+
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -44,9 +48,12 @@ export function BottomSheet({
           περίγραμμα γύρω-γύρω, αλλά ένα hairline top border το κόβει καθαρά
           πάνω από το θολωμένο backdrop. */}
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={cn(
           'rounded-t-2xl border-t border-border/60 bg-elevated shadow-elevated-lg',
           'flex max-h-[85vh] flex-col safe-bottom animate-in slide-in-from-bottom duration-200',
+          'focus:outline-none',
           className,
         )}
       >
