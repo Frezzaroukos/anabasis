@@ -78,10 +78,22 @@ describe('program days', () => {
   });
 
   it('startAdHocWorkout: καμία σύνδεση με πρόγραμμα (random/mini/for-fun)', async () => {
-    const { workout, plan } = await startAdHocWorkout('strength');
+    const { workout, plan } = (await startAdHocWorkout('strength'))!;
     expect(workout.program_id).toBeNull();
     expect(workout.program_day_id).toBeNull();
     expect(plan).toHaveLength(0);
+  });
+
+  it('guard: δεν ξεκινά δεύτερη προπόνηση όσο μία είναι ήδη ενεργή (backdated hijack)', async () => {
+    const p = await createProgram('Split');
+    const upper = await createProgramDay(p.id, 'Upper');
+
+    // Μία ήδη ανοιχτή ενεργή προπόνηση (π.χ. σημερινή, live) — και τα δύο
+    // start* entry points πρέπει να αρνηθούν να ανοίξουν δεύτερη, αλλιώς ένα
+    // ξεχασμένο backdated draft θα μπλοκάριζε τη σημερινή για πάντα.
+    await startAdHocWorkout('strength');
+    expect(await startWorkoutFromProgramDay(upper.id, '2026-01-01')).toBeNull();
+    expect(await startAdHocWorkout('strength', '2026-01-01')).toBeNull();
   });
 });
 
