@@ -110,6 +110,44 @@ pub async fn push(
             let payload = serde_json::to_string(row)
                 .map_err(|_| AppError::internal("Αποτυχία σειριοποίησης row."))?;
 
+            // Πραγματικό last-WRITE-wins: πριν το χτύπησε δεδομένα ταξιδιού
+            // από παλιότερο push (π.χ. συσκευή offline που ξαναβγαίνει
+            // online αργότερα), συγκρίνουμε το `updated_at` του incoming
+            // row με ό,τι είναι ήδη αποθηκευμένο — ΟΧΙ σειρά άφιξης. Χωρίς
+            // αυτό, ένα stale push θα μπορούσε να διαγράψει σιωπηλά μια
+            // νεότερη αλλαγή από άλλη συσκευή (lost update). Ίδια σύμβαση
+            // με το client-side incomingWins (src/lib/sync/index.ts):
+            // νεότερο updated_at κερδίζει· ισοπαλία κρατά ό,τι υπάρχει ήδη
+            // (χωρίς tiebreak by id — εδώ το row_id είναι το ΙΔΙΟ και στις
+            // δύο πλευρές, δεν είναι σύγκρουση δύο διαφορετικών ids).
+            let existing_payload: Option<String> = sqlx::query_scalar(
+                "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = ? AND row_id = ?",
+            )
+            .bind(&auth.account_id)
+            .bind(&change.tbl)
+            .bind(row_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+            let incoming_wins = match &existing_payload {
+                None => true,
+                Some(existing_payload) => {
+                    let existing_updated_at = serde_json::from_str::<Value>(existing_payload)
+                        .ok()
+                        .and_then(|v| v.get("updated_at").and_then(Value::as_str).map(str::to_owned))
+                        .unwrap_or_default();
+                    let incoming_updated_at =
+                        row.get("updated_at").and_then(Value::as_str).unwrap_or("");
+                    incoming_updated_at > existing_updated_at.as_str()
+                }
+            };
+
+            if !incoming_wins {
+                // Stale push — το ήδη αποθηκευμένο row είναι νεότερο (ή ίδιας
+                // στιγμής). Δεν γράφουμε τίποτα, δεν καταναλώνουμε seq.
+                continue;
+            }
+
             // last_seq bump + upsert ΣΤΗΝ ΙΔΙΑ transaction — αλλιώς ο pull
             // cursor μπορεί να προσπεράσει ένα committed row (lost update).
             let seq: i64 = sqlx::query_scalar(
@@ -140,6 +178,16 @@ pub async fn push(
 
             cursor = seq;
         }
+    }
+
+    // Αν ΟΛΑ τα rows αυτού του push ήταν LWW losers, δεν καταναλώθηκε seq —
+    // ο cursor πρέπει να δείχνει το ΤΡΕΧΟΝ last_seq, όχι το αρχικό 0 (αλλιώς
+    // ο caller θα νόμιζε ότι ο λογαριασμός δεν έχει προχωρήσει καθόλου).
+    if cursor == 0 {
+        cursor = sqlx::query_scalar("SELECT last_seq FROM accounts WHERE id = ?")
+            .bind(&auth.account_id)
+            .fetch_one(&mut *tx)
+            .await?;
     }
 
     sqlx::query("UPDATE accounts SET last_sync_at = ? WHERE id = ?")
