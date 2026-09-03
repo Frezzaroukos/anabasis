@@ -302,6 +302,120 @@ async fn pull_with_cursor_skips_already_seen_rows() {
     assert_eq!(rows[0]["id"], "row-b");
 }
 
+/// Item #3 του backlog: server real LWW. Πριν, το push ήταν last-ARRIVAL-
+/// wins (blind overwrite) — ένα stale push (π.χ. offline συσκευή που
+/// ξαναβγαίνει online αργότερα) θα μπορούσε να διαγράψει σιωπηλά μια
+/// νεότερη αλλαγή από άλλη συσκευή. Τώρα συγκρίνεται το `updated_at`.
+#[tokio::test]
+async fn push_stale_updated_at_does_not_clobber_newer_row() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    // Device B: πιο πρόσφατη αλλαγή, φτάνει ΠΡΩΤΗ.
+    let newer = json!({
+        "id": "goal-lww", "user_id": user_id, "title": "from device B",
+        "updated_at": "2026-08-30T10:05:00.000Z", "deleted_at": null,
+    });
+    let (status, _) = call(
+        &app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ newer ] } ] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Device A: παλιότερη αλλαγή (offline τη στιγμή του edit), φτάνει ΔΕΥΤΕΡΗ.
+    let stale = json!({
+        "id": "goal-lww", "user_id": user_id, "title": "from device A (stale)",
+        "updated_at": "2026-08-30T10:00:00.000Z", "deleted_at": null,
+    });
+    let (status, _) = call(
+        &app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ stale ] } ] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "stale push γίνεται δεκτό — απλώς δεν κλέβει");
+
+    let stored_payload: String = sqlx::query_scalar(
+        "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'goal-lww'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    let stored: Value = serde_json::from_str(&stored_payload).unwrap();
+    assert_eq!(stored["title"], "from device B", "η νεότερη αλλαγή ΔΕΝ διαγράφεται από stale push");
+}
+
+/// Ισοπαλία στο updated_at → κρατάμε ό,τι υπάρχει ήδη (deterministic, ίδιο
+/// σε κάθε retry· δεν υπάρχει έννοια «id tiebreak» εδώ αφού το row_id είναι
+/// το ίδιο και στις δύο πλευρές).
+#[tokio::test]
+async fn push_identical_updated_at_keeps_existing() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    let same_ts = "2026-08-30T10:00:00.000Z";
+    let first = json!({ "id": "goal-tie", "user_id": user_id, "title": "first", "updated_at": same_ts });
+    call(
+        &app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ first ] } ] })),
+    )
+    .await;
+
+    let second = json!({ "id": "goal-tie", "user_id": user_id, "title": "second", "updated_at": same_ts });
+    call(
+        &app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ second ] } ] })),
+    )
+    .await;
+
+    let stored_payload: String = sqlx::query_scalar(
+        "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'goal-tie'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    let stored: Value = serde_json::from_str(&stored_payload).unwrap();
+    assert_eq!(stored["title"], "first");
+}
+
+/// Ένα push που ΑΠΟΤΕΛΕΙΤΑΙ ΜΟΝΟ από LWW losers δεν πρέπει να επιστρέφει
+/// cursor 0 — αλλιώς ο caller θα νόμιζε ότι ο λογαριασμός ξαναγύρισε πίσω.
+#[tokio::test]
+async fn push_cursor_reflects_current_seq_even_when_every_row_loses() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    let newer = json!({
+        "id": "goal-cursor", "user_id": user_id, "title": "newer",
+        "updated_at": "2026-08-30T10:05:00.000Z",
+    });
+    let (_, body) = call(
+        &app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ newer ] } ] })),
+    )
+    .await;
+    let cursor_after_first_push = body["cursor"].as_i64().unwrap();
+    assert!(cursor_after_first_push > 0);
+
+    let stale = json!({
+        "id": "goal-cursor", "user_id": user_id, "title": "stale",
+        "updated_at": "2026-08-30T10:00:00.000Z",
+    });
+    let (status, body) = call(
+        &app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ stale ] } ] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body["cursor"].as_i64().unwrap(),
+        cursor_after_first_push,
+        "cursor μένει στο τρέχον last_seq, όχι 0",
+    );
+}
+
 #[tokio::test]
 async fn push_with_wrong_user_id_rejected() {
     let (app, _state, _dir) = test_app(None).await;
