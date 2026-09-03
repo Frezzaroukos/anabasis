@@ -306,7 +306,8 @@
     "adHoc": "Ad-hoc / quick",
     "adHocHint": "No plan — add exercises as you go.",
     "adHocStart": "Start",
-    "streakDays": "{{count}} day streak"
+    "streakDays": "{{count}} day streak",
+    "magnitudeHint": "Bigger dot = bigger session"
   },
   "body": {
     "weight": "Weight",
