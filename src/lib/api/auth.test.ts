@@ -1,7 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '../db';
 import { bootstrapDB } from '../db/bootstrap';
-import { DEFAULT_USER_ID, setCurrentUserId } from '../db/session';
-import { initOAuthFragment } from './auth';
+import { DEFAULT_USER_ID, getCurrentUserId, setCurrentUserId } from '../db/session';
+import { initOAuthFragment, logout } from './auth';
 import { readStoredAuth } from './client';
 
 /**
@@ -133,5 +134,76 @@ describe('initOAuthFragment', () => {
 
     expect(window.location.hash).toBe('');
     expect(readStoredAuth()).toBeNull();
+  });
+});
+
+/**
+ * Item #2 του backlog: shared-device leak. Πριν, το logout άφηνε το τοπικό
+ * προφίλ του λογαριασμού «ενεργό» — ένα επόμενο login με ΑΛΛΟ λογαριασμό στην
+ * ίδια συσκευή θα το απορροφούσε σιωπηλά (migrateProfileUserId πάνω στο
+ * τρέχον προφίλ, όχι σε κάποιο «σωστό»).
+ */
+describe('logout — shared-device protection', () => {
+  function stubLogoutFetch(): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/auth/logout')) return jsonResponse({});
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+  }
+
+  // jsdom's Location δεν επιτρέπει spy/redefine στο reload απευθείας —
+  // αντικαθιστούμε ολόκληρο το window.location με ένα ελεγχόμενο stub, μόνο
+  // για αυτό το describe block.
+  const originalLocation = window.location;
+
+  beforeEach(() => {
+    // @ts-expect-error -- jsdom Location, επίτηδες αντικαθίσταται για το test
+    delete window.location;
+    window.location = { ...originalLocation, reload: vi.fn() } as unknown as Location;
+  });
+
+  afterEach(() => {
+    window.location = originalLocation;
+  });
+
+  it('μεταπηδά σε ΦΡΕΣΚΟ, ΑΔΕΙΟ προφίλ — δεν αφήνει το παλιό «ενεργό»', async () => {
+    const accountId = 'account-a-boundlocalprofile';
+    setCurrentUserId(accountId);
+    await db.workouts.add({
+      id: 'w-account-a',
+      user_id: accountId,
+      started_at: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
+      duration_seconds: 60,
+      notes: null,
+      workout_type: null,
+      activity_kind: 'strength',
+      program_id: null,
+      program_day_id: null,
+      distance_km: null,
+      feel: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+    });
+
+    stubLogoutFetch();
+    await logout();
+
+    const afterId = getCurrentUserId();
+    expect(afterId).not.toBe(accountId);
+
+    // Το φρέσκο προφίλ δεν βλέπει τα δεδομένα του λογαριασμού που έφυγε —
+    // αν συνδεθεί κάποιος άλλος τώρα, το migrateProfileUserId θα δουλέψει
+    // πάνω σε ΑΥΤΟ (κενό), όχι πάνω στα workouts του account-a.
+    const visible = await db.workouts.where('user_id').equals(afterId).count();
+    expect(visible).toBe(0);
+
+    const oldStillThere = await db.workouts.where('user_id').equals(accountId).count();
+    expect(oldStillThere).toBe(1); // δεν σβήνεται, απλώς δεν είναι πια «ενεργό»
   });
 });
