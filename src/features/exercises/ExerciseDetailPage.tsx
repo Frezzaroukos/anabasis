@@ -4,17 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Archive, ArchiveRestore, Download, Pencil } from 'lucide-react';
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Label,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
   exportExerciseCsv,
   getExercise,
   getExerciseProgress,
@@ -23,40 +12,19 @@ import {
   listExerciseCategories,
   setExerciseArchived,
 } from '@/lib/db/queries';
-import type { PersonalRecord, PRType } from '@/lib/db/types';
+import type { PersonalRecord } from '@/lib/db/types';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { useCountUp } from '@/hooks/useCountUp';
 import { toDisplayWeight } from '@/lib/units';
 import {
-  ACCENT_FILL_ID,
-  ACTIVE_DOT,
-  CHART_GOLD,
-  CHART_GRID,
-  CHART_STROKE,
-  CHART_STROKE_WIDTH,
-  CHART_TICK,
-  ChartGradientDefs,
-  TOOLTIP_STYLE,
-} from '@/components/charts/chartTheme';
+  ExerciseProgressChart,
+  CHART_RANGE_DAYS,
+  type ChartMetric,
+} from '@/components/charts/ExerciseProgressChart';
+import type { ChartRangeKey } from '@/components/charts/timeRange';
 import { ExerciseFormSheet } from './components/ExerciseFormSheet';
 import { CategoryBadge } from '@/components/CategoryBadge';
-import { cn } from '@/lib/utils';
 
-type Metric = 'reps' | 'topWeight' | 'e1rm' | 'volume';
-
-const METRICS: Metric[] = ['reps', 'topWeight', 'e1rm', 'volume'];
-const METRIC_PR: Record<Metric, PRType> = {
-  reps: 'max_reps',
-  topWeight: 'max_weight',
-  e1rm: 'e1rm',
-  volume: 'max_volume',
-};
-const METRIC_LABEL_KEY: Record<Metric, string> = {
-  reps: 'exercises.detail.reps',
-  topWeight: 'progress.topWeight',
-  e1rm: 'progress.e1rm',
-  volume: 'progress.volume',
-};
+const DETAIL_METRICS: ChartMetric[] = ['reps', 'topWeight', 'e1rm', 'volume'];
 
 /**
  * Η πρόοδος μιας άσκησης — headline «alive» surface (owner feedback: charts
@@ -69,11 +37,19 @@ export function ExerciseDetailPage() {
   const { exerciseId = '' } = useParams();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
-  const [metric, setMetric] = useState<Metric>('topWeight');
+  const [metric, setMetric] = useState<ChartMetric>('topWeight');
+  // Προεπιλογή 1Y — ίδιο παράθυρο με πριν (365 σταθερά), τώρα με πραγματικό
+  // selector αντί να είναι κλειδωμένο.
+  const [range, setRange] = useState<ChartRangeKey>('1Y');
   const [formOpen, setFormOpen] = useState(false);
 
   const exercise = useLiveQuery(() => getExercise(exerciseId), [exerciseId]);
-  const rawPoints = useLiveQuery(() => getExerciseProgress(exerciseId, 365), [exerciseId], []);
+  const rangeDays = CHART_RANGE_DAYS[range];
+  const rawPoints = useLiveQuery(
+    () => getExerciseProgress(exerciseId, rangeDays),
+    [exerciseId, rangeDays],
+    [],
+  );
   const prs = useLiveQuery(
     () => getPRsByExercise(),
     [],
@@ -81,20 +57,7 @@ export function ExerciseDetailPage() {
   );
   const last = useLiveQuery(() => getLastPerformance(exerciseId), [exerciseId]);
   const categories = useLiveQuery(() => listExerciseCategories(), [], []);
-
-  const points = rawPoints.map((p) => ({
-    ...p,
-    topWeight: p.topWeight != null ? toDisplayWeight(p.topWeight, unit) : null,
-    e1rm: p.e1rm != null ? toDisplayWeight(p.e1rm, unit) : null,
-    volume: toDisplayWeight(p.volume, unit),
-  }));
-  const withData = points.filter((p) => p[metric] != null);
-  const best = withData.length ? Math.max(...withData.map((p) => Number(p[metric]))) : 0;
-  const bestTicker = useCountUp(best, 450, metric === 'reps' ? 0 : 1);
-
-  const prRaw = prs.get(exerciseId)?.find((r) => r.type === METRIC_PR[metric])?.value;
-  const prValue =
-    prRaw == null ? null : metric === 'reps' ? prRaw : toDisplayWeight(prRaw, unit);
+  const exercisePRs = prs.get(exerciseId) ?? [];
 
   const onExport = async () => {
     const csv = await exportExerciseCsv(exerciseId);
@@ -159,94 +122,16 @@ export function ExerciseDetailPage() {
         )}
       </header>
 
-      <div className="flex gap-1">
-        {METRICS.map((m) => (
-          <button
-            key={m}
-            onClick={() => setMetric(m)}
-            className={cn(
-              'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-              metric === m
-                ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
-                : 'hover:bg-elevated',
-            )}
-          >
-            {t(METRIC_LABEL_KEY[m])}
-          </button>
-        ))}
-      </div>
-
-      {withData.length < 2 ? (
-        <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
-          {withData.length === 0 ? t('exercises.detail.noHistory') : t('progress.needMore')}
-        </div>
-      ) : (
-        <div className="rounded-xl bg-card p-4">
-          <div className="mb-2 flex items-baseline justify-between text-xs text-muted-foreground">
-            <span className="font-mono tabular-nums">
-              {withData.length} {t('progress.sessions')}
-            </span>
-            <span
-              data-testid="exercise-best-value"
-              className="font-mono text-base font-semibold tabular-nums text-foreground"
-            >
-              {bestTicker}
-              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                {metric === 'reps' ? t('exercises.detail.reps') : unit}
-              </span>
-            </span>
-          </div>
-          <div className="h-52 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                <ChartGradientDefs />
-                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(d: string) => d.slice(5)}
-                  tick={CHART_TICK}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={['dataMin - 2', 'dataMax + 2']}
-                  tick={CHART_TICK}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-                  formatter={(v: number) => [
-                    metric === 'reps' ? `${v}` : `${v} ${unit}`,
-                    t(METRIC_LABEL_KEY[metric]),
-                  ]}
-                />
-                {prValue != null && (
-                  <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray="4 3">
-                    <Label
-                      value={`PR ${prValue}${metric === 'reps' ? '' : ` ${unit}`}`}
-                      position="insideTopRight"
-                      fill={CHART_GOLD}
-                      className="text-[10px]"
-                    />
-                  </ReferenceLine>
-                )}
-                <Area
-                  type="monotone"
-                  dataKey={metric}
-                  stroke={CHART_STROKE}
-                  strokeWidth={CHART_STROKE_WIDTH}
-                  fill={`url(#${ACCENT_FILL_ID})`}
-                  dot={{ r: 2, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
-                  activeDot={ACTIVE_DOT}
-                  connectNulls
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+      <ExerciseProgressChart
+        rawPoints={rawPoints}
+        prs={exercisePRs}
+        unit={unit}
+        metrics={DETAIL_METRICS}
+        metric={metric}
+        onMetricChange={setMetric}
+        range={range}
+        onRangeChange={setRange}
+      />
 
       <button
         onClick={() => void onExport()}

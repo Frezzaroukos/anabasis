@@ -1,19 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download, Trophy } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Label,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import {
   exportExerciseCsv,
   getExerciseProgress,
@@ -21,42 +10,19 @@ import {
   getPRsByExercise,
   listExercises,
 } from '@/lib/db/queries';
-import type { PersonalRecord, PRType } from '@/lib/db/types';
+import type { PersonalRecord } from '@/lib/db/types';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { toDisplayWeight } from '@/lib/units';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import {
-  ACCENT_FILL_ID,
-  ACTIVE_DOT,
-  CHART_CURSOR,
-  CHART_GOLD,
-  CHART_GRID,
-  CHART_STROKE,
-  CHART_STROKE_WIDTH,
-  CHART_TICK,
-  ChartGradientDefs,
-  REFERENCE_LINE_DASH,
-  TOOLTIP_STYLE,
-} from '@/components/charts/chartTheme';
-import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
-import {
+  ExerciseProgressChart,
   CHART_RANGE_DAYS,
-  tickFormatterFor,
-  tickIntervalFor,
-  type ChartRangeKey,
-} from '@/components/charts/timeRange';
+  type ChartMetric,
+} from '@/components/charts/ExerciseProgressChart';
+import type { ChartRangeKey } from '@/components/charts/timeRange';
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { ActivityProgress } from './ActivityProgress';
 
-type Metric = 'topWeight' | 'e1rm' | 'volume';
-
-/** Ποιος τύπος PR αντιστοιχεί σε κάθε metric του chart. */
-const METRIC_PR: Record<Metric, PRType> = {
-  topWeight: 'max_weight',
-  e1rm: 'e1rm',
-  volume: 'max_volume',
-};
+const PROGRESS_METRICS: ChartMetric[] = ['topWeight', 'e1rm', 'volume'];
 
 /**
  * Πρόοδος ανά άσκηση. Ο χρήστης διαλέγει ΤΙ μετρά: το καλύτερο σετ (topWeight)
@@ -70,7 +36,7 @@ export function ProgressPage() {
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
   const [exerciseId, setExerciseId] = useState<string | null>(null);
-  const [metric, setMetric] = useState<Metric>('topWeight');
+  const [metric, setMetric] = useState<ChartMetric>('topWeight');
   // Προεπιλογή 3M — αρκετά σημεία για τάση χωρίς να πνίγει τον άξονα.
   const [range, setRange] = useState<ChartRangeKey>('3M');
 
@@ -99,35 +65,11 @@ export function ProgressPage() {
     [],
   );
 
-  // Τα σημεία έρχονται σε kg (storage) — μετατρέπονται στη μονάδα του χρήστη
-  // ΕΔΩ, μία φορά, ώστε το chart/PR-line/«best» να δουλεύουν όλα στην ίδια
-  // κλίμακα χωρίς να ξαναμετατρέπει το καθένα ξεχωριστά.
-  const points = useMemo(
-    () =>
-      rawPoints.map((p) => ({
-        ...p,
-        topWeight: p.topWeight != null ? toDisplayWeight(p.topWeight, unit) : null,
-        e1rm: p.e1rm != null ? toDisplayWeight(p.e1rm, unit) : null,
-        volume: toDisplayWeight(p.volume, unit),
-      })),
-    [rawPoints, unit],
-  );
-
   const filtered = q
     ? exercises.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()))
     : exercises;
   const selected = exercises.find((e) => e.id === exerciseId) ?? null;
-  const withData = points.filter((p) => p[metric] != null);
-  const best = withData.length
-    ? Math.max(...withData.map((p) => Number(p[metric])))
-    : null;
-
-  // Το τρέχον PR για το επιλεγμένο metric — γίνεται γραμμή αναφοράς στο chart.
-  // Το ίδιο kg→unit πέρασμα με τα σημεία, αλλιώς η γραμμή θα έπεφτε σε λάθος ύψος.
-  const prValueKg =
-    (prsByExercise.get(exerciseId ?? '') ?? []).find((r) => r.type === METRIC_PR[metric])
-      ?.value ?? null;
-  const prValue = prValueKg != null ? toDisplayWeight(prValueKg, unit) : null;
+  const exercisePRs = prsByExercise.get(exerciseId ?? '') ?? [];
 
   const close = () => {
     setExerciseId(null);
@@ -222,92 +164,16 @@ export function ProgressPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex gap-1">
-              {(['topWeight', 'e1rm', 'volume'] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMetric(m)}
-                  className={cn(
-                    'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                    metric === m
-                      ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
-                      : 'hover:bg-elevated',
-                  )}
-                >
-                  {t(`progress.${m}`)}
-                </button>
-              ))}
-            </div>
-            <TimeRangeSelector value={range} onChange={setRange} />
-          </div>
-
-          {withData.length < 2 ? (
-            <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
-              {t('progress.needMore')}
-            </div>
-          ) : (
-            <div className="rounded-xl bg-card p-4">
-              <div className="mb-2 flex justify-between text-xs text-muted-foreground">
-                <span className="font-mono tabular-nums">
-                  {withData.length} {t('progress.sessions')}
-                </span>
-                {best != null && (
-                  <span className="font-mono tabular-nums">
-                    {t('progress.best')}: {best} {unit}
-                  </span>
-                )}
-              </div>
-              <div className="h-48 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                    <ChartGradientDefs />
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={tickFormatterFor(range)}
-                      interval={tickIntervalFor(range, withData.length)}
-                      tick={CHART_TICK}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      domain={['dataMin - 2', 'dataMax + 2']}
-                      tick={CHART_TICK}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      cursor={CHART_CURSOR}
-                      contentStyle={TOOLTIP_STYLE}
-                      labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-                      formatter={(v: number) => [`${v} ${unit}`, t(`progress.${metric}`)]}
-                    />
-                    {prValue != null && (
-                      <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray={REFERENCE_LINE_DASH}>
-                        <Label
-                          value={`PR ${prValue} ${unit}`}
-                          position="insideTopRight"
-                          fill={CHART_GOLD}
-                          className="text-[10px]"
-                        />
-                      </ReferenceLine>
-                    )}
-                    <Area
-                      type="monotone"
-                      dataKey={metric}
-                      stroke={CHART_STROKE}
-                      strokeWidth={CHART_STROKE_WIDTH}
-                      fill={`url(#${ACCENT_FILL_ID})`}
-                      dot={{ r: 2, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
-                      activeDot={ACTIVE_DOT}
-                      connectNulls
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
+          <ExerciseProgressChart
+            rawPoints={rawPoints}
+            prs={exercisePRs}
+            unit={unit}
+            metrics={PROGRESS_METRICS}
+            metric={metric}
+            onMetricChange={setMetric}
+            range={range}
+            onRangeChange={setRange}
+          />
         </section>
       )}
     </div>
