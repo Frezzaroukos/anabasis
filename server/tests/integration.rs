@@ -207,6 +207,90 @@ async fn disable_user_kills_session() {
     );
 }
 
+/// Item #4 του backlog: auth/admin hardening. Ένας admin δεν πρέπει να
+/// μπορεί να απενεργοποιήσει τον ΔΙΚΟ ΤΟΥ λογαριασμό — αυτό θα τον
+/// αποσύνδεε άμεσα (disable σκοτώνει sessions), χωρίς κανέναν να το
+/// αναστρέψει αν έτυχε να είναι ο μοναδικός admin.
+#[tokio::test]
+async fn disable_user_rejects_self_disable() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+
+    let (_, admin_body) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = admin_body["token"].as_str().unwrap().to_string();
+    let admin_id = admin_body["account"]["id"].as_str().unwrap().to_string();
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{admin_id}/disable"),
+        Some(&admin_token),
+        Some(json!({ "disabled": true })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "self_disable");
+
+    // Το δικό του token μένει έγκυρο — τίποτα δεν άλλαξε.
+    let (status, _) = call(&app, "GET", "/api/me", Some(&admin_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+/// Με 2 admins επιτρέπεται ο ένας να απενεργοποιήσει τον άλλον (ο ενεργών
+/// admin μένει πάντα ενεργός μετά — δεν αδειάζει ποτέ). Μόλις μείνει ΜΟΝΟΣ,
+/// ο ίδιος self-disable guard τον εμποδίζει να απενεργοποιήσει τον εαυτό
+/// του — στην πράξη ο self-disable guard ήδη καλύπτει το "last admin"
+/// invariant (κανένα endpoint δεν αφαιρεί admin χωρίς disable_user, κι ο
+/// ενεργών είναι πάντα ο ίδιος ο admin), το last_admin check στο admin.rs
+/// μένει ως defense-in-depth για μελλοντικά admin-management endpoints.
+#[tokio::test]
+async fn disable_user_rejects_disabling_last_active_admin() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+
+    let (_, admin_body) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_id = admin_body["account"]["id"].as_str().unwrap().to_string();
+
+    let (_, second_body) = signup(&app, "second@example.com", "correcthorsebattery").await;
+    let second_token = second_body["token"].as_str().unwrap().to_string();
+    let second_id = second_body["account"]["id"].as_str().unwrap().to_string();
+
+    // Ο second γίνεται ΚΙ αυτός admin (claim_admin) ώστε να υπάρχουν δύο.
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/auth/claim_admin",
+        Some(&second_token),
+        Some(json!({ "code": "test-admin-code" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Ο second (τώρα admin) απενεργοποιεί τον πρώτο — δύο admins, επιτρέπεται.
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{admin_id}/disable"),
+        Some(&second_token),
+        Some(json!({ "disabled": true })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "με 2 admins επιτρέπεται");
+
+    // Τώρα ο second είναι ο ΜΟΝΑΔΙΚΟΣ ενεργός admin — δεν επιτρέπεται να
+    // απενεργοποιήσει τον εαυτό του (self_disable) ΟΥΤΕ, θεωρητικά, κάποιον
+    // άλλον admin (δεν υπάρχει άλλος admin πια να δοκιμάσουμε, αλλά ο
+    // self_disable guard ήδη το καλύπτει).
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{second_id}/disable"),
+        Some(&second_token),
+        Some(json!({ "disabled": true })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "self_disable");
+}
+
 async fn signed_in_user(app: &Router) -> (String, String) {
     let (_, body) = signup(app, "syncuser@example.com", "correcthorsebattery").await;
     let token = body["token"].as_str().unwrap().to_string();

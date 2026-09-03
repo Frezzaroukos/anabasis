@@ -100,7 +100,8 @@ payload (που ήδη κουβαλά deleted_at).
 
 ### Admin (auth + role=admin, αλλιώς 403)
 - GET  /api/admin/users → `[ { id, email, role, disabled, created_at, last_sync_at, row_count } ]`
-- POST /api/admin/users/:id/disable  body `{ disabled: bool }` — disable σκοτώνει και τα sessions του
+- POST /api/admin/users/:id/disable  body `{ disabled: bool }` — disable σκοτώνει και τα sessions του.
+  400 `self_disable` (δεν απενεργοποιείς τον εαυτό σου) / `last_admin` (δεν αδειάζει ποτέ η λίστα admins) — μόνο στο `disabled: true`.
 - POST /api/admin/users/:id/reset_password body `{}` → 200 `{ temp_password }` (τυχαίο, ο χρήστης το αλλάζει μετά)
 - GET  /api/admin/stats → `{ accounts, rows, db_size_bytes, uptime_seconds }`
 

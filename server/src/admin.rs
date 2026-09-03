@@ -45,10 +45,51 @@ pub struct DisableRequest {
 
 pub async fn disable_user(
     State(state): State<AppState>,
-    _admin: AdminUser,
+    admin: AdminUser,
     Path(id): Path<String>,
     AppJson(body): AppJson<DisableRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // Δύο guards πριν αγγίξουμε τη βάση — και οι δύο μόνο στο disable, ποτέ
+    // στο re-enable (πάντα ασφαλές):
+    if body.disabled {
+        // (1) Ποτέ τον δικό σου λογαριασμό — αυτό θα σε αποσύνδεε ΑΜΕΣΩΣ
+        // (disable σκοτώνει sessions) χωρίς κανέναν άλλον admin να το
+        // αναστρέψει αν έτυχε να είσαι ο μοναδικός.
+        if id == admin.0.account_id {
+            return Err(AppError::bad_request(
+                "self_disable",
+                "Δεν μπορείς να απενεργοποιήσεις τον δικό σου λογαριασμό.",
+            ));
+        }
+
+        // (2) Ποτέ τον ΤΕΛΕΥΤΑΙΟ ενεργό admin. Σήμερα αυτό συμπίπτει πάντα με
+        // το (1) — ο ενεργών είναι ΠΑΝΤΑ ένας ενεργός admin (το εγγυάται ο
+        // AdminUser extractor) και κανένα άλλο endpoint δεν αφαιρεί admins,
+        // οπότε disable σε ΑΛΛΟΝ admin δεν αδειάζει ποτέ τη λίστα. Μένει ως
+        // explicit invariant/defense-in-depth για μελλοντικά admin-management
+        // endpoints (π.χ. demote/delete) που ίσως δεν περάσουν από εδώ.
+        let target_role: Option<String> = sqlx::query_scalar("SELECT role FROM accounts WHERE id = ?")
+            .bind(&id)
+            .fetch_optional(&state.pool)
+            .await?;
+        let Some(target_role) = target_role else {
+            return Err(AppError::not_found());
+        };
+        if target_role == "admin" {
+            let active_admins: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM accounts WHERE role = 'admin' AND disabled = 0",
+            )
+            .fetch_one(&state.pool)
+            .await?;
+            if active_admins <= 1 {
+                return Err(AppError::bad_request(
+                    "last_admin",
+                    "Δεν μπορείς να απενεργοποιήσεις τον τελευταίο ενεργό διαχειριστή.",
+                ));
+            }
+        }
+    }
+
     let result = sqlx::query("UPDATE accounts SET disabled = ? WHERE id = ?")
         .bind(body.disabled)
         .bind(&id)

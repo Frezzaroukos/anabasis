@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/api/auth';
-import { api, type AdminStats, type AdminUser } from '@/lib/api/client';
+import { api, ApiError, type AdminStats, type AdminUser } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { formatBytes, formatUptime } from './utils';
@@ -22,6 +22,12 @@ export function AdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [tempPasswordFor, setTempPasswordFor] = useState<{ id: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [toggleErrorKey, setToggleErrorKey] = useState<string | null>(null);
+
+  const ADMIN_ERROR_KEY_BY_CODE: Record<string, string> = {
+    self_disable: 'admin.errorSelfDisable',
+    last_admin: 'admin.errorLastAdmin',
+  };
 
   const isAdmin = auth?.account.role === 'admin';
 
@@ -45,11 +51,17 @@ export function AdminPage() {
 
   const onToggleDisabled = async (user: AdminUser) => {
     setBusyId(user.id);
+    setToggleErrorKey(null);
     try {
       await api.adminSetDisabled(user.id, !user.disabled);
       await load();
-    } catch {
+    } catch (err) {
       // Ο πίνακας απλά δεν αλλάζει — καμία τοπική προσποίηση επιτυχίας.
+      // self_disable/last_admin (server guards): μήνυμα ώστε ο admin να
+      // ξέρει ΓΙΑΤΙ έμεινε ίδιο, όχι σιωπηλή αποτυχία.
+      setToggleErrorKey(
+        err instanceof ApiError ? (ADMIN_ERROR_KEY_BY_CODE[err.code] ?? 'admin.errorGeneric') : 'admin.errorGeneric',
+      );
     } finally {
       setBusyId(null);
       setConfirmToggle(null);
@@ -92,6 +104,7 @@ export function AdminPage() {
       )}
 
       {loadError && <p className="text-sm text-destructive">{t('admin.loadError')}</p>}
+      {toggleErrorKey && <p className="text-sm text-destructive" role="alert">{t(toggleErrorKey)}</p>}
 
       <section className="overflow-x-auto rounded-lg bg-card">
         <table className="w-full text-left text-sm">
