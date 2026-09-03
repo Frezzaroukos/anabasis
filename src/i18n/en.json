@@ -689,7 +689,10 @@
     "copy": "Copy",
     "copied": "Copied!",
     "disableConfirmTitle": "Disable this account?",
-    "enableConfirmTitle": "Enable this account?"
+    "enableConfirmTitle": "Enable this account?",
+    "errorSelfDisable": "You can't disable your own account.",
+    "errorLastAdmin": "You can't disable the last active admin.",
+    "errorGeneric": "Something went wrong."
   },
   "templates": {
     "fullBody5x5": {
