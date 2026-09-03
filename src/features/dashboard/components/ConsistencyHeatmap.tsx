@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { getTrainingHeat } from '@/lib/db/queries';
 import { cn } from '@/lib/utils';
 import { SectionTitle } from '@/components/ui/Section';
+import { alignToWeekday, chunkIntoWeeks } from './heatmapMath';
 
 /**
  * Ημερολόγιο συνέπειας σε στυλ GitHub-contributions: 13 εβδομάδες × 7 ημέρες.
@@ -21,8 +22,8 @@ export function ConsistencyHeatmap() {
   const trainedCount = cells.filter((c) => c.trained).length;
   if (trainedCount === 0) return null;
 
-  const weeks: (typeof cells)[] = [];
-  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  // Ευθυγράμμιση σε πραγματικά όρια εβδομάδας (Δευτ…Κυρ) — βλ. heatmapMath.ts.
+  const weeks = chunkIntoWeeks(alignToWeekday(cells));
 
   return (
     <div className="rounded-xl bg-card p-4">
@@ -39,17 +40,23 @@ export function ConsistencyHeatmap() {
       <div className="flex gap-1 overflow-x-auto pb-0.5">
         {weeks.map((week, wi) => (
           <div key={wi} className="flex flex-col gap-1">
-            {week.map((c) => (
-              <span
-                key={c.date}
-                title={c.date}
-                className={cn(
-                  'h-3 w-3 rounded-[3px] border',
-                  c.trained ? 'border-transparent bg-primary' : 'border-border/60 bg-muted/30',
-                  c.hasPR && 'ring-1 ring-[hsl(var(--gold))] ring-offset-1 ring-offset-card',
-                )}
-              />
-            ))}
+            {week.map((c, di) =>
+              c ? (
+                <span
+                  key={c.date}
+                  title={c.date}
+                  className={cn(
+                    'h-3 w-3 rounded-[3px] border',
+                    c.trained ? 'border-transparent bg-primary' : 'border-border/60 bg-muted/30',
+                    c.hasPR && 'ring-1 ring-[hsl(var(--gold))] ring-offset-1 ring-offset-card',
+                  )}
+                />
+              ) : (
+                // Κενό padding-κελί πριν την πρώτη πραγματική μέρα — μόνο για
+                // ευθυγράμμιση γραμμής εβδομάδας, όχι δεδομένο.
+                <span key={`pad-${wi}-${di}`} aria-hidden className="h-3 w-3" />
+              ),
+            )}
           </div>
         ))}
       </div>
