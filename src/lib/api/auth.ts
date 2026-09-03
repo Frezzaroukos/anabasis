@@ -18,8 +18,8 @@ import {
   clearPendingOAuthToken,
   type StoredAuth,
 } from './client';
-import { migrateProfileUserId } from '../db/queries';
-import { getCurrentUserId } from '../db/session';
+import { createProfile, migrateProfileUserId } from '../db/queries';
+import { getCurrentUserId, setCurrentUserId } from '../db/session';
 import { fullResync } from '../sync';
 import type { Account } from './types';
 
@@ -85,8 +85,31 @@ export async function signup(email: string, password: string): Promise<Account> 
   return res.account;
 }
 
+/**
+ * Shared-device protection: μετά το logout, ΔΕΝ μένει «ενεργό» το τοπικό
+ * προφίλ αυτού του λογαριασμού — μεταπηδάμε σε ένα φρέσκο, άδειο προφίλ.
+ *
+ * Χωρίς αυτό υπάρχουν δύο διαρροές σε κοινόχρηστη συσκευή: (α) τα δεδομένα
+ * του λογαριασμού που μόλις αποσυνδέθηκε παραμένουν πλήρως ορατά (Dashboard/
+ * Calendar/History...) σε όποιον χρησιμοποιήσει επόμενος τη συσκευή, και
+ * (β) αν αυτός ο επόμενος συνδεθεί με ΔΙΚΟ ΤΟΥ, διαφορετικό λογαριασμό, το
+ * bindLocalProfileAndResync/migrateProfileUserId δουλεύει πάνω στο *τρέχον*
+ * τοπικό προφίλ της συσκευής (`getCurrentUserId()`) — θα «δώριζε» σιωπηλά
+ * τα προσωπικά δεδομένα του πρώτου λογαριασμού μέσα στον δεύτερο, μόνιμα,
+ * με το επόμενο push. Το reload είναι απαραίτητο ώστε τα liveQueries (που
+ * παρακολουθούν πίνακες, όχι τη μεταβλητή session) να μη δείξουν στιγμιαία
+ * τα παλιά δεδομένα.
+ */
 export async function logout(): Promise<void> {
-  await api.logout();
+  try {
+    await api.logout();
+  } catch {
+    // client.ts καθάρισε ήδη το τοπικό token ό,τι κι αν έγινε το δίκτυο —
+    // συνεχίζουμε το τοπικό logout ούτως ή άλλως.
+  }
+  const fresh = await createProfile('');
+  setCurrentUserId(fresh.id);
+  if (typeof window !== 'undefined') window.location.reload();
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
