@@ -7,7 +7,7 @@
 **Weighted-calisthenics & skill-progression tracker.**
 Offline-first PWA · native desktop · optional accounts & sync · TypeScript strict · bilingual (EN/EL)
 
-![tests](https://img.shields.io/badge/tests-310%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-360%20passing-brightgreen)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![backend](https://img.shields.io/badge/backend-Rust%2FAxum-orange)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -39,7 +39,7 @@ pistol squats) **and** skill progressions.
 |---|---|
 | **Skill ladders** | 8 skills, 4–6 steps each. Locked steps stay **visible** — you see the road, not just your rung. The active ladder leads the home screen. |
 | **Calendar-centric** | The calendar is the home of logging: pick a program day (*upper*, *legs & core*, …) or start an ad-hoc session on any date. Set-by-set logging with buttons — separate bodyweight + added weight, RPE/RIR/tempo, warm-up and failure flags, quick-log parsing (`80 5,4,3,2`). |
-| **Goals in your own terms** | A goal is four independent axes — *what you count × how much × over what window × for which activity or exercise*. "4 sessions a week", "20 km a month" and "100 pull-up sets a month" are the same feature, not three. Wired to programs, exercises and live progress. |
+| **Goals in your own terms** | Sessions · volume · sets · reps · distance · duration, plus **skill mastery**, a **target weight** ("70 kg weighted pull-up"), and **custom trackers** you invent on the spot ("cold showers 30/week") — windowed or milestone, wired to programs, exercises, skills and live progress. |
 | **PR tracking** | 8 PR types across strength and non-set activities (distance, duration, pace). Warm-ups excluded. e1RM via Epley/Brzycki. |
 | **Sync when you want it** | Local-first by default. Create an account and your training follows you to any device and to the desktop app — row-level last-write-wins sync over a Rust backend. Full JSON export/import stays; nothing is locked in. |
 | **Customisable home** | Hide and reorder every card. A hidden card never mounts and never queries. |
@@ -57,12 +57,14 @@ protects against restore-desync. Auth is argon2id + opaque bearer tokens in a
 session table (not JWTs — revocation matters; not cookies — the Tauri
 production-cookie trap).
 
-**Schema migrations, v1 → v13.** Each version ships its own `.upgrade()` with
+**Schema migrations, v1 → v14.** Each version ships its own `.upgrade()` with
 backfills; all additive, no data loss. v9 backfilled existing goals to *rolling*
 windows because that is how they were already counting — migrating them to
 *calendar* would have silently changed the meaning of a goal already set. v12–13
 grew the calendar-centric structure: program days, workout↔program links, and a
-weight dimension on skill steps (skills and exercises are now one library).
+weight dimension on skill steps (skills and exercises are now one library). v14
+added first-class custom trackers (append-only entries, so a manual counter
+syncs cleanly instead of losing increments to last-write-wins).
 
 **Components never touch `db.*`.** All access goes through `lib/db/queries.ts`
 and `lib/db/goals.ts`. `lib/domain/` is pure functions (e1rm, pr, volume) with
@@ -72,7 +74,7 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 310 tests concentrated on migrations, the goal
+**Testing where it pays.** 360 tests concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
 Monday" does not depend on the day CI runs), PR detection, the card-order
 resolver, and the sync engine (push/pull cursors, epoch handling, last-write-wins
@@ -109,7 +111,7 @@ i18next · Vitest
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 310 tests
+npm test         # 360 tests
 npm run build    # production + service worker
 ```
 
@@ -135,10 +137,12 @@ node scripts/gen-brand-assets.mjs   # favicon/PWA/OG from one source of truth
 
 ## Status
 
-Working: calendar-centric logging, skill ladders (merged into one exercise
-library), goals wired to programs/exercises/progress, PR tracking, body metrics,
-programs with days, progress charts, export/import, i18n, PWA, multiple local
-profiles.
+Working: calendar-centric logging with magnitude day-dots and weekly
+program-adherence, skill ladders (merged into one exercise library), the full
+goal family (sessions/volume/sets/reps/distance/duration, skill mastery, target
+weight, custom trackers), PR tracking, body metrics, multi-day programs with
+reuse-as-template, a unified exercise-progress chart, export/import, i18n, PWA,
+multiple local profiles, accessible dialogs + gym-sized touch targets.
 
 Also working: native desktop app via Tauri 2 (`src-tauri/`) — the same frontend
 in a WebKit window, PWA layer off; and the **Rust/Axum backend** (`server/`) —
