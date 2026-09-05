@@ -331,7 +331,10 @@
     "adHocHint": "No plan — add exercises as you go.",
     "adHocStart": "Start",
     "streakDays": "{{count}} day streak",
-    "magnitudeHint": "Bigger dot = bigger session"
+    "magnitudeHint": "Bigger dot = bigger session",
+    "dayExercises": "{{count}} exercise",
+    "dayExercises_other": "{{count}} exercises",
+    "startBlocked": "A workout is already in progress — finish it first."
   },
   "body": {
     "weight": "Weight",

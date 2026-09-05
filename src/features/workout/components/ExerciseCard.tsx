@@ -10,7 +10,7 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Exercise, SetEntry, SetType } from '@/lib/db/types';
+import type { Exercise, ProgramExercise, SetEntry, SetType } from '@/lib/db/types';
 import { CATEGORY_DOT, resolveSetGroup, type SetChain } from '../utils';
 import { parseQuickSets } from '../quickLog';
 import type { SetIntensity } from './AddSetInline';
@@ -30,6 +30,10 @@ interface ExerciseCardProps {
   onChainChange: (next: SetChain | null) => void;
   /** Ειδοποιεί ότι καταγράφηκε νέο σετ — π.χ. για auto-start του rest timer. */
   onSetLogged?: () => void;
+  /** Η γραμμή του προγράμματος για αυτή την άσκηση — `null` εκτός πλάνου. */
+  target?: ProgramExercise | null;
+  /** Ξεκίνα κλειστή παρόλο που δεν έχει σετ (άσκηση πλάνου, όχι δική σου επιλογή τώρα). */
+  startCollapsed?: boolean;
 }
 
 export function ExerciseCard({
@@ -42,17 +46,41 @@ export function ExerciseCard({
   chain,
   onChainChange,
   onSetLogged,
+  target = null,
+  startCollapsed = false,
 }: ExerciseCardProps) {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
-  const [adding, setAdding] = useState(sets.length === 0);
+  const [adding, setAdding] = useState(sets.length === 0 && !startCollapsed);
   const [setType, setSetType] = useState<SetType>('normal');
   const [quickMode, setQuickMode] = useState(false);
   const [quickText, setQuickText] = useState('');
   const [quickBusy, setQuickBusy] = useState(false);
   // Πόσα ρεκόρ έσπασε το πιο πρόσφατο σετ — για τη γιορτή (χρυσό pulse).
   const [prCount, setPrCount] = useState(0);
+
+  /**
+   * «3 × 8 · 60 kg» — μόνο ό,τι ορίζει πραγματικά το πρόγραμμα. Κενά πεδία
+   * παραλείπονται αντί να γίνουν «0», που θα ήταν ψεύτικος στόχος.
+   */
+  const targetLabel = (() => {
+    if (!target) return null;
+    const reps =
+      target.target_sets != null && target.target_reps != null
+        ? `${target.target_sets} × ${target.target_reps}`
+        : target.target_sets != null
+          ? `${target.target_sets} × ${t('workout.sets')}`
+          : null;
+    const hold =
+      target.target_hold_seconds != null ? `${target.target_hold_seconds}${t('common.sec')}` : null;
+    const load =
+      target.target_weight_kg != null
+        ? formatWeight(target.target_weight_kg, unit, { withUnit: true })
+        : null;
+    const parts = [reps ?? hold, load].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  })();
 
   const celebrate = (n: number) => {
     if (n <= 0) return;
@@ -153,7 +181,15 @@ export function ExerciseCard({
             className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[exercise.category])}
             aria-hidden
           />
-          <span className="truncate text-sm font-medium">{exercise.name}</span>
+          <span className="min-w-0 truncate text-sm font-medium">{exercise.name}</span>
+          {/* Ο στόχος του προγράμματος, δίπλα στο όνομα: χωρίς αυτόν η δομή
+              έφτανε ως εδώ (σωστή άσκηση, σωστή σειρά) αλλά το «πόσα» έμενε
+              στο πρόγραμμα — έπρεπε να το θυμάσαι ή να γυρίσεις πίσω. */}
+          {targetLabel && (
+            <span className="shrink-0 rounded-full bg-elevated px-2 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+              {targetLabel}
+            </span>
+          )}
           {/* Γιορτή ρεκόρ: το status chip μένει (a11y — ανακοινώνεται), το
               «wow» πλέον είναι το RungCelebration δίπλα (σκαλί-σκαλί + particles). */}
           {prCount > 0 && (
