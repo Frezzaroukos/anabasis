@@ -11,7 +11,7 @@
     "calendar": "Calendar",
     "home": "Home",
     "programs": "Programs",
-    "profile": "Profile",
+    "profile": "Device profiles",
     "more": "More",
     "goals": "Goals",
     "back": "Back",
@@ -261,7 +261,25 @@
     "restAutoStart": "Auto-start rest timer",
     "restAutoStartHint": "Starts counting down as soon as you log a set.",
     "customAccent": "Custom colour",
-    "skillSteps": "Skill steps"
+    "skillSteps": "Skill steps",
+    "hubAccountGroup": "Account & profiles",
+    "hubAppGroup": "App",
+    "hubDataGroup": "Data",
+    "hubAboutGroup": "About",
+    "account": "Account",
+    "accountDesc": "Your cloud account. It syncs the active device profile across your devices. Everything works without it — offline, on this device.",
+    "notSignedIn": "Not signed in",
+    "deviceProfiles": "Device profiles",
+    "appearance": "Appearance",
+    "appearanceDesc": "Theme, accent colour, language, and what your home screen shows.",
+    "training": "Training",
+    "trainingDesc": "Rest timer and the units you log in.",
+    "data": "Data & backups",
+    "dataDesc": "What's stored on this device, and how to take it with you.",
+    "about": "About & share",
+    "aboutDesc": "What Anabasis is, who made it, and how to share it.",
+    "storageNote": "Everything is stored in this browser (IndexedDB). Clearing site data deletes it — export a backup first.",
+    "dataOfProfile": "Counts for the active device profile only."
   },
   "common": {
     "save": "Save",
@@ -490,8 +508,8 @@
     "madeBy": "Made by"
   },
   "profile": {
-    "title": "Profile",
-    "deviceOnly": "Profiles on this device. No password, no sync across devices yet.",
+    "title": "Profiles on this device",
+    "deviceOnly": "Separate sets of data on this one device — useful if you share it. Profiles have no password. Your account syncs only the active one.",
     "unnamed": "Unnamed profile",
     "active": "active",
     "switch": "Switch",
@@ -504,7 +522,9 @@
     "prs": "PRs",
     "deleteConfirmTitle": "Delete this profile and all its data?",
     "deleteConfirmDesc": "{{workouts}} workouts and {{prs}} records will be permanently deleted. This cannot be undone.",
-    "syncHint": "Data lives in this browser only. Clearing browser data deletes it. Cross-device sync is coming."
+    "syncHint": "Without an account this data lives only in this browser. Clearing browser data deletes it.",
+    "vsAccount": "Looking for your email, password or sync? That is your account",
+    "syncedByAccount": "synced"
   },
   "insights": {
     "title": "Insights",
@@ -679,7 +699,8 @@
     "adminCodePlaceholder": "Enter the admin code",
     "adminClaimed": "You are now an admin.",
     "errorBadCode": "Wrong code.",
-    "continueWithGoogle": "Continue with Google"
+    "continueWithGoogle": "Continue with Google",
+    "vsProfiles": "Sharing this device with someone? Set up device profiles"
   },
   "admin": {
     "title": "Admin",

@@ -51,12 +51,20 @@ function Field({
  * Κάρτα λογαριασμού & sync στις Ρυθμίσεις — server/API-CONTRACT.md.
  * Χωρίς λογαριασμό: login/signup. Με λογαριασμό: κατάσταση sync + logout.
  */
-export function AccountCard() {
+export function AccountCard({ showTitle = true }: { showTitle?: boolean } = {}) {
   const { t } = useTranslation();
   const auth = useAuth();
 
-  if (!auth) return <SignedOutForm />;
-  return <SignedInPanel accountEmail={auth.account.email} role={auth.account.role} title={t('account.title')} />;
+  // Μέσα στη σελίδα /settings/account ο τίτλος τον κουβαλά η επικεφαλίδα της
+  // σελίδας — δύο φορές «Λογαριασμός» δεν προσθέτει τίποτα.
+  if (!auth) return <SignedOutForm showTitle={showTitle} />;
+  return (
+    <SignedInPanel
+      accountEmail={auth.account.email}
+      role={auth.account.role}
+      title={showTitle ? t('account.title') : null}
+    />
+  );
 }
 
 /**
@@ -86,7 +94,7 @@ function useGoogleOAuthEnabled(): boolean {
   return enabled;
 }
 
-function SignedOutForm() {
+function SignedOutForm({ showTitle }: { showTitle: boolean }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -119,9 +127,11 @@ function SignedOutForm() {
 
   return (
     <section className="rounded-lg bg-card p-4">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        {t('account.title')}
-      </p>
+      {showTitle && (
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {t('account.title')}
+        </p>
+      )}
       <div className="mb-3 flex gap-2">
         {(['login', 'signup'] as const).map((m) => (
           <button
@@ -200,7 +210,7 @@ function SignedInPanel({
 }: {
   accountEmail: string;
   role: 'user' | 'admin';
-  title: string;
+  title: string | null;
 }) {
   const { t, i18n } = useTranslation();
   const sync = useSyncStatus();
@@ -274,11 +284,13 @@ function SignedInPanel({
   return (
     <section className="rounded-lg bg-card p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {title}
-        </p>
+        {title && (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {title}
+          </p>
+        )}
         {role === 'admin' && (
-          <span className="flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+          <span className="ml-auto flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
             <ShieldCheck className="h-3 w-3" aria-hidden />
             {t('account.roleAdmin')}
           </span>
