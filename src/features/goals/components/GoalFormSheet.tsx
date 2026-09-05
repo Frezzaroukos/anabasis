@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createGoal, updateGoal, getSkillStepStats, MILESTONE_METRICS } from '@/lib/db/goals';
 import { createTracker, listTrackers } from '@/lib/db/trackers';
-import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
+import { listActivities, listExercises, listSkills, createExercise } from '@/lib/db/queries';
 import {
   BUILTIN_GOAL_METRICS,
   BUILTIN_GOAL_PERIODS,
@@ -93,6 +93,16 @@ export function GoalFormSheet({
   const exerciseMatches = exercises
     .filter((e) => e.name.toLowerCase().includes(exerciseQuery.trim().toLowerCase()))
     .slice(0, 8);
+  const exerciseExact = exercises.some(
+    (e) => e.name.toLowerCase() === exerciseQuery.trim().toLowerCase(),
+  );
+  // «Άσκηση που θα κάνεις»: αν δεν υπάρχει με αυτό το όνομα, φτιάξ' την επί τόπου
+  // (μπαίνει μόνιμα στη βιβλιοθήκη) και διάλεξέ την — ίδιο pattern με trackers/logger.
+  const createExerciseNow = async (name: string) => {
+    const ex = await createExercise({ name: name.trim() });
+    setExerciseId(ex.id);
+    setExerciseQuery('');
+  };
   const selectedSkill = skills.find((s) => s.id === skillId) ?? null;
   const selectedTracker = trackers.find((tr) => tr.id === trackerId) ?? null;
   const trackerMatches = trackers.filter((tr) =>
@@ -413,8 +423,16 @@ export function GoalFormSheet({
                         </button>
                       </li>
                     ))}
-                    {exerciseMatches.length === 0 && (
-                      <li className="px-3 py-2 text-sm text-muted-foreground">{t('progress.noMatch')}</li>
+                    {!exerciseExact && (
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => void createExerciseNow(exerciseQuery)}
+                          className="w-full px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-accent"
+                        >
+                          {t('workout.useTyped', { name: exerciseQuery.trim() })}
+                        </button>
+                      </li>
                     )}
                   </ul>
                 )}
