@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useBackToClose } from '@/hooks/useBackToClose';
 
 interface BottomSheetProps {
   open: boolean;
@@ -20,6 +21,7 @@ export function BottomSheet({
 }: BottomSheetProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, open);
+  useBackToClose(open, onClose);
 
   React.useEffect(() => {
     if (!open) return;
