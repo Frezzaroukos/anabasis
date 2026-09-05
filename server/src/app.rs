@@ -173,6 +173,7 @@ pub fn router(state: AppState) -> Router {
         .route("/users", get(admin::list_users))
         .route("/users/{id}/disable", post(admin::disable_user))
         .route("/users/{id}/reset_password", post(admin::reset_password))
+        .route("/users/{id}/rows", get(admin::user_rows))
         .route("/stats", get(admin::stats));
 
     let allow_origin: Vec<HeaderValue> = ALLOWED_ORIGINS

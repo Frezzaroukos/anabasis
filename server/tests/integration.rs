@@ -1147,3 +1147,125 @@ async fn social_remove_friend_clears_edge() {
     let (_, fb) = call(&app, "GET", "/api/social/friends", Some(&b), None).await;
     assert_eq!(fb.as_array().unwrap().len(), 0);
 }
+
+/// Το `db_size_bytes` ήταν `metadata(main).unwrap_or(0)` ενώ η βάση τρέχει σε
+/// WAL mode: το σκέτο main αρχείο υποτιμά, και το `unwrap_or(0)` έλεγε ψέματα
+/// («0 bytes») όταν το αρχείο δεν διαβαζόταν. Τώρα αθροίζει τα sidecars και
+/// γυρνά `null` αντί για ψεύτικο μηδέν.
+#[tokio::test]
+async fn admin_stats_reports_account_breakdown_and_real_db_size() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+
+    let (_, admin_body) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = admin_body["token"].as_str().unwrap().to_string();
+
+    let (_, user_body) = signup(&app, "target@example.com", "correcthorsebattery").await;
+    let user_id = user_body["account"]["id"].as_str().unwrap().to_string();
+
+    let (status, body) = call(&app, "GET", "/api/admin/stats", Some(&admin_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["accounts"], 2);
+    assert_eq!(body["active_accounts"], 2);
+    assert_eq!(body["disabled_accounts"], 0);
+    assert_eq!(body["admins"], 1);
+    // Δύο signups = δύο ενεργά sessions.
+    assert_eq!(body["sessions"], 2);
+    assert!(
+        body["db_size_bytes"].as_i64().unwrap() > 0,
+        "το μέγεθος της βάσης πρέπει να είναι πραγματικός αριθμός, πήρα {}",
+        body["db_size_bytes"]
+    );
+
+    // Μετά το disable μετακινείται από active σε disabled, και το session του
+    // χρήστη έχει σκοτωθεί.
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{user_id}/disable"),
+        Some(&admin_token),
+        Some(json!({ "disabled": true })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (_, body) = call(&app, "GET", "/api/admin/stats", Some(&admin_token), None).await;
+    assert_eq!(body["accounts"], 2);
+    assert_eq!(body["active_accounts"], 1);
+    assert_eq!(body["disabled_accounts"], 1);
+    assert_eq!(body["sessions"], 1);
+}
+
+/// Η λίστα λέει «πόσες εγγραφές»· αυτό λέει «τι εγγραφές». Χωρίς το breakdown
+/// ένας admin δεν μπορεί να δει ότι λείπει ολόκληρη κατηγορία από το sync ενός
+/// χρήστη.
+#[tokio::test]
+async fn admin_user_rows_breaks_down_by_table() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+
+    let (_, admin_body) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = admin_body["token"].as_str().unwrap().to_string();
+
+    let (_, user_body) = signup(&app, "target@example.com", "correcthorsebattery").await;
+    let user_token = user_body["token"].as_str().unwrap().to_string();
+    let user_id = user_body["account"]["id"].as_str().unwrap().to_string();
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&user_token),
+        Some(json!({
+            "changes": [
+                { "tbl": "goals", "rows": [
+                    { "id": "g1", "user_id": user_id, "v": 1 },
+                    { "id": "g2", "user_id": user_id, "v": 1, "deleted_at": "2026-01-01T00:00:00Z" }
+                ] },
+                { "tbl": "workouts", "rows": [
+                    { "id": "w1", "user_id": user_id, "v": 1 }
+                ] }
+            ]
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, body) = call(
+        &app,
+        "GET",
+        &format!("/api/admin/users/{user_id}/rows"),
+        Some(&admin_token),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let rows = body.as_array().unwrap();
+    // Ταξινομημένα φθίνουσα κατά πλήθος → goals (2) πριν από workouts (1).
+    assert_eq!(rows[0]["tbl"], "goals");
+    assert_eq!(rows[0]["row_count"], 2);
+    assert_eq!(rows[0]["deleted_count"], 1);
+    assert_eq!(rows[1]["tbl"], "workouts");
+    assert_eq!(rows[1]["row_count"], 1);
+    assert_eq!(rows[1]["deleted_count"], 0);
+
+    // Άγνωστο id = 404, ΟΧΙ «άδειος χρήστης».
+    let (status, _) = call(
+        &app,
+        "GET",
+        "/api/admin/users/does-not-exist/rows",
+        Some(&admin_token),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    // Μη-admin δεν το βλέπει καθόλου.
+    let (status, _) = call(
+        &app,
+        "GET",
+        &format!("/api/admin/users/{user_id}/rows"),
+        Some(&user_token),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}

@@ -21,17 +21,65 @@ pub struct AdminUserRow {
     created_at: String,
     last_sync_at: Option<String>,
     row_count: i64,
+    /// Ενεργά (μη ληγμένα) sessions = πόσες συσκευές είναι συνδεδεμένες τώρα.
+    sessions: i64,
 }
 
 pub async fn list_users(
     State(state): State<AppState>,
     _admin: AdminUser,
 ) -> Result<impl IntoResponse, AppError> {
+    // Τα timestamps είναι RFC3339 UTC με κλάσματα δευτερολέπτου και στις δύο
+    // πλευρές (util::iso_in / util::now_iso), οπότε η λεξικογραφική σύγκριση
+    // ταυτίζεται με τη χρονική. Είναι μετρητής οθόνης, όχι auth απόφαση — η
+    // πραγματική λήξη ελέγχεται με parse_iso στο auth.rs.
     let rows = sqlx::query_as::<_, AdminUserRow>(
         "SELECT a.id, a.email, a.role, a.disabled, a.created_at, a.last_sync_at,
-                (SELECT COUNT(*) FROM sync_rows sr WHERE sr.account_id = a.id) AS row_count
+                (SELECT COUNT(*) FROM sync_rows sr WHERE sr.account_id = a.id) AS row_count,
+                (SELECT COUNT(*) FROM sessions s
+                  WHERE s.account_id = a.id AND s.expires_at > ?) AS sessions
          FROM accounts a ORDER BY a.created_at",
     )
+    .bind(crate::util::now_iso())
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(rows))
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct TableBreakdownRow {
+    tbl: String,
+    row_count: i64,
+    deleted_count: i64,
+}
+
+/// GET /api/admin/users/{id}/rows — ανάλυση των sync_rows ενός λογαριασμού ανά
+/// πίνακα. Ο συνολικός αριθμός στη λίστα λέει «πόσα», αυτό λέει «τι» — η μόνη
+/// πληροφορία που δείχνει αν το sync ενός χρήστη είναι όντως υγιές ή αν λείπει
+/// ολόκληρη κατηγορία δεδομένων.
+pub async fn user_rows(
+    State(state): State<AppState>,
+    _admin: AdminUser,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    // Χωρίς αυτό, ένα λάθος id θα έδειχνε «άδειος χρήστης» αντί για «δεν υπάρχει».
+    let exists: Option<i64> = sqlx::query_scalar("SELECT 1 FROM accounts WHERE id = ?")
+        .bind(&id)
+        .fetch_optional(&state.pool)
+        .await?;
+    if exists.is_none() {
+        return Err(AppError::not_found());
+    }
+
+    let rows = sqlx::query_as::<_, TableBreakdownRow>(
+        "SELECT tbl,
+                COUNT(*) AS row_count,
+                COALESCE(SUM(deleted), 0) AS deleted_count
+         FROM sync_rows WHERE account_id = ?
+         GROUP BY tbl ORDER BY row_count DESC, tbl",
+    )
+    .bind(&id)
     .fetch_all(&state.pool)
     .await?;
 
@@ -153,30 +201,66 @@ pub async fn reset_password(
 #[derive(Serialize)]
 pub struct StatsResponse {
     accounts: i64,
+    active_accounts: i64,
+    disabled_accounts: i64,
+    admins: i64,
+    /// Ενεργά sessions συνολικά — «πόσες συσκευές είναι συνδεδεμένες τώρα».
+    sessions: i64,
     rows: i64,
-    db_size_bytes: i64,
+    /// `null` όταν το αρχείο δεν διαβάζεται· ΟΧΙ ψεύτικο 0 (no fake data).
+    db_size_bytes: Option<i64>,
     uptime_seconds: i64,
+}
+
+/// Μέγεθος βάσης = main + `-wal` + `-shm`.
+///
+/// Τρέχουμε σε WAL mode (db.rs), οπότε το σκέτο main αρχείο ΥΠΟΤΙΜΑ: το WAL
+/// κρατά τις πρόσφατες εγγραφές —συχνά πολλά MB— μέχρι το επόμενο checkpoint.
+/// Αν δεν διαβάζεται καν το main, γυρνάμε `None`: καλύτερα «—» παρά ψευδές 0.
+fn measure_db_size(db_path: &std::path::Path) -> Option<i64> {
+    let main = std::fs::metadata(db_path).ok()?.len() as i64;
+    let sidecars: i64 = ["-wal", "-shm"]
+        .iter()
+        .filter_map(|suffix| {
+            let mut path = db_path.as_os_str().to_os_string();
+            path.push(suffix);
+            std::fs::metadata(std::path::PathBuf::from(path)).ok()
+        })
+        .map(|meta| meta.len() as i64)
+        .sum();
+    Some(main + sidecars)
 }
 
 pub async fn stats(
     State(state): State<AppState>,
     _admin: AdminUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let accounts: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM accounts")
+    // Ένα query για τους λογαριασμούς αντί για τέσσερα σαρώματα του πίνακα.
+    let (accounts, disabled_accounts, admins): (i64, i64, i64) = sqlx::query_as(
+        "SELECT COUNT(*),
+                COALESCE(SUM(disabled), 0),
+                COALESCE(SUM(role = 'admin'), 0)
+         FROM accounts",
+    )
+    .fetch_one(&state.pool)
+    .await?;
+    let sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE expires_at > ?")
+        .bind(crate::util::now_iso())
         .fetch_one(&state.pool)
         .await?;
     let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_rows")
         .fetch_one(&state.pool)
         .await?;
-    let db_size_bytes = std::fs::metadata(&state.db_path)
-        .map(|m| m.len() as i64)
-        .unwrap_or(0);
     let uptime_seconds = (now() - state.started_at).whole_seconds().max(0);
 
     Ok(Json(StatsResponse {
         accounts,
+        active_accounts: accounts - disabled_accounts,
+        disabled_accounts,
+        admins,
+        sessions,
         rows,
-        db_size_bytes,
+        db_size_bytes: measure_db_size(&state.db_path),
         uptime_seconds,
     }))
 }
