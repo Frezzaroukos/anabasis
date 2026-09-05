@@ -94,15 +94,21 @@ volume, true bw+added load) · body (weight/bodyfat/steps, feeds exercise load) 
 accounts + cross-device sync (real LWW, unique admin) · a11y/touch (pinch-zoom,
 44px targets, focus-trap dialogs).
 
+**Ready (νέο):** **friends + ranking + leaderboard** («Your Ascent» social) —
+dedicated `/api/social` (social.rs, migration 0004, ΟΧΙ sync_rows), server-
+authoritative XP/level/tier, SQL-enforced privacy (share_profile ή accepted-
+friend), username handles, aggregate-only snapshots. UI ΜΕΣΑ στο /achievements
+(FriendsSection). · **mobile UX**: 16px inputs (no iOS zoom), overscroll-behavior
+(no pull-to-refresh reload), hardware-back κλείνει sheet/dialog (useBackToClose).
+
 **Partial:** Google sign-in (server scaffold, CSRF-guarded, ΔΕΝ είναι wired σε live
 Google client).
 
-**Planned:** friends & leaderboards (το account model το σηκώνει, το social surface
-ΔΕΝ υπάρχει) · native mobile store builds (τώρα PWA install) · nav back/forward
-buttons · multi-way signup/social login · share-link+portfolio+QR+creator credit ·
-pro settings redesign.
+**Planned:** native mobile store builds (τώρα PWA install) · nav back/forward
+buttons (partner lane) · multi-way signup/social login · share-link+portfolio+QR+
+creator credit (ShareCard έγινε) · pro settings redesign (partner lane, in-flight).
 
-**360 tests green · tsc -b clean · 114+ commits.**
+**369 client + 38 server tests green · tsc -b clean · 120+ commits.**
 
 ---
 
@@ -179,16 +185,20 @@ quota**. Postgres/Supabase ΜΟΝΟ αν χτυπήσεις write contention (α
 
 Προτεραιότητα ↓ (godmode: πιάσε top-down, front-by-front, test+deploy):
 
-1. **Mobile UX issues** που εντόπισε ο Aggelos στο κινητό (ρώτα/δες ποια ακριβώς).
+1. ~~**Mobile UX issues**~~ ✅ (2026-09-05) — 16px inputs, overscroll-behavior,
+   hardware-back→close-overlay (useBackToClose). Commit 4d11a1e.
 2. **Navigation back/forward buttons** — ease of use στο app (κάνε έρευνα σε
    mobile-web nav patterns· η ιστορία του router υπάρχει, θέλει visible controls +
    ίσως gesture). Προσοχή σε PWA/standalone (δεν έχει browser back).
 3. **Multi-way signup + social login** — Google (wire το scaffold σε live client),
    Apple, magic-link/email. Επαγγελματικό auth UX «όπως άλλα apps».
-4. **Friends + ranking + «Your Ascent» development** — add φίλους, δες το acc τους,
-   leaderboard. Το «Your Ascent» (altitude gamification) είναι καλή βάση αλλά θέλει
-   πολλή ανάπτυξη (levels/XP/badges/social). Schema: friendships table + shared/
-   public profile view (ΠΡΟΣΟΧΗ privacy: τι μοιράζεται).
+4. ~~**Friends + ranking + «Your Ascent»**~~ ✅ (2026-09-05) — friendships (directed
+   edge), aggregate profile snapshot, leaderboard (friends+global), username handles,
+   share-profile opt-in, SQL-enforced privacy, server-authoritative XP/level/tier.
+   Backend `server/src/social.rs` + migration 0004· UI στο /achievements
+   (FriendsSection). Commits 8a85ed2 (server) + f70fdbf (client). **Επόμενο βήμα αν
+   θέλουμε βάθος:** friends_cache/leaderboard_cache offline (Dexie v15), public
+   profile page /u/{username}, badges στο leaderboard row.
 5. **Per-device frontend+backend** — να είναι κατάλληλο για κάθε device (responsive
    ήδη· βελτίωση mobile-native feel). Ο Aggelos μπαίνει από browser τώρα (αυτός έχει
    και το local desktop). Στόχος: κάθε χρήστης, οποιοδήποτε device, καθαρά.
