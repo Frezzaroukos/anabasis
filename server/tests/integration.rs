@@ -920,3 +920,230 @@ async fn google_oauth_start_issued_state_is_single_use() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "invalid_state");
 }
+
+// ── Social: φιλίες, aggregate προφίλ, leaderboard, privacy ─────────────────────
+
+async fn set_username(app: &Router, token: &str, username: &str) -> (StatusCode, Value) {
+    call(
+        app,
+        "POST",
+        "/api/social/profile",
+        Some(token),
+        Some(json!({ "username": username })),
+    )
+    .await
+}
+
+async fn publish_stats(app: &Router, token: &str, xp: i64) -> (StatusCode, Value) {
+    call(
+        app,
+        "POST",
+        "/api/social/stats",
+        Some(token),
+        Some(json!({ "xp": xp, "streak_days": 3, "longest_streak_days": 5, "badges": ["first-ascent", "bogus-badge"] })),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn social_username_set_validate_and_uniqueness() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+
+    // Έγκυρο username.
+    let (status, body) = set_username(&app, &a, "Alpinist_1").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["username"], "alpinist_1"); // normalized lowercase
+
+    // Πολύ κοντό → 400.
+    let (status, body) = set_username(&app, &b, "ab").await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_username");
+
+    // Ίδιο handle → 409.
+    let (status, body) = set_username(&app, &b, "alpinist_1").await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["error"], "username_taken");
+}
+
+#[tokio::test]
+async fn social_friend_request_accept_and_list() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+
+    // A → B request.
+    let (status, body) = call(&app, "POST", "/api/social/requests", Some(&a),
+        Some(json!({ "username": "bbb" }))).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "pending");
+
+    // B sees incoming.
+    let (status, body) = call(&app, "GET", "/api/social/requests", Some(&b), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_array().unwrap().len(), 1);
+    assert_eq!(body[0]["direction"], "in");
+    assert_eq!(body[0]["username"], "aaa");
+    let a_id = body[0]["account_id"].as_str().unwrap().to_string();
+
+    // B accepts.
+    let (status, _) = call(&app, "POST", &format!("/api/social/requests/{a_id}/accept"),
+        Some(&b), None).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Both now list each other as friend.
+    let (_, fa) = call(&app, "GET", "/api/social/friends", Some(&a), None).await;
+    assert_eq!(fa.as_array().unwrap().len(), 1);
+    assert_eq!(fa[0]["username"], "bbb");
+    let (_, fb) = call(&app, "GET", "/api/social/friends", Some(&b), None).await;
+    assert_eq!(fb[0]["username"], "aaa");
+}
+
+#[tokio::test]
+async fn social_mutual_pending_auto_accepts() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+
+    call(&app, "POST", "/api/social/requests", Some(&a), Some(json!({ "username": "bbb" }))).await;
+    // B requests A back → πρέπει να γίνει auto-accept.
+    let (status, body) = call(&app, "POST", "/api/social/requests", Some(&b),
+        Some(json!({ "username": "aaa" }))).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "accepted");
+
+    let (_, fa) = call(&app, "GET", "/api/social/friends", Some(&a), None).await;
+    assert_eq!(fa.as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn social_unknown_username_uniform_not_found() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+
+    let (status, _) = call(&app, "POST", "/api/social/requests", Some(&a),
+        Some(json!({ "username": "ghost_user" }))).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    // Self-add → επίσης uniform not-found.
+    set_username(&app, &a, "aaa").await;
+    let (status, _) = call(&app, "POST", "/api/social/requests", Some(&a),
+        Some(json!({ "username": "aaa" }))).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn social_stats_server_authoritative_and_clamped() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+
+    // xp=10000 → level = floor(sqrt(10000/100))+1 = floor(10)+1 = 11, tier alpine.
+    let (status, body) = publish_stats(&app, &a, 10_000).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["level"], 11);
+    assert_eq!(body["tier"], "alpine");
+    assert_eq!(body["xp"], 10_000);
+
+    // Αρνητικό xp → clamp σε 0, level 1.
+    let (_, body) = publish_stats(&app, &a, -5).await;
+    assert_eq!(body["xp"], 0);
+    assert_eq!(body["level"], 1);
+}
+
+#[tokio::test]
+async fn social_leaderboard_privacy_global_vs_friends() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    let c = signup(&app, "c@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+    set_username(&app, &c, "ccc").await;
+    publish_stats(&app, &a, 100).await;
+    publish_stats(&app, &b, 200).await;
+    publish_stats(&app, &c, 300).await;
+
+    // B κάνει το προφίλ του δημόσιο· C μένει ιδιωτικό.
+    call(&app, "POST", "/api/social/profile", Some(&b), Some(json!({ "share_profile": true }))).await;
+
+    // Global από τον A: βλέπει self (A) + B (shared)· ΟΧΙ C (ιδιωτικό).
+    let (status, body) = call(&app, "GET", "/api/social/leaderboard?scope=global", Some(&a), None).await;
+    assert_eq!(status, StatusCode::OK);
+    let names: Vec<String> = body.as_array().unwrap().iter()
+        .map(|r| r["username"].as_str().unwrap_or("").to_string()).collect();
+    assert!(names.contains(&"aaa".to_string()));
+    assert!(names.contains(&"bbb".to_string()));
+    assert!(!names.contains(&"ccc".to_string()), "ιδιωτικό προφίλ ΔΕΝ φαίνεται global");
+
+    // Friends scope χωρίς φίλους: μόνο ο εαυτός.
+    let (_, body) = call(&app, "GET", "/api/social/leaderboard?scope=friends", Some(&a), None).await;
+    assert_eq!(body.as_array().unwrap().len(), 1);
+    assert_eq!(body[0]["username"], "aaa");
+    assert_eq!(body[0]["is_self"], true);
+}
+
+#[tokio::test]
+async fn social_public_profile_respects_privacy() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+    publish_stats(&app, &b, 400).await;
+
+    // B ιδιωτικό → ο A (μη φίλος) παίρνει 404.
+    let (status, _) = call(&app, "GET", "/api/social/user/bbb", Some(&a), None).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    // B γίνεται δημόσιο → ορατό.
+    call(&app, "POST", "/api/social/profile", Some(&b), Some(json!({ "share_profile": true }))).await;
+    let (status, body) = call(&app, "GET", "/api/social/user/bbb", Some(&a), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["username"], "bbb");
+    assert_eq!(body["level"], 3); // xp=400 → floor(sqrt(4))+1 = 3
+    // Καμία διαρροή raw δεδομένων / email.
+    assert!(body.get("email").is_none());
+}
+
+#[tokio::test]
+async fn social_remove_friend_clears_edge() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str().unwrap().to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+    call(&app, "POST", "/api/social/requests", Some(&a), Some(json!({ "username": "bbb" }))).await;
+    call(&app, "POST", "/api/social/requests", Some(&b), Some(json!({ "username": "aaa" }))).await;
+
+    // A's /me id για το remove.
+    let (_, reqs) = call(&app, "GET", "/api/social/friends", Some(&a), None).await;
+    let b_id = reqs[0]["account_id"].as_str().unwrap().to_string();
+
+    let (status, _) = call(&app, "POST", &format!("/api/social/friends/{b_id}/remove"), Some(&a), None).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (_, fa) = call(&app, "GET", "/api/social/friends", Some(&a), None).await;
+    assert_eq!(fa.as_array().unwrap().len(), 0);
+    let (_, fb) = call(&app, "GET", "/api/social/friends", Some(&b), None).await;
+    assert_eq!(fb.as_array().unwrap().len(), 0);
+}

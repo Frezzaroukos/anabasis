@@ -15,7 +15,7 @@ use tower_governor::{GovernorError, GovernorLayer};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-use crate::{admin, auth, oauth, sync};
+use crate::{admin, auth, oauth, social, sync};
 
 /// "Sign in with Google" — παρών μόνο όταν έχουν οριστεί ΚΑΙ τα δύο env vars
 /// (ANABASIS_GOOGLE_CLIENT_ID/SECRET, βλ. main.rs)· `AppState.google_oauth ==
@@ -148,6 +148,27 @@ pub fn router(state: AppState) -> Router {
         .route("/pull", post(sync::pull))
         .layer(GovernorLayer::new(sync_governor));
 
+    // Social: πιο σφιχτό rate-limit (60/min) — το send_request είναι το κύριο
+    // enumeration surface· uniform not-found + αυτό το όριο το καλύπτουν.
+    let social_governor = GovernorConfigBuilder::default()
+        .key_extractor(CfConnectingIpKeyExtractor)
+        .period(Duration::from_secs(1)) // 60 req/min: burst 60, refill 1 ανά 1s
+        .burst_size(60)
+        .finish()
+        .expect("έγκυρο governor config για social");
+
+    let social_routes = Router::new()
+        .route("/me", get(social::me))
+        .route("/profile", post(social::update_profile))
+        .route("/stats", post(social::publish_stats))
+        .route("/friends", get(social::friends))
+        .route("/friends/{id}/remove", post(social::remove_friend))
+        .route("/requests", get(social::requests).post(social::send_request))
+        .route("/requests/{id}/accept", post(social::accept_request))
+        .route("/leaderboard", get(social::leaderboard))
+        .route("/user/{username}", get(social::public_profile))
+        .layer(GovernorLayer::new(social_governor));
+
     let admin_routes = Router::new()
         .route("/users", get(admin::list_users))
         .route("/users/{id}/disable", post(admin::disable_user))
@@ -172,6 +193,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/me", get(auth::me))
         .nest("/api/auth", auth_routes)
         .nest("/api/sync", sync_routes)
+        .nest("/api/social", social_routes)
         .nest("/api/admin", admin_routes)
         .layer(TraceLayer::new_for_http())
         .layer(cors)
