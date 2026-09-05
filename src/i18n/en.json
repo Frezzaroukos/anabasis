@@ -456,6 +456,12 @@
     "unarchive": "Restore",
     "editTitle": "Edit exercise",
     "newTitle": "New exercise",
+    "merge": {
+      "title": "Merge into another exercise",
+      "hint": "Moves all sets, records and history into the chosen exercise, then archives this one. Use it to unify duplicates (e.g. “Pull ups” and “Weighted pull ups” — weight is just a per-set option).",
+      "search": "Search the exercise to keep…",
+      "confirm": "Merge into “{{name}}”"
+    },
     "movementType": {
       "compound": "Compound",
       "isolation": "Isolation",
