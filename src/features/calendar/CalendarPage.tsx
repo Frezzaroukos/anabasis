@@ -25,6 +25,7 @@ import { formatWeight } from '@/lib/units';
 import { Input } from '@/components/ui/input';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { countProgramDayExercises } from '@/lib/db/schedule';
 import { DOT_SIZE_CLASS, dotSizeOf, weekAdherenceTint } from './calendarMath';
 
 /**
@@ -52,6 +53,9 @@ export function CalendarPage() {
   const [selected, setSelected] = useState<string | null>(today);
   const [addOpen, setAddOpen] = useState(false);
   const [adHocLabel, setAdHocLabel] = useState('');
+  // Τα start-helpers γυρνούν null όταν υπάρχει ήδη ενεργή προπόνηση (ένας
+  // guard στο queries.ts). Πριν, το πάτημα απλά δεν έκανε ΤΙΠΟΤΑ.
+  const [startError, setStartError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const activities = useLiveQuery(() => listActivities(true), [], []);
@@ -74,6 +78,9 @@ export function CalendarPage() {
             days.map(async (day) => ({
               day,
               nextNo: (await countProgramDaySessions(day.id)) + 1,
+              // Χωρίς αυτό ξεκινούσες «Upper» χωρίς να ξέρεις αν έχει 8
+              // ασκήσεις ή καμία — και το ανακάλυπτες στην οθόνη καταγραφής.
+              exercises: await countProgramDayExercises(day.id),
             })),
           );
           // Πρόγραμμα χωρίς ρητές μέρες (flat) αλλά ΜΕ ασκήσεις: ξεκινά ολόκληρο
@@ -95,7 +102,10 @@ export function CalendarPage() {
   const onPickProgramDay = async (dayId: string) => {
     if (!selected) return;
     const result = await startWorkoutFromProgramDay(dayId, selected === today ? undefined : selected);
-    if (!result) return;
+    if (!result) {
+      setStartError(t('calendar.startBlocked'));
+      return;
+    }
     setAddOpen(false);
     navigate('/workout/active');
   };
@@ -103,7 +113,10 @@ export function CalendarPage() {
   const onPickProgram = async (programId: string) => {
     if (!selected) return;
     const result = await startWorkoutFromProgram(programId, selected === today ? undefined : selected);
-    if (!result) return;
+    if (!result) {
+      setStartError(t('calendar.startBlocked'));
+      return;
+    }
     setAddOpen(false);
     navigate('/workout/active');
   };
@@ -118,7 +131,10 @@ export function CalendarPage() {
     const label = adHocLabel.trim();
     if (!selected || !label) return;
     const result = await startAdHocWorkout('strength', selected === today ? undefined : selected);
-    if (!result) return;
+    if (!result) {
+      setStartError(t('calendar.startBlocked'));
+      return;
+    }
     await setWorkoutType(result.workout.id, label);
     setAddOpen(false);
     setAdHocLabel('');
@@ -127,6 +143,7 @@ export function CalendarPage() {
   const closeAddSheet = () => {
     setAddOpen(false);
     setAdHocLabel('');
+    setStartError(null);
   };
   // Γρήγορη δημιουργία προγράμματος από το ημερολόγιο: φτιάχνει κενό και πάει
   // κατευθείαν στον editor του, ώστε να το χτίσεις χωρίς να ψάχνεις το section.
@@ -479,6 +496,11 @@ export function CalendarPage() {
       */}
       <BottomSheet open={addOpen} onClose={closeAddSheet} title={t('calendar.addWorkout')}>
         <div className="space-y-5 px-4 pb-4">
+          {startError && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+              {startError}
+            </p>
+          )}
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -508,13 +530,18 @@ export function CalendarPage() {
                     <div key={program.id}>
                       <p className="mb-1 truncate text-xs text-muted-foreground">{program.name}</p>
                       <div className="space-y-1.5">
-                        {days.map(({ day: programDay, nextNo }) => (
+                        {days.map(({ day: programDay, nextNo, exercises }) => (
                           <button
                             key={programDay.id}
                             onClick={() => void onPickProgramDay(programDay.id)}
                             className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           >
-                            <span className="font-medium">{programDay.name}</span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium">{programDay.name}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {t('calendar.dayExercises', { count: exercises })}
+                              </span>
+                            </span>
                             <span className="shrink-0 font-mono text-xs text-muted-foreground">
                               #{nextNo}
                             </span>

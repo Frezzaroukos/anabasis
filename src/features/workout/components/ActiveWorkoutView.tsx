@@ -8,6 +8,7 @@ import { queries } from '@/lib/db';
 import type { Exercise, Workout } from '@/lib/db/types';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
+import { getWorkoutPlan } from '@/lib/db/schedule';
 import { isEmptyDraftWorkout, isSetLoggedActivity, type SetChain } from '../utils';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getActivity, getLatestBodyweight, localDay } from '@/lib/db/queries';
@@ -42,6 +43,13 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   );
   const sets = useWorkoutSets(workout.id);
   const persistedExerciseIds = useWorkoutExerciseIds(workout.id);
+  // Η δομή του προγράμματος, αν η προπόνηση είναι δεμένη σε ένα. Χωρίς αυτό η
+  // οθόνη άνοιγε ΑΔΕΙΑ ακόμα κι όταν διάλεγες «Upper» από το ημερολόγιο.
+  const plan = useLiveQuery(
+    () => getWorkoutPlan(workout),
+    [workout.program_id, workout.program_day_id],
+    [],
+  );
   const exercises = useExercises();
 
   // Η οθόνη δεν πρέπει να κλειδώνει ανάμεσα σε σετ — όσο υπάρχει ενεργό workout.
@@ -75,12 +83,28 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     return m;
   }, [sets]);
 
+  const planByExerciseId = useMemo(
+    () => new Map(plan.map((row) => [row.exercise_id, row])),
+    [plan],
+  );
+
   const orderedIds = useMemo(() => {
-    // Persisted (have sets) first, then pending (no sets yet).
-    const seen = new Set<string>(persistedExerciseIds);
-    const pendingIds = pending.map((e) => e.id).filter((id) => !seen.has(id));
-    return [...persistedExerciseIds, ...pendingIds];
-  }, [persistedExerciseIds, pending]);
+    // Σειρά: (1) το πλάνο της μέρας όπως το έγραψες στο πρόγραμμα — αυτή είναι
+    // η σειρά που θέλεις να δουλέψεις· (2) ό,τι λογάρισες εκτός πλάνου·
+    // (3) ό,τι πρόσθεσες μόλις τώρα. Χωρίς πρόγραμμα το (1) είναι κενό και η
+    // συμπεριφορά μένει ακριβώς όπως ήταν.
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const push = (id: string) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      out.push(id);
+    };
+    for (const row of plan) push(row.exercise_id);
+    for (const id of persistedExerciseIds) push(id);
+    for (const e of pending) push(e.id);
+    return out;
+  }, [plan, persistedExerciseIds, pending]);
 
   // Drop pending entries once they get a set persisted.
   useEffect(() => {
@@ -198,6 +222,10 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                       }
                       chain={chain}
                       onChainChange={setChain}
+                      target={planByExerciseId.get(id) ?? null}
+                      // Οι ασκήσεις του πλάνου ξεκινούν κλειστές: αλλιώς ένα
+                      // πρόγραμμα 10 ασκήσεων άνοιγε 10 φόρμες μαζί.
+                      startCollapsed={planByExerciseId.has(id) && exSets.length === 0}
                     />
                   );
                 })}
