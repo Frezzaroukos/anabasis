@@ -108,7 +108,14 @@ Google client).
 buttons (partner lane) · multi-way signup/social login · share-link+portfolio+QR+
 creator credit (ShareCard έγινε) · pro settings redesign (partner lane, in-flight).
 
-**369 client + 38 server tests green · tsc -b clean · 120+ commits.**
+**Ready (2026-09-05 partner lane):** **nav back/forward** (PWA/desktop δεν έχουν
+browser chrome) · **Settings pro** (hub + 6 υποσελίδες + λύση διπλής ταυτότητας:
+cloud account vs τοπικά προφίλ συσκευής) · **Admin pro** (users list με loading/
+empty/error states, search, per-user row breakdown, honest db-size, account
+analysis). · **Friends depth**: badges+streak flair, invite/viral-loop, «XP behind
+next rank». · Το ShareCard μετακόμισε στο Settings/About.
+
+**391 client + 40 server tests green · tsc -b clean · 128+ commits.**
 
 ---
 
@@ -187,9 +194,8 @@ quota**. Postgres/Supabase ΜΟΝΟ αν χτυπήσεις write contention (α
 
 1. ~~**Mobile UX issues**~~ ✅ (2026-09-05) — 16px inputs, overscroll-behavior,
    hardware-back→close-overlay (useBackToClose). Commit 4d11a1e.
-2. **Navigation back/forward buttons** — ease of use στο app (κάνε έρευνα σε
-   mobile-web nav patterns· η ιστορία του router υπάρχει, θέλει visible controls +
-   ίσως gesture). Προσοχή σε PWA/standalone (δεν έχει browser back).
+2. ~~**Navigation back/forward buttons**~~ ✅ (2026-09-05, partner `d01bff0`) —
+   visible back/forward, PWA/desktop δεν έχουν browser chrome.
 3. **Multi-way signup + social login** — Google (wire το scaffold σε live client),
    Apple, magic-link/email. Επαγγελματικό auth UX «όπως άλλα apps».
 4. ~~**Friends + ranking + «Your Ascent»**~~ ✅ (2026-09-05) — friendships (directed
@@ -204,10 +210,13 @@ quota**. Postgres/Supabase ΜΟΝΟ αν χτυπήσεις write contention (α
    και το local desktop). Στόχος: κάθε χρήστης, οποιοδήποτε device, καθαρά.
 6. **Share link + creator credit** — κουμπί share (link + QR), που να δείχνει το
    portfolio/Instagram του Aggelos + «δημιουργός: Aggelos Frezzaroukos». Job-anchor.
-7. **Settings σε επαγγελματικό επίπεδο** — redesign, οργάνωση, account management,
-   units, theme/accent, data export, privacy, about/creator.
-8. **Admin acc σε pro επίπεδο** — proper admin surface (users list με loading/empty
-   states, όχι blank· self/last-admin guards ΕΓΙΝΑΝ· quotas/GC· metrics).
+7. ~~**Settings σε επαγγελματικό επίπεδο**~~ ✅ (2026-09-05, partner `45109bd`) —
+   hub + 6 υποσελίδες, account management, data export, about/creator (ShareCard),
+   + λύση διπλής ταυτότητας (cloud account vs τοπικά προφίλ συσκευής).
+8. ~~**Admin acc σε pro επίπεδο**~~ ✅ (2026-09-05, partner `441eec8`+`eb11dae`) —
+   users list με loading/empty/error states + search, per-user row breakdown,
+   honest db-size, account analysis· self/last-admin guards ήδη. TODO βάθος: GC
+   για διαγραμμένα rows + per-account quota (§6, στα ~100 users).
 9. **Enthymion-inspired adds** — το παλιό fitness app (`~/.local/bin/Enthymion.AppImage`,
    Mod+D «enthymion») έχει fitness+calendar + **7 set types** (drop/super/rest-pause),
    custom exercises, PRs. Τα περισσότερα absorb-αρισμένα· **check αν λείπει
