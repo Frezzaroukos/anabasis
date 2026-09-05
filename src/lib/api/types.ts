@@ -107,6 +107,8 @@ export interface FriendRow {
   tier: string;
   altitude_m: number;
   streak_days: number;
+  /** JSON array από earned badge ids */
+  badges: string;
 }
 
 /** Μία σειρά στον πίνακα κατάταξης — aggregate, με SQL-enforced privacy. */
@@ -118,6 +120,8 @@ export interface LeaderboardRow {
   tier: string;
   altitude_m: number;
   streak_days: number;
+  /** JSON array από earned badge ids */
+  badges: string;
   is_self: boolean;
 }
 

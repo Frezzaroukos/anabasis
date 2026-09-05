@@ -287,6 +287,8 @@ pub struct FriendRow {
     tier: String,
     altitude_m: i64,
     streak_days: i64,
+    /// JSON array από earned badge ids (κοινωνική απόδειξη στο row).
+    badges: String,
 }
 
 /// Accepted φίλοι + τα (aggregate) stats τους. UNION και στις δύο κατευθύνσεις.
@@ -299,7 +301,7 @@ pub async fn friends(
                 'accepted' AS status, 'friend' AS direction,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
-                COALESCE(ps.streak_days, 0) AS streak_days
+                COALESCE(ps.streak_days, 0) AS streak_days, COALESCE(ps.badges, '[]') AS badges
          FROM friendships f
          JOIN accounts a ON a.id = CASE WHEN f.requester_id = ?1 THEN f.addressee_id ELSE f.requester_id END
          LEFT JOIN profile_stats ps ON ps.account_id = a.id
@@ -324,7 +326,7 @@ pub async fn requests(
                 CASE WHEN f.addressee_id = ?1 THEN 'in' ELSE 'out' END AS direction,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
-                COALESCE(ps.streak_days, 0) AS streak_days
+                COALESCE(ps.streak_days, 0) AS streak_days, COALESCE(ps.badges, '[]') AS badges
          FROM friendships f
          JOIN accounts a ON a.id = CASE WHEN f.requester_id = ?1 THEN f.addressee_id ELSE f.requester_id END
          LEFT JOIN profile_stats ps ON ps.account_id = a.id
@@ -474,6 +476,7 @@ pub struct LeaderboardRow {
     tier: String,
     altitude_m: i64,
     streak_days: i64,
+    badges: String,
     is_self: bool,
 }
 
@@ -489,7 +492,7 @@ pub async fn leaderboard(
             "SELECT a.username AS username, a.display_name AS display_name,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
-                    (a.id = ?1) AS is_self
+                    ps.badges AS badges, (a.id = ?1) AS is_self
              FROM profile_stats ps JOIN accounts a ON a.id = ps.account_id
              WHERE a.disabled = 0 AND (a.share_profile = 1 OR a.id = ?1)
              ORDER BY ps.xp DESC, a.username
@@ -503,7 +506,7 @@ pub async fn leaderboard(
             "SELECT a.username AS username, a.display_name AS display_name,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
-                    (a.id = ?1) AS is_self
+                    ps.badges AS badges, (a.id = ?1) AS is_self
              FROM profile_stats ps JOIN accounts a ON a.id = ps.account_id
              WHERE a.disabled = 0 AND (
                  a.id = ?1 OR a.id IN (

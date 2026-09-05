@@ -32,6 +32,16 @@ export interface SocialState {
   scope: LeaderboardScope;
 }
 
+/** Πόσα earned badges — parse του JSON string με ασφάλεια (offline/corrupt → 0). */
+export function badgeCount(badgesJson: string): number {
+  try {
+    const arr = JSON.parse(badgesJson);
+    return Array.isArray(arr) ? arr.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** Το snapshot που είναι client-authoritative (ο server clamp-άρει/παράγει level). */
 export function statsBodyFromInput(data: GamificationInput) {
   return {
