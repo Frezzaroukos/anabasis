@@ -145,3 +145,41 @@ describe('CalendarPage — add workout από την επιλεγμένη μέρ
     expect(submit.disabled).toBe(false);
   });
 });
+
+/**
+ * Το adherence overlay έμπαινε σε ΚΑΘΕ κελί ξεχωριστά: με τα κενά ανάμεσά τους
+ * διαβαζόταν σαν επτά κηλίδες αντί για «αυτή η εβδομάδα ήταν γεμάτη». Τώρα το
+ * πλέγμα είναι γραμμές-εβδομάδες και το wash μπαίνει στη γραμμή. Τα tiers τα
+ * καλύπτει το calendarMath.test.ts — εδώ κλειδώνουμε ότι το tint εφαρμόζεται
+ * στο σωστό επίπεδο.
+ */
+describe('CalendarPage — πλέγμα ανά εβδομάδα', () => {
+  it('κάθε εβδομάδα είναι δική της γραμμή 7 στηλών, και το κελί δεν κουβαλά tint', async () => {
+    render(wrap(<CalendarPage />));
+    await waitFor(() => expect(screen.getByText('3')).toBeTruthy());
+
+    const cell = screen.getByText('3').closest('button');
+    expect(cell).toBeTruthy();
+    const row = cell!.parentElement!;
+    expect(row.className).toContain('grid-cols-7');
+    expect(cell!.className).not.toMatch(/bg-primary\//);
+  });
+
+  it('«σήμερα» σημαίνεται ΜΟΝΟ στον αριθμό — όχι και με ring στο κελί', async () => {
+    render(wrap(<CalendarPage />));
+    // 15/08/2026 = το σταθεροποιημένο «σήμερα».
+    await waitFor(() => expect(screen.getByText('15')).toBeTruthy());
+
+    const number = screen.getByText('15');
+    expect(number.className).toContain('bg-primary');
+    // Το ring του κελιού ανήκει πλέον στην ΕΠΙΛΕΓΜΕΝΗ μέρα, όχι στο σήμερα.
+    // (Εδώ ταυτίζονται, οπότε ελέγχουμε ότι δεν υπάρχει διπλό ring-primary.)
+    expect(number.closest('button')!.className).not.toContain('ring-primary ');
+  });
+
+  it('η υπόμνηση των κουκκίδων λείπει σε άδειο μήνα — δεν εξηγεί κάτι που δεν φαίνεται', async () => {
+    render(wrap(<CalendarPage />));
+    await waitFor(() => expect(screen.getByText('15')).toBeTruthy());
+    expect(screen.queryByText(en.calendar.magnitudeHint)).toBeNull();
+  });
+});
