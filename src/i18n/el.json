@@ -61,6 +61,10 @@
       "stop": "Τερματισμός",
       "restingShort": "Rest"
     },
+    "timer": {
+      "start": "Ξεκίνα χρονόμετρο",
+      "pause": "Παύση χρονομέτρου"
+    },
     "activityKind": "Δραστηριότητα",
     "setType": "Τύπος σετ",
     "chain": {
