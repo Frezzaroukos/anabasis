@@ -477,6 +477,16 @@
     "save": "Save",
     "cancel": "Cancel"
   },
+  "share": {
+    "title": "Share Anabasis",
+    "tagline": "A training log built for the climb. No signup to try it.",
+    "qrAlt": "QR code to open anabasis.axonos.dev",
+    "copy": "Copy link",
+    "copied": "Copied",
+    "share": "Share",
+    "friendsHint": "Send it to a friend — they sign up and get their own private log.",
+    "madeBy": "Made by"
+  },
   "profile": {
     "title": "Profile",
     "deviceOnly": "Profiles on this device. No password, no sync across devices yet.",
