@@ -819,6 +819,9 @@
       "share": "Show on global board",
       "save": "Save",
       "saved": "Saved.",
+      "invite": "Invite friends",
+      "inviteCopied": "Invite copied",
+      "inviteText": "Add me on Anabasis: @{{username}} — anabasis.axonos.dev",
       "err": {
         "username_taken": "That username is taken.",
         "invalid_username": "3–20 characters: lowercase letters, numbers, underscore.",
@@ -847,7 +850,8 @@
       "global": "Global",
       "empty": "No one here yet. Add a friend to start the race.",
       "you": "(you)",
-      "level": "Lv"
+      "level": "Lv",
+      "behind": "{{xp}} XP behind #{{rank}}"
     },
     "friends": {
       "title": "Friends",

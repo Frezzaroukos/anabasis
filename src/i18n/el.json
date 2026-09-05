@@ -819,6 +819,9 @@
       "share": "Στον παγκόσμιο πίνακα",
       "save": "Αποθήκευση",
       "saved": "Αποθηκεύτηκε.",
+      "invite": "Κάλεσε φίλους",
+      "inviteCopied": "Αντιγράφηκε",
+      "inviteText": "Πρόσθεσέ με στο Anabasis: @{{username}} — anabasis.axonos.dev",
       "err": {
         "username_taken": "Αυτό το username χρησιμοποιείται ήδη.",
         "invalid_username": "3–20 χαρακτήρες: πεζά, αριθμοί, κάτω παύλα.",
@@ -847,7 +850,8 @@
       "global": "Παγκόσμιος",
       "empty": "Κανείς ακόμα εδώ. Πρόσθεσε φίλο για να ξεκινήσει η κούρσα.",
       "you": "(εσύ)",
-      "level": "Επ."
+      "level": "Επ.",
+      "behind": "{{xp}} XP πίσω από #{{rank}}"
     },
     "friends": {
       "title": "Φίλοι",
