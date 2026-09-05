@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { statsBodyFromInput } from './useSocial';
+import { statsBodyFromInput, badgeCount } from './useSocial';
 import { totalXp, type GamificationInput } from '@/lib/gamification';
 
 const base: GamificationInput = {
@@ -49,5 +49,18 @@ describe('statsBodyFromInput', () => {
     const body = statsBodyFromInput(empty);
     expect(body.xp).toBe(0);
     expect(body.badges).toEqual([]);
+  });
+});
+
+describe('badgeCount', () => {
+  it('μετρά earned badges από το JSON string', () => {
+    expect(badgeCount('["first-ascent","ten-sessions"]')).toBe(2);
+    expect(badgeCount('[]')).toBe(0);
+  });
+
+  it('offline/corrupt JSON → 0 (καμία εξαίρεση)', () => {
+    expect(badgeCount('not json')).toBe(0);
+    expect(badgeCount('')).toBe(0);
+    expect(badgeCount('{"a":1}')).toBe(0);
   });
 });

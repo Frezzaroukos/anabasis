@@ -6,12 +6,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { UserPlus, Check, X, Users, Globe, Mountain } from 'lucide-react';
+import { UserPlus, Check, X, Users, Globe, Mountain, Flame, Award } from 'lucide-react';
 import { getGamificationInput } from '@/lib/db/queries';
 import { useAuth } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useSocial, type LeaderboardScope } from './useSocial';
+import { useSocial, badgeCount, type LeaderboardScope } from './useSocial';
 import type { FriendRow, LeaderboardRow } from '@/lib/api/types';
 
 export function FriendsSection() {
@@ -313,7 +313,10 @@ function Leaderboard({
                     </span>
                   )}
                 </p>
-                <p className="text-[11px] text-muted-foreground">{t(`gami.tier.${r.tier}`)}</p>
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span>{t(`gami.tier.${r.tier}`)}</span>
+                  <Flair streakDays={r.streak_days} badges={r.badges} />
+                </div>
               </div>
               <div className="text-right">
                 <p className="font-display text-sm font-semibold tabular-nums">
@@ -408,10 +411,35 @@ function NameCell({ row }: { row: FriendRow }) {
         <p className="truncate text-sm font-medium">
           {row.display_name || (row.username ? `@${row.username}` : t('social.anon'))}
         </p>
-        <p className="text-[11px] text-muted-foreground tabular-nums">
-          {t('social.board.level')} {row.level} · {row.xp.toLocaleString()} XP
-        </p>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="tabular-nums">
+            {t('social.board.level')} {row.level} · {row.xp.toLocaleString()} XP
+          </span>
+          <Flair streakDays={row.streak_days} badges={row.badges} />
+        </div>
       </div>
     </div>
+  );
+}
+
+/** Streak flame (>0) + πλήθος summit badges — κοινωνική απόδειξη σε μία γραμμή. */
+function Flair({ streakDays, badges }: { streakDays: number; badges: string }) {
+  const count = badgeCount(badges);
+  if (streakDays <= 0 && count === 0) return null;
+  return (
+    <span className="flex items-center gap-1.5 tabular-nums">
+      {streakDays > 0 && (
+        <span className="flex items-center gap-0.5 text-[hsl(var(--gold))]">
+          <Flame className="h-3 w-3" />
+          {streakDays}
+        </span>
+      )}
+      {count > 0 && (
+        <span className="flex items-center gap-0.5">
+          <Award className="h-3 w-3" />
+          {count}
+        </span>
+      )}
+    </span>
   );
 }
