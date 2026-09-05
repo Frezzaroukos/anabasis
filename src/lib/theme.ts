@@ -124,6 +124,7 @@ export function applyAccent(accentKey: string): void {
       root.style.setProperty('--primary', primary);
       root.style.setProperty('--primary-foreground', fg);
       root.style.setProperty('--ring', primary);
+      updateFavicon(hsl.h, hsl.s, hsl.l);
       return;
     }
   }
@@ -134,6 +135,44 @@ export function applyAccent(accentKey: string): void {
   root.style.setProperty('--primary', c.primary);
   root.style.setProperty('--primary-foreground', c.fg);
   root.style.setProperty('--ring', c.primary);
+  const [h, s, l] = c.primary.split(' ');
+  updateFavicon(
+    Number.parseInt(h ?? '0', 10),
+    Number.parseInt(s ?? '0', 10),
+    Number.parseInt(l ?? '0', 10),
+  );
+}
+
+/**
+ * Δυναμικό favicon: το σήμα «Summit seal» (δακτύλιος + οροσειρά) βαμμένο στο
+ * accent του χρήστη, πάνω σε γραφίτη πλακίδιο — ώστε το tab icon να ταιριάζει με
+ * το accent που διάλεξε (per-device). Ο κλάδος-χρώμα κλαμπάρεται σε φωτεινότητα
+ * ≥58% ώστε να διαβάζεται πάντα πάνω στο σκούρο πλακίδιο (ακόμα κι όταν το accent
+ * είναι σκούρο, π.χ. mono σε light theme). Καθαρό SVG data URI — μηδέν assets.
+ */
+export function updateFavicon(h: number, s: number, l: number): void {
+  if (typeof document === 'undefined') return;
+  const hue = Number.isFinite(h) ? h : 240;
+  const sat = Number.isFinite(s) ? s : 8;
+  // Χαμηλός κορεσμός (mono) → κράτα το πιο ανοιχτό ώστε να μη «χαθεί» σε γκρι.
+  const light = Math.min(94, Math.max(sat < 20 ? 88 : 62, Number.isFinite(l) ? l : 90));
+  const mark = `hsl(${hue},${sat}%,${light}%)`;
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>` +
+    `<rect width='64' height='64' rx='13' fill='#16161A'/>` +
+    `<circle cx='32' cy='32' r='24' fill='none' stroke='${mark}' stroke-width='4.5'/>` +
+    `<path d='M15 43 L25 27 L31 35 L39 21 L49 43 Z' fill='${mark}'/>` +
+    `</svg>`;
+  const href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+
+  let link = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+  link.type = 'image/svg+xml';
+  link.href = href;
 }
 
 export function setAccent(accentKey: string): void {
