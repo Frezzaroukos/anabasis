@@ -11,6 +11,7 @@ import {
   hasActivity,
   type GamificationInput,
 } from '@/lib/gamification';
+import { FriendsSection } from './FriendsSection';
 
 const RING_R = 52;
 const RING_CIRC = 2 * Math.PI * RING_R;
@@ -33,6 +34,7 @@ export function AchievementsPage() {
           <Logo className="mx-auto h-12 w-12 text-muted-foreground" />
           <p className="mt-4 text-sm text-muted-foreground">{t('gami.emptyHint')}</p>
         </section>
+        <FriendsSection />
       </div>
     );
   }
@@ -43,6 +45,7 @@ export function AchievementsPage() {
       <XpHero data={data} />
       <Badges data={data} />
       <Breakdown data={data} />
+      <FriendsSection />
     </div>
   );
 }
