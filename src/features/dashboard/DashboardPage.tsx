@@ -120,9 +120,16 @@ export function DashboardPage() {
     heroTier = 'week';
     heroValue = activeDaysThisWeek;
   } else if (lastWorkout) {
-    heroTier = 'last';
-    heroValue = daysSince(lastWorkout.started_at);
+    // Μόνο ΠΡΟΣΦΑΤΟ κενό (<7 μέρες) αξίζει hero-αριθμό ως ήπιο nudge. Ένα μεγάλο
+    // «355 μέρες» (ή νέος λογαριασμός με παλιά τοπικά δεδομένα στη συσκευή)
+    // διαβάζεται ως αρνητικό/χαλασμένο → πέφτουμε σε καλωσόρισμα + προτροπή.
+    const d = daysSince(lastWorkout.started_at);
+    if (d < 7) {
+      heroTier = 'last';
+      heroValue = d;
+    }
   }
+  const hasHistory = (completedWorkouts?.length ?? 0) > 0;
   // Ανεβαίνει από 0 στην τελική τιμή όταν λύνεται το liveQuery — ο αριθμός
   // «ζωντανεύει» αντί να εμφανίζεται απότομα (DESIGN-SPEC-V2, motion).
   const animatedHeroValue = useCountUp(heroValue);
@@ -184,7 +191,9 @@ export function DashboardPage() {
               )}
             </>
           )}
-          <p className="mt-1.5 text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {heroLoading || hasHistory ? t('dashboard.subtitle') : t('dashboard.startFirst')}
+          </p>
         </div>
         <WeekStrip />
       </header>
