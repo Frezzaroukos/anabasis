@@ -21,6 +21,7 @@ import type {
   SyncPushResponse,
   AdminUser,
   AdminStats,
+  AdminTableBreakdown,
   HealthResponse,
   OAuthProviders,
   SocialMe,
@@ -235,6 +236,12 @@ export const api = {
 
   adminResetPassword(id: string): Promise<{ temp_password: string }> {
     return request(`/admin/users/${id}/reset_password`, { method: 'POST', body: {} });
+  },
+
+  /** Ανάλυση των sync_rows ενός λογαριασμού ανά πίνακα — lazy, μόνο όταν ο
+   * admin ανοίξει τη λεπτομέρεια του χρήστη. */
+  adminUserRows(id: string): Promise<AdminTableBreakdown[]> {
+    return request<AdminTableBreakdown[]>(`/admin/users/${id}/rows`);
   },
 
   adminStats(): Promise<AdminStats> {
