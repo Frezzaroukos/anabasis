@@ -1,370 +1,109 @@
-import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, } from '@/lib/db';
+import {
+  Activity,
+  Cloud,
+  Database,
+  Download,
+  Info,
+  ListChecks,
+  Palette,
+  Sparkles,
+  Timer,
+  Users,
+} from 'lucide-react';
+import { listProfiles } from '@/lib/db/queries';
 import { getCurrentUserId } from '@/lib/db/session';
-import { exportAll, getCurrentProfileDataCounts, importAll, updateSettings } from '@/lib/db/queries';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { SectionTitle } from '@/components/ui/Section';
-import { Moon, Sun, Monitor } from 'lucide-react';
-import { ACCENTS, getStoredAccent, getStoredCustomAccent, getStoredTheme, setAccent, setCustomAccent, setTheme, type Theme } from '@/lib/theme';
-import { AccountCard } from '@/features/account/AccountCard';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { useAuth } from '@/lib/api/auth';
+import { getStoredTheme } from '@/lib/theme';
+import { SettingsGroup, SettingsRow } from './components/SettingsList';
 
-const REST_PRESETS = [60, 90, 120, 180, 240, 300];
-
-import { DashboardLayoutSettings } from './components/DashboardLayoutSettings';
-
+/**
+ * Hub ρυθμίσεων.
+ *
+ * Ήταν μία στήλη με εννιά ανομοιόμορφες κάρτες: για να δεις αν υπάρχει
+ * ρύθμιση για κάτι, έπρεπε να τη σκρολάρεις ολόκληρη. Τώρα είναι
+ * περιεχόμενα — κάθε ομάδα δείχνει τι ρυθμίζεται ΚΑΙ πώς είναι ρυθμισμένο,
+ * και το βάθος μπαίνει σε υποσελίδες.
+ *
+ * Η πρώτη ομάδα λύνει τη διπλή ταυτότητα: «Λογαριασμός» (cloud, email, sync)
+ * και «Προφίλ συσκευής» (τοπικά σετ δεδομένων) στέκονται δίπλα-δίπλα με τις
+ * τιμές τους, ώστε να φαίνεται με τη μία ότι είναι δύο διαφορετικά πράγματα.
+ */
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [theme, setThemeState] = useState<Theme>(getStoredTheme());
-  const [accent, setAccentState] = useState<string>(getStoredAccent());
-  const [customHex, setCustomHex] = useState<string | null>(getStoredCustomAccent());
+  const auth = useAuth();
+  const settings = useAppSettings();
+  const activeId = getCurrentUserId();
+  const profiles = useLiveQuery(() => listProfiles(), [], []);
 
-  const settings = useLiveQuery(
-    () => db.app_settings.where('user_id').equals(getCurrentUserId()).first(),
-    [],
-  );
-  // ΠΡΟΣΟΧΗ: db.workouts.count() κλπ χωρίς φίλτρο user_id μετρούσαν δεδομένα
-  // ΟΛΩΝ των προφίλ — «τα δικά σου» έδειχνε ξένα workouts/sets/PRs.
-  const stats = useLiveQuery(
-    () => getCurrentProfileDataCounts(),
-    [],
-    { workouts: 0, sets: 0, prs: 0, steps: 0 },
-  );
+  const activeProfile = profiles.find((p) => p.id === activeId);
+  // `undefined` = δεν ξέρουμε ακόμα (φορτώνει) → καμία τιμή, ΟΧΙ ψεύτικο κενό.
+  const profileValue =
+    profiles.length === 0
+      ? null
+      : (activeProfile?.display_name ?? t('profile.unnamed')) +
+        (profiles.length > 1 ? ` · ${profiles.length}` : '');
 
-  const onLangChange = (lang: 'en' | 'el') => {
-    void i18n.changeLanguage(lang);
-    void db.users.update(getCurrentUserId(), {
-      language: lang,
-      updated_at: new Date().toISOString(),
-    });
-  };
-
-  const onExport = async () => {
-    const json = await exportAll();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `anabasis-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus(t('settings.exported'));
-  };
-
-  const onImportFile = async (file: File) => {
-    const res = await importAll(await file.text());
-    setStatus(
-      res.ok
-        ? `${t('settings.imported')} (${Object.values(res.counts ?? {}).reduce(
-            (a, b) => a + b,
-            0,
-          )})`
-        : t(`settings.${res.message}`),
-    );
-  };
+  const rest = settings?.default_rest_timer_seconds;
+  const restLabel = rest == null ? null : rest < 60 ? `${rest}s` : `${rest / 60}m`;
+  const unit = settings?.weight_unit;
+  const trainingValue = [restLabel, unit ? t(`common.${unit}`) : null].filter(Boolean).join(' · ');
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {t('settings.title')}
-        </h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('settings.title')}</h1>
       </header>
 
-      <AccountCard />
+      <SettingsGroup title={t('settings.hubAccountGroup')}>
+        <SettingsRow
+          to="/settings/account"
+          Icon={Cloud}
+          label={t('settings.account')}
+          value={auth?.account.email ?? t('settings.notSignedIn')}
+        />
+        <SettingsRow
+          to="/settings/profiles"
+          Icon={Users}
+          label={t('settings.deviceProfiles')}
+          value={profileValue}
+        />
+      </SettingsGroup>
 
-      <Link
-        to="/profile"
-        className="flex items-center justify-between rounded-lg bg-card p-4 text-sm transition-colors hover:bg-accent"
-      >
-        <span className="font-medium">{t('profile.title')}</span>
-        <span aria-hidden className="text-muted-foreground">→</span>
-      </Link>
-
-      <Link
-        to="/import"
-        className="flex items-center justify-between rounded-lg bg-card p-4 text-sm transition-colors hover:bg-accent"
-      >
-        <span className="font-medium">{t('import.title')}</span>
-        <span aria-hidden className="text-muted-foreground">→</span>
-      </Link>
-
-      <DashboardLayoutSettings />
+      <SettingsGroup title={t('settings.hubAppGroup')}>
+        <SettingsRow
+          to="/settings/appearance"
+          Icon={Palette}
+          label={t('settings.appearance')}
+          value={`${t(`settings.theme_${getStoredTheme()}`)} · ${(
+            i18n.resolvedLanguage ?? 'en'
+          ).toUpperCase()}`}
+        />
+        <SettingsRow
+          to="/settings/training"
+          Icon={Timer}
+          label={t('settings.training')}
+          value={trainingValue || null}
+        />
+      </SettingsGroup>
 
       {/* Η βιβλιοθήκη σου — οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
-      <section className="rounded-lg bg-card p-4">
-        <SectionTitle>{t('settings.library')}</SectionTitle>
-        <div className="grid gap-2">
-          {(
-            [
-              ['/exercises', 'exercises.title'],
-              ['/activities', 'activities.title'],
-              ['/skills', 'skills.title'],
-            ] as const
-          ).map(([to, key]) => (
-            <Link
-              key={to}
-              to={to}
-              className="flex items-center justify-between rounded-md bg-elevated px-3 py-2 text-sm transition-colors hover:bg-accent"
-            >
-              <span>{t(key)}</span>
-              <span aria-hidden className="text-muted-foreground">→</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <SettingsGroup title={t('settings.library')}>
+        <SettingsRow to="/exercises" Icon={ListChecks} label={t('exercises.title')} />
+        <SettingsRow to="/activities" Icon={Activity} label={t('activities.title')} />
+        <SettingsRow to="/skills" Icon={Sparkles} label={t('skills.title')} />
+      </SettingsGroup>
 
-      {/* Theme */}
-      <section className="rounded-lg bg-card p-4">
-        <SectionTitle>{t('settings.theme')}</SectionTitle>
-        <div className="flex gap-2">
-          {(['dark', 'light', 'auto'] as const).map((th) => {
-            const Icon = th === 'dark' ? Moon : th === 'light' ? Sun : Monitor;
-            return (
-              <button
-                key={th}
-                onClick={() => {
-                  setTheme(th);
-                  setThemeState(th);
-                  void updateSettings({ theme: th });
-                }}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm transition-colors ${
-                  theme === th ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {t(`settings.theme_${th}`)}
-              </button>
-            );
-          })}
-        </div>
+      <SettingsGroup title={t('settings.hubDataGroup')}>
+        <SettingsRow to="/settings/data" Icon={Database} label={t('settings.data')} />
+        <SettingsRow to="/import" Icon={Download} label={t('import.title')} />
+      </SettingsGroup>
 
-        {/* Accent — το κύριο χρώμα του app. Το χρυσό των ρεκόρ μένει σταθερό. */}
-        <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {t('settings.accent')}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {ACCENTS.map((a) => (
-            <button
-              key={a.key}
-              onClick={() => {
-                setAccent(a.key);
-                setAccentState(a.key);
-              }}
-              aria-label={a.label}
-              aria-pressed={accent === a.key}
-              title={a.label}
-              className={`h-9 w-9 rounded-full border-2 transition-transform active:scale-90 ${
-                accent === a.key ? 'border-foreground scale-110' : 'border-transparent'
-              }`}
-              style={{ background: a.swatch }}
-            />
-          ))}
-          {/* Custom: native color picker — ό,τι χρώμα θέλει ο χρήστης. */}
-          <label
-            title={t('settings.customAccent')}
-            className={`relative h-9 w-9 cursor-pointer overflow-hidden rounded-full border-2 transition-transform active:scale-90 ${
-              accent === 'custom' ? 'border-foreground scale-110' : 'border-transparent'
-            }`}
-            style={{
-              background:
-                customHex ??
-                'conic-gradient(from 0deg,#ff0000,#ff9900,#ffee00,#33dd00,#0099ff,#6633ff,#ff0099,#ff0000)',
-            }}
-          >
-            <input
-              type="color"
-              value={customHex ?? '#888888'}
-              onChange={(e) => {
-                if (setCustomAccent(e.target.value)) {
-                  setCustomHex(e.target.value);
-                  setAccentState('custom');
-                }
-              }}
-              className="absolute inset-0 cursor-pointer opacity-0"
-              aria-label={t('settings.customAccent')}
-            />
-            {accent !== 'custom' && (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 flex items-center justify-center text-lg font-semibold text-white mix-blend-difference"
-              >
-                +
-              </span>
-            )}
-          </label>
-        </div>
-      </section>
-
-      {/* Language */}
-      <section className="rounded-lg bg-card p-4">
-        <SectionTitle>{t('settings.language')}</SectionTitle>
-        <div className="flex gap-2">
-          {(['en', 'el'] as const).map((lng) => (
-            <button
-              key={lng}
-              onClick={() => onLangChange(lng)}
-              className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-                i18n.resolvedLanguage === lng
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-elevated hover:bg-accent'
-              }`}
-            >
-              {lng.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Rest timer — τώρα επεξεργάσιμο */}
-      <section className="rounded-lg bg-card p-4">
-        <SectionTitle>{t('settings.restTimer')}</SectionTitle>
-        <div className="flex flex-wrap gap-2">
-          {REST_PRESETS.map((s) => (
-            <button
-              key={s}
-              onClick={() => void updateSettings({ default_rest_timer_seconds: s })}
-              className={`rounded-md px-3 py-1.5 font-mono text-sm transition-colors ${
-                settings?.default_rest_timer_seconds === s
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-elevated hover:bg-accent'
-              }`}
-            >
-              {s < 60 ? `${s}s` : `${s / 60}m`}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
-          <div>
-            <p className="text-sm">{t('settings.restNotify')}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t('settings.restNotifyHint')}
-            </p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={settings?.notify_rest_timer ?? true}
-            aria-label={t('settings.restNotify')}
-            onClick={() =>
-              void updateSettings({
-                notify_rest_timer: !(settings?.notify_rest_timer ?? true),
-              })
-            }
-            className={`h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-              (settings?.notify_rest_timer ?? true) ? 'bg-primary shadow-glow-sm' : 'bg-muted'
-            }`}
-          >
-            <span
-              className={`block h-4 w-4 rounded-full bg-background transition-transform duration-200 ${
-                (settings?.notify_rest_timer ?? true)
-                  ? 'translate-x-6'
-                  : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
-          <div>
-            <p className="text-sm">{t('settings.restAutoStart')}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t('settings.restAutoStartHint')}
-            </p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={settings?.auto_start_rest_timer ?? true}
-            aria-label={t('settings.restAutoStart')}
-            onClick={() =>
-              void updateSettings({
-                auto_start_rest_timer: !(settings?.auto_start_rest_timer ?? true),
-              })
-            }
-            className={`h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-              (settings?.auto_start_rest_timer ?? true) ? 'bg-primary shadow-glow-sm' : 'bg-muted'
-            }`}
-          >
-            <span
-              className={`block h-4 w-4 rounded-full bg-background transition-transform duration-200 ${
-                (settings?.auto_start_rest_timer ?? true)
-                  ? 'translate-x-6'
-                  : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-      </section>
-
-      {/* Units */}
-      <section className="rounded-lg bg-card p-4">
-        <SectionTitle>{t('settings.units')}</SectionTitle>
-        <div className="flex gap-2">
-          {(['kg', 'lb'] as const).map((u) => (
-            <button
-              key={u}
-              onClick={() => void updateSettings({ weight_unit: u })}
-              className={`rounded-md px-3 py-1.5 text-sm uppercase transition-colors ${
-                settings?.weight_unit === u
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-elevated hover:bg-accent'
-              }`}
-            >
-              {t(`common.${u}`)}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Your data — local-first σημαίνει ότι φεύγει όποτε θες */}
-      <section className="rounded-lg bg-card p-4">
-        <SectionTitle>{t('settings.yourData')}</SectionTitle>
-        <p className="-mt-2 text-xs text-muted-foreground">
-          {t('settings.dataHint')}
-        </p>
-        <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
-          {(
-            [
-              ['workouts', stats.workouts],
-              ['sets', stats.sets],
-              ['prs', stats.prs],
-              ['skillSteps', stats.steps],
-            ] as const
-          ).map(([k, v]) => (
-            <div key={k} className="rounded-md bg-elevated py-2">
-              <dt className="text-[10px] uppercase text-muted-foreground">
-                {t(`settings.${k}`)}
-              </dt>
-              <dd className="font-mono text-sm">{v}</dd>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-4 flex gap-2">
-          <Button onClick={() => void onExport()}>{t('settings.export')}</Button>
-          <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            {t('settings.import')}
-          </Button>
-          <Input
-            ref={fileRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void onImportFile(f);
-              e.target.value = '';
-            }}
-          />
-        </div>
-        {status && (
-          <p className="mt-3 text-xs text-muted-foreground" role="status">
-            {status}
-          </p>
-        )}
-      </section>
+      <SettingsGroup title={t('settings.hubAboutGroup')}>
+        <SettingsRow to="/settings/about" Icon={Info} label={t('settings.about')} />
+      </SettingsGroup>
 
       <p className="text-center text-xs text-muted-foreground">
         Anabasis · {t('settings.offlineNote')}

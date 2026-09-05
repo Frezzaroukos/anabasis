@@ -2,7 +2,6 @@ import {
   Activity,
   CalendarDays,
   ClipboardList,
-  Download,
   Mountain,
   Home,
   LineChart,
@@ -37,7 +36,12 @@ export const PRIMARY_NAV: NavItem[] = [
   { to: '/exercises', labelKey: 'exercises.title', Icon: ListChecks },
 ];
 
-/** Ό,τι δεν χωρά στα tabs του κινητού — με σειρά συχνότητας χρήσης. */
+/**
+ * Ό,τι δεν χωρά στα tabs του κινητού — με σειρά συχνότητας χρήσης.
+ *
+ * Η εισαγωγή έφυγε από εδώ: είναι ενέργεια «μια φορά στη ζωή» και ζει πλέον
+ * στις Ρυθμίσεις → Δεδομένα, όχι δίπλα σε καθημερινούς προορισμούς.
+ */
 export const SECONDARY_NAV: NavItem[] = [
   { to: '/goals', labelKey: 'goals.title', Icon: Target },
   { to: '/progress', labelKey: 'progress.title', Icon: LineChart },
@@ -45,7 +49,8 @@ export const SECONDARY_NAV: NavItem[] = [
   { to: '/skills', labelKey: 'nav.skills', Icon: Sparkles },
   { to: '/achievements', labelKey: 'gami.title', Icon: Mountain },
   { to: '/body', labelKey: 'body.title', Icon: Scale },
-  { to: '/profile', labelKey: 'nav.profile', Icon: User },
-  { to: '/import', labelKey: 'import.title', Icon: Download },
-  { to: '/settings', labelKey: 'nav.settings', Icon: Settings },
+  { to: '/settings/profiles', labelKey: 'nav.profile', Icon: User },
+  // end: το /settings/profiles είναι ξεχωριστό στοιχείο — χωρίς αυτό θα
+  // φωτίζονταν δύο γραμμές ταυτόχρονα.
+  { to: '/settings', labelKey: 'nav.settings', Icon: Settings, end: true },
 ];

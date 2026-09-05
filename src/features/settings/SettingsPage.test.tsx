@@ -17,26 +17,53 @@ beforeAll(async () => {
   }
 });
 
-describe('SettingsPage', () => {
-  it('render-άρει γλώσσα, rest presets, μονάδες και data section', async () => {
-    render(
-      <I18nextProvider i18n={i18next}>
-        {/* Η σελίδα έχει πλέον <Link> προς τη βιβλιοθήκη — θέλει router context */}
-        <MemoryRouter>
-          <SettingsPage />
-        </MemoryRouter>
-      </I18nextProvider>,
-    );
+function renderHub() {
+  return render(
+    <I18nextProvider i18n={i18next}>
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>
+    </I18nextProvider>,
+  );
+}
+
+describe('SettingsPage — hub', () => {
+  it('δείχνει κάθε ομάδα ρυθμίσεων ως σύνδεσμο', async () => {
+    renderHub();
     await waitFor(() => expect(screen.getByText('Settings')).toBeTruthy());
-    expect(screen.getByText('EN')).toBeTruthy();
-    expect(screen.getByText('Units')).toBeTruthy();
-    expect(screen.getByText('Your data')).toBeTruthy();
-    expect(screen.getByText('Export backup')).toBeTruthy();
-    // η βιβλιοθήκη (ασκήσεις/δραστηριότητες/skills) είναι προσβάσιμη από εδώ,
-    // αφού το bottom nav είναι γεμάτο στα 6 tabs
-    expect(screen.getByText('Your library')).toBeTruthy();
+
+    const links = Object.fromEntries(
+      screen.getAllByRole('link').map((a) => [a.textContent ?? '', a.getAttribute('href')]),
+    );
+    const hrefFor = (label: string) =>
+      Object.entries(links).find(([text]) => text.startsWith(label))?.[1];
+
+    expect(hrefFor('Account')).toBe('/settings/account');
+    expect(hrefFor('Device profiles')).toBe('/settings/profiles');
+    expect(hrefFor('Appearance')).toBe('/settings/appearance');
+    expect(hrefFor('Training')).toBe('/settings/training');
+    expect(hrefFor('Data & backups')).toBe('/settings/data');
+    expect(hrefFor('About & share')).toBe('/settings/about');
+  });
+
+  it('κρατά τη βιβλιοθήκη προσβάσιμη — το bottom nav δεν χωρά άλλα tabs', async () => {
+    renderHub();
+    await waitFor(() => expect(screen.getByText('Your library')).toBeTruthy());
     expect(screen.getByText('Exercises')).toBeTruthy();
     expect(screen.getByText('Activities')).toBeTruthy();
+  });
+
+  /**
+   * Η ΔΙΠΛΗ ΤΑΥΤΟΤΗΤΑ ήταν το πραγματικό πρόβλημα των Ρυθμίσεων: cloud
+   * λογαριασμός και τοπικά προφίλ συσκευής με σχεδόν ίδιο όνομα, σε δύο
+   * διαφορετικά σημεία. Τώρα στέκονται δίπλα-δίπλα με διακριτά ονόματα.
+   */
+  it('ξεχωρίζει τον λογαριασμό cloud από τα προφίλ συσκευής', async () => {
+    renderHub();
+    await waitFor(() => expect(screen.getByText('Account')).toBeTruthy());
+    expect(screen.getByText('Device profiles')).toBeTruthy();
+    // Χωρίς σύνδεση δεν λέμε ψέματα ότι υπάρχει λογαριασμός.
+    expect(screen.getByText('Not signed in')).toBeTruthy();
   });
 });
 

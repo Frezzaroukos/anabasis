@@ -13,18 +13,22 @@ import { getCurrentUserId, setCurrentUserId } from '@/lib/db/session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { ShareCard } from './components/ShareCard';
+import { useAuth } from '@/lib/api/auth';
+import { CrossLink, SettingsHeader } from '@/features/settings/components/SettingsList';
 
 /**
- * Προφίλ σε ΑΥΤΗ τη συσκευή.
+ * Προφίλ σε ΑΥΤΗ τη συσκευή — /settings/profiles.
  *
- * Δεν είναι λογαριασμοί: δεν υπάρχει κωδικός και τα δεδομένα δεν ταξιδεύουν
- * σε άλλη συσκευή. Το λέμε ρητά στην οθόνη — μια ψεύτικη αίσθηση ασφάλειας
+ * Δεν είναι λογαριασμοί: δεν υπάρχει κωδικός. Η σύγχυση ήταν πραγματική —
+ * «Προφίλ» και «Λογαριασμός» κάθονταν σε δύο διαφορετικά σημεία με σχεδόν
+ * ίδιο όνομα. Εδώ το λέμε ρητά, δείχνουμε ΠΟΙΟ προφίλ συγχρονίζεται, και
+ * δίνουμε σύνδεσμο προς το άλλο. Μια ψεύτικη αίσθηση ασφάλειας (ή sync)
  * είναι χειρότερη από καθόλου.
  */
 export function ProfilePage() {
   const { t } = useTranslation();
   const activeId = getCurrentUserId();
+  const auth = useAuth();
 
   const profiles = useLiveQuery(() => listProfiles(), [], []);
   const stats = useLiveQuery(
@@ -92,12 +96,9 @@ export function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('profile.title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('profile.deviceOnly')}</p>
-      </header>
+      <SettingsHeader title={t('profile.title')} description={t('profile.deviceOnly')} />
 
-      <ShareCard />
+      <CrossLink to="/settings/account" label={t('profile.vsAccount')} />
 
       <section className="space-y-2">
         {profiles.map((p) => {
@@ -152,6 +153,11 @@ export function ProfilePage() {
                         <span className="flex items-center gap-0.5 text-[10px] uppercase text-primary">
                           <Check className="h-3 w-3" aria-hidden />
                           {t('profile.active')}
+                        </span>
+                      )}
+                      {isActive && auth && (
+                        <span className="text-[10px] uppercase text-muted-foreground">
+                          · {t('profile.syncedByAccount')}
                         </span>
                       )}
                     </p>

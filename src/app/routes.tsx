@@ -27,6 +27,11 @@ const ProgressPage = lazyPage(() => import('@/features/progress/ProgressPage'), 
 const SkillsPage = lazyPage(() => import('@/features/skills/SkillsPage'), 'SkillsPage');
 const SkillDetailPage = lazyPage(() => import('@/features/skills/SkillDetailPage'), 'SkillDetailPage');
 const SettingsPage = lazyPage(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
+const AccountSettingsPage = lazyPage(() => import('@/features/settings/pages/AccountSettingsPage'), 'AccountSettingsPage');
+const AppearanceSettingsPage = lazyPage(() => import('@/features/settings/pages/AppearanceSettingsPage'), 'AppearanceSettingsPage');
+const TrainingSettingsPage = lazyPage(() => import('@/features/settings/pages/TrainingSettingsPage'), 'TrainingSettingsPage');
+const DataSettingsPage = lazyPage(() => import('@/features/settings/pages/DataSettingsPage'), 'DataSettingsPage');
+const AboutSettingsPage = lazyPage(() => import('@/features/settings/pages/AboutSettingsPage'), 'AboutSettingsPage');
 const ProfilePage = lazyPage(() => import('@/features/profile/ProfilePage'), 'ProfilePage');
 const ImportPage = lazyPage(() => import('@/features/import/ImportPage'), 'ImportPage');
 const GoalsPage = lazyPage(() => import('@/features/goals/GoalsPage'), 'GoalsPage');
@@ -70,8 +75,16 @@ export const router = createBrowserRouter(
       { path: 'progress', element: <ProgressPage /> },
       { path: 'skills', element: <SkillsPage /> },
       { path: 'skills/:skillId', element: <SkillDetailPage /> },
+      // Οι Ρυθμίσεις είναι hub + υποσελίδες: η μία μακριά στήλη είχε γίνει
+      // αδιάβαστη. Το /profile μένει ως redirect — παλιά links & PWA shortcuts.
       { path: 'settings', element: <SettingsPage /> },
-      { path: 'profile', element: <ProfilePage /> },
+      { path: 'settings/account', element: <AccountSettingsPage /> },
+      { path: 'settings/profiles', element: <ProfilePage /> },
+      { path: 'settings/appearance', element: <AppearanceSettingsPage /> },
+      { path: 'settings/training', element: <TrainingSettingsPage /> },
+      { path: 'settings/data', element: <DataSettingsPage /> },
+      { path: 'settings/about', element: <AboutSettingsPage /> },
+      { path: 'profile', element: <Navigate to="/settings/profiles" replace /> },
       { path: 'goals', element: <GoalsPage /> },
       { path: 'import', element: <ImportPage /> },
       { path: 'branding', element: <BrandingPage /> },
