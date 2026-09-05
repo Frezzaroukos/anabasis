@@ -61,6 +61,10 @@
       "stop": "Stop rest",
       "restingShort": "Rest"
     },
+    "timer": {
+      "start": "Start timer",
+      "pause": "Pause timer"
+    },
     "activityKind": "Activity",
     "setType": "Set type",
     "chain": {

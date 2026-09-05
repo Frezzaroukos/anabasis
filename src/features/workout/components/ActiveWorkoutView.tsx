@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Clock, Link2, Plus, Weight, X } from 'lucide-react';
+import { Link2, Plus, Weight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { queries } from '@/lib/db';
-import { cn } from '@/lib/utils';
 import type { Exercise, Workout } from '@/lib/db/types';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
@@ -16,7 +15,7 @@ import { useWakeLock } from '../useWakeLock';
 import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
 import { AddExerciseSheet } from './AddExerciseSheet';
-import { RestTimer } from './RestTimer';
+import { readStopwatchSeconds, clearStopwatch } from '@/hooks/useManualStopwatch';
 import { PlateCalculator } from './PlateCalculator';
 import { BottomSheet } from '@/components/ui/sheet';
 import { ActivityLogForm } from './ActivityLogForm';
@@ -59,8 +58,6 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   const [workoutType, setWorkoutType] = useState(workout.workout_type ?? '');
   // Αυξάνει κάθε φορά που καταγράφεται νέο σετ (από οποιαδήποτε κάρτα
   // άσκησης) — trigger για το auto-start του rest timer παρακάτω.
-  const [restSignal, setRestSignal] = useState(0);
-  const onSetLogged = () => setRestSignal((n) => n + 1);
 
   const exerciseById = useMemo(() => {
     const m = new Map<string, Exercise>();
@@ -111,8 +108,13 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     setConfirmEnd(false);
     if (isEmpty) {
       await queries.softDeleteWorkout(workout.id);
+      clearStopwatch(workout.id);
     } else {
-      await queries.endWorkout(workout.id);
+      // Χειροκίνητο χρονόμετρο: αν ο χρήστης το μέτρησε, ΑΥΤΟ είναι η διάρκεια
+      // (τίμια — μόνο ο χρόνος που όντως μετρούσε)· αλλιώς πέφτει σε wall-clock.
+      const manual = readStopwatchSeconds(workout.id);
+      await queries.endWorkout(workout.id, manual > 0 ? manual : undefined);
+      clearStopwatch(workout.id);
     }
   };
 
@@ -128,10 +130,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">
             {t('workout.active')}
           </p>
-          <span className="flex shrink-0 items-center gap-1 text-muted-foreground/70">
-            <Clock className="h-3 w-3" aria-hidden />
-            <SessionTimer startedAt={workout.started_at} />
-          </span>
+          <SessionTimer workoutId={workout.id} />
         </div>
         <Button
           variant="destructive"
@@ -144,7 +143,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
         </Button>
       </header>
 
-      <div className={cn('flex-1 overflow-y-auto px-4 pt-3', isSetLogged ? 'pb-32' : 'pb-6')}>
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-6">
         <div className="mb-4">
           <Input
             value={workoutType}
@@ -199,7 +198,6 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                       }
                       chain={chain}
                       onChainChange={setChain}
-                      onSetLogged={onSetLogged}
                     />
                   );
                 })}
@@ -228,14 +226,6 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           <ActivityLogForm workout={workout} />
         )}
       </div>
-
-      {isSetLogged && (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-card/95 px-4 py-3 safe-bottom backdrop-blur">
-          <div className="mx-auto max-w-md">
-            <RestTimer restartSignal={restSignal} />
-          </div>
-        </div>
-      )}
 
       {isSetLogged && (
         <AddExerciseSheet

@@ -103,7 +103,12 @@ export async function startWorkout(
   return w;
 }
 
-export async function endWorkout(workoutId: string): Promise<void> {
+export async function endWorkout(
+  workoutId: string,
+  /** Χειροκίνητο χρονόμετρο: αν δοθεί, ΑΥΤΟ είναι η διάρκεια (μόνο ο χρόνος που
+   * μέτρησε ο χρήστης), αντί για wall-clock. */
+  durationOverride?: number,
+): Promise<void> {
   const t = now();
   const w = await db.workouts.get(workoutId);
   if (!w) return;
@@ -114,7 +119,8 @@ export async function endWorkout(workoutId: string): Promise<void> {
   // duration θα ήταν λάθος (δεν το έκανες live), οπότε δεν το μετράμε.
   // Το ended_at ισούται με το started_at ώστε να μείνει στη σωστή μέρα.
   const backdated = elapsed > 12 * 3600;
-  const duration = backdated ? null : Math.max(0, elapsed);
+  const duration =
+    durationOverride != null ? Math.max(0, Math.round(durationOverride)) : backdated ? null : Math.max(0, elapsed);
   await db.workouts.update(workoutId, {
     ended_at: backdated ? w.started_at : t,
     duration_seconds: duration,
