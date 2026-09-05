@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, ChevronRight, Pencil, Trophy } from 'lucide-react';
+import { ChevronRight, Pencil, Trophy } from 'lucide-react';
 import { getWorkoutDetail } from '@/lib/db/queries';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { useAppSettings } from '@/hooks/useAppSettings';
@@ -41,7 +41,6 @@ export function WorkoutDetailPage() {
   if (detail === null) {
     return (
       <div className="space-y-4">
-        <BackLink label={t('history.title')} />
         <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {t('history.notFound')}
         </p>
@@ -55,7 +54,6 @@ export function WorkoutDetailPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <BackLink label={t('history.title')} />
         <div className="flex items-start justify-between gap-3">
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {workout.workout_type ?? activityLabel}
@@ -183,18 +181,6 @@ export function WorkoutDetailPage() {
         </Card>
       )}
     </div>
-  );
-}
-
-function BackLink({ label }: { label: string }) {
-  return (
-    <Link
-      to="/history"
-      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-    >
-      <ArrowLeft className="h-3.5 w-3.5" />
-      {label}
-    </Link>
   );
 }
 

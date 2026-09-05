@@ -23,6 +23,11 @@ import type {
   AdminStats,
   HealthResponse,
   OAuthProviders,
+  SocialMe,
+  FriendRow,
+  LeaderboardRow,
+  PublicProfile,
+  PublishStatsBody,
 } from './types';
 
 export * from './types';
@@ -242,5 +247,50 @@ export const api = {
 
   oauthProviders(): Promise<OAuthProviders> {
     return request<OAuthProviders>('/auth/oauth/providers');
+  },
+
+  // ── Social ──────────────────────────────────────────────────────────────────
+  socialMe(): Promise<SocialMe> {
+    return request<SocialMe>('/social/me');
+  },
+
+  socialUpdateProfile(body: {
+    username?: string;
+    display_name?: string;
+    share_profile?: boolean;
+  }): Promise<SocialMe> {
+    return request<SocialMe>('/social/profile', { method: 'POST', body });
+  },
+
+  socialPublishStats(body: PublishStatsBody): Promise<unknown> {
+    return request('/social/stats', { method: 'POST', body });
+  },
+
+  socialFriends(): Promise<FriendRow[]> {
+    return request<FriendRow[]>('/social/friends');
+  },
+
+  socialRequests(): Promise<FriendRow[]> {
+    return request<FriendRow[]>('/social/requests');
+  },
+
+  socialSendRequest(username: string): Promise<{ status: string }> {
+    return request('/social/requests', { method: 'POST', body: { username } });
+  },
+
+  socialAccept(id: string): Promise<void> {
+    return request(`/social/requests/${id}/accept`, { method: 'POST', body: {} });
+  },
+
+  socialRemove(id: string): Promise<void> {
+    return request(`/social/friends/${id}/remove`, { method: 'POST', body: {} });
+  },
+
+  socialLeaderboard(scope: 'friends' | 'global'): Promise<LeaderboardRow[]> {
+    return request<LeaderboardRow[]>(`/social/leaderboard?scope=${scope}`);
+  },
+
+  socialPublicProfile(username: string): Promise<PublicProfile> {
+    return request<PublicProfile>(`/social/user/${encodeURIComponent(username)}`);
   },
 };

@@ -13,7 +13,9 @@
     "programs": "Programs",
     "profile": "Profile",
     "more": "More",
-    "goals": "Goals"
+    "goals": "Goals",
+    "back": "Back",
+    "forward": "Forward"
   },
   "workout": {
     "title": "Workout",
@@ -594,7 +596,7 @@
     "loadTargetLabel": "Target load (kg)",
     "trackerLabel": "Tracker",
     "createTracker": "+ Create \"{{name}}\"",
-        "customTargetLabel": "Target",
+    "customTargetLabel": "Target",
     "customNameLabel": "What are you tracking?",
     "customNamePlaceholder": "e.g. Cold showers, meditation minutes",
     "increment": "Increase",
