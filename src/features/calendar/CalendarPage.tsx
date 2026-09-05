@@ -162,18 +162,24 @@ export function CalendarPage() {
     return out;
   }, [cursor.year, cursor.month, first, last]);
 
-  // Adherence overlay: ένα tint ανά εβδομάδα (7 συνεχόμενα κελιά) — πόσες
-  // μέρες προπονήθηκες αυτή την εβδομάδα, ως απαλό background wash. Το ίδιο
-  // tier σε κάθε κελί της εβδομάδας κάνει το flat grid να διαβάζεται σαν
-  // ζώνες, χωρίς να χρειάζεται να το ξαναχτίσουμε σε per-week rows.
-  const weekTints = useMemo(() => {
-    const out: string[] = [];
+  // Το πλέγμα σπάει σε εβδομάδες-γραμμές. Πριν ήταν ένα flat grid 7 στηλών και
+  // το adherence tint έμπαινε σε ΚΑΘΕ κελί ξεχωριστά: με τα κενά ανάμεσά τους
+  // διαβαζόταν σαν επτά ξεχωριστές κηλίδες, όχι σαν «αυτή η εβδομάδα ήταν
+  // γεμάτη». Ως γραμμή, το wash είναι συνεχές και λέει κάτι με μία ματιά.
+  const weeks = useMemo(() => {
+    const out: Array<Array<{ key: string; day: number } | null>> = [];
     for (let i = 0; i < cells.length; i += 7) {
-      const week = cells.slice(i, i + 7).map((c) => c?.key ?? null);
-      out.push(weekAdherenceTint(week, cal));
+      const week = cells.slice(i, i + 7);
+      while (week.length < 7) week.push(null);
+      out.push(week);
     }
     return out;
-  }, [cells, cal]);
+  }, [cells]);
+
+  const weekTints = useMemo(
+    () => weeks.map((week) => weekAdherenceTint(week.map((c) => c?.key ?? null), cal)),
+    [weeks, cal],
+  );
 
   const monthLabel = first.toLocaleDateString(i18n.resolvedLanguage, {
     month: 'long',
@@ -261,7 +267,7 @@ export function CalendarPage() {
           <button
             onClick={() => shift(-1)}
             aria-label={t('calendar.prev')}
-            className="rounded-l-lg px-2.5 py-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 w-11 items-center justify-center rounded-l-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -271,14 +277,14 @@ export function CalendarPage() {
               setCursor({ year: d.getFullYear(), month: d.getMonth() });
               setSelected(today);
             }}
-            className="border-x border-border/70 px-3 py-1.5 text-xs font-medium ring-offset-background transition-all duration-150 hover:bg-accent active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 border-x border-border/70 px-4 text-xs font-medium ring-offset-background transition-all duration-150 hover:bg-accent active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {t('calendar.today')}
           </button>
           <button
             onClick={() => shift(1)}
             aria-label={t('calendar.next')}
-            className="rounded-r-lg px-2.5 py-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 w-11 items-center justify-center rounded-r-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -298,82 +304,126 @@ export function CalendarPage() {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {cells.map((c, i) =>
-            c === null ? (
-              <div key={`pad-${i}`} />
-            ) : (
-              <button
-                key={c.key}
-                onClick={() => setSelected(c.key)}
-                className={cn(
-                  'flex min-h-[56px] flex-col items-center gap-1 rounded-lg p-1 ring-offset-background transition-all duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  // Adherence overlay πρώτα (resting background) — η επιλεγμένη/
-                  // hover κατάσταση παρακάτω τη σκεπάζει κανονικά (twMerge).
-                  weekTints[Math.floor(i / 7)],
-                  // Βάθος αντί για χρωματιστό περίγραμμα: επιλεγμένη = ανυψωμένη
-                  // επιφάνεια, σήμερα = accent ring — τα δύο συνδυάζονται όταν
-                  // η επιλεγμένη μέρα ΕΙΝΑΙ σήμερα.
-                  selected === c.key ? 'bg-elevated' : 'hover:bg-muted/40',
-                  c.key === today && 'ring-1 ring-inset ring-primary',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs tabular-nums transition-colors',
-                    c.key === today
-                      ? 'bg-primary font-semibold text-primary-foreground'
-                      : 'text-muted-foreground',
-                  )}
-                >
-                  {c.day}
-                </span>
-                {/* Μία κουκκίδα ανά δραστηριότητα — 3 αθλήματα = 3 κουκκίδες.
-                    Πάνω από 4: 3 κουκκίδες + «+N» αντί να κόβονται σιωπηλά. */}
-                {(() => {
-                  const ws = cal.get(c.key)?.workouts ?? [];
-                  const overflow = ws.length > 4;
-                  const shown = overflow ? ws.slice(0, 3) : ws.slice(0, 4);
-                  return (
-                    <span className="flex flex-wrap items-center justify-center gap-0.5">
-                      {shown.map((w) => (
-                        <span
-                          key={w.id}
-                          title={t('calendar.magnitudeHint')}
-                          className={cn('rounded-full', DOT_SIZE_CLASS[dotSizeOf(w)], dotOf(w.kind))}
-                        />
-                      ))}
-                      {overflow && (
-                        <span className="font-mono text-[8px] leading-none text-muted-foreground">
-                          +{ws.length - 3}
-                        </span>
+        <div className="space-y-0.5">
+          {weeks.map((week, wi) => (
+            <div
+              key={wi}
+              className={cn('grid grid-cols-7 gap-0.5 rounded-lg', weekTints[wi])}
+            >
+              {week.map((c, di) =>
+                c === null ? (
+                  <div key={`pad-${wi}-${di}`} />
+                ) : (
+                  <button
+                    key={c.key}
+                    onClick={() => setSelected(c.key)}
+                    className={cn(
+                      // min-h 48px (≥ WCAG 2.5.5) στο κινητό, πιο άνετο από sm.
+                      // Ήταν 56px με gap-1: ένας άδειος μήνας έπιανε ~700px ύψος
+                      // για μηδέν πληροφορία και σε ανάγκαζε να σκρολάρεις.
+                      'flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg p-0.5 ring-offset-background transition-all duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-16',
+                      // Δύο ΞΕΧΩΡΙΣΤΑ σήματα: «σήμερα» ζει στον αριθμό (γεμάτος
+                      // κύκλος), «επιλεγμένη» στο κελί. Πριν το σήμερα είχε ΚΑΙ
+                      // κύκλο ΚΑΙ ring γύρω από το κελί — δύο σήματα για το ίδιο
+                      // πράγμα, που έκρυβαν ποια μέρα είναι όντως επιλεγμένη.
+                      selected === c.key
+                        ? 'bg-elevated ring-1 ring-inset ring-primary/40'
+                        : 'hover:bg-muted/40',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs tabular-nums transition-colors',
+                        c.key === today
+                          ? 'bg-primary font-semibold text-primary-foreground'
+                          : 'text-muted-foreground',
                       )}
+                    >
+                      {c.day}
                     </span>
-                  );
-                })()}
-                {cal.get(c.key)?.weight != null && (
-                  <span className="font-mono text-[9px] text-muted-foreground">
-                    {formatWeight(cal.get(c.key)!.weight!, unit, { granularity: 'body', withUnit: false })}
-                  </span>
-                )}
-              </button>
-            ),
-          )}
+                    {/* Σταθερό ύψος: αλλιώς οι μέρες με κουκκίδες ήταν ψηλότερες
+                        από τις κενές και η γραμμή «κουνιόταν». */}
+                    <span className="flex h-2.5 flex-wrap items-center justify-center gap-0.5">
+                      {(() => {
+                        const ws = cal.get(c.key)?.workouts ?? [];
+                        const overflow = ws.length > 4;
+                        const shown = overflow ? ws.slice(0, 3) : ws.slice(0, 4);
+                        return (
+                          <>
+                            {shown.map((w) => (
+                              <span
+                                key={w.id}
+                                title={t('calendar.magnitudeHint')}
+                                className={cn(
+                                  'rounded-full',
+                                  DOT_SIZE_CLASS[dotSizeOf(w)],
+                                  dotOf(w.kind),
+                                )}
+                              />
+                            ))}
+                            {overflow && (
+                              <span className="font-mono text-[9px] leading-none text-muted-foreground">
+                                +{ws.length - 3}
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </span>
+                    {/* Το βάρος σώματος δεν χωρά σε κελί 48px χωρίς να γίνει
+                        θόρυβος στα 9px — μένει από sm και πάνω, και πάντα στη
+                        λεπτομέρεια της ημέρας. */}
+                    {cal.get(c.key)?.weight != null && (
+                      <span className="hidden font-mono text-[10px] tabular-nums text-muted-foreground sm:block">
+                        {formatWeight(cal.get(c.key)!.weight!, unit, {
+                          granularity: 'body',
+                          withUnit: false,
+                        })}
+                      </span>
+                    )}
+                  </button>
+                ),
+              )}
+            </div>
+          ))}
         </div>
+
+        {/* Οι κουκκίδες μεγαλώνουν με το μέγεθος της συνεδρίας. Ήταν μόνο σε
+            `title` — αόρατο σε κάθε συσκευή αφής, δηλαδή εκεί που χρησιμοποιείται
+            το app. Ο υπόμνηση μπαίνει μόνο όταν υπάρχει κάτι να εξηγηθεί. */}
+        {monthStats.workouts > 0 && (
+          <div className="mt-2.5 flex items-center justify-center gap-1.5 border-t border-border/40 pt-2.5 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1" aria-hidden>
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+              <span className="h-2 w-2 rounded-full bg-muted-foreground/60" />
+              <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/60" />
+            </span>
+            {t('calendar.magnitudeHint')}
+          </div>
+        )}
       </div>
 
       {/* Λεπτομέρειες επιλεγμένης ημέρας — key = μέρα ώστε η αλλαγή επιλογής
           να «ανεβαίνει» ξανά αντί να τιναχτεί απότομα το περιεχόμενο. */}
       <section key={selected ?? 'none'} className="animate-rise-in rounded-lg bg-card p-4">
-        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {selected
-            ? new Date(selected).toLocaleDateString(i18n.resolvedLanguage, {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })
-            : t('calendar.pickDay')}
-        </h2>
+        {/* Ήταν 11px uppercase muted — η ίδια «eyebrow» βαθμίδα με τις ετικέτες
+            των καρτών, ενώ εδώ είναι ο τίτλος του περιεχομένου. */}
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-medium capitalize">
+            {selected
+              ? new Date(selected).toLocaleDateString(i18n.resolvedLanguage, {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })
+              : t('calendar.pickDay')}
+          </h2>
+          {selected === today && (
+            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+              {t('calendar.today')}
+            </span>
+          )}
+        </div>
         {!day || day.workouts.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('calendar.noActivity')}</p>
         ) : (
@@ -414,7 +464,7 @@ export function CalendarPage() {
         {selected && (
           <button
             onClick={() => setAddOpen(true)}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-sm text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Plus className="h-4 w-4" />
             {t('calendar.addWorkout')}
