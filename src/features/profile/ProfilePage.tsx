@@ -13,6 +13,7 @@ import { getCurrentUserId, setCurrentUserId } from '@/lib/db/session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { ShareCard } from './components/ShareCard';
 
 /**
  * Προφίλ σε ΑΥΤΗ τη συσκευή.
@@ -95,6 +96,8 @@ export function ProfilePage() {
         <h1 className="font-display text-2xl font-semibold tracking-tight">{t('profile.title')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('profile.deviceOnly')}</p>
       </header>
+
+      <ShareCard />
 
       <section className="space-y-2">
         {profiles.map((p) => {
