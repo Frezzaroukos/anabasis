@@ -13,7 +13,9 @@
     "programs": "Ρουτίνες",
     "profile": "Προφίλ",
     "more": "Περισσότερα",
-    "goals": "Στόχοι"
+    "goals": "Στόχοι",
+    "back": "Πίσω",
+    "forward": "Μπροστά"
   },
   "workout": {
     "title": "Προπόνηση",
@@ -594,7 +596,7 @@
     "loadTargetLabel": "Φορτίο-στόχος (kg)",
     "trackerLabel": "Μετρητής",
     "createTracker": "+ Δημιουργία «{{name}}»",
-        "customTargetLabel": "Στόχος",
+    "customTargetLabel": "Στόχος",
     "customNameLabel": "Τι μετράς;",
     "customNamePlaceholder": "π.χ. κρύα ντους, λεπτά διαλογισμού",
     "increment": "Αύξηση",

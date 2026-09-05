@@ -81,6 +81,68 @@ export interface OAuthProviders {
   google: boolean;
 }
 
+// ── Social (φιλίες, aggregate προφίλ, leaderboard) — server/src/social.rs ──────
+
+/** GET /api/social/me — η δική μου δημόσια ταυτότητα + μετρητές. */
+export interface SocialMe {
+  username: string | null;
+  display_name: string | null;
+  share_profile: boolean;
+  friends_count: number;
+  incoming_count: number;
+  outgoing_count: number;
+  has_stats: boolean;
+}
+
+/** Ένας φίλος ή εκκρεμές αίτημα (aggregate stats μόνο). */
+export interface FriendRow {
+  account_id: string;
+  username: string | null;
+  display_name: string | null;
+  status: 'accepted' | 'pending';
+  /** 'friend' | 'in' (εισερχόμενο) | 'out' (εξερχόμενο) */
+  direction: 'friend' | 'in' | 'out';
+  level: number;
+  xp: number;
+  tier: string;
+  altitude_m: number;
+  streak_days: number;
+}
+
+/** Μία σειρά στον πίνακα κατάταξης — aggregate, με SQL-enforced privacy. */
+export interface LeaderboardRow {
+  username: string | null;
+  display_name: string | null;
+  level: number;
+  xp: number;
+  tier: string;
+  altitude_m: number;
+  streak_days: number;
+  is_self: boolean;
+}
+
+/** GET /api/social/user/{username} — δημόσια προβολή προφίλ. */
+export interface PublicProfile {
+  username: string | null;
+  display_name: string | null;
+  level: number;
+  xp: number;
+  tier: string;
+  altitude_m: number;
+  /** JSON array από earned badge ids */
+  badges: string;
+  streak_days: number;
+  longest_streak_days: number;
+}
+
+/** Το snapshot που δημοσιεύει ο client (server ξαναϋπολογίζει level/tier). */
+export interface PublishStatsBody {
+  xp: number;
+  streak_days: number;
+  longest_streak_days: number;
+  badges: string[];
+}
+
 /** Server error codes ανά endpoint — βλ. server/API-CONTRACT.md. Ελεύθερο
  * string ώστε άγνωστοι/μελλοντικοί κωδικοί να μην σπάνε τύπους. */
 export type ApiErrorCode =
