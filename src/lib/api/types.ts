@@ -61,13 +61,27 @@ export interface AdminUser {
   created_at: string;
   last_sync_at: string | null;
   row_count: number;
+  /** Ενεργά (μη ληγμένα) sessions — πόσες συσκευές είναι συνδεδεμένες τώρα. */
+  sessions: number;
 }
 
 export interface AdminStats {
   accounts: number;
+  active_accounts: number;
+  disabled_accounts: number;
+  admins: number;
+  sessions: number;
   rows: number;
-  db_size_bytes: number;
+  /** `null` όταν ο server δεν μπορεί να διαβάσει το αρχείο — ΟΧΙ ψεύτικο 0. */
+  db_size_bytes: number | null;
   uptime_seconds: number;
+}
+
+/** GET /api/admin/users/{id}/rows — sync_rows ενός λογαριασμού ανά πίνακα. */
+export interface AdminTableBreakdown {
+  tbl: string;
+  row_count: number;
+  deleted_count: number;
 }
 
 export interface HealthResponse {

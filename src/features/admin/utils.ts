@@ -1,3 +1,5 @@
+import type { AdminUser } from '@/lib/api/types';
+
 /**
  * Μορφοποίηση για τον πίνακα στατιστικών του Admin — server/API-CONTRACT.md
  * GET /api/admin/stats στέλνει raw bytes/seconds, δεν έχουν νόημα ακατέργαστα.
@@ -25,4 +27,26 @@ export function formatUptime(seconds: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m`;
   return `${Math.floor(seconds)}s`;
+}
+
+export type AdminFilter = 'all' | 'active' | 'disabled' | 'admins';
+
+/**
+ * Αναζήτηση + φίλτρο κατάστασης, ως καθαρή συνάρτηση ώστε να δοκιμάζεται χωρίς
+ * να στηθεί ολόκληρη η σελίδα. Το ταίριασμα είναι case-insensitive substring
+ * στο email: ο admin ξέρει «κάτι με gmail», όχι το ακριβές string.
+ */
+export function filterUsers(
+  users: AdminUser[],
+  query: string,
+  filter: AdminFilter,
+): AdminUser[] {
+  const needle = query.trim().toLowerCase();
+  return users.filter((u) => {
+    if (needle && !u.email.toLowerCase().includes(needle)) return false;
+    if (filter === 'active') return !u.disabled;
+    if (filter === 'disabled') return u.disabled;
+    if (filter === 'admins') return u.role === 'admin';
+    return true;
+  });
 }

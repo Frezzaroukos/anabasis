@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatUptime } from './utils';
+import { filterUsers, formatBytes, formatUptime } from './utils';
+import type { AdminUser } from '@/lib/api/types';
 
 describe('formatBytes', () => {
   it('δείχνει bytes κάτω από 1024', () => {
@@ -28,5 +29,52 @@ describe('formatUptime', () => {
 
   it('δείχνει δευτερόλεπτα κάτω από λεπτό', () => {
     expect(formatUptime(30)).toBe('30s');
+  });
+});
+
+const user = (over: Partial<AdminUser>): AdminUser => ({
+  id: over.email ?? 'id',
+  email: 'a@example.com',
+  role: 'user',
+  disabled: false,
+  created_at: '2026-01-01T00:00:00Z',
+  last_sync_at: null,
+  row_count: 0,
+  sessions: 0,
+  ...over,
+});
+
+const USERS: AdminUser[] = [
+  user({ email: 'aggelos@gmail.com', role: 'admin' }),
+  user({ email: 'friend@proton.me' }),
+  user({ email: 'banned@gmail.com', disabled: true }),
+];
+
+describe('filterUsers', () => {
+  it('χωρίς query/φίλτρο επιστρέφει τα πάντα', () => {
+    expect(filterUsers(USERS, '', 'all')).toHaveLength(3);
+  });
+
+  it('ταιριάζει substring στο email χωρίς πεζά/κεφαλαία', () => {
+    expect(filterUsers(USERS, 'GMAIL', 'all').map((u) => u.email)).toEqual([
+      'aggelos@gmail.com',
+      'banned@gmail.com',
+    ]);
+  });
+
+  it('αγνοεί κενά γύρω από το query', () => {
+    expect(filterUsers(USERS, '  proton  ', 'all')).toHaveLength(1);
+  });
+
+  it('φιλτράρει ανά κατάσταση', () => {
+    expect(filterUsers(USERS, '', 'active')).toHaveLength(2);
+    expect(filterUsers(USERS, '', 'disabled').map((u) => u.email)).toEqual(['banned@gmail.com']);
+    expect(filterUsers(USERS, '', 'admins').map((u) => u.email)).toEqual(['aggelos@gmail.com']);
+  });
+
+  it('συνδυάζει query ΚΑΙ φίλτρο', () => {
+    expect(filterUsers(USERS, 'gmail', 'disabled').map((u) => u.email)).toEqual([
+      'banned@gmail.com',
+    ]);
   });
 });
