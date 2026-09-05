@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { UserPlus, Check, X, Users, Globe, Mountain, Flame, Award } from 'lucide-react';
+import { UserPlus, Check, X, Users, Globe, Mountain, Flame, Award, Share2 } from 'lucide-react';
 import { getGamificationInput } from '@/lib/db/queries';
 import { useAuth } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
@@ -91,17 +91,20 @@ function ProfileCard({
   return (
     <section className="rounded-xl bg-card p-4">
       {me.username ? (
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              {t('social.profile.usernameLabel')}
-            </p>
-            <p className="font-mono text-sm">@{me.username}</p>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {t('social.profile.usernameLabel')}
+              </p>
+              <p className="font-mono text-sm">@{me.username}</p>
+            </div>
+            <ShareToggle
+              on={me.share_profile}
+              onToggle={(v) => onSave({ share_profile: v })}
+            />
           </div>
-          <ShareToggle
-            on={me.share_profile}
-            onToggle={(v) => onSave({ share_profile: v })}
-          />
+          <InviteButton username={me.username} />
         </div>
       ) : (
         <div className="space-y-2">
@@ -124,6 +127,40 @@ function ProfileCard({
       )}
       {msg && <p className="mt-2 text-xs text-muted-foreground">{msg}</p>}
     </section>
+  );
+}
+
+/** Viral loop: μοιράσου το username σου ώστε να σε προσθέτουν φίλοι. Native
+ * share όπου υπάρχει, αλλιώς clipboard fallback (ίδιο pattern με το ShareCard). */
+function InviteButton({ username }: { username: string }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const text = t('social.profile.inviteText', { username });
+
+  const invite = async () => {
+    const nav = navigator as Navigator & { share?: (d: { text: string }) => Promise<void> };
+    if (typeof nav.share === 'function') {
+      try {
+        await nav.share({ text });
+        return;
+      } catch {
+        /* ο χρήστης ακύρωσε ή δεν υποστηρίζεται — πέσε στο clipboard */
+      }
+    }
+    try {
+      await navigator.clipboard?.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard μπλοκαρισμένο — no-op, όχι crash */
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" onClick={invite} className="w-full gap-2">
+      <Share2 className="h-4 w-4" />
+      {copied ? t('social.profile.inviteCopied') : t('social.profile.invite')}
+    </Button>
   );
 }
 
@@ -317,6 +354,14 @@ function Leaderboard({
                   <span>{t(`gami.tier.${r.tier}`)}</span>
                   <Flair streakDays={r.streak_days} badges={r.badges} />
                 </div>
+                {r.is_self && i > 0 && rows[i - 1]!.xp > r.xp && (
+                  <p className="mt-0.5 text-[11px] text-[hsl(var(--gold))] tabular-nums">
+                    {t('social.board.behind', {
+                      xp: (rows[i - 1]!.xp - r.xp).toLocaleString(),
+                      rank: i,
+                    })}
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="font-display text-sm font-semibold tabular-nums">
