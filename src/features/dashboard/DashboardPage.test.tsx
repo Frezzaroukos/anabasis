@@ -197,12 +197,12 @@ describe('DashboardPage — hero fallback ladder', () => {
     expect(screen.queryByText(dashboardEn.hero.lastSessionUnit)).toBeNull();
   });
 
-  it('καμία προπόνηση αυτή την εβδομάδα, αλλά υπάρχει ιστορικό: δείχνει "τελευταία προπόνηση"', async () => {
-    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
+  it('ΠΡΟΣΦΑΤΟ κενό (<7 μέρες, εκτός τρέχουσας εβδομάδας): δείχνει "τελευταία προπόνηση"', async () => {
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z')); // Πέμπτη· εβδομάδα 17–23/08
     setCurrentUserId('dashboard-hero-last');
 
-    // Προηγούμενη εβδομάδα (10/08) — έξω από το τρέχον Δευτέρα-Κυριακή.
-    const w = await startWorkout('strength', '2026-08-10');
+    // 15/08 = Σάββατο προηγ. εβδομάδας, 5 μέρες πριν → πρόσφατο nudge.
+    const w = await startWorkout('strength', '2026-08-15');
     await endWorkout(w.id);
 
     render(wrap(<DashboardPage />));
@@ -210,5 +210,22 @@ describe('DashboardPage — hero fallback ladder', () => {
     await waitFor(() => expect(screen.getByText(dashboardEn.hero.lastSessionUnit)).toBeTruthy());
     expect(screen.queryByText(en.dashboard.hero.streakUnit)).toBeNull();
     expect(screen.queryByText(dashboardEn.hero.weekUnit)).toBeNull();
+  });
+
+  it('ΠΑΛΙΟ μόνο ιστορικό (≥7 μέρες): ΔΕΝ δείχνει stale αριθμό — πέφτει σε καλωσόρισμα', async () => {
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
+    setCurrentUserId('dashboard-hero-stale');
+
+    // 01/08 = 19 μέρες πριν. Ένα «19 μέρες» ως hero διαβάζεται αρνητικά/χαλασμένο.
+    const w = await startWorkout('strength', '2026-08-01');
+    await endWorkout(w.id);
+
+    render(wrap(<DashboardPage />));
+
+    // Ο τίτλος καλωσορίσματος υπάρχει· κανένας stale αριθμός-hero.
+    await waitFor(() => expect(screen.getByText(en.dashboard.title)).toBeTruthy());
+    expect(screen.queryByText(dashboardEn.hero.lastSessionUnit)).toBeNull();
+    expect(screen.queryByText(dashboardEn.hero.weekUnit)).toBeNull();
+    expect(screen.queryByText(en.dashboard.hero.streakUnit)).toBeNull();
   });
 });

@@ -398,6 +398,7 @@
     "startSub": "Pick an activity and go",
     "activeThisWeek": "{{count}} days trained this week",
     "subtitle": "Keep climbing. Master your body.",
+    "startFirst": "Log your first workout to begin the climb.",
     "skillLadder": "Skill ladder",
     "viewAll": "View all",
     "ladderProgress": "{{done}} of {{total}} steps cleared",
