@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Button } from './button';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useBackToClose } from '@/hooks/useBackToClose';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, open);
+  useBackToClose(open, onCancel);
 
   React.useEffect(() => {
     if (!open) return;

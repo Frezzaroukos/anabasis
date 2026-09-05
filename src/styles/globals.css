@@ -108,6 +108,9 @@
   body,
   #root {
     @apply h-full;
+    /* Στοπ στο pull-to-refresh (Android/PWA): reload μέσα στην προπόνηση χάνει
+       ό,τι γράφεις. App-like συμπεριφορά, όχι σελίδα. */
+    overscroll-behavior-y: none;
   }
 
   body {
