@@ -870,7 +870,7 @@
       "saved": "Αποθηκεύτηκε.",
       "invite": "Κάλεσε φίλους",
       "inviteCopied": "Αντιγράφηκε",
-      "inviteText": "Πρόσθεσέ με στο Anabasis: @{{username}} — anabasis.axonos.dev",
+      "inviteText": "Πρόσθεσέ με στο Anabasis — το προφίλ μου: https://anabasis.axonos.dev/u/{{username}}",
       "notFound": "Αυτό το προφίλ είναι ιδιωτικό ή δεν υπάρχει.",
       "streak": "Σερί {{count}} ημερών",
       "longestStreak": "Μεγαλύτερο: {{count}} μέρες",
