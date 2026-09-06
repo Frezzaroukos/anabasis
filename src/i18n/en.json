@@ -871,6 +871,9 @@
       "invite": "Invite friends",
       "inviteCopied": "Invite copied",
       "inviteText": "Add me on Anabasis: @{{username}} — anabasis.axonos.dev",
+      "notFound": "This profile is private or doesn't exist.",
+      "streak": "{{count}}-day streak",
+      "longestStreak": "Longest: {{count}} days",
       "err": {
         "username_taken": "That username is taken.",
         "invalid_username": "3–20 characters: lowercase letters, numbers, underscore.",

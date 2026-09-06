@@ -4,6 +4,7 @@
  * Offline → ήπιο μήνυμα, όχι σφάλμα. Καμία διαρροή raw δεδομένων — μόνο aggregate.
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { UserPlus, Check, X, Users, Globe, Mountain, Flame, Award, Share2 } from 'lucide-react';
@@ -343,7 +344,13 @@ function Leaderboard({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
-                  {r.display_name || (r.username ? `@${r.username}` : t('social.anon'))}
+                  {r.username ? (
+                    <Link to={`/u/${r.username}`} className="hover:underline">
+                      {r.display_name || `@${r.username}`}
+                    </Link>
+                  ) : (
+                    r.display_name || t('social.anon')
+                  )}
                   {r.is_self && (
                     <span className="ml-1.5 text-[11px] text-muted-foreground">
                       {t('social.board.you')}
@@ -454,7 +461,13 @@ function NameCell({ row }: { row: FriendRow }) {
       <Mountain className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">
-          {row.display_name || (row.username ? `@${row.username}` : t('social.anon'))}
+          {row.username ? (
+            <Link to={`/u/${row.username}`} className="hover:underline">
+              {row.display_name || `@${row.username}`}
+            </Link>
+          ) : (
+            row.display_name || t('social.anon')
+          )}
         </p>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           <span className="tabular-nums">
