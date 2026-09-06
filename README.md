@@ -14,7 +14,7 @@ Offline-first PWA · native desktop · optional accounts & sync · TypeScript st
 
 **[▶ Live demo](https://anabasis.axonos.dev)** · works offline, no signup required — an account is optional, only to sync across devices
 
-<img src="docs/screenshots/hero.png" alt="Dashboard, goals, workout and calendar screens" width="100%">
+<img src="docs/screenshots/hero.png" alt="Dashboard with skill ladder, calendar, the skill catalogue and the settings hub" width="100%">
 
 </div>
 
