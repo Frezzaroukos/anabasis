@@ -27,43 +27,41 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
 
   return (
     <li className={cn(skill.is_archived && 'opacity-50')}>
-      <div className="flex items-center gap-2 px-4 py-3 transition-colors hover:bg-elevated">
+      <div className="flex min-h-[3.5rem] items-center gap-1 py-2.5 pl-4 pr-1.5 transition-colors hover:bg-elevated">
         <Link
           to={`/skills/${skill.id}`}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <SkillIcon skill={skill.short_code} className="h-5 w-5 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              {skill.name}
+            <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+              <span className="truncate">{skill.name}</span>
               {mastered && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />}
               <CategoryBadge category={skill.category} />
-              <span
-                className={cn(
-                  'rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide',
-                  isBuiltin ? 'bg-muted text-muted-foreground' : 'bg-primary/15 text-primary',
-                )}
-              >
-                {isBuiltin ? t('skills.builtin') : t('skills.custom')}
-              </span>
+              {!isBuiltin && (
+                <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary">
+                  {t('skills.custom')}
+                </span>
+              )}
             </p>
             <p className="truncate text-xs text-muted-foreground">{skill.ultimate_goal}</p>
-            {total > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <RungStack pct={pct / 100} mastered={mastered} />
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {done}/{total}
-                </span>
-              </div>
-            )}
           </div>
-          <span className="font-mono text-xs text-muted-foreground">{skill.short_code}</span>
+          {/* Η πρόοδος δεξιά, σε σταθερή στήλη — σκανάρεις τη λίστα κάθετα και
+              βλέπεις πού είσαι σε κάθε skill χωρίς να διαβάζεις. */}
+          {total > 0 && (
+            <div className="flex shrink-0 items-center gap-2">
+              <RungStack pct={pct / 100} mastered={mastered} />
+              <span className="w-8 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                {done}/{total}
+              </span>
+            </div>
+          )}
         </Link>
         <button
           type="button"
           onClick={onToggleArchive}
           aria-label={skill.is_archived ? t('skills.restore') : t('skills.archive')}
-          className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {skill.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
         </button>

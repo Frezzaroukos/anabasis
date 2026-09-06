@@ -68,7 +68,7 @@ export function SkillsPage() {
           </p>
         </div>
         {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)}>
+          <Button onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" />
             {t('skills.newSkill')}
           </Button>
@@ -88,12 +88,16 @@ export function SkillsPage() {
       )}
 
       {visibleSkills.length === 0 && !creating ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-card px-6 py-10 text-center">
           <Logo className="h-10 w-10 text-primary" />
-          <p className="text-sm font-medium">{t('skills.emptyTitle', 'No skills yet')}</p>
-          <p className="max-w-xs text-xs text-muted-foreground">
-            {t('skills.emptyHint', 'Add your first skill to start climbing the ladder.')}
+          <p className="text-sm font-medium">{t('skills.emptyTitle')}</p>
+          <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+            {t('skills.emptyHint')}
           </p>
+          <Button variant="outline" className="mt-1" onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" />
+            {t('skills.newSkill')}
+          </Button>
         </div>
       ) : (
         <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
@@ -114,7 +118,7 @@ export function SkillsPage() {
         <button
           type="button"
           onClick={() => setShowArchived((v) => !v)}
-          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+          className="flex h-11 items-center px-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
         >
           {showArchived
             ? t('skills.hideArchived')
