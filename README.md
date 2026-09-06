@@ -7,7 +7,7 @@
 **Weighted-calisthenics & skill-progression tracker.**
 Offline-first PWA · native desktop · optional accounts & sync · TypeScript strict · bilingual (EN/EL)
 
-![tests](https://img.shields.io/badge/tests-360%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-460%2B%20passing-brightgreen)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![backend](https://img.shields.io/badge/backend-Rust%2FAxum-orange)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -41,7 +41,8 @@ pistol squats) **and** skill progressions.
 | **Calendar-centric** | The calendar is the home of logging: pick a program day (*upper*, *legs & core*, …) or start an ad-hoc session on any date. Set-by-set logging with buttons — separate bodyweight + added weight, RPE/RIR/tempo, warm-up and failure flags, quick-log parsing (`80 5,4,3,2`). |
 | **Goals in your own terms** | Sessions · volume · sets · reps · distance · duration, plus **skill mastery**, a **target weight** ("70 kg weighted pull-up"), and **custom trackers** you invent on the spot ("cold showers 30/week") — windowed or milestone, wired to programs, exercises, skills and live progress. |
 | **PR tracking** | 8 PR types across strength and non-set activities (distance, duration, pace). Warm-ups excluded. e1RM via Epley/Brzycki. |
-| **Sync when you want it** | Local-first by default. Create an account and your training follows you to any device and to the desktop app — row-level last-write-wins sync over a Rust backend. Full JSON export/import stays; nothing is locked in. |
+| **Sync when you want it** | Local-first by default. Create an account and your training follows you to any device and to the desktop app — row-level last-write-wins sync over a Rust backend, including multi-day program structure. Full JSON export/import stays; nothing is locked in. |
+| **Friends & leaderboards** | Opt-in. Pick a handle, add friends by username, and climb a friends **or** global leaderboard ranked by XP/altitude — with a shareable public profile at `/u/:username`. Privacy is SQL-enforced server-side and only aggregate stats are ever published; raw training data never leaves your account. |
 | **Customisable home** | Hide and reorder every card. A hidden card never mounts and never queries. |
 
 ## Engineering notes
@@ -74,7 +75,7 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 360 tests concentrated on migrations, the goal
+**Testing where it pays.** 460+ tests (419 frontend + 40 Rust backend) concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
 Monday" does not depend on the day CI runs), PR detection, the card-order
 resolver, and the sync engine (push/pull cursors, epoch handling, last-write-wins
@@ -111,7 +112,7 @@ i18next · Vitest
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 360 tests
+npm test         # 419 frontend tests (+ 40 in server/ via cargo test)
 npm run build    # production + service worker
 ```
 
@@ -146,11 +147,13 @@ multiple local profiles, accessible dialogs + gym-sized touch targets.
 
 Also working: native desktop app via Tauri 2 (`src-tauri/`) — the same frontend
 in a WebKit window, PWA layer off; and the **Rust/Axum backend** (`server/`) —
-accounts (argon2id), a unique admin, row-level cross-device sync, rate limiting,
-restic-backed DB snapshots.
+accounts (argon2id), a unique admin surface, row-level cross-device sync (workouts,
+programs **and** multi-day structure, with soft-deletes that propagate), rate
+limiting, restic-backed DB snapshots. **Friends & leaderboards** ship too: opt-in
+public profiles at `/u/:username`, friend/global boards, SQL-enforced privacy.
 
-In progress: Google OAuth (server scaffold in place), friends & leaderboards,
-mobile native builds.
+In progress: Google sign-in (server + client wired; needs a live OAuth client),
+native app-store builds (installable as a PWA today).
 
 ---
 

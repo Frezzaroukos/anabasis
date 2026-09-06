@@ -24,7 +24,16 @@ export function AchievementsPage() {
   const { t } = useTranslation();
   const data = useLiveQuery(() => getGamificationInput(), [], null);
 
-  if (data === null) return null;
+  if (data === null) {
+    // Skeleton αντί για κενή οθόνη όσο φορτώνει (public-facing surface).
+    return (
+      <div className="space-y-6">
+        <Header t={t} />
+        <div className="h-56 animate-pulse rounded-xl bg-card" />
+        <FriendsSection />
+      </div>
+    );
+  }
 
   if (!hasActivity(data)) {
     return (
