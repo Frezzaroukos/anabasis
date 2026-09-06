@@ -871,6 +871,9 @@
       "invite": "Κάλεσε φίλους",
       "inviteCopied": "Αντιγράφηκε",
       "inviteText": "Πρόσθεσέ με στο Anabasis: @{{username}} — anabasis.axonos.dev",
+      "notFound": "Αυτό το προφίλ είναι ιδιωτικό ή δεν υπάρχει.",
+      "streak": "Σερί {{count}} ημερών",
+      "longestStreak": "Μεγαλύτερο: {{count}} μέρες",
       "err": {
         "username_taken": "Αυτό το username χρησιμοποιείται ήδη.",
         "invalid_username": "3–20 χαρακτήρες: πεζά, αριθμοί, κάτω παύλα.",
