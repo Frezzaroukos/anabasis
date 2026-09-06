@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Copy, Play, Plus, Trash2, History, ListChecks, LayoutTemplate } from 'lucide-react';
+import { Copy, Pencil, Play, Plus, Trash2, History, ListChecks, LayoutTemplate } from 'lucide-react';
 import {
   createProgram,
   duplicateProgram,
@@ -145,23 +145,25 @@ export function ProgramsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-baseline justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {t('programs.title')}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <span className="font-mono tabular-nums">{programs.length}</span>{' '}
-            {t('programs.title').toLowerCase()}
-          </p>
+          {programs.length > 0 && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-mono tabular-nums">{programs.length}</span>{' '}
+              {t('programs.title').toLowerCase()}
+            </p>
+          )}
         </div>
         {!creating && (
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setTemplatesOpen((v) => !v)}>
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setTemplatesOpen((v) => !v)}>
               <LayoutTemplate className="h-4 w-4" />
               {t('programs.fromTemplate')}
             </Button>
-            <Button size="sm" onClick={() => setCreating(true)}>
+            <Button className="flex-1 sm:flex-none" onClick={() => setCreating(true)}>
               <Plus className="h-4 w-4" />
               {t('programs.newProgram')}
             </Button>
@@ -170,7 +172,7 @@ export function ProgramsPage() {
       </header>
 
       {templatesOpen && (
-        <section className="animate-rise-in space-y-2 rounded-lg bg-elevated p-4">
+        <section className="animate-rise-in space-y-2 rounded-xl bg-elevated p-4">
           {/* Ένα πρόγραμμα ΕΙΝΑΙ ήδη αποθηκευμένο, επαναχρησιμοποιήσιμο πρότυπο:
               το πατάς εδώ και φτιάχνει ένα αντίγραφο που προσαρμόζεις. Έτσι
               «αποθήκευση custom template» = απλώς φτιάχνεις ένα πρόγραμμα. */}
@@ -189,7 +191,7 @@ export function ProgramsPage() {
                         setTemplatesOpen(false);
                         void onDuplicate(p.id);
                       }}
-                      className="w-full rounded-lg bg-card p-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                      className="w-full rounded-lg bg-card px-4 py-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                     >
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="font-medium">{p.name}</span>
@@ -217,7 +219,7 @@ export function ProgramsPage() {
                   type="button"
                   disabled={busy}
                   onClick={() => void onPickTemplate(tpl.id)}
-                  className="w-full rounded-lg bg-card p-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                  className="w-full rounded-lg bg-card px-4 py-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">{t(tpl.nameKey)}</span>
@@ -234,7 +236,7 @@ export function ProgramsPage() {
       )}
 
       {creating && (
-        <section className="animate-rise-in space-y-3 rounded-lg bg-elevated p-4">
+        <section className="animate-rise-in space-y-3 rounded-xl bg-elevated p-4">
           <Input
             autoFocus
             value={name}
@@ -253,11 +255,10 @@ export function ProgramsPage() {
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={!name.trim() || busy} onClick={() => void onCreate()}>
+            <Button disabled={!name.trim() || busy} onClick={() => void onCreate()}>
               {t('common.save')}
             </Button>
             <Button
-              size="sm"
               variant="outline"
               disabled={busy}
               onClick={() => void onFromLastWorkout()}
@@ -266,7 +267,6 @@ export function ProgramsPage() {
               {t('programs.fromLastWorkout')}
             </Button>
             <Button
-              size="sm"
               variant="ghost"
               onClick={() => {
                 setCreating(false);
@@ -282,15 +282,13 @@ export function ProgramsPage() {
       )}
 
       {programs.length === 0 && !creating ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <ListChecks className="h-5 w-5" />
-          </span>
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-card px-6 py-10 text-center">
+          <ListChecks className="h-8 w-8 text-muted-foreground/60" aria-hidden />
           <div>
             <p className="text-sm font-medium">{t('programs.empty')}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t('programs.emptyHint')}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t('programs.emptyHint')}</p>
           </div>
-          <Button size="sm" onClick={() => setCreating(true)}>
+          <Button variant="outline" className="mt-1" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" />
             {t('programs.newProgram')}
           </Button>
@@ -298,9 +296,9 @@ export function ProgramsPage() {
       ) : (
         <ul className="stagger space-y-2">
           {programs.map((p) => (
-            <li key={p.id} className="rounded-lg bg-card p-3">
+            <li key={p.id} className="rounded-xl bg-card py-2 pl-4 pr-2">
               {renamingId === p.id ? (
-                <div className="flex gap-2">
+                <div className="flex gap-2 py-1 pr-2">
                   <Input
                     autoFocus
                     value={renameDraft}
@@ -309,12 +307,11 @@ export function ProgramsPage() {
                       if (e.key === 'Enter') void onConfirmRename(p.id);
                       if (e.key === 'Escape') setRenamingId(null);
                     }}
-                    className="h-9"
                   />
-                  <Button size="sm" onClick={() => void onConfirmRename(p.id)}>
+                  <Button onClick={() => void onConfirmRename(p.id)}>
                     {t('common.save')}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setRenamingId(null)}>
+                  <Button variant="ghost" onClick={() => setRenamingId(null)}>
                     {t('common.cancel')}
                   </Button>
                 </div>
@@ -344,22 +341,23 @@ export function ProgramsPage() {
                       )}
                     </p>
                   </Link>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                  <div className="flex shrink-0 items-center">
+                    <button
+                      type="button"
                       onClick={() => {
                         setRenamingId(p.id);
                         setRenameDraft(p.name);
                       }}
+                      aria-label={t('common.edit')}
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      {t('common.edit')}
-                    </Button>
+                      <Pencil className="h-4 w-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => void onDuplicate(p.id)}
                       aria-label={t('programs.duplicate')}
-                      className="rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Copy className="h-4 w-4" />
                     </button>
@@ -367,11 +365,11 @@ export function ProgramsPage() {
                       type="button"
                       onClick={() => setDeleteId(p.id)}
                       aria-label={t('common.delete')}
-                      className="rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
-                    <Button size="sm" onClick={() => void onStart(p.id)}>
+                    <Button className="ml-1" onClick={() => void onStart(p.id)}>
                       <Play className="h-4 w-4" />
                       {t('programs.start')}
                     </Button>

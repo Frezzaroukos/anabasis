@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Ban, Check } from 'lucide-react';
 import { parseNotionWeights } from '@/lib/importers/notionWeights';
@@ -157,16 +156,14 @@ export function ImportPage() {
 
   return (
     <div className="space-y-6">
+      {/* Χωρίς δικό του «← Settings»: το NavBar δίνει back (parentRoute /import → /settings). */}
       <header>
-        <Link to="/settings" className="text-xs text-muted-foreground hover:text-foreground">
-          ← {t('settings.title')}
-        </Link>
-        <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">{t('import.title')}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{t('import.title')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('import.subtitle')}</p>
       </header>
 
-      <section className="space-y-3 rounded-lg bg-card p-4">
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label={t('import.source')}>
+      <section className="space-y-4 rounded-xl bg-card p-4">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label={t('import.source')}>
           {SOURCES.map((s) => (
             <button
               key={s.id}
@@ -174,8 +171,8 @@ export function ImportPage() {
               aria-selected={source === s.id}
               onClick={() => switchSource(s.id)}
               className={cn(
-                'rounded-md border border-border px-3 py-1 text-sm transition-colors',
-                source === s.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                'h-11 rounded-md px-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                source === s.id ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent',
               )}
             >
               {t(s.labelKey)}
@@ -184,16 +181,16 @@ export function ImportPage() {
         </div>
 
         {isDaily && (
-          <div className="flex items-center gap-2">
-            <label className="text-sm">{t('import.startYear')}</label>
-            <div className="flex gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t('import.startYear')}</span>
+            <div className="flex gap-2">
               {[2024, 2025, 2026].map((y) => (
                 <button
                   key={y}
                   onClick={() => setYear(y)}
                   className={cn(
-                    'rounded-md border border-border px-3 py-1 font-mono text-sm transition-colors',
-                    year === y ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                    'h-11 rounded-md px-4 font-mono text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    year === y ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent',
                   )}
                 >
                   {y}
@@ -212,12 +209,12 @@ export function ImportPage() {
               : t('import.csvPlaceholder')
           }
           rows={8}
-          className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
+          className="min-h-[10rem] w-full resize-y rounded-md border border-border bg-background px-3 py-2.5 font-mono text-base leading-relaxed md:text-sm"
         />
 
         {!isDaily && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            <Button variant="outline" onClick={() => fileRef.current?.click()}>
               {t('import.chooseFile')}
             </Button>
             <input
@@ -268,7 +265,7 @@ export function ImportPage() {
 
       {result && (
         <div
-          className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm"
+          className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm"
           role="status"
         >
           <Check className="h-4 w-4 shrink-0 text-primary" />
@@ -327,12 +324,12 @@ function DailyPreview({
         </span>
       </div>
 
-      <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto rounded-lg bg-card">
+      <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto rounded-xl bg-card">
         {rows.map((r) => (
           <li
             key={`${r.date}-${r.raw}`}
             className={cn(
-              'flex items-center gap-3 px-4 py-2 text-sm',
+              'flex min-h-[3rem] items-center gap-3 px-4 py-2 text-sm',
               (excluded.has(r.date) || r.invalidDate) && 'opacity-40',
               r.needsReview && !r.invalidDate && !excluded.has(r.date) && 'bg-amber-500/5',
             )}
@@ -342,11 +339,11 @@ function DailyPreview({
               checked={!r.invalidDate && !excluded.has(r.date)}
               disabled={r.invalidDate}
               onChange={() => onToggle(r.date)}
-              className="h-4 w-4 shrink-0 accent-primary"
+              className="h-5 w-5 shrink-0 accent-primary"
               aria-label={r.date}
             />
-            <span className="w-24 shrink-0 font-mono text-xs text-muted-foreground">{r.date}</span>
-            <span className="w-16 shrink-0 font-mono">{r.display}</span>
+            <span className="w-24 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{r.date}</span>
+            <span className="w-16 shrink-0 font-mono tabular-nums">{r.display}</span>
             {r.invalidDate ? (
               <span className="flex min-w-0 items-center gap-1 text-xs text-destructive">
                 <Ban className="h-3 w-3 shrink-0" />
@@ -410,34 +407,34 @@ function WorkoutsPreview({
       </div>
 
       {missingExercises.length > 0 && (
-        <p className="rounded-md bg-elevated px-3 py-2 text-xs text-muted-foreground">
+        <p className="rounded-md bg-elevated px-3 py-2 text-xs leading-relaxed text-muted-foreground">
           {t('import.willCreateExercises', { count: missingExercises.length })}{' '}
           <span className="font-mono">{missingExercises.join(', ')}</span>
         </p>
       )}
 
-      <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto rounded-lg bg-card">
+      <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto rounded-xl bg-card">
         {workouts.map((w) => {
           const setCount = w.exercises.reduce((n, e) => n + e.sets.length, 0);
           const suspects = w.exercises.flatMap((e) => e.sets.filter((s) => s.suspect));
           return (
             <li
               key={w.key}
-              className={cn('px-4 py-2 text-sm', excluded.has(w.key) && 'opacity-40')}
+              className={cn('px-4 py-2.5 text-sm', excluded.has(w.key) && 'opacity-40')}
             >
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   checked={!excluded.has(w.key)}
                   onChange={() => onToggle(w.key)}
-                  className="h-4 w-4 shrink-0 accent-primary"
+                  className="h-5 w-5 shrink-0 accent-primary"
                   aria-label={w.date}
                 />
-                <span className="w-24 shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="w-24 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                   {w.date}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{w.name ?? '—'}</span>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                   {w.exercises.length}×{setCount}
                 </span>
               </div>

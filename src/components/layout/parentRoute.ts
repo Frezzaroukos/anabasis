@@ -21,6 +21,9 @@ const PARENTS: { match: RegExp; parent: ParentRoute }[] = [
   { match: /^\/history\/.+/, parent: { to: '/history', labelKey: 'history.title' } },
   { match: /^\/programs\/.+/, parent: { to: '/programs', labelKey: 'nav.programs' } },
   { match: /^\/admin$/, parent: { to: '/settings', labelKey: 'nav.settings' } },
+  // Προσβάσιμα μόνο από το hub των Ρυθμίσεων — εκεί ανήκει και το «πίσω».
+  { match: /^\/import$/, parent: { to: '/settings', labelKey: 'nav.settings' } },
+  { match: /^\/activities$/, parent: { to: '/settings', labelKey: 'nav.settings' } },
 ];
 
 export function parentRouteOf(pathname: string): ParentRoute | null {
