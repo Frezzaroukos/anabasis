@@ -29,9 +29,30 @@ interface SyncCursors {
   lastSyncAt: string | null;
   /** Ταυτότητα της server βάσης — αν αλλάξει (restore/recreate), οι cursors μας δεν ισχύουν. */
   epoch: string | null;
+  /** Ποια έκδοση του push-set έχει ήδη σταλεί από ΑΥΤΗ τη συσκευή. */
+  pushSchemaVersion: number;
 }
 
-const DEFAULT_CURSORS: SyncCursors = { pullCursor: 0, lastPushAt: null, lastSyncAt: null, epoch: null };
+/**
+ * Αυξήσου όταν ΠΡΟΣΤΙΘΕΤΑΙ πίνακας στο push set.
+ *
+ * Το κανονικό push στέλνει μόνο ό,τι έχει `updated_at > cutoff`. Ένας πίνακας
+ * που μόλις μπήκε στο sync έχει ΥΠΑΡΧΟΥΣΕΣ γραμμές με παλιό `updated_at` — δεν
+ * θα περνούσαν ποτέ το cutoff και το χαρακτηριστικό θα δούλευε μόνο για ό,τι
+ * φτιάχνεις από δω και πέρα. Η αλλαγή της έκδοσης κάνει ΜΙΑ φορά push χωρίς
+ * cutoff, ώστε τα ήδη υπάρχοντα να προλάβουν.
+ *
+ * 1 = προστέθηκαν τα `program_days` (η δομή πολλαπλών ημερών).
+ */
+const PUSH_SCHEMA_VERSION = 1;
+
+const DEFAULT_CURSORS: SyncCursors = {
+  pullCursor: 0,
+  lastPushAt: null,
+  lastSyncAt: null,
+  epoch: null,
+  pushSchemaVersion: 0,
+};
 
 function safeLocalStorage(): Storage | null {
   try {
@@ -113,11 +134,12 @@ const DIRECT_OWNER_TABLES = [
 ] as const;
 
 /**
- * `sets`, `skill_steps`, `program_exercises` δεν έχουν δικό τους `user_id`
- * στο τοπικό schema — ανήκουν μέσω workout_id/skill_id/program_id (ίδιο
- * μοτίβο με το `deleteProfile` στο queries.ts). Ο server όμως απαιτεί
- * `user_id` σε ΚΑΘΕ row· το προσθέτουμε μόνο στο payload που φεύγει,
- * υπολογισμένο από τον γονέα — ΔΕΝ γράφεται τοπικά.
+ * `sets`, `skill_steps`, `program_days`, `program_exercises` δεν έχουν δικό
+ * τους `user_id` στο τοπικό schema — ανήκουν μέσω
+ * workout_id/skill_id/program_id (ίδιο μοτίβο με το `deleteProfile` στο
+ * queries.ts). Ο server όμως απαιτεί `user_id` σε ΚΑΘΕ row (αλλιώς
+ * `wrong_user`)· το προσθέτουμε μόνο στο payload που φεύγει, υπολογισμένο από
+ * τον γονέα — ΔΕΝ γράφεται τοπικά.
  */
 async function collectChildRows(uid: string, cutoffIso: string): Promise<SyncChange[]> {
   const out: SyncChange[] = [];
@@ -143,6 +165,22 @@ async function collectChildRows(uid: string, cutoffIso: string): Promise<SyncCha
   const myProgramIds = new Set(
     (await db.programs.where('user_id').equals(uid).toArray()).map((p) => p.id),
   );
+
+  /*
+   * Οι ΜΕΡΕΣ έλειπαν από το sync ενώ οι ασκήσεις τους έφευγαν κανονικά. Σε
+   * δεύτερη συσκευή έφταναν program_exercises με `program_day_id` που έδειχνε
+   * σε μέρα που δεν υπήρχε: το `listProgramDays()` γύριζε [], το πρόγραμμα
+   * έμοιαζε flat, και το «ξεκίνα ολόκληρο» ισοπέδωνε όλες τις μέρες σε μία
+   * λίστα. Στέλνονται πριν από τις ασκήσεις τους — δεν υπάρχει FK, αλλά η
+   * σειρά γονιός→παιδί κρατά το payload διαβάσιμο.
+   */
+  const programDays = (await db.program_days.toArray()).filter(
+    (d) => myProgramIds.has(d.program_id) && d.updated_at > cutoffIso,
+  );
+  if (programDays.length) {
+    out.push({ tbl: 'program_days', rows: programDays.map((d) => ({ ...d, user_id: uid })) });
+  }
+
   const programExercises = (await db.program_exercises.toArray()).filter(
     (pe) => myProgramIds.has(pe.program_id) && pe.updated_at > cutoffIso,
   );
@@ -380,13 +418,18 @@ async function syncNowInner(): Promise<void> {
   try {
     const cursors = readCursors();
     const t0 = new Date().toISOString();
-    const cutoff = cursors.lastPushAt
-      ? new Date(new Date(cursors.lastPushAt).getTime() - PUSH_OVERLAP_MS).toISOString()
-      : '';
+    // Backfill: νέος πίνακας στο push set → μία φορά χωρίς cutoff.
+    const needsBackfill = cursors.pushSchemaVersion !== PUSH_SCHEMA_VERSION;
+    const cutoff =
+      !needsBackfill && cursors.lastPushAt
+        ? new Date(new Date(cursors.lastPushAt).getTime() - PUSH_OVERLAP_MS).toISOString()
+        : '';
 
     const changes = await collectPushChanges(cutoff);
     if (changes.length > 0) await pushInBatches(changes);
-    writeCursors({ lastPushAt: t0 });
+    // Η έκδοση γράφεται ΜΟΝΟ μετά από επιτυχημένο push — αλλιώς ένα αποτυχημένο
+    // backfill θα θεωρούνταν ολοκληρωμένο και τα παλιά rows δεν θα έφευγαν ποτέ.
+    writeCursors({ lastPushAt: t0, pushSchemaVersion: PUSH_SCHEMA_VERSION });
 
     await pullLoop();
 

@@ -26,6 +26,7 @@ const ALLOWED_TABLES: &[&str] = &[
     "app_settings",
     "body_metrics",
     "programs",
+    "program_days",
     "program_exercises",
     "activities",
     "goals",

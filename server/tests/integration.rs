@@ -1269,3 +1269,85 @@ async fn admin_user_rows_breaks_down_by_table() {
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
 }
+
+/// Οι ΜΕΡΕΣ του προγράμματος έλειπαν από το ALLOWED_TABLES ενώ οι ασκήσεις τους
+/// περνούσαν κανονικά: σε δεύτερη συσκευή τα program_exercises κατέληγαν με
+/// `program_day_id` που έδειχνε σε μέρα που δεν είχε φτάσει ποτέ.
+#[tokio::test]
+async fn sync_accepts_program_days_alongside_their_exercises() {
+    let (app, _state, _dir) = test_app(None).await;
+
+    let (_, body) = signup(&app, "days@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let user_id = body["account"]["id"].as_str().unwrap().to_string();
+
+    let day = json!({
+        "id": "day-1", "user_id": user_id, "program_id": "prog-1",
+        "name": "Upper", "position": 0,
+        "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"
+    });
+    let exercise = json!({
+        "id": "pe-1", "user_id": user_id, "program_id": "prog-1",
+        "program_day_id": "day-1", "exercise_id": "ex-1", "position": 0,
+        "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"
+    });
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [
+            { "tbl": "program_days", "rows": [day] },
+            { "tbl": "program_exercises", "rows": [exercise] }
+        ]})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "τα program_days πρέπει να γίνονται δεκτά");
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/sync/pull",
+        Some(&token),
+        Some(json!({ "cursor": 0 })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let changes = body["changes"].as_array().unwrap();
+    let days = changes
+        .iter()
+        .find(|c| c["tbl"] == "program_days")
+        .expect("η δεύτερη συσκευή πρέπει να κατεβάζει τις μέρες");
+    assert_eq!(days["rows"][0]["name"], "Upper");
+
+    // Και η άσκηση δείχνει στη μέρα που όντως ταξίδεψε μαζί της.
+    let exercises = changes.iter().find(|c| c["tbl"] == "program_exercises").unwrap();
+    assert_eq!(exercises["rows"][0]["program_day_id"], "day-1");
+}
+
+/// Ο guard `wrong_user` ισχύει και για τον νέο πίνακα — μια μέρα με ξένο
+/// user_id δεν πρέπει να μπορεί να γραφτεί στον λογαριασμό μου.
+#[tokio::test]
+async fn sync_rejects_program_day_of_another_user() {
+    let (app, _state, _dir) = test_app(None).await;
+
+    let (_, body) = signup(&app, "owner@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [{
+            "id": "day-x", "user_id": "somebody-else", "program_id": "prog-1",
+            "name": "Upper", "position": 0,
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"
+        }]}]})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "wrong_user");
+}

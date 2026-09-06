@@ -2,7 +2,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { db } from '../db/schema';
 import { bootstrapDB } from '../db/bootstrap';
 import { DEFAULT_USER_ID, setCurrentUserId } from '../db/session';
-import { createExercise } from '../db/queries';
+import {
+  addProgramExercise,
+  createExercise,
+  createProgram,
+  createProgramDay,
+  listProgramDays,
+} from '../db/queries';
 import { fullResync, syncNow } from './index';
 
 /**
@@ -118,6 +124,119 @@ describe('syncNow — push', () => {
         else expect(row.user_id).toBe(DEFAULT_USER_ID);
       }
     }
+  });
+});
+
+/**
+ * Οι ΜΕΡΕΣ του προγράμματος έλειπαν από το sync ενώ οι ασκήσεις τους έφευγαν
+ * κανονικά — σε δεύτερη συσκευή τα program_exercises κατέληγαν με
+ * `program_day_id` που έδειχνε σε μέρα που δεν υπήρχε.
+ */
+describe('syncNow — δομή πολλαπλών ημερών', () => {
+  it('στέλνει τις μέρες μαζί με τις ασκήσεις τους, με injected user_id', async () => {
+    const program = await createProgram('Split');
+    const upper = await createProgramDay(program.id, 'Upper');
+    await addProgramExercise(program.id, {
+      exercise_id: 'ex-pull',
+      program_day_id: upper.id,
+      target_sets: 3,
+    });
+    const { calls } = stubFetch({});
+
+    await syncNow();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+
+    const days = changes.find((c) => c.tbl === 'program_days');
+    expect(days, 'τα program_days πρέπει να μπαίνουν στο push').toBeTruthy();
+    const day = days!.rows.find((r) => r.id === upper.id)!;
+    expect(day.name).toBe('Upper');
+    // Χωρίς user_id ο server απαντά wrong_user και ΟΛΟ το push απορρίπτεται.
+    expect(day.user_id).toBe(DEFAULT_USER_ID);
+
+    // Η άσκηση δείχνει στη μέρα που μόλις στάλθηκε — όχι σε ορφανό id.
+    const exercises = changes.find((c) => c.tbl === 'program_exercises');
+    expect(exercises!.rows.some((r) => r.program_day_id === upper.id)).toBe(true);
+  });
+
+  it('μέρες ΑΛΛΟΥ προφίλ δεν φεύγουν ποτέ', async () => {
+    const program = await createProgram('Mine');
+    await createProgramDay(program.id, 'Upper');
+
+    setCurrentUserId('some-other-profile');
+    const otherProgram = await createProgram('Theirs');
+    await createProgramDay(otherProgram.id, 'Legs');
+    setCurrentUserId(DEFAULT_USER_ID);
+
+    const { calls } = stubFetch({});
+    await syncNow();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+    const days = changes.find((c) => c.tbl === 'program_days');
+    expect(days!.rows.every((r) => r.name !== 'Legs')).toBe(true);
+  });
+
+  it('pull γράφει τις μέρες τοπικά — το πρόγραμμα δεν φαίνεται πια flat', async () => {
+    const program = await createProgram('Pulled');
+    const incoming = {
+      id: 'day-from-other-device',
+      program_id: program.id,
+      name: 'Push',
+      position: 0,
+      user_id: DEFAULT_USER_ID,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    };
+    stubFetch({
+      pull: () =>
+        jsonResponse({
+          changes: [{ tbl: 'program_days', rows: [incoming] }],
+          cursor: 7,
+          has_more: false,
+        }),
+    });
+
+    await syncNow();
+
+    const days = await listProgramDays(program.id);
+    expect(days.map((d) => d.name)).toEqual(['Push']);
+  });
+});
+
+describe('backfill νέου πίνακα στο push set', () => {
+  it('στέλνει ΠΑΛΙΕΣ μέρες που δεν πρόλαβαν ποτέ το cutoff', async () => {
+    const program = await createProgram('Legacy');
+    const day = await createProgramDay(program.id, 'Old Upper');
+    // Μέρα φτιαγμένη ΠΡΙΝ από το τελευταίο push — με σκέτο cutoff δεν θα έφευγε ποτέ.
+    await db.program_days.update(day.id, { updated_at: '2020-01-01T00:00:00.000Z' });
+    localStorage.setItem(
+      'anabasis.sync',
+      JSON.stringify({ pullCursor: 0, lastPushAt: '2026-01-01T00:00:00.000Z', epoch: null }),
+    );
+
+    const { calls } = stubFetch({});
+    await syncNow();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+    const days = changes.find((c) => c.tbl === 'program_days');
+    expect(days!.rows.some((r) => r.id === day.id)).toBe(true);
+
+    // Δεύτερο sync: το backfill έγινε, γυρνάμε σε incremental.
+    const second = stubFetch({});
+    await syncNow();
+    const secondChanges = body(second.calls.find((c) => c.url.includes('/sync/push'))!)
+      .changes as Array<{ tbl: string; rows: Array<Record<string, unknown>> }>;
+    const secondDays = secondChanges.find((c) => c.tbl === 'program_days');
+    expect(secondDays?.rows.some((r) => r.id === day.id) ?? false).toBe(false);
   });
 });
 
