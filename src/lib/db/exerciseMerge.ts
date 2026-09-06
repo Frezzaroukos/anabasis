@@ -31,8 +31,13 @@ export async function mergeExercises(sourceId: string, targetId: string): Promis
         .where('exercise_id')
         .equals(sourceId)
         .modify({ exercise_id: targetId, updated_at: t });
-      // Αναφορές σε προγράμματα → δείχνουν στην ενωμένη άσκηση.
-      await db.program_exercises.where('exercise_id').equals(sourceId).modify({ exercise_id: targetId });
+      // Αναφορές σε προγράμματα → δείχνουν στην ενωμένη άσκηση. ΠΡΕΠΕΙ να μπει
+      // updated_at: το program_exercises συγχρονίζεται φιλτραρισμένο σε updated_at,
+      // αλλιώς σε άλλη συσκευή το πρόγραμμα θα δείχνει ακόμα την αρχειοθετημένη πηγή.
+      await db.program_exercises
+        .where('exercise_id')
+        .equals(sourceId)
+        .modify({ exercise_id: targetId, updated_at: t });
       // Στόχοι δεμένοι στην πηγή ακολουθούν — ΜΕ dedup: αν ο στόχος έχει ήδη
       // ισοδύναμο goal (ίδιο metric+period) για την ίδια άσκηση, soft-delete το
       // διπλότυπο της πηγής αντί να μείνουν δύο στόχοι για το ίδιο πράγμα.

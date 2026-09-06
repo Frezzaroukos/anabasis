@@ -327,9 +327,17 @@ function Leaderboard({
         </div>
       </div>
       {rows.length === 0 ? (
-        <p className="py-3 text-center text-sm text-muted-foreground">
-          {loading ? '…' : t('social.board.empty')}
-        </p>
+        loading ? (
+          <div className="space-y-1">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-11 animate-pulse rounded-lg bg-elevated" />
+            ))}
+          </div>
+        ) : (
+          <p className="py-3 text-center text-sm text-muted-foreground">
+            {t('social.board.empty')}
+          </p>
+        )
       ) : (
         <ol className="space-y-1">
           {rows.map((r, i) => (
