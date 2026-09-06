@@ -115,7 +115,14 @@ empty/error states, search, per-user row breakdown, honest db-size, account
 analysis). · **Friends depth**: badges+streak flair, invite/viral-loop, «XP behind
 next rank». · Το ShareCard μετακόμισε στο Settings/About.
 
-**391 client + 40 server tests green · tsc -b clean · 128+ commits.**
+**Ready (2026-09-05/06 batch):** exercise **merge** (ένωση διπλότυπων· re-parent
+sets/PRs/program/goals + archive)· **manual workout timer** (start/stop, τίμια
+διάρκεια) + **rest timer αφαιρέθηκε**· Goals **exercise create-on-spot**· Home
+empty-state (όχι stale «355 μέρες»)· **accent-aware favicon**· Friends **public
+profile /u/:username** (invite loop closed)· **program_days cross-device sync** +
+**soft-delete** (διαγραφή ταξιδεύει)· program→calendar structure.
+
+**418 client + 40 server tests green · tsc -b clean · 140+ commits.**
 
 ---
 
