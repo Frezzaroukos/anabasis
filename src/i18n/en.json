@@ -870,7 +870,7 @@
       "saved": "Saved.",
       "invite": "Invite friends",
       "inviteCopied": "Invite copied",
-      "inviteText": "Add me on Anabasis: @{{username}} — anabasis.axonos.dev",
+      "inviteText": "Add me on Anabasis — my profile: https://anabasis.axonos.dev/u/{{username}}",
       "notFound": "This profile is private or doesn't exist.",
       "streak": "{{count}}-day streak",
       "longestStreak": "Longest: {{count}} days",
