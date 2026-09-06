@@ -122,7 +122,14 @@ empty-state (όχι stale «355 μέρες»)· **accent-aware favicon**· Frien
 profile /u/:username** (invite loop closed)· **program_days cross-device sync** +
 **soft-delete** (διαγραφή ταξιδεύει)· program→calendar structure.
 
-**418 client + 40 server tests green · tsc -b clean · 140+ commits.**
+**419 client + 40 server tests green · tsc -b clean · 150+ commits.**
+
+**Outward-facing (2026-09-06, portfolio-ready):** helper audit verdict =
+«portfolio-ready as-is» (0 console.log/TODO, 1 `as any`, solid a11y+ErrorBoundary).
+GitHub **repo** description+topics enhanced (rust/axum/tauri/dexie/…)· **profile
+README** (Frezzaroukos/Frezzaroukos) Anabasis blurb → full-stack· **portfolio**
+(portfolio.axonos.dev) description+README snapshot refreshed+redeployed. Live
+verified: app/api/portfolio 200, PWA manifest+SW served (installable any device).
 
 ---
 
