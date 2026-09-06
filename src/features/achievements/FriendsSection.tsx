@@ -38,24 +38,23 @@ export function FriendsSection() {
         <p className="mt-0.5 text-sm text-muted-foreground">{t('social.subtitle')}</p>
       </header>
 
-      {state.offline ? (
-        <p className="rounded-xl bg-card p-4 text-center text-sm text-muted-foreground">
-          {t('social.offline')}
+      {state.offline && (
+        <p className="rounded-xl border border-border/60 bg-card p-3 text-center text-xs text-muted-foreground">
+          {t('social.offlineCached')}
         </p>
-      ) : (
-        <>
-          <ProfileCard me={state.me} onSave={actions.updateProfile} />
-          <AddFriend onAdd={actions.addFriend} />
-          <Requests requests={state.requests} onAccept={actions.accept} onRemove={actions.remove} />
-          <Leaderboard
-            rows={state.leaderboard}
-            scope={state.scope}
-            onScope={actions.setScope}
-            loading={state.loading}
-          />
-          <FriendsManage friends={state.friends} onRemove={actions.remove} />
-        </>
       )}
+      {/* Offline → me είναι null (δεν κρατάμε cache), οπότε το ProfileCard κρύβεται
+          μόνο του· τα υπόλοιπα δείχνουν last-known από το cache. */}
+      <ProfileCard me={state.me} onSave={actions.updateProfile} />
+      <AddFriend onAdd={actions.addFriend} />
+      <Requests requests={state.requests} onAccept={actions.accept} onRemove={actions.remove} />
+      <Leaderboard
+        rows={state.leaderboard}
+        scope={state.scope}
+        onScope={actions.setScope}
+        loading={state.loading}
+      />
+      <FriendsManage friends={state.friends} onRemove={actions.remove} />
     </div>
   );
 }

@@ -864,6 +864,7 @@
     "subtitle": "Climb alongside the people you train with.",
     "signInPrompt": "Sign in to add friends and see how you rank.",
     "offline": "Can't reach the server right now. Friends will load when you're back online.",
+    "offlineCached": "You're offline — showing your last synced friends & rankings.",
     "anon": "Anonymous climber",
     "profile": {
       "usernameLabel": "Username",

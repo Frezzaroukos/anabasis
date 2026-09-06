@@ -29,8 +29,17 @@ import type {
   Goal,
   Workout,
 } from './types';
+// Social cache: LOCAL-ONLY (ΠΟΤΕ στο USER_DATA_TABLES/ALLOWED_TABLES) — καθρεφτίζει
+// τα /api/social reads ώστε το leaderboard/friends να δείχνουν last-known offline.
+import type { FriendRow, LeaderboardRow } from '../api/types';
 
-export const SCHEMA_VERSION = 14;
+export interface LeaderboardCacheRow {
+  scope: string;
+  rows: LeaderboardRow[];
+  updated_at: string;
+}
+
+export const SCHEMA_VERSION = 15;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -52,6 +61,9 @@ export class AnabasisDB extends Dexie {
   custom_trackers!: Table<CustomTracker, string>;
   custom_tracker_entries!: Table<CustomTrackerEntry, string>;
   events_outgoing!: Table<OutgoingEvent, string>;
+  // Local-only social caches (offline reads· δεν συγχρονίζονται ΠΟΤΕ).
+  friends_cache!: Table<FriendRow, string>;
+  leaderboard_cache!: Table<LeaderboardCacheRow, string>;
 
   constructor() {
     super('anabasis');
@@ -355,6 +367,14 @@ export class AnabasisDB extends Dexie {
           await tx.table('goals').update(g.id, { custom_tracker_id: trackerId, updated_at: t });
         }
       });
+
+    // v15: local-only social caches για offline reads (friends/leaderboard). Απλά
+    // νέοι πίνακες — καμία μετάβαση δεδομένων. ΕΞΑΙΡΟΥΝΤΑΙ από sync (δεν είναι στο
+    // USER_DATA_TABLES ούτε στο server ALLOWED_TABLES).
+    this.version(15).stores({
+      friends_cache: 'account_id, direction',
+      leaderboard_cache: 'scope',
+    });
   }
 }
 
