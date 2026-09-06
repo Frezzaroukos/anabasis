@@ -28,8 +28,6 @@ interface ExerciseCardProps {
   onWeightedChange: (next: boolean) => void;
   chain: SetChain | null;
   onChainChange: (next: SetChain | null) => void;
-  /** Ειδοποιεί ότι καταγράφηκε νέο σετ — π.χ. για auto-start του rest timer. */
-  onSetLogged?: () => void;
   /** Η γραμμή του προγράμματος για αυτή την άσκηση — `null` εκτός πλάνου. */
   target?: ProgramExercise | null;
   /** Ξεκίνα κλειστή παρόλο που δεν έχει σετ (άσκηση πλάνου, όχι δική σου επιλογή τώρα). */
@@ -45,7 +43,6 @@ export function ExerciseCard({
   onWeightedChange,
   chain,
   onChainChange,
-  onSetLogged,
   target = null,
   startCollapsed = false,
 }: ExerciseCardProps) {
@@ -130,7 +127,6 @@ export function ExerciseCard({
     // χωρίς tap «Προσθήκη σετ» κάθε φορά (owner feedback). Το AddSetInline
     // καθαρίζει τα reps/hold και κρατάει το βάρος — το κλείσιμο γίνεται μόνο
     // με «Άκυρο».
-    onSetLogged?.();
   };
 
   /**
@@ -160,7 +156,6 @@ export function ExerciseCard({
       setQuickText('');
       setQuickMode(false);
       setAdding(false);
-      onSetLogged?.();
     } finally {
       setQuickBusy(false);
     }

@@ -46,10 +46,10 @@ export function SettingsPage() {
       : (activeProfile?.display_name ?? t('profile.unnamed')) +
         (profiles.length > 1 ? ` · ${profiles.length}` : '');
 
-  const rest = settings?.default_rest_timer_seconds;
-  const restLabel = rest == null ? null : rest < 60 ? `${rest}s` : `${rest / 60}m`;
+  // Το rest timer αφαιρέθηκε (820c2d5) — το «Προπόνηση» summary δείχνει πλέον
+  // μόνο τη μονάδα βάρους.
   const unit = settings?.weight_unit;
-  const trainingValue = [restLabel, unit ? t(`common.${unit}`) : null].filter(Boolean).join(' · ');
+  const trainingValue = unit ? t(`common.${unit}`) : '';
 
   return (
     <div className="space-y-6">
