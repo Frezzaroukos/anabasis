@@ -7,6 +7,7 @@ import {
   createExercise,
   createProgram,
   createProgramDay,
+  deleteProgramDay,
   listProgramDays,
 } from '../db/queries';
 import { fullResync, syncNow } from './index';
@@ -206,6 +207,51 @@ describe('syncNow — δομή πολλαπλών ημερών', () => {
 
     const days = await listProgramDays(program.id);
     expect(days.map((d) => d.name)).toEqual(['Push']);
+  });
+});
+
+describe('soft delete δομής προγράμματος — η διαγραφή ταξιδεύει', () => {
+  it('διαγραμμένη μέρα φεύγει ως tombstone (deleted_at) και κρύβεται τοπικά', async () => {
+    const program = await createProgram('Split');
+    const upper = await createProgramDay(program.id, 'Upper');
+    await addProgramExercise(program.id, { exercise_id: 'ex-pull', program_day_id: upper.id });
+    // Πρώτο sync: όλα καθαρά.
+    stubFetch({});
+    await syncNow();
+
+    await deleteProgramDay(upper.id);
+    const { calls } = stubFetch({});
+    await syncNow();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+    // Hard delete = τίποτα στο push = η άλλη συσκευή δεν μαθαίνει ποτέ.
+    const day = changes.find((c) => c.tbl === 'program_days')!.rows.find((r) => r.id === upper.id)!;
+    expect(day.deleted_at).toBeTruthy();
+    const pe = changes.find((c) => c.tbl === 'program_exercises')!.rows.find(
+      (r) => r.program_day_id === upper.id,
+    )!;
+    expect(pe.deleted_at).toBeTruthy();
+
+    // Και τοπικά εξαφανίζεται από κάθε ανάγνωση.
+    expect(await listProgramDays(program.id)).toEqual([]);
+  });
+
+  it('tombstone μέρας από άλλη συσκευή την κρύβει κι εδώ', async () => {
+    const program = await createProgram('Split');
+    const upper = await createProgramDay(program.id, 'Upper');
+    stubFetch({
+      pull: () =>
+        jsonResponse({
+          changes: [{ tbl: 'program_days', rows: [{ ...upper, user_id: DEFAULT_USER_ID,
+            deleted_at: '2026-02-01T00:00:00.000Z', updated_at: '2026-02-01T00:00:00.000Z' }] }],
+          cursor: 9, has_more: false,
+        }),
+    });
+    await syncNow();
+    expect(await listProgramDays(program.id)).toEqual([]);
   });
 });
 

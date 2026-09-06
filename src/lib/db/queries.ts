@@ -1392,7 +1392,7 @@ export async function getProgramWithExercises(programId: string) {
     db.programs.get(programId),
     db.program_exercises.where('program_id').equals(programId).sortBy('position'),
   ]);
-  return program ? { program, exercises: rows } : null;
+  return program ? { program, exercises: rows.filter((r) => r.deleted_at == null) } : null;
 }
 
 export interface ProgramExerciseInput {
@@ -1412,10 +1412,8 @@ export async function addProgramExercise(
   input: ProgramExerciseInput,
 ): Promise<ProgramExercise> {
   const t = now();
-  const position = await db.program_exercises
-    .where('program_id')
-    .equals(programId)
-    .count();
+  const position = (await db.program_exercises.where('program_id').equals(programId).toArray())
+    .filter((r) => r.deleted_at == null).length;
   const row: ProgramExercise = {
     id: uuid(),
     program_id: programId,
@@ -1478,7 +1476,10 @@ export async function updateProgramExercise(
 }
 
 export async function removeProgramExercise(id: string): Promise<void> {
-  await db.program_exercises.delete(id);
+  // Soft delete: ένα hard delete δεν αφήνει tombstone, άρα η διαγραφή δεν
+  // έφτανε ποτέ σε άλλη συσκευή — και μπορούσε να «αναστηθεί» σε cursor reset.
+  const t = now();
+  await db.program_exercises.update(id, { deleted_at: t, updated_at: t });
 }
 
 /** Αλλαγή σειράς — γράφει ξανά τα positions ώστε να μένουν 0..n-1. */
@@ -1515,12 +1516,14 @@ export async function startWorkoutFromProgram(programId: string, onDate?: string
 /* ─────────── Program days (v12: πρόγραμμα → μέρες → ασκήσεις) ─────────── */
 
 export async function listProgramDays(programId: string): Promise<ProgramDay[]> {
-  return db.program_days.where('program_id').equals(programId).sortBy('position');
+  const rows = await db.program_days.where('program_id').equals(programId).sortBy('position');
+  return rows.filter((d) => d.deleted_at == null);
 }
 
 export async function createProgramDay(programId: string, name: string): Promise<ProgramDay> {
   const t = now();
-  const position = await db.program_days.where('program_id').equals(programId).count();
+  // Θέση μετά την τελευταία ΖΩΝΤΑΝΗ μέρα — οι διαγραμμένες δεν πιάνουν θέση.
+  const position = (await listProgramDays(programId)).length;
   const day: ProgramDay = {
     id: uuid(),
     program_id: programId,
@@ -1548,9 +1551,15 @@ export async function reorderProgramDays(_programId: string, orderedIds: string[
 
 /** Σβήνει μέρα + τις ασκήσεις της (οι ασκήσεις ανήκουν στη μέρα, δεν μένουν ορφανές). */
 export async function deleteProgramDay(dayId: string): Promise<void> {
+  // Soft delete και για τη μέρα και για τις ασκήσεις της — και τα δύο
+  // συγχρονίζονται, άρα και τα δύο χρειάζονται tombstone.
+  const t = now();
   await db.transaction('rw', db.program_days, db.program_exercises, async () => {
-    await db.program_exercises.where('program_day_id').equals(dayId).delete();
-    await db.program_days.delete(dayId);
+    await db.program_exercises
+      .where('program_day_id')
+      .equals(dayId)
+      .modify({ deleted_at: t, updated_at: t });
+    await db.program_days.update(dayId, { deleted_at: t, updated_at: t });
   });
 }
 
@@ -1559,7 +1568,11 @@ export async function getProgramDayWithExercises(dayId: string) {
     db.program_days.get(dayId),
     db.program_exercises.where('[program_day_id+position]').between([dayId, -Infinity], [dayId, Infinity]).toArray(),
   ]);
-  return day ? { day, exercises: rows.sort((a, b) => a.position - b.position) } : null;
+  if (!day || day.deleted_at != null) return null;
+  return {
+    day,
+    exercises: rows.filter((r) => r.deleted_at == null).sort((a, b) => a.position - b.position),
+  };
 }
 
 /** Πόσες ΟΛΟΚΛΗΡΩΜΕΝΕΣ προπονήσεις έχεις κάνει με αυτή τη μέρα — για «3η Upper day». */

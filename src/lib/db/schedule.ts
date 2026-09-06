@@ -31,10 +31,11 @@ export async function getWorkoutPlan(
         (row) => row.program_day_id == null,
       );
 
-  return rows.sort((a, b) => a.position - b.position);
+  return rows.filter((r) => r.deleted_at == null).sort((a, b) => a.position - b.position);
 }
 
 /** Πόσες ασκήσεις έχει μια μέρα προγράμματος — για να ξέρεις τι ξεκινάς. */
 export async function countProgramDayExercises(dayId: string): Promise<number> {
-  return db.program_exercises.where('program_day_id').equals(dayId).count();
+  const rows = await db.program_exercises.where('program_day_id').equals(dayId).toArray();
+  return rows.filter((r) => r.deleted_at == null).length;
 }
