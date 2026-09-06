@@ -500,6 +500,8 @@ export interface ProgramDay {
   position: number;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /** Soft delete: η διαγραφή πρέπει να ταξιδεύει σε άλλες συσκευές (tombstone). */
+  deleted_at?: ISOTimestamp | null;
 }
 
 /** Μια γραμμή του πλάνου: άσκηση + στόχοι. */
@@ -520,4 +522,6 @@ export interface ProgramExercise {
   notes: string | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /** Soft delete — βλ. ProgramDay. Παλιά rows δεν το έχουν: `== null` καλύπτει και τα δύο. */
+  deleted_at?: ISOTimestamp | null;
 }

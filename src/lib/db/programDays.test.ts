@@ -55,7 +55,12 @@ describe('program days', () => {
     expect((await getProgramDayWithExercises(upper.id))!.exercises).toHaveLength(1);
 
     await deleteProgramDay(upper.id);
-    expect(await db.program_exercises.where('program_day_id').equals(upper.id).count()).toBe(0);
+    // Soft delete: η γραμμή ΜΕΝΕΙ ως tombstone (για να ταξιδέψει η διαγραφή)
+    // αλλά εξαφανίζεται από κάθε ανάγνωση.
+    const raw = await db.program_exercises.where('program_day_id').equals(upper.id).toArray();
+    expect(raw).toHaveLength(1);
+    expect(raw[0]!.deleted_at).toBeTruthy();
+    expect(await getProgramDayWithExercises(upper.id)).toBeNull();
   });
 
   it('startWorkoutFromProgramDay: linked workout + pre-filled plan + auto-numbering', async () => {

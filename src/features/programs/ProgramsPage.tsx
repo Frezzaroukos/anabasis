@@ -37,7 +37,7 @@ export function ProgramsPage() {
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const exerciseCounts = useLiveQuery(
     async () => {
-      const rows = await db.program_exercises.toArray();
+      const rows = (await db.program_exercises.toArray()).filter((r) => r.deleted_at == null);
       const m = new Map<string, number>();
       for (const r of rows) m.set(r.program_id, (m.get(r.program_id) ?? 0) + 1);
       return m;
@@ -49,7 +49,7 @@ export function ProgramsPage() {
   // σε δομημένα προγράμματα, σαν λίστα ρουτινών.
   const programDays = useLiveQuery(
     async () => {
-      const rows = await db.program_days.toArray();
+      const rows = (await db.program_days.toArray()).filter((d) => d.deleted_at == null);
       const m = new Map<string, ProgramDay[]>();
       for (const r of rows) m.set(r.program_id, [...(m.get(r.program_id) ?? []), r]);
       for (const arr of m.values()) arr.sort((a, b) => a.position - b.position);
