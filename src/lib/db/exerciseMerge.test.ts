@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { db } from './index';
 import { bootstrapDB } from './bootstrap';
 import { addSet, createExercise, startWorkout, listExercises } from './queries';
+import { createGoal, listGoals } from './goals';
 import { mergeExercises } from './exerciseMerge';
 
 beforeAll(async () => {
@@ -52,6 +53,21 @@ describe('mergeExercises', () => {
     await mergeExercises(e.id, e.id);
     await mergeExercises('', e.id);
     expect((await db.exercises.get(e.id))?.is_archived).toBeFalsy();
+  });
+
+  it('dedup στόχων: δεν αφήνει δύο ίδιους στόχους για την ίδια άσκηση', async () => {
+    const source = await createExercise({ name: 'Merge Goal Src' });
+    const target = await createExercise({ name: 'Merge Goal Tgt' });
+    // Ίδιος στόχος (metric+period) και στις δύο ασκήσεις.
+    await createGoal({ metric: 'sessions', target: 2, period: 'week', exercise_id: source.id });
+    await createGoal({ metric: 'sessions', target: 3, period: 'week', exercise_id: target.id });
+
+    await mergeExercises(source.id, target.id);
+
+    const goals = await listGoals();
+    const forTarget = goals.filter((g) => g.exercise_id === target.id && g.metric === 'sessions' && g.period === 'week');
+    expect(forTarget.length).toBe(1); // το διπλότυπο της πηγής soft-deleted
+    expect(goals.some((g) => g.exercise_id === source.id)).toBe(false);
   });
 
   it('η ενωμένη πηγή δεν εμφανίζεται στη λίστα ενεργών ασκήσεων', async () => {

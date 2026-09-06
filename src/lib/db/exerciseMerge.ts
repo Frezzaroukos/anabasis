@@ -33,8 +33,29 @@ export async function mergeExercises(sourceId: string, targetId: string): Promis
         .modify({ exercise_id: targetId, updated_at: t });
       // Αναφορές σε προγράμματα → δείχνουν στην ενωμένη άσκηση.
       await db.program_exercises.where('exercise_id').equals(sourceId).modify({ exercise_id: targetId });
-      // Στόχοι δεμένοι στην πηγή ακολουθούν.
-      await db.goals.where('exercise_id').equals(sourceId).modify({ exercise_id: targetId, updated_at: t });
+      // Στόχοι δεμένοι στην πηγή ακολουθούν — ΜΕ dedup: αν ο στόχος έχει ήδη
+      // ισοδύναμο goal (ίδιο metric+period) για την ίδια άσκηση, soft-delete το
+      // διπλότυπο της πηγής αντί να μείνουν δύο στόχοι για το ίδιο πράγμα.
+      const targetGoals = await db.goals
+        .where('exercise_id')
+        .equals(targetId)
+        .filter((g) => g.deleted_at == null)
+        .toArray();
+      const seen = new Set(targetGoals.map((g) => `${g.metric}|${g.period}`));
+      const sourceGoals = await db.goals
+        .where('exercise_id')
+        .equals(sourceId)
+        .filter((g) => g.deleted_at == null)
+        .toArray();
+      for (const g of sourceGoals) {
+        const key = `${g.metric}|${g.period}`;
+        if (seen.has(key)) {
+          await db.goals.update(g.id, { deleted_at: t, updated_at: t });
+        } else {
+          await db.goals.update(g.id, { exercise_id: targetId, updated_at: t });
+          seen.add(key);
+        }
+      }
       // Η πηγή είναι πλέον κενή → αρχειοθέτηση (όχι διαγραφή· αναστρέψιμο).
       await db.exercises.update(sourceId, { is_archived: true, updated_at: t });
     },
