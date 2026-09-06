@@ -795,7 +795,7 @@ export const USER_DATA_TABLES = () => ({
   user_skill_progress: db.user_skill_progress,
   user_skill_step_completions: db.user_skill_step_completions,
   app_settings: db.app_settings, body_metrics: db.body_metrics,
-  programs: db.programs, program_exercises: db.program_exercises,
+  programs: db.programs, program_days: db.program_days, program_exercises: db.program_exercises,
   activities: db.activities, goals: db.goals,
   custom_trackers: db.custom_trackers, custom_tracker_entries: db.custom_tracker_entries,
 });
