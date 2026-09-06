@@ -122,7 +122,7 @@ empty-state (όχι stale «355 μέρες»)· **accent-aware favicon**· Frien
 profile /u/:username** (invite loop closed)· **program_days cross-device sync** +
 **soft-delete** (διαγραφή ταξιδεύει)· program→calendar structure.
 
-**419 client + 40 server tests green · tsc -b clean · 150+ commits.**
+**422 client + 40 server tests green · tsc -b clean · schema **v15** · 155+ commits.**
 
 **Outward-facing (2026-09-06, portfolio-ready):** helper audit verdict =
 «portfolio-ready as-is» (0 console.log/TODO, 1 `as any`, solid a11y+ErrorBoundary).
