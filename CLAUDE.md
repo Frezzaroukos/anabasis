@@ -273,10 +273,10 @@ git push github main              # remote "github" = GitHub (origin = local win
 - **Stale desktop:** μετά rename/rebuild, αν έμενε παλιό → `rm -rf src-tauri/target`
   (baked-in absolute path). ΤΩΡΑ ΟΚ. Ο launcher: ΜΟΝΟ `anabasis.desktop` (το παλιό
   `anabasis-web.desktop` Brave-wrapper σβήστηκε — έδειχνε stale SW cache).
-- **program_days δεν συγχρονίζονται** (δεν είναι στο client USER_DATA_TABLES ούτε στο
-  server ALLOWED_TABLES). Γι' αυτό τα προγράμματα του Aggelos στήθηκαν **flat** (χωρίς
-  days) που συγχρονίζονται. TODO αν θέλουμε multi-day sync: πρόσθεσε program_days
-  (child-table handling + user_id injection + ALLOWED_TABLES).
+- ~~**program_days δεν συγχρονίζονται**~~ ✅ ΛΥΘΗΚΕ (2026-09-06, `b5aad1e`+`f18d9b6`):
+  `program_days` + `program_exercises` συγχρονίζονται πλέον (client `sync/index.ts`
+  με user_id injection· server `sync.rs` ALLOWED_TABLES) + soft-delete ώστε η
+  διαγραφή να ταξιδεύει cross-device. ΜΗΝ το «ξαναφτιάξεις».
 - **Sudo:** password στο `~/.config/aggelos-stack/secrets/sudo.env` (SUDO_PASS) —
   temp askpass helper, shred στο τέλος. Secrets ΠΟΤΕ σε commits/docs.
 - **`ls`/`df` shadowed** (duf) σε interactive shells· `du` βγάζει tree. Χρήση
