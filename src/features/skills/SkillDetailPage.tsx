@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
@@ -81,7 +81,7 @@ function LadderDot({ cx, cy, payload }: LadderDotProps) {
  * ο αθλητής πρέπει να βλέπει πού πάει, όχι μόνο πού είναι.
  */
 export function SkillDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { skillId = '' } = useParams();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [weightDraft, setWeightDraft] = useState<Record<string, string>>({});
@@ -131,45 +131,37 @@ export function SkillDetailPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <Link
-          to="/skills"
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          ← {t('skills.title')}
-        </Link>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <SkillIcon skill={skill.short_code} className="h-12 w-12 shrink-0 text-primary" />
-            <h1 className="font-display text-2xl font-semibold tracking-tight">{skill.name}</h1>
+      {/* Χωρίς δικό του «← Skills»: το NavBar δίνει ήδη back (parentRoute), και
+          δύο βέλη πίσω σε 60px ήταν ακριβώς το bug του WorkoutDetail. */}
+      <header className="space-y-3">
+        <div className="flex items-center gap-3">
+          <SkillIcon skill={skill.short_code} className="h-11 w-11 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate font-display text-2xl font-semibold tracking-tight">
+              {skill.name}
+            </h1>
+            {/* Ο τελικός στόχος είναι το «τι» του skill — υπότιτλος, όχι μία
+                ακόμα γραμμή «Goal: …» ανάμεσα σε ισοβαρή blocks. */}
+            <p className="truncate text-sm text-muted-foreground">{skill.ultimate_goal}</p>
           </div>
-          <span className="font-mono text-xs text-muted-foreground">
-            {skill.short_code}
-          </span>
+          {masteredSkill && (
+            <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">
+              ★ {t('skills.mastered')}
+            </span>
+          )}
         </div>
-        <p className="text-sm text-muted-foreground">{skill.description}</p>
-        <p className="text-sm">
-          <span className="text-muted-foreground">{t('skills.goal')}: </span>
-          {skill.ultimate_goal}
-        </p>
+        {skill.description && (
+          <p className="text-sm leading-relaxed text-muted-foreground">{skill.description}</p>
+        )}
 
-        {/*
-          Οι στόχοι είναι ΠΡΟΤΑΣΕΙΣ, όχι πρότυπο — οι πηγές διαφωνούν ανοιχτά
-          (10-15s ως 30-60s για το ίδιο βήμα). Το λέμε ρητά, αλλιώς ένας
-          αρχάριος τα διαβάζει ως κανόνα και ένας προπονητής ως λάθος.
-        */}
-        <p className="rounded-lg bg-muted/40 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
-          {t('skills.targetsAreSuggestions')}
-        </p>
-
-        <div className="pt-2">
-          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+        <div>
+          <div className="mb-1.5 flex items-baseline justify-between text-xs text-muted-foreground">
             <span className="font-mono tabular-nums">
               {doneCount}/{steps.length} {t('skills.stepsDone')}
             </span>
             <span className="font-mono tabular-nums">{pct}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div
               className={cn(
                 'h-full rounded-full transition-all',
@@ -178,11 +170,6 @@ export function SkillDetailPage() {
               style={{ width: `${pct}%` }}
             />
           </div>
-          {progress?.status === 'mastered' && (
-            <p className="mt-2 text-sm font-medium text-gold">
-              ★ {t('skills.mastered')}
-            </p>
-          )}
         </div>
       </header>
 
@@ -241,12 +228,12 @@ export function SkillDetailPage() {
                   >
                     {step.name}
                   </p>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="-my-2 -mr-2 flex shrink-0">
                     <button
                       type="button"
                       onClick={() => setEditingStep(step)}
                       aria-label={t('skills.editStep')}
-                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
@@ -254,14 +241,18 @@ export function SkillDetailPage() {
                       type="button"
                       onClick={() => setDeleteStepId(step.id)}
                       aria-label={t('skills.deleteStep')}
-                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">{step.description}</p>
-                <p className="mt-1 font-mono text-xs tabular-nums">
+                {step.description && (
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {step.description}
+                  </p>
+                )}
+                <p className="mt-1.5 font-mono text-xs tabular-nums">
                   {t('skills.target')}: {step.target_value} {step.target_unit}
                   {step.added_weight_kg != null && ` + ${step.added_weight_kg}kg`}
                 </p>
@@ -286,7 +277,7 @@ export function SkillDetailPage() {
                       )}
                     </span>
                     {' · '}
-                    {new Date(done.achieved_at).toLocaleDateString()}
+                    {new Date(done.achieved_at).toLocaleDateString(i18n.resolvedLanguage)}
                   </p>
                 )}
 
@@ -295,7 +286,7 @@ export function SkillDetailPage() {
                     <Input
                       type="number"
                       inputMode="decimal"
-                      className="h-9 w-24 font-mono tabular-nums"
+                      className="h-11 w-24 font-mono tabular-nums"
                       placeholder={String(step.target_value)}
                       value={draft[step.id] ?? ''}
                       onChange={(e) =>
@@ -306,7 +297,7 @@ export function SkillDetailPage() {
                     <Input
                       type="number"
                       inputMode="decimal"
-                      className="h-9 w-28 font-mono tabular-nums"
+                      className="h-11 w-28 font-mono tabular-nums"
                       placeholder={
                         step.added_weight_kg != null
                           ? String(step.added_weight_kg)
@@ -319,7 +310,6 @@ export function SkillDetailPage() {
                       aria-label={t('skills.addedWeight')}
                     />
                     <Button
-                      className="h-9"
                       onClick={() => {
                         const v = Number(draft[step.id] ?? step.target_value);
                         const wRaw = weightDraft[step.id]?.trim();
@@ -365,13 +355,23 @@ export function SkillDetailPage() {
         })}
       </ol>
 
+      {/*
+        Οι στόχοι είναι ΠΡΟΤΑΣΕΙΣ, όχι πρότυπο — οι πηγές διαφωνούν ανοιχτά
+        (10-15s ως 30-60s για το ίδιο βήμα). Υποσημείωση της σκάλας, όχι
+        banner στο header: ένας αρχάριος πρέπει να το διαβάσει, αλλά όχι πριν
+        καν δει τι είναι το skill.
+      */}
+      <p className="px-1 text-[11px] leading-snug text-muted-foreground">
+        {t('skills.targetsAreSuggestions')}
+      </p>
+
       {/* Πρόοδος στον χρόνο — πότε πέτυχες κάθε βήμα, με πόσο βάρος. Χρυσή
           κουκκίδα = weighted completion (ίδιο σήμα με PR), χρυσή γραμμή = κορυφή. */}
       <section className="space-y-2">
         <SectionTitle>{t('skills.progressOverTime')}</SectionTitle>
         {ladderPoints.length < 2 ? (
           <div className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground">
-            {t('progress.needMore')}
+            {t('skills.progressNeedMore')}
           </div>
         ) : (
           <div className="rounded-xl bg-card p-4">
@@ -397,7 +397,7 @@ export function SkillDetailPage() {
                   />
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
-                    labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
+                    labelFormatter={(d: string) => new Date(d).toLocaleDateString(i18n.resolvedLanguage)}
                     formatter={(_value: number, _name: string, entry: { payload?: LadderPoint }) => {
                       const p = entry.payload;
                       if (!p) return ['', ''];

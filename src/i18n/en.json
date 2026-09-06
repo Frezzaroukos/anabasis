@@ -182,7 +182,8 @@
     "workoutDurationPlaceholder": "Optional — e.g. 45",
     "deleteWorkout": "Delete this workout",
     "deleteConfirmTitle": "Delete this workout?",
-    "deleteConfirmDesc": "Its sets and any personal records it produced are removed too. This cannot be undone from the app."
+    "deleteConfirmDesc": "Its sets and any personal records it produced are removed too. This cannot be undone from the app.",
+    "logFirst": "Log your first workout"
   },
   "skills": {
     "title": "Skills",
@@ -226,7 +227,10 @@
     "targetsAreSuggestions": "Targets are suggested starting points, not a standard — coaches and sources disagree. Edit any step to match how you train.",
     "addedWeight": "Added weight",
     "addedWeightPlaceholder": "e.g. +5",
-    "progressOverTime": "Progress over time"
+    "progressOverTime": "Progress over time",
+    "emptyTitle": "No skills yet",
+    "emptyHint": "Add your first skill to start climbing the ladder.",
+    "progressNeedMore": "Achieve two steps and your climb shows up here."
   },
   "settings": {
     "title": "Settings",

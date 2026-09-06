@@ -62,12 +62,12 @@ export function WorkoutDetailPage() {
           <button
             onClick={() => setEditOpen(true)}
             aria-label={t('history.editWorkout')}
-            className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Pencil className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="-mt-1 text-sm text-muted-foreground">
           {started.toLocaleDateString(i18n.resolvedLanguage, {
             weekday: 'long',
             day: 'numeric',
@@ -135,7 +135,7 @@ export function WorkoutDetailPage() {
                     <li
                       key={s.id}
                       className={cn(
-                        'flex items-center gap-3 py-1.5 font-mono text-sm',
+                        'flex items-center gap-3 py-2 font-mono text-sm tabular-nums',
                         warmup && 'text-muted-foreground',
                       )}
                     >
