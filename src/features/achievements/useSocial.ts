@@ -14,6 +14,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api/client';
 import type { SocialMe, FriendRow, LeaderboardRow } from '@/lib/api/types';
 import {
+  writeFriendsCache,
+  readFriendsCache,
+  writeLeaderboardCache,
+  readLeaderboardCache,
+} from '@/lib/db/friendsCache';
+import {
   totalXp,
   badgeStates,
   type GamificationInput,
@@ -105,9 +111,27 @@ export function useSocial(
           leaderboard,
           scope,
         }));
+        // Best-effort cache για offline reads (δεν μπλοκάρει το UI).
+        void writeFriendsCache(friends, requests);
+        void writeLeaderboardCache(scope, leaderboard);
       } catch (e) {
         // ApiError = server απάντησε (π.χ. 401)· network reject = offline.
-        setState((s) => ({ ...s, loading: false, offline: !(e instanceof ApiError) }));
+        const offline = !(e instanceof ApiError);
+        if (offline) {
+          // Δείξε last-known από cache αντί για κενό.
+          const [cached, board] = await Promise.all([readFriendsCache(), readLeaderboardCache(scope)]);
+          setState((s) => ({
+            ...s,
+            loading: false,
+            offline: true,
+            friends: cached.friends,
+            requests: cached.requests,
+            leaderboard: board,
+            scope,
+          }));
+        } else {
+          setState((s) => ({ ...s, loading: false, offline: false }));
+        }
       }
     },
     [enabled],
@@ -163,7 +187,13 @@ export function useSocial(
 
   const accept = useCallback(
     async (id: string) => {
-      await api.socialAccept(id);
+      // Offline → η κλήση αποτυγχάνει· το reload δείχνει το offline banner αντί
+      // για uncaught rejection.
+      try {
+        await api.socialAccept(id);
+      } catch {
+        /* offline / server error — best-effort */
+      }
       await loadAll(state.scope);
     },
     [loadAll, state.scope],
@@ -171,7 +201,11 @@ export function useSocial(
 
   const remove = useCallback(
     async (id: string) => {
-      await api.socialRemove(id);
+      try {
+        await api.socialRemove(id);
+      } catch {
+        /* offline / server error — best-effort */
+      }
       await loadAll(state.scope);
     },
     [loadAll, state.scope],
