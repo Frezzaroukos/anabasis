@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuid } from 'uuid';
@@ -251,23 +251,18 @@ export function ProgramDetailPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <Link
-          to="/programs"
-          className="inline-block rounded-md text-xs text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          ← {t('programs.title')}
-        </Link>
+      {/* Χωρίς δικό του «← Programs»: το NavBar δίνει back (parentRoute /programs/:id). */}
+      <header className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
-          <h1 className="font-display text-2xl font-semibold tracking-tight">{program.name}</h1>
-          <span className="text-xs text-muted-foreground">
+          <h1 className="min-w-0 truncate font-display text-2xl font-semibold tracking-tight">{program.name}</h1>
+          <span className="shrink-0 text-xs text-muted-foreground">
             {activities.find((a) => a.key === program.activity_kind)?.label ?? program.activity_kind}
           </span>
         </div>
 
         {/* Στόχος συχνότητας/εβδομάδα — habit nudge για casual, adherence για serious */}
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">{t('programs.weeklyTarget')}:</span>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">{t('programs.weeklyTarget')}</span>
           <button
             type="button"
             aria-label={t('programs.decrease')}
@@ -277,11 +272,11 @@ export function ProgramDetailPage() {
                 Math.max(0, (program.target_sessions_per_week ?? 0) - 1) || null,
               )
             }
-            className="h-7 w-7 rounded-md bg-muted text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-accent-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 w-11 rounded-md bg-muted text-base text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-accent-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             −
           </button>
-          <span className="w-6 text-center font-mono tabular-nums">
+          <span className="w-8 text-center font-mono text-base tabular-nums">
             {program.target_sessions_per_week ?? '—'}
           </span>
           <button
@@ -290,7 +285,7 @@ export function ProgramDetailPage() {
             onClick={() =>
               void setProgramTarget(program.id, (program.target_sessions_per_week ?? 0) + 1)
             }
-            className="h-7 w-7 rounded-md bg-muted text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-accent-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 w-11 rounded-md bg-muted text-base text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-accent-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             +
           </button>
@@ -314,7 +309,7 @@ export function ProgramDetailPage() {
                 aria-label={`${t('programs.day')} ${index + 1}: ${day.name}`}
                 aria-pressed={day.id === activeDayId}
                 className={cn(
-                  'shrink-0 rounded-md px-3 py-2 text-sm font-medium ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  'flex h-11 shrink-0 items-center rounded-md px-4 text-sm font-medium ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   day.id === activeDayId
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -327,14 +322,14 @@ export function ProgramDetailPage() {
               type="button"
               onClick={() => setAddingDay(true)}
               aria-label={t('programs.addDay')}
-              className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Plus className="h-4 w-4" />
             </button>
           </div>
 
           {addingDay && (
-            <div className="animate-rise-in flex gap-2 rounded-lg bg-elevated p-3">
+            <div className="animate-rise-in flex gap-2 rounded-xl bg-elevated p-3">
               <Input
                 autoFocus
                 value={newDayName}
@@ -345,12 +340,11 @@ export function ProgramDetailPage() {
                 }}
                 placeholder={t('programs.dayNamePlaceholder')}
                 aria-label={t('programs.dayNamePlaceholder')}
-                className="h-9"
               />
-              <Button size="sm" disabled={!newDayName.trim() || dayBusy} onClick={() => void onAddDay()}>
+              <Button disabled={!newDayName.trim() || dayBusy} onClick={() => void onAddDay()}>
                 {t('common.save')}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setAddingDay(false)}>
+              <Button variant="ghost" onClick={() => setAddingDay(false)}>
                 {t('common.cancel')}
               </Button>
             </div>
@@ -369,12 +363,11 @@ export function ProgramDetailPage() {
                       if (e.key === 'Escape') setRenamingDayId(null);
                     }}
                     aria-label={t('programs.dayNamePlaceholder')}
-                    className="h-9"
                   />
-                  <Button size="sm" onClick={() => void onConfirmRenameDay(activeDay.id)}>
+                  <Button onClick={() => void onConfirmRenameDay(activeDay.id)}>
                     {t('common.save')}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setRenamingDayId(null)}>
+                  <Button variant="ghost" onClick={() => setRenamingDayId(null)}>
                     {t('common.cancel')}
                   </Button>
                 </div>
@@ -383,13 +376,13 @@ export function ProgramDetailPage() {
                   <h2 className="font-display text-lg font-semibold tracking-tight">
                     {activeDay.name}
                   </h2>
-                  <div className="flex items-center gap-1">
+                  <div className="-my-2 -mr-2 flex items-center">
                     <button
                       type="button"
                       onClick={() => void moveDay(-1)}
                       disabled={days.findIndex((d) => d.id === activeDayId) === 0}
                       aria-label={t('programs.moveDayLeft')}
-                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -398,7 +391,7 @@ export function ProgramDetailPage() {
                       onClick={() => void moveDay(1)}
                       disabled={days.findIndex((d) => d.id === activeDayId) === days.length - 1}
                       aria-label={t('programs.moveDayRight')}
-                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -409,7 +402,7 @@ export function ProgramDetailPage() {
                         setRenameDayDraft(activeDay.name);
                       }}
                       aria-label={t('programs.renameDay')}
-                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -417,7 +410,7 @@ export function ProgramDetailPage() {
                       type="button"
                       onClick={() => setDeleteDayId(activeDay.id)}
                       aria-label={t('programs.deleteDay')}
-                      className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -441,14 +434,14 @@ export function ProgramDetailPage() {
           <button
             type="button"
             onClick={() => setAddingDay(true)}
-            className="rounded-md text-xs text-muted-foreground underline-offset-2 ring-offset-background transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 items-center rounded-md px-1 text-xs text-muted-foreground underline-offset-2 ring-offset-background transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             + {t('programs.addDays')}
           </button>
 
           {addingDay && (
-            <div className="animate-rise-in space-y-2 rounded-lg bg-elevated p-3">
-              <p className="text-xs text-muted-foreground">{t('programs.addDaysHint')}</p>
+            <div className="animate-rise-in space-y-2 rounded-xl bg-elevated p-3">
+              <p className="text-xs leading-relaxed text-muted-foreground">{t('programs.addDaysHint')}</p>
               <div className="flex gap-2">
                 <Input
                   autoFocus
@@ -460,16 +453,14 @@ export function ProgramDetailPage() {
                   }}
                   placeholder={t('programs.dayNamePlaceholder')}
                   aria-label={t('programs.dayNamePlaceholder')}
-                  className="h-9"
                 />
                 <Button
-                  size="sm"
                   disabled={!newDayName.trim() || dayBusy}
                   onClick={() => void onAddDay()}
                 >
                   {t('common.save')}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setAddingDay(false)}>
+                <Button variant="ghost" onClick={() => setAddingDay(false)}>
                   {t('common.cancel')}
                 </Button>
               </div>
@@ -488,7 +479,7 @@ export function ProgramDetailPage() {
       )}
 
       {exercises.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-card p-6 text-center">
+        <div className="rounded-xl bg-card px-6 py-8 text-center">
           <p className="text-sm text-muted-foreground">{t('programs.noExercises')}</p>
         </div>
       ) : (
@@ -497,23 +488,23 @@ export function ProgramDetailPage() {
             <li key={group.key}>
               <div
                 className={cn(
-                  'overflow-hidden rounded-lg',
+                  'overflow-hidden rounded-xl',
                   group.kind !== 'single' ? 'bg-primary/5' : 'bg-card',
                 )}
               >
-                <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-1.5">
+                <div className="flex items-center justify-between gap-2 border-b border-border/40 py-0.5 pl-4 pr-1">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
                     {group.kind !== 'single' &&
                       t(group.kind === 'dropset' ? 'setType.dropset' : 'setType.superset')}
                   </span>
                   {/* Πιο ήσυχα affordances: διακριτικά ως ηρεμία, ξεκάθαρα στο hover. */}
-                  <div className="flex items-center gap-1 opacity-70 transition-opacity hover:opacity-100">
+                  <div className="flex items-center opacity-70 transition-opacity hover:opacity-100">
                     {index > 0 && (
                       <button
                         type="button"
                         onClick={() => void linkWithPrevious(index)}
                         aria-label={t('programs.linkPrevious')}
-                        className="rounded-md p-1 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <Link2 className="h-3.5 w-3.5" />
                       </button>
@@ -523,7 +514,7 @@ export function ProgramDetailPage() {
                       onClick={() => void moveGroup(index, -1)}
                       disabled={index === 0}
                       aria-label={t('programs.moveUp')}
-                      className="rounded-md p-1 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronUp className="h-4 w-4" />
                     </button>
@@ -532,7 +523,7 @@ export function ProgramDetailPage() {
                       onClick={() => void moveGroup(index, 1)}
                       disabled={index === groups.length - 1}
                       aria-label={t('programs.moveDown')}
-                      className="rounded-md p-1 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-30"
                     >
                       <ChevronDown className="h-4 w-4" />
                     </button>
