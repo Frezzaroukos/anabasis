@@ -152,8 +152,10 @@ programs **and** multi-day structure, with soft-deletes that propagate), rate
 limiting, restic-backed DB snapshots. **Friends & leaderboards** ship too: opt-in
 public profiles at `/u/:username`, friend/global boards, SQL-enforced privacy.
 
-In progress: Google sign-in (server + client wired; needs a live OAuth client),
-native app-store builds (installable as a PWA today).
+Also live: **Google sign-in** (Rust OAuth 2.0 flow — argon2-less social login into
+the same session/token model; openid+email scopes only).
+
+In progress: native app-store builds (installable as a PWA today).
 
 ---
 
