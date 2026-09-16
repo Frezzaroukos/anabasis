@@ -152,10 +152,14 @@ programs **and** multi-day structure, with soft-deletes that propagate), rate
 limiting, restic-backed DB snapshots. **Friends & leaderboards** ship too: opt-in
 public profiles at `/u/:username`, friend/global boards, SQL-enforced privacy.
 
-Also live: **Google sign-in** (Rust OAuth 2.0 flow — argon2-less social login into
-the same session/token model; openid+email scopes only).
+Also live: **Google sign-in** (Rust OAuth 2.0 flow — social login into the same
+session/token model; openid+email scopes only) and **magic-link email login**
+(passwordless, single-use hashed tokens with a 15-minute TTL, atomic single-use
+consume, account created on verified click) — the latter activates the moment an
+SMTP relay is configured, dormant until then, exactly like the OAuth client.
 
-In progress: native app-store builds (installable as a PWA today).
+In progress: native app-store builds (installable as a PWA today); Apple sign-in
+(needs an Apple Developer account).
 
 ---
 

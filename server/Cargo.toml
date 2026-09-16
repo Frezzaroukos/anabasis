@@ -32,6 +32,8 @@ base64 = "0.23"
 # rustls αντί για system OpenSSL — μηδενικό extra σύστημα-dependency στο deploy
 # (systemd unit + Docker), μόνο για το Google token/userinfo exchange.
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Magic-link email (rustls, χωρίς OpenSSL system dep — ίδια γραμμή με reqwest).
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1-rustls-tls", "builder", "hostname"] }
 
 [dev-dependencies]
 tempfile = "3"

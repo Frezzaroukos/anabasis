@@ -718,6 +718,10 @@
     "adminClaimed": "You are now an admin.",
     "errorBadCode": "Wrong code.",
     "continueWithGoogle": "Continue with Google",
+    "emailLink": "Email me a login link",
+    "emailLinkHint": "No password needed — we email you a one-time link.",
+    "magicSent": "Check your inbox — if that email has an account, a login link is on its way (expires in 15 minutes).",
+    "errorEmailRequired": "Enter your email first.",
     "vsProfiles": "Sharing this device with someone? Set up device profiles"
   },
   "admin": {

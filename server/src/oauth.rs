@@ -13,17 +13,19 @@ use axum::response::IntoResponse;
 use axum::Json;
 use serde::Deserialize;
 use time::Duration as TimeDuration;
-use uuid::Uuid;
 
 use crate::app::AppState;
-use crate::auth::{create_session, generate_token, hash_password, normalize_email};
+use crate::auth::{create_session, generate_token, normalize_email};
 use crate::error::AppError;
 use crate::util::{iso_in, now, now_iso, parse_iso};
 
 const STATE_LIFETIME: TimeDuration = TimeDuration::minutes(10);
 
 pub async fn providers(State(state): State<AppState>) -> impl IntoResponse {
-    Json(serde_json::json!({ "google": state.google_oauth.is_some() }))
+    Json(serde_json::json!({
+        "google": state.google_oauth.is_some(),
+        "magic": state.email.is_some(),
+    }))
 }
 
 pub async fn google_start(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
@@ -94,7 +96,7 @@ pub async fn google_callback(
     let info = fetch_userinfo(&state.http_client, &access_token).await?;
     let email = verified_email(&info)?;
 
-    let account = find_or_create_google_account(&state, &email).await?;
+    let account = crate::auth::find_or_create_account(&state, &email, "google").await?;
 
     let user_agent = headers
         .get(header::USER_AGENT)
@@ -250,81 +252,6 @@ fn verified_email(info: &GoogleUserInfo) -> Result<String, AppError> {
             "Το Google email δεν είναι επιβεβαιωμένο.",
         )),
     }
-}
-
-/* ─────────── Account lookup/creation ─────────── */
-
-#[derive(sqlx::FromRow)]
-struct GoogleAccountRow {
-    id: String,
-    #[allow(dead_code)]
-    role: String,
-    disabled: bool,
-}
-
-/// Υπάρχων λογαριασμός (όποιο κι αν είναι το auth_provider του — password
-/// login μένει διαθέσιμο, βλ. API-CONTRACT.md) → login. Αλλιώς νέος
-/// λογαριασμός με auth_provider='google' και τυχαίο, ΠΟΤΕ αποκαλυπτόμενο
-/// password hash (η γραμμή admin_email ισχύει ίδια με το κανονικό signup).
-async fn find_or_create_google_account(
-    state: &AppState,
-    email: &str,
-) -> Result<GoogleAccountRow, AppError> {
-    if let Some(row) = sqlx::query_as::<_, GoogleAccountRow>(
-        "SELECT id, role, disabled FROM accounts WHERE email = ?",
-    )
-    .bind(email)
-    .fetch_optional(&state.pool)
-    .await?
-    {
-        if row.disabled {
-            return Err(AppError::disabled());
-        }
-        return Ok(row);
-    }
-
-    let id = Uuid::new_v4().to_string();
-    let created_at = now_iso();
-    let role = if state.admin_email.as_deref() == Some(email) {
-        "admin"
-    } else {
-        "user"
-    };
-    // Τυχαίο 32-byte secret, hashed κανονικά με argon2 — έγκυρο PHC string
-    // σαν κάθε άλλο account, απλά κανείς δεν ξέρει το plaintext του.
-    let password_hash = hash_password(&generate_token())?;
-
-    let insert = sqlx::query(
-        "INSERT INTO accounts (id, email, password_hash, role, created_at, auth_provider)
-         VALUES (?, ?, ?, ?, ?, 'google')",
-    )
-    .bind(&id)
-    .bind(email)
-    .bind(&password_hash)
-    .bind(role)
-    .bind(&created_at)
-    .execute(&state.pool)
-    .await;
-
-    if let Err(sqlx::Error::Database(db_err)) = &insert {
-        if db_err.is_unique_violation() {
-            // Race: δημιουργήθηκε ανάμεσα στο SELECT και το INSERT — ξαναδιάβασε.
-            return sqlx::query_as::<_, GoogleAccountRow>(
-                "SELECT id, role, disabled FROM accounts WHERE email = ?",
-            )
-            .bind(email)
-            .fetch_one(&state.pool)
-            .await
-            .map_err(AppError::from);
-        }
-    }
-    insert?;
-
-    Ok(GoogleAccountRow {
-        id,
-        role: role.to_string(),
-        disabled: false,
-    })
 }
 
 #[cfg(test)]

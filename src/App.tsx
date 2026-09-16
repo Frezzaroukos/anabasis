@@ -3,7 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '@/app/routes';
 import { bootstrapDB } from '@/lib/db';
 import { initAutoSync } from '@/lib/sync';
-import { initOAuthFragment } from '@/lib/api/auth';
+import { initMagicLink, initOAuthFragment } from '@/lib/api/auth';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -18,6 +18,8 @@ export default function App() {
         // το auto-sync boot-trigger, ώστε το isLoggedIn() check του
         // initAutoSync να δει ήδη τον συνδεδεμένο λογαριασμό.
         await initOAuthFragment();
+        // Magic-link (/auth/magic?token=…) — ίδιο σκεπτικό: ΠΡΙΝ το auto-sync.
+        await initMagicLink();
         // Boot-trigger του auto-sync — no-op αν δεν υπάρχει συνδεδεμένος
         // λογαριασμός (βλ. src/lib/sync). ΠΡΕΠΕΙ να τρέξει μετά το bootstrap,
         // αλλιώς τα Dexie hooks θα έπιαναν και τα seed-writes του boot. Το

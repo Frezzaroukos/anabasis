@@ -256,6 +256,27 @@ export const api = {
     return request<OAuthProviders>('/auth/oauth/providers');
   },
 
+  /** Ζητά magic-link στο email. Ο server επιστρέφει πάντα {ok:true} όταν το
+   * feature είναι ενεργό (no enumeration) — δεν αποκαλύπτει αν υπάρχει account. */
+  magicRequest(email: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>('/auth/magic/request', {
+      method: 'POST',
+      body: { email },
+    });
+  },
+
+  /** Εξαργυρώνει το token του magic-link → session (ίδιο AuthResponse & flow
+   * με το password login: isAuthCall + writeStoredAuth). */
+  async magicConsume(token: string): Promise<AuthResponse> {
+    const res = await request<AuthResponse>('/auth/magic/consume', {
+      method: 'POST',
+      body: { token },
+      isAuthCall: true,
+    });
+    writeStoredAuth(res);
+    return res;
+  },
+
   // ── Social ──────────────────────────────────────────────────────────────────
   socialMe(): Promise<SocialMe> {
     return request<SocialMe>('/social/me');

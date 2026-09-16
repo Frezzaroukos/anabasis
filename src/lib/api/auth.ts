@@ -116,6 +116,46 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await api.changePassword(currentPassword, newPassword);
 }
 
+/** Ζητά magic-link στο email του χρήστη. Ο server επιστρέφει πάντα ok (no
+ * enumeration)· το component δείχνει «τσέκαρε το email σου» ό,τι κι αν ισχύει. */
+export async function requestMagicLink(email: string): Promise<void> {
+  await api.magicRequest(email.trim());
+}
+
+/**
+ * Εξαργυρώνει ένα magic-link token → session, με ΤΟ ΙΔΙΟ bind+resync flow με
+ * το κανονικό login (pull-first). Το `api.magicConsume` έχει ήδη γράψει το
+ * StoredAuth (isAuthCall + writeStoredAuth), οπότε εδώ μένει μόνο το binding.
+ */
+export async function magicLogin(token: string): Promise<Account> {
+  const res = await api.magicConsume(token);
+  await bindLocalProfileAndResync(res.account.id, 'pull-first');
+  return res.account;
+}
+
+const MAGIC_FRAGMENT_RE = /(?:^#|&)magic=([^&]+)/;
+
+/**
+ * Boot-time (App.tsx, δίπλα στο initOAuthFragment): αν το URL fragment κουβαλά
+ * `#magic=<token>` (το link του email), το εξαργυρώνει και καθαρίζει αμέσως το
+ * token από τη γραμμή διεύθυνσης/ιστορικό. No-op χωρίς fragment. Fragment (όχι
+ * query) ώστε το token να μη φτάνει ποτέ σε server/proxy access logs.
+ */
+export async function initMagicLink(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const match = MAGIC_FRAGMENT_RE.exec(window.location.hash);
+  if (!match) return;
+
+  const token = decodeURIComponent(match[1]!);
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  try {
+    await magicLogin(token);
+  } catch (err) {
+    console.error('[magic-link]', err);
+  }
+}
+
 const OAUTH_FRAGMENT_RE = /(?:^#|&)oauth=([^&]+)/;
 
 /**
