@@ -4,6 +4,7 @@ pub mod auth;
 pub mod db;
 pub mod error;
 pub mod json;
+pub mod magic;
 pub mod oauth;
 pub mod social;
 pub mod sync;

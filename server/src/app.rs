@@ -15,7 +15,7 @@ use tower_governor::{GovernorError, GovernorLayer};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-use crate::{admin, auth, oauth, social, sync};
+use crate::{admin, auth, magic, oauth, social, sync};
 
 /// "Sign in with Google" — παρών μόνο όταν έχουν οριστεί ΚΑΙ τα δύο env vars
 /// (ANABASIS_GOOGLE_CLIENT_ID/SECRET, βλ. main.rs)· `AppState.google_oauth ==
@@ -26,6 +26,21 @@ pub struct GoogleOAuthConfig {
     pub client_secret: String,
     /// π.χ. `https://anabasis.axonos.dev` — base για το OAuth redirect_uri
     /// ΚΑΙ για το τελικό redirect προς τη SPA μετά το callback.
+    pub public_url: String,
+}
+
+/// SMTP config για magic-link email. `AppState.email == None` σημαίνει το
+/// feature είναι πλήρως δορμάν (providers→magic:false, request→503), όπως το
+/// Google OAuth χωρίς creds. Ορίζεται από τα ANABASIS_SMTP_* env vars (main.rs).
+#[derive(Debug, Clone)]
+pub struct EmailConfig {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub password: String,
+    /// From-address (π.χ. `Anabasis <no-reply@axonos.dev>`).
+    pub from: String,
+    /// Base για το link στο email — ίδιο public_url με το OAuth.
     pub public_url: String,
 }
 
@@ -47,6 +62,8 @@ pub struct AppState {
     /// ώστε οι clients να μηδενίζουν cursors αντί να ξεσυγχρονίζονται σιωπηλά.
     pub epoch: String,
     pub google_oauth: Option<GoogleOAuthConfig>,
+    /// SMTP config για magic-link· None ⇒ δορμάν.
+    pub email: Option<EmailConfig>,
     /// Ένα reused reqwest::Client (κρατάει connection pool/DNS cache) — μόνο
     /// για τα Google token/userinfo calls του oauth module.
     pub http_client: reqwest::Client,
@@ -57,6 +74,7 @@ pub async fn build_state(
     admin_email: Option<String>,
     admin_code: Option<String>,
     google_oauth: Option<GoogleOAuthConfig>,
+    email: Option<EmailConfig>,
 ) -> Result<AppState, sqlx::Error> {
     let pool = crate::db::connect(&db_path).await?;
     let epoch = crate::db::get_or_create_epoch(&pool).await?;
@@ -77,6 +95,7 @@ pub async fn build_state(
         dummy_hash,
         started_at: OffsetDateTime::now_utc(),
         google_oauth,
+        email,
         http_client: reqwest::Client::new(),
     })
 }
@@ -141,6 +160,8 @@ pub fn router(state: AppState) -> Router {
         .route("/oauth/providers", get(oauth::providers))
         .route("/oauth/google/start", get(oauth::google_start))
         .route("/oauth/google/callback", get(oauth::google_callback))
+        .route("/magic/request", post(magic::request))
+        .route("/magic/consume", post(magic::consume))
         .layer(GovernorLayer::new(auth_governor));
 
     let sync_routes = Router::new()

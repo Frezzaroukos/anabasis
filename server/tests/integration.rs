@@ -1,4 +1,4 @@
-use anabasis_api::app::{build_state, router, AppState, GoogleOAuthConfig};
+use anabasis_api::app::{build_state, router, AppState, EmailConfig, GoogleOAuthConfig};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
@@ -30,6 +30,7 @@ async fn test_app_with_oauth(
         admin_email.map(str::to_string),
         admin_code.map(str::to_string),
         google_oauth,
+        None,
     )
     .await
     .expect("build_state");
@@ -736,10 +737,10 @@ async fn claim_admin_without_configured_code_is_403() {
 async fn epoch_present_and_stable_across_restarts() {
     let dir = tempfile::tempdir().expect("tempdir");
     let db_path = dir.path().join("epoch-test.db");
-    let s1 = build_state(db_path.clone(), None, None, None)
+    let s1 = build_state(db_path.clone(), None, None, None, None)
         .await
         .expect("s1");
-    let s2 = build_state(db_path, None, None, None).await.expect("s2");
+    let s2 = build_state(db_path, None, None, None, None).await.expect("s2");
     // Ίδιο αρχείο βάσης = ίδιο epoch· νέο αρχείο θα έδινε νέο.
     assert_eq!(s1.epoch, s2.epoch);
     assert!(!s1.epoch.is_empty());
@@ -1350,4 +1351,134 @@ async fn sync_rejects_program_day_of_another_user() {
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "wrong_user");
+}
+
+/* ═══════════════ Magic-link (passwordless email) login ═══════════════ */
+
+fn test_email_config() -> EmailConfig {
+    EmailConfig {
+        host: "smtp.invalid.test".to_string(),
+        port: 587,
+        username: "test@example.com".to_string(),
+        password: "test-pass".to_string(),
+        from: "Anabasis <no-reply@example.com>".to_string(),
+        public_url: "https://anabasis.axonos.dev".to_string(),
+    }
+}
+
+async fn test_app_with_email(email: Option<EmailConfig>) -> (Router, AppState, tempfile::TempDir) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("anabasis-test.db");
+    let state = build_state(db_path, None, None, None, email)
+        .await
+        .expect("build_state");
+    let app = router(state.clone());
+    (app, state, dir)
+}
+
+async fn insert_login_token(state: &AppState, raw_token: &str, email: &str, expires_at: &str) {
+    let hash = anabasis_api::auth::sha256_hex(raw_token);
+    sqlx::query(
+        "INSERT INTO login_tokens (token_hash, email, created_at, expires_at) VALUES (?, ?, ?, ?)",
+    )
+    .bind(&hash)
+    .bind(email)
+    .bind("2026-01-01T00:00:00Z")
+    .bind(expires_at)
+    .execute(&state.pool)
+    .await
+    .expect("insert login_token");
+}
+
+#[tokio::test]
+async fn magic_dormant_by_default_reports_false_and_rejects() {
+    let (app, _state, _dir) = test_app(None).await;
+
+    let (status, body) = call(&app, "GET", "/api/auth/oauth/providers", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["magic"], false);
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/magic/request",
+        None,
+        Some(json!({ "email": "x@example.com" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "email_login_unavailable");
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/magic/consume",
+        None,
+        Some(json!({ "token": "anything" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "email_login_unavailable");
+}
+
+#[tokio::test]
+async fn magic_providers_reports_enabled_when_configured() {
+    let (app, _state, _dir) = test_app_with_email(Some(test_email_config())).await;
+    let (status, body) = call(&app, "GET", "/api/auth/oauth/providers", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["magic"], true);
+}
+
+#[tokio::test]
+async fn magic_consume_happy_path_creates_account_and_is_single_use() {
+    let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
+    insert_login_token(&state, "raw-token-123", "newbie@example.com", "2999-01-01T00:00:00Z").await;
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/magic/consume",
+        None,
+        Some(json!({ "token": "raw-token-123" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["token"].as_str().is_some(), "consume επιστρέφει session token");
+    assert_eq!(body["account"]["email"], "newbie@example.com");
+    assert_eq!(body["account"]["role"], "user");
+    let session_token = body["token"].as_str().unwrap().to_string();
+
+    // Το session δουλεύει πραγματικά.
+    let (status, me) = call(&app, "GET", "/api/me", Some(&session_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(me["email"], "newbie@example.com");
+
+    // Single-use: δεύτερη εξαργύρωση του ίδιου token αποτυγχάνει.
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/magic/consume",
+        None,
+        Some(json!({ "token": "raw-token-123" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_token");
+}
+
+#[tokio::test]
+async fn magic_consume_rejects_expired_token() {
+    let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
+    insert_login_token(&state, "old-token", "late@example.com", "2000-01-01T00:00:00Z").await;
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/magic/consume",
+        None,
+        Some(json!({ "token": "old-token" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "expired_token");
 }

@@ -43,7 +43,7 @@ fn verify_password(password: &str, hash: &str) -> bool {
         .is_ok()
 }
 
-pub(crate) fn sha256_hex(input: &str) -> String {
+pub fn sha256_hex(input: &str) -> String {
     let digest = Sha256::digest(input.as_bytes());
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -78,6 +78,109 @@ pub(crate) async fn create_session(
     .await?;
 
     Ok(token)
+}
+
+/// Ελαφρύ account handle (χωρίς το password_hash) — κοινό για τα passwordless
+/// μονοπάτια (Google OAuth, magic-link) που κάνουν find-or-create by email.
+#[derive(Debug, sqlx::FromRow)]
+pub(crate) struct AccountRef {
+    pub id: String,
+    #[allow(dead_code)]
+    pub role: String,
+    pub disabled: bool,
+}
+
+/// Βρίσκει (ή δημιουργεί) λογαριασμό για ένα ΕΠΙΒΕΒΑΙΩΜΕΝΟ email. Νέος
+/// λογαριασμός παίρνει τυχαίο, ΠΟΤΕ αποκαλυπτόμενο password hash (έγκυρο PHC
+/// σαν κάθε άλλο· απλά κανείς δεν ξέρει το plaintext) + το δοσμένο
+/// `auth_provider`. Ο πρώτος με το admin_email γίνεται admin, ίδια με signup.
+/// Reused από `oauth` (provider="google") και `magic` (provider="email").
+pub(crate) async fn find_or_create_account(
+    state: &AppState,
+    email: &str,
+    provider: &str,
+) -> Result<AccountRef, AppError> {
+    if let Some(row) = sqlx::query_as::<_, AccountRef>(
+        "SELECT id, role, disabled FROM accounts WHERE email = ?",
+    )
+    .bind(email)
+    .fetch_optional(&state.pool)
+    .await?
+    {
+        if row.disabled {
+            return Err(AppError::disabled());
+        }
+        return Ok(row);
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let created_at = now_iso();
+    let role = if state.admin_email.as_deref() == Some(email) {
+        "admin"
+    } else {
+        "user"
+    };
+    let password_hash = hash_password(&generate_token())?;
+
+    let insert = sqlx::query(
+        "INSERT INTO accounts (id, email, password_hash, role, created_at, auth_provider)
+         VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&id)
+    .bind(email)
+    .bind(&password_hash)
+    .bind(role)
+    .bind(&created_at)
+    .bind(provider)
+    .execute(&state.pool)
+    .await;
+
+    if let Err(sqlx::Error::Database(db_err)) = &insert {
+        if db_err.is_unique_violation() {
+            // Race: δημιουργήθηκε ανάμεσα στο SELECT και το INSERT — ξαναδιάβασε.
+            return sqlx::query_as::<_, AccountRef>(
+                "SELECT id, role, disabled FROM accounts WHERE email = ?",
+            )
+            .bind(email)
+            .fetch_one(&state.pool)
+            .await
+            .map_err(AppError::from);
+        }
+    }
+    insert?;
+
+    Ok(AccountRef {
+        id,
+        role: role.to_string(),
+        disabled: false,
+    })
+}
+
+/// Κοινό: φτιάχνει νέο session + επιστρέφει το `AuthResponse` (token + δημόσια
+/// στοιχεία λογαριασμού) — reused από password login ΚΑΙ magic-link consume.
+pub(crate) async fn issue_auth_response(
+    state: &AppState,
+    account_id: &str,
+    user_agent: Option<&str>,
+) -> Result<AuthResponse, AppError> {
+    let token = create_session(&state.pool, account_id, user_agent).await?;
+    let (id, email, role, created_at) =
+        sqlx::query_as::<_, (String, String, String, String)>(
+            "SELECT id, email, role, created_at FROM accounts WHERE id = ?",
+        )
+        .bind(account_id)
+        .fetch_one(&state.pool)
+        .await?;
+
+    Ok(AuthResponse {
+        token,
+        account: AccountPublic {
+            id,
+            email,
+            role,
+            created_at,
+        },
+    })
 }
 
 #[derive(Debug, sqlx::FromRow)]

@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { db } from '../db';
 import { bootstrapDB } from '../db/bootstrap';
 import { DEFAULT_USER_ID, getCurrentUserId, setCurrentUserId } from '../db/session';
-import { initOAuthFragment, logout } from './auth';
+import { initMagicLink, initOAuthFragment, logout } from './auth';
 import { readStoredAuth } from './client';
 
 /**
@@ -134,6 +134,62 @@ describe('initOAuthFragment', () => {
 
     expect(window.location.hash).toBe('');
     expect(readStoredAuth()).toBeNull();
+  });
+});
+
+/**
+ * initMagicLink() — magic-link email login (server /auth/magic/consume →
+ * fragment `#magic=<token>`). Το consume επιστρέφει κατευθείαν AuthResponse
+ * (token+account), οπότε ΔΕΝ γίνεται δεύτερο /api/me (σε αντίθεση με το OAuth).
+ */
+describe('initMagicLink', () => {
+  const CONSUME_RESPONSE = {
+    token: 'sess-from-magic',
+    account: {
+      id: DEFAULT_USER_ID, // no-op migration, ίδιο μοτίβο με πάνω.
+      email: 'magic@example.com',
+      role: 'user' as const,
+      created_at: '2026-01-01T00:00:00.000Z',
+    },
+  };
+
+  function stubMagicFetch(): { calls: FetchCall[] } {
+    const calls: FetchCall[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        calls.push({ url, init });
+        if (url.includes('/auth/magic/consume')) return jsonResponse(CONSUME_RESPONSE);
+        if (url.includes('/sync/push')) return jsonResponse({ cursor: 1 });
+        if (url.includes('/sync/pull'))
+          return jsonResponse({ changes: [], cursor: 0, has_more: false });
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    return { calls };
+  }
+
+  it('no-op όταν δεν υπάρχει #magic= fragment', async () => {
+    const { calls } = stubMagicFetch();
+    await initMagicLink();
+    expect(calls).toHaveLength(0);
+    expect(readStoredAuth()).toBeNull();
+  });
+
+  it('εξαργυρώνει το token, καθαρίζει το fragment, γράφει το StoredAuth', async () => {
+    window.location.hash = '#magic=tok-magic-1';
+    const { calls } = stubMagicFetch();
+
+    await initMagicLink();
+
+    expect(window.location.hash).toBe('');
+    const stored = readStoredAuth();
+    expect(stored?.token).toBe('sess-from-magic');
+    expect(stored?.account.email).toBe('magic@example.com');
+
+    const consumeCall = calls.find((c) => c.url.includes('/auth/magic/consume'));
+    expect(consumeCall?.init?.body).toContain('tok-magic-1');
   });
 });
 

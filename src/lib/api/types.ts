@@ -93,6 +93,8 @@ export interface HealthResponse {
  * αυτόν τον server (config-gated· βλ. server/API-CONTRACT.md). */
 export interface OAuthProviders {
   google: boolean;
+  /** magic-link (email) login διαθέσιμο — δηλ. ο server έχει SMTP config. */
+  magic: boolean;
 }
 
 // ── Social (φιλίες, aggregate προφίλ, leaderboard) — server/src/social.rs ──────

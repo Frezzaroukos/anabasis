@@ -101,8 +101,15 @@ friend), username handles, aggregate-only snapshots. UI ΜΕΣΑ στο /achieve
 (FriendsSection). · **mobile UX**: 16px inputs (no iOS zoom), overscroll-behavior
 (no pull-to-refresh reload), hardware-back κλείνει sheet/dialog (useBackToClose).
 
-**Partial:** Google sign-in (server scaffold, CSRF-guarded, ΔΕΝ είναι wired σε live
-Google client).
+**Ready (2026-09-16):** **Google sign-in LIVE** (OAuth client wired, creds στο
+EnvironmentFile, providers→google:true μέσω public domain· μένει το «Publish app»
+click στο Google consent για non-org users). · **Magic-link email login** —
+passwordless, single-use hashed tokens (TTL 15'), DELETE…RETURNING atomic
+consume, fragment `#magic=` (εκτός server logs), account create-on-consume·
+δορμάν μέχρι να οριστούν ANABASIS_SMTP_* (ίδιο pattern με το Google). Backend
+`server/src/magic.rs` + migration 0005 + κοινό `auth::find_or_create_account`/
+`issue_auth_response`· frontend `initMagicLink` + AccountCard «email link». lettre
+(rustls) SMTP. 50 server + 424 frontend tests.
 
 **Planned:** native mobile store builds (τώρα PWA install) · nav back/forward
 buttons (partner lane) · multi-way signup/social login · share-link+portfolio+QR+
@@ -210,8 +217,9 @@ quota**. Postgres/Supabase ΜΟΝΟ αν χτυπήσεις write contention (α
    hardware-back→close-overlay (useBackToClose). Commit 4d11a1e.
 2. ~~**Navigation back/forward buttons**~~ ✅ (2026-09-05, partner `d01bff0`) —
    visible back/forward, PWA/desktop δεν έχουν browser chrome.
-3. **Multi-way signup + social login** — Google (wire το scaffold σε live client),
-   Apple, magic-link/email. Επαγγελματικό auth UX «όπως άλλα apps».
+3. ~~**Multi-way signup + social login**~~ ✅ ΜΕΡΙΚΩΣ (2026-09-16) — Google LIVE
+   (wired), **magic-link/email** LIVE-dormant (χτίστηκε, ανοίγει με SMTP creds).
+   Μένει: **Apple** (μπλοκαρισμένο σε Apple Developer $99/χρ).
 4. ~~**Friends + ranking + «Your Ascent»**~~ ✅ (2026-09-05) — friendships (directed
    edge), aggregate profile snapshot, leaderboard (friends+global), username handles,
    share-profile opt-in, SQL-enforced privacy, server-authoritative XP/level/tier.

@@ -10,10 +10,12 @@ import {
   changePassword,
   login,
   logout,
+  requestMagicLink,
   signup,
   useAuth,
 } from '@/lib/api/auth';
 import { api, googleStart } from '@/lib/api/client';
+import type { OAuthProviders } from '@/lib/api/types';
 import { syncNow, useSyncStatus } from '@/lib/sync';
 
 /** Server error code → i18n key (server/API-CONTRACT.md). Άγνωστος κωδικός
@@ -68,30 +70,30 @@ export function AccountCard({ showTitle = true }: { showTitle?: boolean } = {}) 
 }
 
 /**
- * GET /api/auth/oauth/providers — το κουμπί Google είναι κρυμμένο μέχρι ο
- * server να αναφέρει `google: true` (δηλαδή μέχρι να έχουν οριστεί τα
- * ANABASIS_GOOGLE_CLIENT_ID/SECRET). Δίκτυο εκτός/σφάλμα → σιωπηλά κρυμμένο,
- * ΟΧΙ crash (ίδιο πνεύμα με το offline-tolerant sync).
+ * GET /api/auth/oauth/providers — τα social κουμπιά (Google, magic-link) είναι
+ * κρυμμένα μέχρι ο server να τα αναφέρει ενεργά (δηλ. μέχρι να οριστούν τα
+ * αντίστοιχα env vars: ANABASIS_GOOGLE_* / ANABASIS_SMTP_*). Δίκτυο εκτός/
+ * σφάλμα → σιωπηλά κρυμμένα, ΟΧΙ crash (ίδιο πνεύμα με το offline-tolerant sync).
  */
-function useGoogleOAuthEnabled(): boolean {
-  const [enabled, setEnabled] = useState(false);
+function useAuthProviders(): OAuthProviders {
+  const [providers, setProviders] = useState<OAuthProviders>({ google: false, magic: false });
 
   useEffect(() => {
     let cancelled = false;
     api
       .oauthProviders()
-      .then((providers) => {
-        if (!cancelled) setEnabled(providers.google);
+      .then((p) => {
+        if (!cancelled) setProviders(p);
       })
       .catch(() => {
-        /* server εκτός/παλιό build χωρίς το endpoint — κρύψε το κουμπί */
+        /* server εκτός/παλιό build χωρίς το endpoint — κρύψε τα κουμπιά */
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return enabled;
+  return providers;
 }
 
 function SignedOutForm({ showTitle }: { showTitle: boolean }) {
@@ -101,7 +103,27 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const googleEnabled = useGoogleOAuthEnabled();
+  const providers = useAuthProviders();
+  const [magicBusy, setMagicBusy] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
+
+  const onMagicLink = async () => {
+    if (magicBusy) return;
+    setErrorKey(null);
+    if (!email.trim()) {
+      setErrorKey('account.errorEmailRequired');
+      return;
+    }
+    setMagicBusy(true);
+    try {
+      await requestMagicLink(email.trim());
+      setMagicSent(true);
+    } catch (err) {
+      setErrorKey(errorKeyFor(err));
+    } finally {
+      setMagicBusy(false);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +172,7 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
         ))}
       </div>
 
-      {googleEnabled && (
+      {providers.google && (
         <Button
           type="button"
           variant="secondary"
@@ -197,6 +219,28 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
           {busy ? t('common.loading') : t(mode === 'login' ? 'account.login' : 'account.signup')}
         </Button>
       </form>
+
+      {providers.magic &&
+        (magicSent ? (
+          <p className="mt-3 rounded-md bg-elevated px-3 py-2 text-xs text-muted-foreground" role="status">
+            {t('account.magicSent')}
+          </p>
+        ) : (
+          <div className="mt-3 border-t border-border/60 pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={magicBusy}
+              onClick={() => void onMagicLink()}
+            >
+              {magicBusy ? t('common.loading') : t('account.emailLink')}
+            </Button>
+            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+              {t('account.emailLinkHint')}
+            </p>
+          </div>
+        ))}
 
       <p className="mt-3 text-xs text-muted-foreground">{t('account.hint')}</p>
     </section>
