@@ -41,7 +41,7 @@ export const AUTH_CHANGED_EVENT = 'anabasis:auth-changed';
 
 export interface StoredAuth {
   token: string;
-  account: Account;
+  account: Account | null;
 }
 
 function safeLocalStorage(): Storage | null {
@@ -215,7 +215,7 @@ export const api = {
     // Ο ρόλος άλλαξε server-side — ενημέρωσε το cached account ώστε το UI
     // (badge, admin link) να αντιδράσει χωρίς logout/login.
     const auth = readStoredAuth();
-    if (auth) writeStoredAuth({ ...auth, account: { ...auth.account, role: 'admin' } });
+    if (auth && auth.account) writeStoredAuth({ ...auth, account: { ...auth.account, role: 'admin' } });
   },
 
   syncPush(body: SyncPushRequest): Promise<SyncPushResponse> {

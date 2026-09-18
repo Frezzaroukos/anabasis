@@ -276,9 +276,16 @@ const UNIQUE_DUP_FINDER: Record<
 };
 
 function incomingWins(incoming: SyncRow, existing: SyncRow): boolean {
-  const iu = String(incoming.updated_at ?? '');
-  const eu = String(existing.updated_at ?? '');
-  if (iu !== eu) return iu > eu;
+  const iTime = new Date(String(incoming.updated_at ?? '')).getTime();
+  const eTime = new Date(String(existing.updated_at ?? '')).getTime();
+  // Guard against invalid dates (NaN) — fall back to string compare
+  if (Number.isNaN(iTime) || Number.isNaN(eTime)) {
+    const iu = String(incoming.updated_at ?? '');
+    const eu = String(existing.updated_at ?? '');
+    if (iu !== eu) return iu > eu;
+  } else if (iTime !== eTime) {
+    return iTime > eTime;
+  }
   return String(incoming.id) < String(existing.id);
 }
 

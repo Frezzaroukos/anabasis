@@ -341,7 +341,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
   for (const c of candidates) {
     const current = existing.find((r) => r.type === c.type) ?? null;
     if (!isNewPR(c, current)) continue;
-    if (hadHistory && current) broken.push(c.type);
+    if (hadHistory) broken.push(c.type);
     await db.personal_records.add({
       id: uuid(),
       user_id: getCurrentUserId(),
@@ -372,11 +372,20 @@ async function detectActivityPRs(workout: Workout): Promise<void> {
   const candidates = candidatesFromWorkout(workout);
   if (candidates.length === 0) return;
 
-  const existing = await db.personal_records
+  const records = await db.personal_records
     .where('user_id')
     .equals(getCurrentUserId())
     .filter((r) => r.activity_kind === workout.activity_kind)
     .toArray();
+
+  // Exclude records whose backing workout is soft-deleted
+  const existing = [];
+  for (const r of records) {
+    const backingWorkout = await db.workouts.get(r.workout_id);
+    if (backingWorkout?.deleted_at == null) {
+      existing.push(r);
+    }
+  }
 
   for (const c of candidates) {
     const current = existing.find((r) => r.type === c.type) ?? null;

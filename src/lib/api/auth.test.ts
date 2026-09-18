@@ -106,8 +106,8 @@ describe('initOAuthFragment', () => {
 
     const stored = readStoredAuth();
     expect(stored?.token).toBe('tok-abc-123');
-    expect(stored?.account.email).toBe('oauth@example.com');
-    expect(stored?.account.id).toBe(DEFAULT_USER_ID);
+    expect(stored?.account?.email).toBe('oauth@example.com');
+    expect(stored?.account?.id).toBe(DEFAULT_USER_ID);
 
     // Το /api/me στάλθηκε με το fragment token ως bearer.
     const meCall = calls.find((c) => c.url.includes('/me'));
@@ -186,7 +186,7 @@ describe('initMagicLink', () => {
     expect(window.location.hash).toBe('');
     const stored = readStoredAuth();
     expect(stored?.token).toBe('sess-from-magic');
-    expect(stored?.account.email).toBe('magic@example.com');
+    expect(stored?.account?.email).toBe('magic@example.com');
 
     const consumeCall = calls.find((c) => c.url.includes('/auth/magic/consume'));
     expect(consumeCall?.init?.body).toContain('tok-magic-1');

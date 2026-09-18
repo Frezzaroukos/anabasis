@@ -136,6 +136,11 @@ export async function createGoal(
       >
     >,
 ): Promise<Goal> {
+  // Validate target upfront
+  if (!Number.isFinite(input.target) || input.target <= 0) {
+    throw new Error(`Goal target must be a finite number > 0, got ${input.target}`);
+  }
+
   const t = now();
   const existing = await listGoals(true);
   const goal: Goal = {

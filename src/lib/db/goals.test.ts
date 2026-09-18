@@ -137,9 +137,14 @@ describe('goals — μέτρηση προόδου', () => {
     expect(p.current).toBe(2);
   });
 
-  it('στόχος με target 0 δεν σκάει σε διαίρεση', async () => {
-    const goal = await createGoal({ metric: 'sessions', target: 0, period: 'week' });
-    expect((await getGoalProgress(goal)).ratio).toBe(0);
+  it('createGoal απορρίπτει target <= 0', async () => {
+    await expect(
+      createGoal({ metric: 'sessions', target: 0, period: 'week' })
+    ).rejects.toThrow('Goal target must be a finite number > 0');
+
+    await expect(
+      createGoal({ metric: 'sessions', target: -5, period: 'week' })
+    ).rejects.toThrow('Goal target must be a finite number > 0');
   });
 });
 

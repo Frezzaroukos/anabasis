@@ -59,7 +59,7 @@ export function AccountCard({ showTitle = true }: { showTitle?: boolean } = {}) 
 
   // Μέσα στη σελίδα /settings/account ο τίτλος τον κουβαλά η επικεφαλίδα της
   // σελίδας — δύο φορές «Λογαριασμός» δεν προσθέτει τίποτα.
-  if (!auth) return <SignedOutForm showTitle={showTitle} />;
+  if (!auth || !auth.account) return <SignedOutForm showTitle={showTitle} />;
   return (
     <SignedInPanel
       accountEmail={auth.account.email}
