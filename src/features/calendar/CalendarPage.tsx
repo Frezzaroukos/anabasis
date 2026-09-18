@@ -263,6 +263,11 @@ export function CalendarPage() {
               </span>
             )}
           </div>
+          {isCurrentMonthView && (
+            <p className="mt-0.5 text-xs text-primary">
+              {t('calendar.todayMarked', { date: new Date(today).toLocaleDateString(i18n.resolvedLanguage) })}
+            </p>
+          )}
           <p className="mt-0.5 text-xs text-muted-foreground">
             {monthStats.workouts > 0
               ? [

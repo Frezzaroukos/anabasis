@@ -94,6 +94,9 @@ export function SkillsPage() {
           <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
             {t('skills.emptyHint')}
           </p>
+          <p className="max-w-xs text-xs text-muted-foreground italic">
+            {t('skills.emptyExamples')}
+          </p>
           <Button variant="outline" className="mt-1" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" />
             {t('skills.newSkill')}

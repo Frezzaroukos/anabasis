@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Target } from 'lucide-react';
+import { Plus, Target, ChevronDown } from 'lucide-react';
 import { deleteGoal, getAllGoalProgress, listGoals, reorderGoals } from '@/lib/db/goals';
 import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
 import { listTrackers } from '@/lib/db/trackers';
 import type { Goal } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { GoalFormSheet } from './components/GoalFormSheet';
 import { GoalRow } from './components/GoalRow';
 
@@ -22,6 +23,7 @@ export function GoalsPage() {
   const { t } = useTranslation();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
+  const [showIntro, setShowIntro] = useState(false);
 
   const progress = useLiveQuery(() => getAllGoalProgress(), [], []);
   const activities = useLiveQuery(() => listActivities(true), [], []);
@@ -76,23 +78,43 @@ export function GoalsPage() {
           <p className="max-w-xs text-xs text-muted-foreground">{t('goals.emptyHint')}</p>
         </div>
       ) : (
-        <ul className="stagger space-y-3">
-          {progress.map((p, index) => (
-            <GoalRow
-              key={p.goal.id}
-              progress={p}
-              index={index}
-              total={progress.length}
-              activityLabel={activityLabel}
-              exerciseName={exerciseName}
-              skillName={skillName}
-              trackerName={trackerName}
-              onMove={(i, delta) => void move(i, delta)}
-              onEdit={openEdit}
-              onDelete={(id) => void deleteGoal(id)}
+        <>
+          <button
+            type="button"
+            onClick={() => setShowIntro(!showIntro)}
+            className="flex w-full items-center gap-2 rounded-lg border border-border bg-card p-3 text-left hover:bg-elevated"
+          >
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 shrink-0 transition-transform text-muted-foreground',
+                showIntro ? 'rotate-180' : '',
+              )}
             />
-          ))}
-        </ul>
+            <span className="text-xs font-medium text-muted-foreground">{t('goals.whatIsGoal')}</span>
+          </button>
+          {showIntro && (
+            <div className="rounded-lg border border-border bg-muted/40 p-3">
+              <p className="text-xs leading-relaxed text-muted-foreground">{t('goals.intro')}</p>
+            </div>
+          )}
+          <ul className="stagger space-y-3">
+            {progress.map((p, index) => (
+              <GoalRow
+                key={p.goal.id}
+                progress={p}
+                index={index}
+                total={progress.length}
+                activityLabel={activityLabel}
+                exerciseName={exerciseName}
+                skillName={skillName}
+                trackerName={trackerName}
+                onMove={(i, delta) => void move(i, delta)}
+                onEdit={openEdit}
+                onDelete={(id) => void deleteGoal(id)}
+              />
+            ))}
+          </ul>
+        </>
       )}
 
       <Button variant="outline" className="w-full" onClick={openCreate}>

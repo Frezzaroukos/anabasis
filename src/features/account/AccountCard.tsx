@@ -226,17 +226,20 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
             {t('account.magicSent')}
           </p>
         ) : (
-          <div className="mt-3 border-t border-border/60 pt-3">
+          <div className="mt-4 space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {t('account.moreOptions')}
+            </h3>
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               className="w-full"
               disabled={magicBusy}
               onClick={() => void onMagicLink()}
             >
               {magicBusy ? t('common.loading') : t('account.emailLink')}
             </Button>
-            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+            <p className="text-center text-[11px] text-muted-foreground">
               {t('account.emailLinkHint')}
             </p>
           </div>

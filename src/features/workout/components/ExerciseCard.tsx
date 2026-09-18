@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Plus, Weight, Zap } from 'lucide-react';
+import { Check, Plus, Weight, Zap, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
@@ -54,6 +54,7 @@ export function ExerciseCard({
   const [quickMode, setQuickMode] = useState(false);
   const [quickText, setQuickText] = useState('');
   const [quickBusy, setQuickBusy] = useState(false);
+  const [showQuickHelp, setShowQuickHelp] = useState(false);
   // Πόσα ρεκόρ έσπασε το πιο πρόσφατο σετ — για τη γιορτή (χρυσό pulse).
   const [prCount, setPrCount] = useState(0);
 
@@ -276,6 +277,14 @@ export function ExerciseCard({
                 className="h-9 font-mono tabular-nums"
                 aria-label={t('workout.quickLog')}
               />
+              <button
+                type="button"
+                onClick={() => setShowQuickHelp(!showQuickHelp)}
+                className="flex shrink-0 items-center justify-center text-muted-foreground hover:text-primary"
+                aria-label={t('workout.quickLog')}
+              >
+                <HelpCircle className="h-5 w-5" />
+              </button>
               <Button
                 size="sm"
                 className="h-9 shrink-0"
@@ -293,6 +302,12 @@ export function ExerciseCard({
                 {t('common.cancel')}
               </Button>
             </div>
+            {/* Format hint */}
+            {showQuickHelp && (
+              <div className="rounded-md bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground space-y-0.5">
+                <p>{t('workout.quickLogFormat')}: <span className="font-mono">{t('workout.quickLogFormatExample')}</span></p>
+              </div>
+            )}
             {/* Ζωντανή προεπισκόπηση: ο χρήστης βλέπει τι θα καταγραφεί καθώς γράφει */}
             {quickPreview.length > 0 && (
               <p className="rounded-md bg-background/60 px-2 py-1 font-mono text-[11px] tabular-nums text-muted-foreground">
