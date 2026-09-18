@@ -119,29 +119,37 @@ pub async fn consume(
     }
     let token_hash = sha256_hex(token);
 
-    // Atomic single-use: βγάζει ΚΑΙ σβήνει σε ένα round-trip — δύο ταυτόχρονες
-    // εξαργυρώσεις του ίδιου token δεν μπορούν και οι δύο να πετύχουν.
-    let row: Option<(String, String)> =
-        sqlx::query_as("DELETE FROM login_tokens WHERE token_hash = ? RETURNING email, expires_at")
+    // Atomic single-use & expiry check: DELETE only succeeds if token exists AND not expired.
+    // Two concurrent attempts to consume the same token cannot both succeed.
+    let row: Option<String> =
+        sqlx::query_scalar("DELETE FROM login_tokens WHERE token_hash = ? AND expires_at > ? RETURNING email")
             .bind(&token_hash)
+            .bind(now_iso())
             .fetch_optional(&state.pool)
             .await?;
 
-    let Some((email, expires_at)) = row else {
-        return Err(AppError::bad_request(
-            "invalid_token",
-            "Άκυρος ή ήδη χρησιμοποιημένος σύνδεσμος.",
-        ));
-    };
+    let Some(email) = row else {
+        // Distinguish between expired and missing/already-used by checking if record exists at all
+        let maybe_expired: Option<String> = sqlx::query_scalar(
+            "SELECT email FROM login_tokens WHERE token_hash = ? AND expires_at <= ?",
+        )
+            .bind(&token_hash)
+            .bind(now_iso())
+            .fetch_optional(&state.pool)
+            .await?;
 
-    if let Some(exp) = parse_iso(&expires_at) {
-        if now() > exp {
+        if maybe_expired.is_some() {
             return Err(AppError::bad_request(
                 "expired_token",
                 "Ο σύνδεσμος έληξε. Ζήτησε νέον.",
             ));
         }
-    }
+
+        return Err(AppError::bad_request(
+            "invalid_token",
+            "Άκυρος ή ήδη χρησιμοποιημένος σύνδεσμος.",
+        ));
+    };
 
     let account = find_or_create_account(&state, &email, "email").await?;
     let user_agent = headers.get(header::USER_AGENT).and_then(|v| v.to_str().ok());

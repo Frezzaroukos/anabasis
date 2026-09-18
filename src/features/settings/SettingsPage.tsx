@@ -62,7 +62,7 @@ export function SettingsPage() {
           to="/settings/account"
           Icon={Cloud}
           label={t('settings.account')}
-          value={auth?.account.email ?? t('settings.notSignedIn')}
+          value={auth?.account?.email ?? t('settings.notSignedIn')}
         />
         <SettingsRow
           to="/settings/profiles"

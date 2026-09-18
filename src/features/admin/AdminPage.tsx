@@ -52,7 +52,7 @@ export function AdminPage() {
   const [copied, setCopied] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
 
-  const isAdmin = auth?.account.role === 'admin';
+  const isAdmin = auth?.account?.role === 'admin';
 
   const load = useCallback(async () => {
     setState('loading');
@@ -73,7 +73,10 @@ export function AdminPage() {
   const shown = useMemo(() => filterUsers(users, query, filter), [users, query, filter]);
 
   // Hooks πάνω από εδώ, ΠΑΝΤΑ (rules-of-hooks) — το guard έρχεται μετά.
-  if (!auth || auth.account.role !== 'admin') return <Navigate to="/" replace />;
+  if (!auth || !auth.account || auth.account.role !== 'admin') return <Navigate to="/" replace />;
+
+  // Type-safe after guard: auth.account is not null
+  const account = auth.account;
 
   const onToggleDisabled = async (user: AdminUser) => {
     setBusyId(user.id);
@@ -232,7 +235,7 @@ export function AdminPage() {
               <UserCard
                 key={u.id}
                 user={u}
-                isSelf={u.id === auth.account.id}
+                isSelf={u.id === account.id}
                 busy={busyId === u.id}
                 locale={i18n.resolvedLanguage}
                 tempPassword={tempPassword?.id === u.id ? tempPassword.password : null}
