@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, Info } from 'lucide-react';
 import {
   CartesianGrid,
   Line,
@@ -125,6 +125,14 @@ export function BodyPage() {
           </div>
         )}
       </header>
+
+      {/* Bodyweight importance callout */}
+      <div className="flex items-start gap-2 rounded-lg border-l-4 border-primary bg-primary/5 p-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <p className="text-xs font-medium leading-relaxed text-foreground">
+          {t('body.weightImportantTip')}
+        </p>
+      </div>
 
       {/* Καταγραφή σημερινής μέρας — βάρος, λίπος, βήματα */}
       <section className="rounded-xl bg-card p-4">

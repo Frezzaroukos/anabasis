@@ -85,6 +85,8 @@
     "emptyHistoryTitle": "Your first workout starts here",
     "emptyHistoryHint": "Pick an activity and hit start — everything else follows.",
     "quickLog": "Quick log",
+    "quickLogFormat": "Format: weight reps,reps,reps",
+    "quickLogFormatExample": "80 5,4,3,2 makes four sets",
     "quickPlaceholder": "e.g. 80 5,4,3,2",
     "quickPlaceholderBw": "e.g. 8,6,5",
     "pr": "PR!",
@@ -99,7 +101,9 @@
     "quickPlaceholderHold": "e.g. 12,10,8",
     "repeatLast": "Repeat last workout",
     "searchOrTypeExercise": "Search or type any exercise…",
-    "useTyped": "Use \"{{name}}\""
+    "useTyped": "Use \"{{name}}\"",
+    "createNewExercise": "+ Create \"{{name}}\"",
+    "createNewExerciseHint": "Press Enter to create"
   },
   "programs": {
     "title": "Programs",
@@ -228,8 +232,9 @@
     "addedWeight": "Added weight",
     "addedWeightPlaceholder": "e.g. +5",
     "progressOverTime": "Progress over time",
-    "emptyTitle": "No skills yet",
-    "emptyHint": "Add your first skill to start climbing the ladder.",
+    "emptyTitle": "Start mastering skills",
+    "emptyHint": "A skill is a progression chain: tuck → straddle → full. Track your steps from easy to hard.",
+    "emptyExamples": "E.g. Front Lever, Planche, Muscle-up, Handstand Push-up",
     "progressNeedMore": "Achieve two steps and your climb shows up here."
   },
   "settings": {
@@ -320,6 +325,8 @@
     "today": "Today",
     "prev": "Previous month",
     "next": "Next month",
+    "currentMonth": "{{month}} {{year}}",
+    "todayMarked": "Today: {{date}}",
     "noActivity": "No activity logged.",
     "pickDay": "Pick a day",
     "addWorkout": "Add workout",
@@ -350,6 +357,7 @@
     "current": "Current",
     "logToday": "Log today",
     "weightFeedsLoad": "Your bodyweight here counts as load in bodyweight exercises (bodyweight + added).",
+    "weightImportantTip": "Your weight counts as load in pull-ups, dips, and bodyweight exercises.",
     "caloriesIn": "Calories in",
     "caloriesOut": "Calories out",
     "save": "Save",
@@ -421,7 +429,8 @@
       "skillHint": "Front lever, planche, muscle-up — each one is a ladder.",
       "goal": "Set a goal in your own terms",
       "goalHint": "Sessions, volume, kilometres — whatever you actually count.",
-      "body": "Log your first workout",
+      "body": "Log your first workout →",
+      "bodyHint": "Pick a day in the calendar and add exercises.",
       "bodyHint": "Everything else builds on it."
     },
     "hero": {
@@ -615,6 +624,7 @@
   "goals": {
     "title": "Goals",
     "intro": "Your measure, your window. A goal is what you count, how much, over what period, and for which activity.",
+    "whatIsGoal": "What's a goal?",
     "emptyTitle": "No goals yet",
     "emptyHint": "Set one that fits how you train — 4 sessions a week, 20 km a month, 100 pull-up sets a month.",
     "new": "New goal",
@@ -664,8 +674,8 @@
     },
     "anchorLabel": "Counter resets",
     "anchor": {
-      "calendar": "Calendar",
-      "rolling": "Rolling"
+      "calendar": "Date-based reset",
+      "rolling": "Moving window"
     },
     "anchorHint": {
       "calendar": {
@@ -720,6 +730,7 @@
     "continueWithGoogle": "Continue with Google",
     "emailLink": "Email me a login link",
     "emailLinkHint": "No password needed — we email you a one-time link.",
+    "moreOptions": "More sign-in options",
     "magicSent": "Check your inbox — if that email has an account, a login link is on its way (expires in 15 minutes).",
     "errorEmailRequired": "Enter your email first.",
     "vsProfiles": "Sharing this device with someone? Set up device profiles"

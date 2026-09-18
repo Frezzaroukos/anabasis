@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Plus } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -428,9 +429,10 @@ export function GoalFormSheet({
                         <button
                           type="button"
                           onClick={() => void createExerciseNow(exerciseQuery)}
-                          className="w-full px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-accent"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                         >
-                          {t('workout.useTyped', { name: exerciseQuery.trim() })}
+                          <Plus className="h-4 w-4 shrink-0" />
+                          {t('goals.createNewExercise', { name: exerciseQuery.trim() })}
                         </button>
                       </li>
                     )}
