@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Χειροκίνητο χρονόμετρο προπόνησης — ο χρήστης το ΞΕΚΙΝΑ και το ΣΤΑΜΑΤΑ με τη
@@ -64,6 +64,8 @@ export interface ManualStopwatch {
 
 export function useManualStopwatch(workoutId: string): ManualStopwatch {
   const [state, setState] = useState<SwState>(() => read(workoutId));
+  const [tick, setTick] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Ξαναδιάβασε όταν αλλάζει η προπόνηση (π.χ. νέα συνεδρία στο ίδιο view).
   useEffect(() => {
@@ -71,11 +73,24 @@ export function useManualStopwatch(workoutId: string): ManualStopwatch {
   }, [workoutId]);
 
   // Tick κάθε δευτερόλεπτο ΜΟΝΟ όσο τρέχει — re-render για ζωντανό μετρητή.
-  const [, force] = useState(0);
+  // Χρησιμοποιούμε ref για το interval και toggle state αντί για force counter που
+  // μεγαλώνει απεριόριστα.
   useEffect(() => {
-    if (state.since == null) return;
-    const t = setInterval(() => force((n) => n + 1), 1000);
-    return () => clearInterval(t);
+    if (state.since == null) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    intervalRef.current = t;
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [state.since]);
 
   const toggle = useCallback(() => {
@@ -96,7 +111,7 @@ export function useManualStopwatch(workoutId: string): ManualStopwatch {
   }, [workoutId]);
 
   return {
-    seconds: Math.round(elapsedMs(state) / 1000),
+    seconds: Math.round(elapsedMs(state) / 1000) + 0 * tick,
     running: state.since != null,
     toggle,
     reset,

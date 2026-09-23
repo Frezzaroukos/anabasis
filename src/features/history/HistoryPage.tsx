@@ -28,7 +28,7 @@ export function HistoryPage() {
   const unit = settings?.weight_unit ?? 'kg';
 
   const completed = useLiveQuery(() => listWorkoutSummaries(), []);
-  const list = completed ?? [];
+  const list = useMemo(() => completed ?? [], [completed]);
 
   // Ομαδοποίηση ανά μήνα — ένα μεγάλο αδιάσπαστο feed χάνει τον χρόνο.
   const months = useMemo(() => {
