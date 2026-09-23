@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,12 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
     workout.distance_km != null ? String(workout.distance_km) : '',
   );
   const [notes, setNotes] = useState(workout.notes ?? '');
+
+  // Sync local state when workout prop changes (e.g. after sync/update)
+  useEffect(() => {
+    setDistance(workout.distance_km != null ? String(workout.distance_km) : '');
+    setNotes(workout.notes ?? '');
+  }, [workout.distance_km, workout.notes]);
 
   const activity = useLiveQuery(
     () => getActivity(workout.activity_kind),

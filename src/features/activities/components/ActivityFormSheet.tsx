@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { createActivity, updateActivity } from '@/lib/db/queries';
 import type { Activity } from '@/lib/db/types';
-import { ACTIVITY_ICONS, ACTIVITY_ICON_NAMES } from '@/components/activityIcon';
+import { ACTIVITY_ICONS, ACTIVITY_ICON_NAMES } from '@/components/activityIcons';
 import { ACTIVITY_DOT_COLORS } from '../utils';
 
 interface ActivityFormSheetProps {
