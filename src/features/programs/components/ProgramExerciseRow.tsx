@@ -8,11 +8,15 @@ import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
+/**
+ * Program-builder-only set types. Dropset and superset are excluded here
+ * because they're misleading — to create a superset in a program, use
+ * "Link with previous" to group exercises via group_key, not set_type.
+ * For single-exercise modifiers, we show: normal, warmup, rest_pause, amrap, failure.
+ */
 const SET_TYPES: SetType[] = [
   'normal',
   'warmup',
-  'dropset',
-  'superset',
   'rest_pause',
   'amrap',
   'failure',
