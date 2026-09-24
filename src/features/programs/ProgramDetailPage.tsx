@@ -483,8 +483,14 @@ export function ProgramDetailPage() {
           <p className="text-sm text-muted-foreground">{t('programs.noExercises')}</p>
         </div>
       ) : (
-        <ul className="stagger space-y-3">
-          {groups.map((group, index) => (
+        <>
+          {exercises.length >= 2 && groups.every((g) => g.kind === 'single') && (
+            <div className="rounded-md border border-border/60 bg-secondary/30 px-4 py-2 text-sm text-muted-foreground">
+              {t('programs.supersetHint')}
+            </div>
+          )}
+          <ul className="stagger space-y-3">
+            {groups.map((group, index) => (
             <li key={group.key}>
               <div
                 className={cn(
@@ -497,16 +503,18 @@ export function ProgramDetailPage() {
                     {group.kind !== 'single' &&
                       t(group.kind === 'dropset' ? 'setType.dropset' : 'setType.superset')}
                   </span>
-                  {/* Πιο ήσυχα affordances: διακριτικά ως ηρεμία, ξεκάθαρα στο hover. */}
-                  <div className="flex items-center opacity-70 transition-opacity hover:opacity-100">
+                  {/* Clearly visible affordances with labels. */}
+                  <div className="flex items-center">
                     {index > 0 && (
                       <button
                         type="button"
                         onClick={() => void linkWithPrevious(index)}
-                        aria-label={t('programs.linkPrevious')}
-                        className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        aria-label={t('programs.supersetWithPrevious')}
+                        title={t('programs.supersetWithPrevious')}
+                        className="flex h-11 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <Link2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{t('programs.supersetWithPrevious')}</span>
                       </button>
                     )}
                     <button
@@ -548,7 +556,8 @@ export function ProgramDetailPage() {
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
+        </>
       )}
 
       <Button variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>

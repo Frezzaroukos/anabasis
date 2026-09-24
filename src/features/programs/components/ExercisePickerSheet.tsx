@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Search } from 'lucide-react';
+import { Check, Plus, Search } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useExercises } from '@/hooks/useExercises';
+import { createExercise } from '@/lib/db/queries';
 import type { Exercise, ExerciseCategory } from '@/lib/db/types';
 import { CATEGORY_DOT } from '../utils';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ export function ExercisePickerSheet({
   const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Exercise[]>([]);
+  const [creatingExercise, setCreatingExercise] = useState(false);
   const all = useExercises();
 
   const isSelected = (id: string) => selected.some((e) => e.id === id);
@@ -44,6 +46,22 @@ export function ExercisePickerSheet({
     setSelected((prev) =>
       prev.some((e) => e.id === ex.id) ? prev.filter((e) => e.id !== ex.id) : [...prev, ex],
     );
+  };
+
+  const createExerciseNow = async (name: string) => {
+    setCreatingExercise(true);
+    try {
+      const ex = await createExercise({ name: name.trim() });
+      if (mode === 'multi') {
+        setSelected((prev) => [...prev, ex]);
+      } else {
+        onPick(ex);
+        onClose();
+      }
+      setQ('');
+    } finally {
+      setCreatingExercise(false);
+    }
   };
 
   const confirmMulti = () => {
@@ -84,9 +102,22 @@ export function ExercisePickerSheet({
       </div>
 
       {totalShown === 0 ? (
-        <p className="p-6 text-center text-sm text-muted-foreground">
-          {t('workout.noResults')}
-        </p>
+        <div className="space-y-3 p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {t('workout.noResults')}
+          </p>
+          {q.trim() !== '' && (
+            <button
+              type="button"
+              disabled={creatingExercise}
+              onClick={() => void createExerciseNow(q)}
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-primary/10 px-4 py-2 text-sm font-medium text-primary ring-offset-background transition-all duration-150 hover:bg-primary/20 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              {t('programs.createNewExercise', { name: q.trim() })}
+            </button>
+          )}
+        </div>
       ) : (
         <div className="px-2 pb-4">
           {grouped.map(({ cat, items }) =>
