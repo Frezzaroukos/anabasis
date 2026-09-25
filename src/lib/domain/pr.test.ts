@@ -36,8 +36,23 @@ describe('candidatesFromSet', () => {
     const types = c.map((x) => x.type);
     expect(types).toContain('max_weight');
     expect(types).toContain('max_reps');
+    expect(types).toContain('max_volume');
+    expect(types).toContain('e1rm');
     expect(c.find((x) => x.type === 'max_weight')?.value).toBe(100);
     expect(c.find((x) => x.type === 'max_reps')?.value).toBe(5);
+  });
+
+  it('βγάζει max_reps + max_volume για pure-bodyweight σετ (χωρίς added load)', () => {
+    const c = candidatesFromSet(
+      baseSet({ weight_kg: null, bodyweight_kg: 80, reps: 10 }),
+    );
+    const types = c.map((x) => x.type);
+    expect(types).toContain('max_reps');
+    expect(types).toContain('max_volume');
+    expect(types).not.toContain('max_weight');
+    expect(types).not.toContain('e1rm');
+    expect(c.find((x) => x.type === 'max_reps')?.value).toBe(10);
+    expect(c.find((x) => x.type === 'max_volume')?.value).toBe(800); // 80 * 10
   });
 
   it('βγάζει max_hold για isometric σετ (hold χωρίς reps)', () => {
@@ -53,6 +68,17 @@ describe('candidatesFromSet', () => {
       baseSet({ weight_kg: null, reps: null, hold_seconds: null }),
     );
     expect(c).toHaveLength(0);
+  });
+
+  it('βγάζει weighted + reps όταν weight_kg = 0 (pure bodyweight)', () => {
+    const c = candidatesFromSet(
+      baseSet({ weight_kg: 0, bodyweight_kg: 75, reps: 8 }),
+    );
+    const types = c.map((x) => x.type);
+    expect(types).toContain('max_reps');
+    expect(types).toContain('max_volume');
+    expect(types).not.toContain('max_weight');
+    expect(types).not.toContain('e1rm');
   });
 });
 

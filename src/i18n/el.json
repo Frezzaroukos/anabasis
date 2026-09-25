@@ -451,6 +451,9 @@
     "rest_pause": "Rest-pause",
     "amrap": "AMRAP",
     "failure": "Μέχρι εξάντληση",
+    "negative": "Αρνητικό (eccentric)",
+    "isometric": "Ισομετρικό hold",
+    "half_hold": "Μισό-hold",
     "custom": "Δικό σου",
     "customPlaceholder": "π.χ. cluster"
   },

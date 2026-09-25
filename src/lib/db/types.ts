@@ -98,6 +98,9 @@ export const BUILTIN_SET_TYPES = [
   'rest_pause',
   'amrap',
   'failure',
+  'negative',
+  'isometric',
+  'half_hold',
 ] as const;
 export type BuiltinSetType = (typeof BUILTIN_SET_TYPES)[number];
 /** Ελεύθερο string — cluster set, myo-reps, ό,τι τεχνική θέλεις ονομάσεις. */

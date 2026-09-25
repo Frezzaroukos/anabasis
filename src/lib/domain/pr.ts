@@ -21,13 +21,9 @@ export interface PRCandidate {
 export function candidatesFromSet(set: SetEntry): PRCandidate[] {
   const candidates: PRCandidate[] = [];
 
-  if (set.weight_kg != null && set.reps != null && set.reps > 0) {
-    candidates.push({
-      type: 'max_weight',
-      value: set.weight_kg,
-      reps: set.reps,
-      weight_kg: set.weight_kg,
-    });
+  // Reps + volume: ALWAYS track if reps > 0, regardless of weight_kg.
+  // Pure bodyweight reps and volume are valid PRs.
+  if (set.reps != null && set.reps > 0) {
     candidates.push({
       type: 'max_reps',
       value: set.reps,
@@ -35,14 +31,25 @@ export function candidatesFromSet(set: SetEntry): PRCandidate[] {
       weight_kg: set.weight_kg,
     });
     candidates.push({
-      type: 'e1rm',
-      value: epley(set.weight_kg, set.reps),
+      type: 'max_volume',
+      value: setVolume(set),
+      reps: set.reps,
+      weight_kg: set.weight_kg,
+    });
+  }
+
+  // Weight + e1RM: ONLY for weighted sets (added load).
+  // Pure bodyweight gets no max_weight/e1rm (they'd be 0/misleading).
+  if (set.weight_kg != null && set.weight_kg > 0 && set.reps != null && set.reps > 0) {
+    candidates.push({
+      type: 'max_weight',
+      value: set.weight_kg,
       reps: set.reps,
       weight_kg: set.weight_kg,
     });
     candidates.push({
-      type: 'max_volume',
-      value: setVolume(set),
+      type: 'e1rm',
+      value: epley(set.weight_kg, set.reps),
       reps: set.reps,
       weight_kg: set.weight_kg,
     });

@@ -452,6 +452,9 @@
     "rest_pause": "Rest-pause",
     "amrap": "AMRAP",
     "failure": "To failure",
+    "negative": "Negative (eccentric)",
+    "isometric": "Isometric hold",
+    "half_hold": "Half-rep hold",
     "custom": "Custom",
     "customPlaceholder": "e.g. cluster"
   },

@@ -94,7 +94,10 @@ export function AddSetInline({
   const holdValid = holdNum != null && Number.isFinite(holdNum) && holdNum > 0;
   const weightValid =
     !weighted || (weightNum != null && Number.isFinite(weightNum) && weightNum >= 0);
-  const valid = (holdMode ? holdValid : repsValid) && weightValid;
+  // Hold-based logging όταν ο caller το ζητά (skill/isometric exercise) Ή όταν
+  // ο χρήστης διαλέξει set type που μετριέται σε δευτερόλεπτα (isometric/half_hold).
+  const holdActive = holdMode || setType === 'isometric' || setType === 'half_hold';
+  const valid = (holdActive ? holdValid : repsValid) && weightValid;
 
   const submit = async () => {
     if (!valid || busy) return;
@@ -102,8 +105,8 @@ export function AddSetInline({
     try {
       await onSave(
         weighted && weightNum != null ? parseWeightToKg(weightNum, unit) : null,
-        holdMode ? null : repsNum,
-        holdMode ? holdNum : null,
+        holdActive ? null : repsNum,
+        holdActive ? holdNum : null,
         {
           rpe: numOrNull(rpe),
           rir: numOrNull(rir),
@@ -130,7 +133,7 @@ export function AddSetInline({
           type="button"
           onClick={() => {
             if (initialWeight != null) setWeight(String(toDisplayWeight(initialWeight, unit)));
-            if (holdMode) {
+            if (holdActive) {
               if (initialHoldSeconds != null) setHold(String(initialHoldSeconds));
             } else if (initialReps != null) {
               setReps(String(initialReps));
@@ -222,7 +225,7 @@ export function AddSetInline({
             />
           </label>
         )}
-        {holdMode ? (
+        {holdActive ? (
           <label className="flex flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('workout.holdSeconds')}
