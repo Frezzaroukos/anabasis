@@ -75,6 +75,7 @@ export async function bootstrapDB(): Promise<void> {
           weight_unit: 'kg',
           theme: 'dark',
           dashboard_cards: [],
+          coach_enabled: false,
           created_at: now,
           updated_at: now,
         };

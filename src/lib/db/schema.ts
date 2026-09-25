@@ -39,7 +39,7 @@ export interface LeaderboardCacheRow {
   updated_at: string;
 }
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -374,6 +374,20 @@ export class AnabasisDB extends Dexie {
     this.version(15).stores({
       friends_cache: 'account_id, direction',
       leaderboard_cache: 'scope',
+    });
+
+    /**
+     * v16 — Coach mode: opt-in smart suggestions & deload detection.
+     * Additive πεδίο στο app_settings, default false (OFF).
+     * Το feature ΔΕΝ δείχνεται ούτε δουλεύει όποτε είναι OFF.
+     */
+    this.version(16).upgrade(async (tx) => {
+      await tx
+        .table('app_settings')
+        .toCollection()
+        .modify((s) => {
+          s.coach_enabled ??= false;
+        });
     });
   }
 }

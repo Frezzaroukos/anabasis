@@ -296,7 +296,12 @@
     "about": "About & share",
     "aboutDesc": "What Anabasis is, who made it, and how to share it.",
     "storageNote": "Everything is stored in this browser (IndexedDB). Clearing site data deletes it — export a backup first.",
-    "dataOfProfile": "Counts for the active device profile only."
+    "dataOfProfile": "Counts for the active device profile only.",
+    "coach": {
+      "title": "Coach mode",
+      "enable": "Enable Coach mode",
+      "desc": "Smart progression suggestions and deload detection for your training."
+    }
   },
   "common": {
     "save": "Save",
@@ -312,7 +317,9 @@
     "undo": "Undo",
     "pageError": "Something went wrong on this page.",
     "retry": "Try again",
-    "weight": "Weight"
+    "weight": "Weight",
+    "on": "On",
+    "off": "Off"
   },
   "activity": {
     "strength": "Strength",
@@ -434,7 +441,6 @@
       "goal": "Set a goal in your own terms",
       "goalHint": "Sessions, volume, kilometres — whatever you actually count.",
       "body": "Log your first workout →",
-      "bodyHint": "Pick a day in the calendar and add exercises.",
       "bodyHint": "Everything else builds on it."
     },
     "hero": {
