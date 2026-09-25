@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 const buttonVariants = cva(
   // active:scale = «πάτημα» αισθητό στο χέρι· focus-visible:shadow-glow-sm
   // βαθαίνει το ring σε ελαφριά λάμψη αντί για ξερό contour.
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:shadow-glow-sm disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-4 sm:focus-visible:ring-2 sm:focus-visible:ring-offset-2 focus-visible:shadow-glow-sm disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {

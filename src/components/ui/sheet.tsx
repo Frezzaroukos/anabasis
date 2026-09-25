@@ -54,7 +54,7 @@ export function BottomSheet({
         tabIndex={-1}
         className={cn(
           'rounded-t-2xl border-t border-border/60 bg-elevated shadow-elevated-lg',
-          'flex max-h-[85vh] flex-col safe-bottom animate-in slide-in-from-bottom duration-200',
+          'flex max-h-[85vh] landscape:max-h-[92vh] flex-col safe-bottom animate-in slide-in-from-bottom duration-200',
           'focus:outline-none',
           className,
         )}

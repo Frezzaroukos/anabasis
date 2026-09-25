@@ -46,7 +46,7 @@ export function ConsistencyHeatmap() {
                   key={c.date}
                   title={c.date}
                   className={cn(
-                    'h-3 w-3 rounded-[3px] border',
+                    'h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-[3px] border',
                     c.trained ? 'border-transparent bg-primary' : 'border-border/60 bg-muted/30',
                     c.hasPR && 'ring-1 ring-[hsl(var(--gold))] ring-offset-1 ring-offset-card',
                   )}
@@ -54,7 +54,7 @@ export function ConsistencyHeatmap() {
               ) : (
                 // Κενό padding-κελί πριν την πρώτη πραγματική μέρα — μόνο για
                 // ευθυγράμμιση γραμμής εβδομάδας, όχι δεδομένο.
-                <span key={`pad-${wi}-${di}`} aria-hidden className="h-3 w-3" />
+                <span key={`pad-${wi}-${di}`} aria-hidden className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
               ),
             )}
           </div>
