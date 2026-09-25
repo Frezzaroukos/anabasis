@@ -19,7 +19,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         'ring-offset-background transition-colors duration-150',
         'placeholder:text-muted-foreground',
         'hover:border-border/70',
-        'focus-visible:border-ring/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'focus-visible:border-ring/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-4 sm:focus-visible:ring-2 sm:focus-visible:ring-offset-2',
         'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}

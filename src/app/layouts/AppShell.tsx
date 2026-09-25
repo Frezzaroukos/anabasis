@@ -43,7 +43,7 @@ export function AppShell() {
           indicator είναι ψηλότερο από 6rem — σκέτο pb-24 έκρυβε την τελευταία
           γραμμή κάθε σελίδας.
         */}
-        <main className="mx-auto w-full max-w-md flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl">
+        <main className="mx-auto w-full max-w-md flex-1 px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl">
           <ErrorBoundary
             key={pathname}
             message={t('common.pageError')}
