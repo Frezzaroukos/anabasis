@@ -2101,6 +2101,7 @@ export async function createProfile(displayName: string): Promise<User> {
     show_e1rm: true,
     weight_unit: 'kg',
     theme: 'dark',
+    coach_enabled: false,
     created_at: t,
     updated_at: t,
   });

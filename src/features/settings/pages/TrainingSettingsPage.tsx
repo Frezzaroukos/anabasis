@@ -33,6 +33,26 @@ export function TrainingSettingsPage() {
           ))}
         </div>
       </Card>
+
+      <Card>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <SectionTitle className="mb-1">{t('settings.coach.title')}</SectionTitle>
+            <p className="text-xs text-muted-foreground">{t('settings.coach.desc')}</p>
+          </div>
+          <button
+            onClick={() => void updateSettings({ coach_enabled: !settings?.coach_enabled })}
+            aria-pressed={settings?.coach_enabled}
+            className={`ml-4 h-11 rounded-md px-4 text-sm font-medium uppercase transition-colors ${
+              settings?.coach_enabled
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-elevated hover:bg-accent'
+            }`}
+          >
+            {settings?.coach_enabled ? t('common.on') : t('common.off')}
+          </button>
+        </div>
+      </Card>
     </div>
   );
 }

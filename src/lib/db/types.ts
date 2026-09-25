@@ -427,6 +427,8 @@ export interface AppSettings {
   show_e1rm: boolean;
   weight_unit: WeightUnit;
   theme: Theme;
+  /** Coach mode: smart suggestions & deload detection (default false, opt-in) */
+  coach_enabled: boolean;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
 }
