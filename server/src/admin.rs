@@ -1,4 +1,4 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::response::IntoResponse;
 use axum::Json;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -229,6 +229,46 @@ fn measure_db_size(db_path: &std::path::Path) -> Option<i64> {
         .map(|meta| meta.len() as i64)
         .sum();
     Some(main + sidecars)
+}
+
+/// Ελάχιστο ασφαλές horizon για tombstone GC. Κόβει την πιθανότητα να
+/// αφαιρέσουμε tombstone που ένας offline client δεν έχει δει ακόμα — δες
+/// `sync::prune_tombstones`. Ένας admin δεν μπορεί να κατεβάσει το horizon
+/// κάτω από αυτό (clamp), όσο κι αν το ζητήσει το body.
+const MIN_GC_HORIZON_DAYS: i64 = 7;
+const DEFAULT_GC_HORIZON_DAYS: i64 = 90;
+
+#[derive(Deserialize, Default)]
+pub struct GcQuery {
+    /// Πόσων ημερών tombstones να κρατηθούν· default 90, clamp ελάχιστο 7.
+    /// Δίνεται ως query param: `POST /api/admin/gc?horizon_days=30`.
+    horizon_days: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct GcResponse {
+    pruned: u64,
+    horizon_days: i64,
+}
+
+/// POST /api/admin/gc — χειροκίνητο tombstone garbage-collection. Additive,
+/// admin-gated, idempotent. Δεν αγγίζει ζωντανά rows (μόνο `deleted = 1`) και
+/// είναι cursor/epoch-safe (δες `sync::prune_tombstones`).
+pub async fn gc(
+    State(state): State<AppState>,
+    _admin: AdminUser,
+    Query(q): Query<GcQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let requested = q.horizon_days.unwrap_or(DEFAULT_GC_HORIZON_DAYS);
+    let horizon_days = requested.max(MIN_GC_HORIZON_DAYS);
+
+    let pruned = crate::sync::prune_tombstones(&state.pool, horizon_days).await?;
+    tracing::info!(pruned, horizon_days, "admin tombstone GC");
+
+    Ok(Json(GcResponse {
+        pruned,
+        horizon_days,
+    }))
 }
 
 pub async fn stats(

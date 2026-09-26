@@ -67,7 +67,21 @@ pub struct AppState {
     /// Ένα reused reqwest::Client (κρατάει connection pool/DNS cache) — μόνο
     /// για τα Google token/userinfo calls του oauth module.
     pub http_client: reqwest::Client,
+    /// Ανώτατο πλήθος αποθηκευμένων sync_rows ανά λογαριασμό (abusive-growth
+    /// φρένο· βλ. sync::push). Override μέσω ANABASIS_MAX_ROWS_PER_ACCOUNT.
+    pub max_rows_per_account: i64,
 }
+
+/// Default όριο rows/λογαριασμό — γενναιόδωρο (ο βαρύτερος πραγματικός χρήστης
+/// έχει λίγες χιλιάδες), αρκετά χαμηλό ώστε ένας κακόβουλος client να μη γεμίσει
+/// τον δίσκο με εκατομμύρια rows.
+const DEFAULT_MAX_ROWS_PER_ACCOUNT: i64 = 100_000;
+
+/// Ανώτατο μέγεθος request body. Το axum default (2 MiB) είναι λίγο σφιχτό για
+/// ένα πλήρες push βαρέος λογαριασμού· 4 MiB δίνει περιθώριο ΚΑΙ βάζει ρητό,
+/// τεκμηριωμένο φράγμα (δεν βασιζόμαστε σε σιωπηρό default). Μαζί με το
+/// MAX_PUSH_ROWS + το per-account quota, φράζει το write surface.
+const MAX_BODY_BYTES: usize = 4 * 1024 * 1024;
 
 pub async fn build_state(
     db_path: PathBuf,
@@ -97,6 +111,11 @@ pub async fn build_state(
         google_oauth,
         email,
         http_client: reqwest::Client::new(),
+        max_rows_per_account: std::env::var("ANABASIS_MAX_ROWS_PER_ACCOUNT")
+            .ok()
+            .and_then(|v| v.trim().parse::<i64>().ok())
+            .filter(|n| *n > 0)
+            .unwrap_or(DEFAULT_MAX_ROWS_PER_ACCOUNT),
     })
 }
 
@@ -195,7 +214,8 @@ pub fn router(state: AppState) -> Router {
         .route("/users/{id}/disable", post(admin::disable_user))
         .route("/users/{id}/reset_password", post(admin::reset_password))
         .route("/users/{id}/rows", get(admin::user_rows))
-        .route("/stats", get(admin::stats));
+        .route("/stats", get(admin::stats))
+        .route("/gc", post(admin::gc));
 
     let allow_origin: Vec<HeaderValue> = ALLOWED_ORIGINS
         .iter()
@@ -219,6 +239,8 @@ pub fn router(state: AppState) -> Router {
         .nest("/api/admin", admin_routes)
         .layer(TraceLayer::new_for_http())
         .layer(cors)
+        // Ρητό φράγμα σώματος (αντί για το σιωπηρό axum default) — defense in depth.
+        .layer(axum::extract::DefaultBodyLimit::max(MAX_BODY_BYTES))
         .with_state(state)
 }
 

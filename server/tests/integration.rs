@@ -1482,3 +1482,339 @@ async fn magic_consume_rejects_expired_token() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "expired_token");
 }
+
+#[tokio::test]
+async fn magic_request_throttle_is_silent_and_sends_no_new_token() {
+    let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
+    let email = "bomb@example.com";
+
+    // Πρόσφατο token (created_at = τώρα) → η επόμενη request πέφτει στο
+    // anti-bombing throttle ΠΡΙΝ φτάσει στο (αδύνατο, smtp.invalid.test) send.
+    sqlx::query(
+        "INSERT INTO login_tokens (token_hash, email, created_at, expires_at) VALUES (?, ?, ?, ?)",
+    )
+    .bind(anabasis_api::auth::sha256_hex("seed-token"))
+    .bind(email)
+    .bind(anabasis_api::util::now_iso())
+    .bind(anabasis_api::util::iso_in(time_minutes(15)))
+    .execute(&state.pool)
+    .await
+    .unwrap();
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/magic/request",
+        None,
+        Some(json!({ "email": email })),
+    )
+    .await;
+    // Σιωπηλό OK — δεν αποκαλύπτει throttle, δεν σπάει σε 500 από το send.
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["ok"], true);
+
+    let count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM login_tokens WHERE email = ?")
+            .bind(email)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap();
+    assert_eq!(count, 1, "throttled request δεν δημιουργεί δεύτερο token");
+}
+
+#[tokio::test]
+async fn magic_request_rejects_invalid_email() {
+    let (app, _state, _dir) = test_app_with_email(Some(test_email_config())).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/magic/request",
+        None,
+        Some(json!({ "email": "not-an-email" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_email");
+}
+
+/* ═══════════════ Sync durability: tombstones, in-batch LWW, program round-trips ═══════════════ */
+
+fn time_minutes(m: i64) -> time::Duration {
+    time::Duration::minutes(m)
+}
+
+/// Ρητή περίπτωση που η παλιά suite δεν κάλυπτε: μια διαγραφή ΠΡΕΠΕΙ να μείνει
+/// διαγραφή όταν φτάνει αργότερα ένα stale (παλιότερο) push που «αναστήνει» το
+/// row. Χωρίς σωστό LWW-over-delete, μια offline συσκευή θα ξανάφερνε στη ζωή
+/// ένα σβησμένο workout.
+#[tokio::test]
+async fn tombstone_stays_deleted_against_stale_resurrect() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    // create @ 10:00
+    let create = json!({ "id": "r1", "user_id": user_id, "title": "live", "updated_at": "2026-08-30T10:00:00.000Z", "deleted_at": null });
+    call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [create] }] }))).await;
+
+    // delete @ 10:10 (νεότερο) — tombstone
+    let delete = json!({ "id": "r1", "user_id": user_id, "title": "live", "updated_at": "2026-08-30T10:10:00.000Z", "deleted_at": "2026-08-30T10:10:00.000Z" });
+    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [delete] }] }))).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // stale resurrect @ 10:05 (< 10:10) — LWW loser, δεν πρέπει να αναστήσει.
+    let resurrect = json!({ "id": "r1", "user_id": user_id, "title": "back", "updated_at": "2026-08-30T10:05:00.000Z", "deleted_at": null });
+    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [resurrect] }] }))).await;
+    assert_eq!(status, StatusCode::OK, "stale resurrect γίνεται δεκτό — απλώς χάνει");
+
+    let (deleted, payload): (i64, String) = sqlx::query_as(
+        "SELECT deleted, payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'r1'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    assert_eq!(deleted, 1, "παραμένει tombstone");
+    let stored: Value = serde_json::from_str(&payload).unwrap();
+    assert_eq!(stored["title"], "live", "το stale 'back' ΔΕΝ κέρδισε");
+    assert!(!stored["deleted_at"].is_null(), "το deleted_at παραμένει");
+}
+
+/// Το αντίστροφο: μια ΓΝΗΣΙΑ νεότερη επεξεργασία μετά τη διαγραφή ΠΡΕΠΕΙ να
+/// επαναφέρει το row (η διαγραφή δεν είναι μόνιμο κλείδωμα — απλό LWW).
+#[tokio::test]
+async fn tombstone_resurrects_when_newer_edit_arrives() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    let delete = json!({ "id": "r2", "user_id": user_id, "updated_at": "2026-08-30T10:10:00.000Z", "deleted_at": "2026-08-30T10:10:00.000Z" });
+    call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [delete] }] }))).await;
+
+    let revive = json!({ "id": "r2", "user_id": user_id, "title": "revived", "updated_at": "2026-08-30T10:20:00.000Z", "deleted_at": null });
+    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [revive] }] }))).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let deleted: i64 = sqlx::query_scalar(
+        "SELECT deleted FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'r2'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    assert_eq!(deleted, 0, "νεότερη επεξεργασία επαναφέρει το row");
+}
+
+/// Δύο εκδοχές του ΙΔΙΟΥ row μέσα σε ΕΝΑ push (π.χ. batched offline edits που
+/// έφτασαν εκτός σειράς): πρέπει να επικρατεί το νεότερο ακόμα κι αν φτάνει
+/// ΠΡΩΤΟ στο array — ελέγχει το intra-transaction read visibility.
+#[tokio::test]
+async fn same_row_twice_in_one_push_resolves_by_lww_within_batch() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    let (status, body) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [
+            { "id": "rb", "user_id": &user_id, "title": "new", "updated_at": "2026-08-30T10:10:00.000Z" },
+            { "id": "rb", "user_id": &user_id, "title": "old", "updated_at": "2026-08-30T10:00:00.000Z" },
+        ] }] }))).await;
+    assert_eq!(status, StatusCode::OK);
+    // Ένα μόνο write κατανάλωσε seq (το δεύτερο έχασε).
+    assert_eq!(body["cursor"].as_i64().unwrap(), 1);
+
+    let payload: String = sqlx::query_scalar(
+        "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'rb'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    let stored: Value = serde_json::from_str(&payload).unwrap();
+    assert_eq!(stored["title"], "new", "το νεότερο κέρδισε παρότι ήρθε πρώτο");
+}
+
+/// Πλήρες cross-device round-trip για programs: update (LWW) + soft-delete
+/// ταξιδεύουν σωστά στο pull (πέρα από το γενικό accepts-test).
+#[tokio::test]
+async fn program_day_update_then_soft_delete_round_trips() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    let v1 = json!({ "id": "d1", "user_id": &user_id, "program_id": "p1", "name": "Upper", "position": 0, "updated_at": "2026-01-01T00:00:00.000Z" });
+    call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [v1] }] }))).await;
+
+    // update @ νεότερο → όνομα αλλάζει
+    let v2 = json!({ "id": "d1", "user_id": &user_id, "program_id": "p1", "name": "Lower", "position": 0, "updated_at": "2026-01-02T00:00:00.000Z" });
+    call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [v2] }] }))).await;
+
+    let (_, body) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": 0 }))).await;
+    let days = body["changes"].as_array().unwrap().iter().find(|c| c["tbl"] == "program_days").unwrap();
+    assert_eq!(days["rows"][0]["name"], "Lower", "device B κατεβάζει την ενημερωμένη μέρα");
+
+    // soft-delete → tombstone ταξιδεύει
+    let del = json!({ "id": "d1", "user_id": &user_id, "program_id": "p1", "name": "Lower", "position": 0, "updated_at": "2026-01-03T00:00:00.000Z", "deleted_at": "2026-01-03T00:00:00.000Z" });
+    call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [del] }] }))).await;
+
+    let (_, body) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": 0 }))).await;
+    let days = body["changes"].as_array().unwrap().iter().find(|c| c["tbl"] == "program_days").unwrap();
+    assert!(!days["rows"][0]["deleted_at"].is_null(), "η διαγραφή της μέρας ταξιδεύει cross-device");
+}
+
+/* ═══════════════ Per-account row quota (abusive-growth guard) ═══════════════ */
+
+async fn test_app_with_quota(quota: i64) -> (Router, AppState, tempfile::TempDir) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("anabasis-test.db");
+    let mut state = build_state(db_path, None, None, None, None)
+        .await
+        .expect("build_state");
+    state.max_rows_per_account = quota;
+    let app = router(state.clone());
+    (app, state, dir)
+}
+
+#[tokio::test]
+async fn push_rejects_new_rows_beyond_account_quota() {
+    let (app, state, _dir) = test_app_with_quota(2).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    // 2 νέα rows → φτάνουμε ΑΚΡΙΒΩΣ στο cap.
+    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [
+            { "id": "g1", "user_id": &user_id, "updated_at": "2026-01-01T00:00:00Z" },
+            { "id": "g2", "user_id": &user_id, "updated_at": "2026-01-01T00:00:00Z" },
+        ] }] }))).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3ο ΝΕΟ row → quota_exceeded (507), τίποτα δεν γράφεται (rollback).
+    let (status, body) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [
+            { "id": "g3", "user_id": &user_id, "updated_at": "2026-01-01T00:00:00Z" },
+        ] }] }))).await;
+    assert_eq!(status, StatusCode::INSUFFICIENT_STORAGE);
+    assert_eq!(body["error"], "quota_exceeded");
+
+    let g3_present: Option<i64> = sqlx::query_scalar(
+        "SELECT 1 FROM sync_rows WHERE account_id = ? AND row_id = 'g3'",
+    )
+    .bind(&user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .unwrap();
+    assert!(g3_present.is_none(), "το απορριφθέν row δεν γράφτηκε");
+
+    // Στο cap, UPDATE υπαρκτού row (δεν αυξάνει πλήθος) → επιτρέπεται.
+    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [
+            { "id": "g1", "user_id": &user_id, "title": "updated", "updated_at": "2026-06-01T00:00:00Z" },
+        ] }] }))).await;
+    assert_eq!(status, StatusCode::OK, "updates επιτρέπονται ακόμα στο cap");
+
+    // Στο cap, DELETE υπαρκτού row → επιτρέπεται (soft-delete = update).
+    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [
+            { "id": "g2", "user_id": &user_id, "updated_at": "2026-06-02T00:00:00Z", "deleted_at": "2026-06-02T00:00:00Z" },
+        ] }] }))).await;
+    assert_eq!(status, StatusCode::OK, "deletes επιτρέπονται ακόμα στο cap");
+}
+
+/* ═══════════════ Tombstone GC (admin-gated) ═══════════════ */
+
+#[tokio::test]
+async fn admin_gc_prunes_old_tombstones_keeps_recent_and_live() {
+    let (app, state, _dir) = test_app(Some("admin@example.com")).await;
+    let (_, body) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = body["token"].as_str().unwrap().to_string();
+    let admin_id = body["account"]["id"].as_str().unwrap().to_string();
+
+    // Άμεση εισαγωγή τριών rows με ελεγχόμενο server_updated_at:
+    //  - live (deleted=0)                    → ΠΟΤΕ δεν κόβεται
+    //  - παλιό tombstone (200 μέρες πριν)     → κόβεται σε horizon 90
+    //  - πρόσφατο tombstone (τώρα)            → μένει
+    for (rid, seq, deleted, sua) in [
+        ("r-live", 1, 0, anabasis_api::util::now_iso()),
+        ("r-old", 2, 1, anabasis_api::util::iso_days_ago(200)),
+        ("r-recent", 3, 1, anabasis_api::util::now_iso()),
+    ] {
+        sqlx::query(
+            "INSERT INTO sync_rows (account_id, tbl, row_id, payload, seq, deleted, server_updated_at)
+             VALUES (?, 'goals', ?, '{}', ?, ?, ?)",
+        )
+        .bind(&admin_id)
+        .bind(rid)
+        .bind(seq as i64)
+        .bind(deleted as i64)
+        .bind(sua)
+        .execute(&state.pool)
+        .await
+        .unwrap();
+    }
+
+    let (status, body) = call(&app, "POST", "/api/admin/gc?horizon_days=90", Some(&admin_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["pruned"].as_u64().unwrap(), 1, "μόνο το παλιό tombstone κόβεται");
+    assert_eq!(body["horizon_days"].as_i64().unwrap(), 90);
+
+    let remaining: Vec<String> = sqlx::query_scalar(
+        "SELECT row_id FROM sync_rows WHERE account_id = ? ORDER BY row_id",
+    )
+    .bind(&admin_id)
+    .fetch_all(&state.pool)
+    .await
+    .unwrap();
+    assert_eq!(remaining, vec!["r-live".to_string(), "r-recent".to_string()]);
+}
+
+#[tokio::test]
+async fn admin_gc_clamps_horizon_to_safe_minimum() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+    let (_, body) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = body["token"].as_str().unwrap().to_string();
+
+    // Ζητάμε επικίνδυνα μικρό horizon (0) → clamp στο ελάχιστο ασφαλές (7).
+    let (status, body) = call(&app, "POST", "/api/admin/gc?horizon_days=0", Some(&admin_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["horizon_days"].as_i64().unwrap(), 7, "horizon clamped στο ελάχιστο");
+}
+
+#[tokio::test]
+async fn admin_gc_requires_admin() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (token, _user_id) = signed_in_user(&app).await;
+    let (status, _) = call(&app, "POST", "/api/admin/gc", Some(&token), None).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}
+
+/* ═══════════════ Password/email length DoS caps ═══════════════ */
+
+#[tokio::test]
+async fn signup_rejects_overlong_password() {
+    let (app, _state, _dir) = test_app(None).await;
+    let long = "a".repeat(2000);
+    let (status, body) = signup(&app, "big@example.com", &long).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "weak_password");
+}
+
+#[tokio::test]
+async fn login_overlong_password_is_bad_credentials_without_enumeration() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (status, _) = signup(&app, "real@example.com", "correcthorsebattery").await;
+    assert_eq!(status, StatusCode::OK);
+
+    let long = "a".repeat(2000);
+    // Υπαρκτό email + over-length pass → 401 bad_credentials (χωρίς ακριβό hash).
+    let (status_known, body_known) = login(&app, "real@example.com", &long).await;
+    // Άγνωστο email + over-length pass → ΙΔΙΟ αποτέλεσμα (no enumeration).
+    let (status_unknown, body_unknown) = login(&app, "ghost@example.com", &long).await;
+    assert_eq!(status_known, StatusCode::UNAUTHORIZED);
+    assert_eq!(status_unknown, StatusCode::UNAUTHORIZED);
+    assert_eq!(body_known, body_unknown);
+    assert_eq!(body_known["error"], "bad_credentials");
+}
