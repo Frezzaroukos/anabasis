@@ -101,6 +101,18 @@ pub async fn push(
     let mut tx = state.pool.begin().await?;
     let mut cursor = 0i64;
 
+    // Per-account row quota (abusive-growth φρένο). Μετράμε ΟΛΑ τα sync_rows του
+    // λογαριασμού (μαζί με tombstones — καταναλώνουν κι αυτά χώρο) στην αρχή της
+    // transaction· επιτρέπουμε updates/deletes ακόμα και στο cap, αλλά μπλοκάρουμε
+    // ΝΕΑ row_ids πέρα από το όριο. Το admin GC (prune_tombstones) ελευθερώνει χώρο.
+    let existing_rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_rows WHERE account_id = ?")
+        .bind(&auth.account_id)
+        .fetch_one(&mut *tx)
+        .await?;
+    let quota = state.max_rows_per_account;
+    let mut new_rows = 0i64;
+    let mut written = 0i64;
+
     for change in &body.changes {
         for row in &change.rows {
             let row_id = row
@@ -149,6 +161,16 @@ pub async fn push(
                 continue;
             }
 
+            // Νέο row_id (δεν υπάρχει payload) → μετράει στο quota growth. Updates
+            // σε υπαρκτά rows δεν αυξάνουν το πλήθος, άρα δεν φρενάρονται εδώ.
+            if existing_payload.is_none() {
+                if existing_rows + new_rows >= quota {
+                    // Rollback (drop tx) — μηδέν partial write.
+                    return Err(AppError::quota_exceeded());
+                }
+                new_rows += 1;
+            }
+
             // last_seq bump + upsert ΣΤΗΝ ΙΔΙΑ transaction — αλλιώς ο pull
             // cursor μπορεί να προσπεράσει ένα committed row (lost update).
             let seq: i64 = sqlx::query_scalar(
@@ -178,6 +200,7 @@ pub async fn push(
             .await?;
 
             cursor = seq;
+            written += 1;
         }
     }
 
@@ -199,7 +222,44 @@ pub async fn push(
 
     tx.commit().await?;
 
+    // Παρατηρησιμότητα του write path (uuid, όχι PII): πόσα γράφτηκαν όντως vs
+    // πόσα στάλθηκαν (η διαφορά = LWW losers), + πόσα νέα rows.
+    tracing::debug!(
+        account_id = %auth.account_id,
+        received = total_rows,
+        written,
+        new_rows,
+        cursor,
+        "sync push committed"
+    );
+
     Ok(Json(PushResponse { cursor }))
+}
+
+/// Tombstone garbage-collection: σβήνει soft-deleted sync_rows (`deleted = 1`)
+/// που έγιναν tombstone ΠΡΙΝ από `horizon_days` (κατά `server_updated_at`,
+/// server-assigned wall clock). Επιστρέφει πόσα rows κόπηκαν.
+///
+/// ## Γιατί είναι ασφαλές για cursors/epoch
+/// Το pull είναι `WHERE seq > cursor ORDER BY seq` — η αφαίρεση ΟΛΟΚΛΗΡΩΝ rows
+/// (ποτέ renumber) απλώς αφήνει «κενά» στη σειρά των seq· ο cursor μένει
+/// μονότονος, το `has_more` σωστό, το epoch αμετάβλητο.
+///
+/// ## Ο μοναδικός εναπομείνας κίνδυνος (γι' αυτό το horizon)
+/// Client που είχε συγχρονίσει το row ΠΡΙΝ διαγραφεί, μετά έμεινε offline πέρα
+/// από το horizon: αν κόψουμε το tombstone, δεν θα δει ποτέ τη διαγραφή (ghost
+/// row). Ένα γενναιόδωρο horizon (default 90 μέρες) το κάνει πρακτικά αδύνατο —
+/// γι' αυτό ο caller κάνει clamp σε ελάχιστο ασφαλές όριο.
+pub async fn prune_tombstones(
+    pool: &sqlx::SqlitePool,
+    horizon_days: i64,
+) -> Result<u64, sqlx::Error> {
+    let cutoff = crate::util::iso_days_ago(horizon_days);
+    let result = sqlx::query("DELETE FROM sync_rows WHERE deleted = 1 AND server_updated_at < ?")
+        .bind(&cutoff)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected())
 }
 
 #[derive(Deserialize)]
@@ -278,10 +338,19 @@ pub async fn pull(
             .map_err(|_| AppError::internal("Κατεστραμμένο payload στη βάση."))?;
         grouped.entry(row.tbl).or_default().push(value);
     }
-    let changes = grouped
+    let changes: Vec<PullChangeSet> = grouped
         .into_iter()
         .map(|(tbl, rows)| PullChangeSet { tbl, rows })
         .collect();
+
+    tracing::debug!(
+        account_id = %auth.account_id,
+        from_cursor = body.cursor,
+        to_cursor = new_cursor,
+        tables = changes.len(),
+        has_more,
+        "sync pull served"
+    );
 
     Ok(Json(PullResponse {
         changes,

@@ -25,3 +25,9 @@ pub fn parse_iso(s: &str) -> Option<OffsetDateTime> {
 pub fn iso_in(duration: Duration) -> String {
     format_iso(now() + duration)
 }
+
+/// ISO timestamp `days` μέρες στο παρελθόν — για GC/retention cutoffs.
+/// `days` clamped στο >= 0 ώστε να μη γυρνά ποτέ μελλοντικό cutoff.
+pub fn iso_days_ago(days: i64) -> String {
+    format_iso(now() - Duration::days(days.max(0)))
+}

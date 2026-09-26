@@ -81,6 +81,18 @@ impl AppError {
         )
     }
 
+    /// Ο λογαριασμός έφτασε το ανώτατο πλήθος αποθηκευμένων sync_rows —
+    /// φρένο σε καταχρηστική αύξηση (abusive growth), όχι σε νόμιμη χρήση.
+    /// 507 Insufficient Storage: ο client δεν φταίει σε κάτι που διορθώνεται
+    /// με retry — χρειάζεται να διαγράψει δεδομένα (ή admin GC).
+    pub fn quota_exceeded() -> Self {
+        Self::new(
+            StatusCode::INSUFFICIENT_STORAGE,
+            "quota_exceeded",
+            "Ξεπεράστηκε το όριο αποθηκευμένων δεδομένων για τον λογαριασμό.",
+        )
+    }
+
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", message)
     }

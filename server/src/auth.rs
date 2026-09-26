@@ -20,6 +20,12 @@ use crate::util::{iso_in, now, now_iso, parse_iso};
 const SESSION_LIFETIME: TimeDuration = TimeDuration::days(90);
 const SESSION_TOUCH_INTERVAL: TimeDuration = TimeDuration::hours(1);
 const MIN_PASSWORD_LEN: usize = 8;
+/// Ανώτατο μήκος κωδικού. Το argon2 κάνει hash ΟΛΟΚΛΗΡΟ το input (δεν κόβει
+/// στα 72 bytes όπως το bcrypt), οπότε ένας τεράστιος κωδικός = ακριβό
+/// hash/verify ανά request = DoS. 1024 χαρακτήρες καλύπτουν κάθε passphrase.
+const MAX_PASSWORD_LEN: usize = 1024;
+/// Ανώτατο μήκος email — ίδιο όριο με το magic-link (RFC 5321).
+const MAX_EMAIL_LEN: usize = 254;
 const LOCKOUT_THRESHOLD: i64 = 5;
 const LOCKOUT_CAP_MINUTES: i64 = 60;
 
@@ -252,16 +258,23 @@ pub async fn signup(
     AppJson(body): AppJson<SignupRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let email = normalize_email(&body.email);
-    if email.is_empty() {
+    if email.is_empty() || email.len() > MAX_EMAIL_LEN {
         return Err(AppError::bad_request(
             "invalid_email",
-            "Το email είναι υποχρεωτικό.",
+            "Το email είναι υποχρεωτικό (έως 254 χαρακτήρες).",
         ));
     }
     if body.password.len() < MIN_PASSWORD_LEN {
         return Err(AppError::bad_request(
             "weak_password",
             format!("Ο κωδικός χρειάζεται τουλάχιστον {MIN_PASSWORD_LEN} χαρακτήρες."),
+        ));
+    }
+    // Κόψε ΠΡΙΝ το argon2 hash — τεράστιο input = ακριβό hashing (DoS).
+    if body.password.len() > MAX_PASSWORD_LEN {
+        return Err(AppError::bad_request(
+            "weak_password",
+            format!("Ο κωδικός δεν μπορεί να ξεπερνά τους {MAX_PASSWORD_LEN} χαρακτήρες."),
         ));
     }
 
@@ -324,6 +337,14 @@ pub async fn login(
 ) -> Result<impl IntoResponse, AppError> {
     let email = normalize_email(&body.email);
 
+    // Over-length κωδικός δεν μπορεί να είναι έγκυρο credential — απόρριψη ΠΡΙΝ
+    // οποιοδήποτε argon2 verify (και το dummy timing hash), αλλιώς ένας
+    // τεράστιος κωδικός προκαλεί ακριβό hashing. Uniform bad_credentials: δεν
+    // εξαρτάται από το αν υπάρχει ο λογαριασμός (καμία διαρροή enumeration).
+    if body.password.len() > MAX_PASSWORD_LEN {
+        return Err(AppError::bad_credentials());
+    }
+
     let account = sqlx::query_as::<_, AccountRow>(
         "SELECT id, email, password_hash, role, disabled, locked_until, created_at
          FROM accounts WHERE email = ?",
@@ -371,6 +392,13 @@ pub async fn login(
                 .bind(&account.id)
                 .execute(&state.pool)
                 .await?;
+            // account_id (uuid) όχι email — καμία PII στα logs.
+            tracing::warn!(
+                account_id = %account.id,
+                failed_logins = failed,
+                lock_minutes = minutes,
+                "account locked after repeated failed logins"
+            );
         }
         return Err(AppError::bad_credentials());
     }
@@ -446,6 +474,14 @@ pub async fn change_password(
         return Err(AppError::bad_request(
             "weak_password",
             format!("Ο νέος κωδικός χρειάζεται τουλάχιστον {MIN_PASSWORD_LEN} χαρακτήρες."),
+        ));
+    }
+    // Cap και τα δύο: το current περνά από argon2 verify, το new από argon2 hash
+    // — over-length σε οποιοδήποτε = ακριβό crypto (DoS).
+    if body.new_password.len() > MAX_PASSWORD_LEN || body.current_password.len() > MAX_PASSWORD_LEN {
+        return Err(AppError::bad_request(
+            "weak_password",
+            format!("Ο κωδικός δεν μπορεί να ξεπερνά τους {MAX_PASSWORD_LEN} χαρακτήρες."),
         ));
     }
 
