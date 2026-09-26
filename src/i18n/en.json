@@ -300,7 +300,17 @@
     "coach": {
       "title": "Coach mode",
       "enable": "Enable Coach mode",
-      "desc": "Smart progression suggestions and deload detection for your training."
+      "desc": "Smart progression suggestions and deload detection for your training.",
+      "nextMoves": "Next moves",
+      "nextMovesEmpty": "Log a few sessions to get progression suggestions.",
+      "goalLinked": "Goal: {{label}}",
+      "general": "General progression",
+      "deload": {
+        "title": "Deload recommended",
+        "consider": "Consider a deload week.",
+        "volumeWarning": "Volume +{{percent}}% & high RPE (avg {{rpe}})",
+        "consecutiveDays": "{{days}} consecutive training days"
+      }
     }
   },
   "common": {

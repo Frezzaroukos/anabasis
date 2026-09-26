@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Plus, Weight, Zap, HelpCircle } from 'lucide-react';
+import { Check, Plus, Weight, Zap, HelpCircle, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
@@ -185,6 +185,14 @@ export function ExerciseCard({
             <span className="shrink-0 rounded-full bg-elevated px-2 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
               {targetLabel}
             </span>
+          )}
+          {/* Coach mode: progression hint from last set */}
+          {settings?.coach_enabled && last && (
+            <CoachProgressionHint
+              last={last}
+              isHold={isHold}
+              exerciseIsBodyweight={exercise.is_bodyweight}
+            />
           )}
           {/* Γιορτή ρεκόρ: το status chip μένει (a11y — ανακοινώνεται), το
               «wow» πλέον είναι το RungCelebration δίπλα (σκαλί-σκαλί + particles). */}
@@ -378,5 +386,46 @@ export function ExerciseCard({
         )}
       </div>
     </article>
+  );
+}
+
+/**
+ * Coach mode progression hint — shows a simple next step based on last set.
+ * Non-intrusive chip that disappears when coach_enabled is off or no data.
+ */
+function CoachProgressionHint({
+  last,
+  isHold,
+  exerciseIsBodyweight,
+}: {
+  last: Awaited<ReturnType<typeof getLastPerformance>>;
+  isHold: boolean;
+  exerciseIsBodyweight: boolean;
+}) {
+  if (!last) return null;
+
+  let hint: string | null = null;
+
+  if (isHold && last.hold_seconds) {
+    // Hold exercises: suggest +time
+    const nextHold = Math.min(last.hold_seconds + 5, last.hold_seconds + 10);
+    hint = `+${nextHold - last.hold_seconds}s → ${nextHold}s`;
+  } else if (last.reps && last.weight_kg) {
+    // Weighted rep exercise: suggest +weight (more common than +rep)
+    const increment = exerciseIsBodyweight ? 1 : 2.5;
+    const nextWeight = last.weight_kg + increment;
+    hint = `+${increment} kg → ${nextWeight.toFixed(1)}kg`;
+  } else if (last.reps) {
+    // Just reps: suggest +1 rep
+    hint = `+1 reps → ${last.reps + 1}`;
+  }
+
+  if (!hint) return null;
+
+  return (
+    <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+      <Compass className="h-3 w-3" />
+      <span className="font-medium">{hint}</span>
+    </span>
   );
 }

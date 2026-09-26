@@ -31,6 +31,8 @@ import { BodySummaryCard } from './components/BodySummaryCard';
 import { EmptyDashboardHint } from './components/EmptyDashboardHint';
 import { WeekStrip } from './components/WeekStrip';
 import { mondayOf } from './components/weekMath';
+import { NextMovesCard } from '@/features/coach/NextMovesCard';
+import { DeloadCard } from '@/features/coach/DeloadCard';
 
 /** Πόσες πλήρεις μέρες πέρασαν από ένα ISO timestamp μέχρι σήμερα (τοπικά). */
 function daysSince(iso: string): number {
@@ -197,6 +199,14 @@ export function DashboardPage() {
         </div>
         <WeekStrip />
       </header>
+
+      {/* Coach mode panels (NextMoves + Deload) — visible only when coach_enabled */}
+      <div className="md:col-span-2">
+        <NextMovesCard />
+      </div>
+      <div className="md:col-span-2">
+        <DeloadCard />
+      </div>
 
       {/* Hairline: χωρίζει τη ζώνη «σήμερα» (hero+WeekStrip) από τα cards
           από κάτω — μια λεπτή γραμμή ανάμεσα σε δύο διαφορετικές δουλειές. */}
