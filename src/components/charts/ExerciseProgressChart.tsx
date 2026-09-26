@@ -1,36 +1,15 @@
-import { useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Label,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import type { ExercisePoint } from '@/lib/db/queries';
 import type { PersonalRecord, PRType, WeightUnit } from '@/lib/db/types';
 import { useCountUp } from '@/hooks/useCountUp';
 import { toDisplayWeight } from '@/lib/units';
 import { cn } from '@/lib/utils';
-import {
-  ACCENT_FILL_ID,
-  ACTIVE_DOT,
-  CHART_CURSOR,
-  CHART_GOLD,
-  CHART_GRID,
-  CHART_STROKE,
-  CHART_STROKE_WIDTH,
-  CHART_TICK,
-  ChartGradientDefs,
-  REFERENCE_LINE_DASH,
-  TOOLTIP_STYLE,
-} from './chartTheme';
+import { ChartSkeleton } from './ChartSkeleton';
 import { TimeRangeSelector } from './TimeRangeSelector';
-import { CHART_RANGE_DAYS, tickFormatterFor, tickIntervalFor, type ChartRangeKey } from './timeRange';
+import { CHART_RANGE_DAYS, type ChartRangeKey } from './timeRange';
+
+const ExerciseProgressChartBody = lazy(() => import('./ExerciseProgressChart.body'));
 
 export type ChartMetric = 'reps' | 'topWeight' | 'e1rm' | 'volume';
 
@@ -155,55 +134,17 @@ export function ExerciseProgressChart({
             </span>
           </div>
           <div className="h-52 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-                <ChartGradientDefs />
-                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={tickFormatterFor(range)}
-                  interval={tickIntervalFor(range, withData.length)}
-                  tick={CHART_TICK}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={['dataMin - 2', 'dataMax + 2']}
-                  tick={CHART_TICK}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  cursor={CHART_CURSOR}
-                  contentStyle={TOOLTIP_STYLE}
-                  labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-                  formatter={(v: number) => [
-                    option.unitless ? `${v}` : `${v} ${unit}`,
-                    t(option.labelKey),
-                  ]}
-                />
-                {prValue != null && (
-                  <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray={REFERENCE_LINE_DASH}>
-                    <Label
-                      value={`PR ${prValue}${option.unitless ? '' : ` ${unit}`}`}
-                      position="insideTopRight"
-                      fill={CHART_GOLD}
-                      className="text-[10px]"
-                    />
-                  </ReferenceLine>
-                )}
-                <Area
-                  type="monotone"
-                  dataKey={metric}
-                  stroke={CHART_STROKE}
-                  strokeWidth={CHART_STROKE_WIDTH}
-                  fill={`url(#${ACCENT_FILL_ID})`}
-                  dot={{ r: 2, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
-                  activeDot={ACTIVE_DOT}
-                  connectNulls
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<ChartSkeleton />}>
+              <ExerciseProgressChartBody
+                withData={withData}
+                metric={metric}
+                range={range}
+                unit={unit}
+                unitless={!!option.unitless}
+                labelKey={option.labelKey}
+                prValue={prValue}
+              />
+            </Suspense>
           </div>
         </div>
       )}

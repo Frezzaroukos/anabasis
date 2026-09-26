@@ -1,30 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowDown, ArrowUp, Info } from 'lucide-react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { getBodyMetric, getBodyTrend, localDay, saveBodyMetric } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight, parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCountUp } from '@/hooks/useCountUp';
-import {
-  ACTIVE_DOT,
-  CHART_GRID,
-  CHART_STROKE,
-  CHART_STROKE_WIDTH,
-  CHART_TICK,
-  TOOLTIP_STYLE,
-} from '@/components/charts/chartTheme';
+import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
+
+const BodyTrendChart = lazy(() => import('./BodyTrendChart'));
 
 // Χωρίς 30/60/90/180 επιλογέα (owner: περιττός) — δείχνουμε ό,τι υπάρχει,
 // ένα χρόνο πίσω· τα κενά γεμίζουν, οπότε το εύρος δεν «ψεύδεται».
@@ -188,30 +174,16 @@ export function BodyPage() {
               </span>
             )}
           </div>
-          <ChartFrame>
-            <LineChart data={weightTrend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(d: string) => d.slice(5)}
-                tick={CHART_TICK}
-                axisLine={false}
-                tickLine={false}
-                interval={Math.max(1, Math.floor(days / 6))}
+          <div className="h-44 w-full">
+            <Suspense fallback={<ChartSkeleton />}>
+              <BodyTrendChart
+                variant="weight"
+                data={weightTrend as unknown as Array<Record<string, unknown>>}
+                days={days}
+                unit={unit}
               />
-              <YAxis domain={['dataMin - 1', 'dataMax + 1']} tick={CHART_TICK} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => [`${v} ${unit}`, t('body.weight')]} />
-              <Line
-                type="monotone"
-                dataKey="weight"
-                stroke={CHART_STROKE}
-                strokeWidth={CHART_STROKE_WIDTH}
-                dot={false}
-                activeDot={ACTIVE_DOT}
-                connectNulls
-              />
-            </LineChart>
-          </ChartFrame>
+            </Suspense>
+          </div>
         </section>
       )}
 
@@ -227,30 +199,16 @@ export function BodyPage() {
               </span>
             )}
           </div>
-          <ChartFrame small>
-            <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(d: string) => d.slice(5)}
-                tick={CHART_TICK}
-                axisLine={false}
-                tickLine={false}
-                interval={Math.max(1, Math.floor(days / 6))}
+          <div className="h-40 w-full">
+            <Suspense fallback={<ChartSkeleton />}>
+              <BodyTrendChart
+                variant="bodyFat"
+                data={trend as unknown as Array<Record<string, unknown>>}
+                days={days}
+                unit={unit}
               />
-              <YAxis domain={[0, 'dataMax + 5']} tick={CHART_TICK} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => [`${v}%`, t('body.bodyFat')]} />
-              <Line
-                type="monotone"
-                dataKey="bodyFatPct"
-                stroke={CHART_STROKE}
-                strokeWidth={CHART_STROKE_WIDTH}
-                dot={false}
-                activeDot={ACTIVE_DOT}
-                connectNulls
-              />
-            </LineChart>
-          </ChartFrame>
+            </Suspense>
+          </div>
         </section>
       )}
 
@@ -265,45 +223,19 @@ export function BodyPage() {
               </span>
             )}
           </div>
-          <ChartFrame small>
-            <LineChart data={trend} margin={{ top: 4, right: 6, bottom: 0, left: -6 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(d: string) => d.slice(5)}
-                tick={CHART_TICK}
-                axisLine={false}
-                tickLine={false}
-                interval={Math.max(1, Math.floor(days / 6))}
+          <div className="h-40 w-full">
+            <Suspense fallback={<ChartSkeleton />}>
+              <BodyTrendChart
+                variant="steps"
+                data={trend as unknown as Array<Record<string, unknown>>}
+                days={days}
+                unit={unit}
               />
-              <YAxis domain={[0, 'dataMax + 500']} tick={CHART_TICK} axisLine={false} tickLine={false} width={44} />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                formatter={(v: number) => [v.toLocaleString(), t('body.steps')]}
-              />
-              <Line
-                type="monotone"
-                dataKey="steps"
-                stroke={CHART_STROKE}
-                strokeWidth={CHART_STROKE_WIDTH}
-                dot={false}
-                activeDot={ACTIVE_DOT}
-                connectNulls
-              />
-            </LineChart>
-          </ChartFrame>
+            </Suspense>
+          </div>
         </section>
       )}
     </div>
   );
 }
 
-function ChartFrame({ children, small }: { children: React.ReactElement; small?: boolean }) {
-  return (
-    <div className={small ? 'h-40 w-full' : 'h-44 w-full'}>
-      <ResponsiveContainer width="100%" height="100%">
-        {children}
-      </ResponsiveContainer>
-    </div>
-  );
-}

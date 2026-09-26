@@ -1,19 +1,12 @@
-import { useMemo } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { getTrainingSummary, getVolumeTrend } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { toDisplayWeight } from '@/lib/units';
-import { CHART_GRID, CHART_STROKE, CHART_TICK, TOOLTIP_STYLE } from '@/components/charts/chartTheme';
+import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
+
+const VolumeChartBody = lazy(() => import('./VolumeChart.body'));
 
 /**
  * Όγκος ανά ημέρα, 30 ημέρες. Bars (όχι line) επίτηδες: η προπόνηση είναι
@@ -69,31 +62,9 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
       </dl>
 
       <div className="h-40 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={displayData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={(d: string) => d.slice(8)}
-              tick={CHART_TICK}
-              axisLine={false}
-              tickLine={false}
-              interval={6}
-            />
-            <YAxis
-              tick={CHART_TICK}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}k` : String(v))}
-            />
-            <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-              formatter={(v: number) => [`${v} ${unit}`, t('history.volume')]}
-            />
-            <Bar dataKey="volume" fill={CHART_STROKE} radius={[2, 2, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <Suspense fallback={<ChartSkeleton />}>
+          <VolumeChartBody displayData={displayData} unit={unit} />
+        </Suspense>
       </div>
     </section>
   );
