@@ -7,7 +7,7 @@
 **Weighted-calisthenics & skill-progression tracker.**
 Offline-first PWA · native desktop · optional accounts & sync · TypeScript strict · bilingual (EN/EL)
 
-![tests](https://img.shields.io/badge/tests-460%2B%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-500%2B%20passing-brightgreen)
 ![typescript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![backend](https://img.shields.io/badge/backend-Rust%2FAxum-orange)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -58,14 +58,16 @@ protects against restore-desync. Auth is argon2id + opaque bearer tokens in a
 session table (not JWTs — revocation matters; not cookies — the Tauri
 production-cookie trap).
 
-**Schema migrations, v1 → v14.** Each version ships its own `.upgrade()` with
+**Schema migrations, v1 → v16.** Each version ships its own `.upgrade()` with
 backfills; all additive, no data loss. v9 backfilled existing goals to *rolling*
 windows because that is how they were already counting — migrating them to
 *calendar* would have silently changed the meaning of a goal already set. v12–13
 grew the calendar-centric structure: program days, workout↔program links, and a
 weight dimension on skill steps (skills and exercises are now one library). v14
 added first-class custom trackers (append-only entries, so a manual counter
-syncs cleanly instead of losing increments to last-write-wins).
+syncs cleanly instead of losing increments to last-write-wins). v15 added
+local-only friends/leaderboard caches for offline social; v16 an opt-in
+`coach_enabled` flag (default off).
 
 **Components never touch `db.*`.** All access goes through `lib/db/queries.ts`
 and `lib/db/goals.ts`. `lib/domain/` is pure functions (e1rm, pr, volume) with
@@ -75,7 +77,7 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 460+ tests (419 frontend + 40 Rust backend) concentrated on migrations, the goal
+**Testing where it pays.** 500+ tests (449 frontend + 58 Rust backend) concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
 Monday" does not depend on the day CI runs), PR detection, the card-order
 resolver, and the sync engine (push/pull cursors, epoch handling, last-write-wins
@@ -141,9 +143,19 @@ node scripts/gen-brand-assets.mjs   # favicon/PWA/OG from one source of truth
 Working: calendar-centric logging with magnitude day-dots and weekly
 program-adherence, skill ladders (merged into one exercise library), the full
 goal family (sessions/volume/sets/reps/distance/duration, skill mastery, target
-weight, custom trackers), PR tracking, body metrics, multi-day programs with
-reuse-as-template, a unified exercise-progress chart, export/import, i18n, PWA,
-multiple local profiles, accessible dialogs + gym-sized touch targets.
+weight, custom trackers), calisthenics-correct set types (drop/superset/rest-pause
+/AMRAP + negatives, isometric and half-rep holds), honest bodyweight PRs (reps &
+volume always, e1RM only on added load), PR tracking, body metrics, multi-day
+programs with reuse-as-template and inline exercise-creation + discoverable
+supersets, a unified exercise-progress chart (Recharts lazy-loaded off the
+critical path), export/import, i18n, PWA, multiple local profiles, accessible
+dialogs + gym-sized touch targets.
+
+Optional, off by default: a **Coach mode** toggle — a pure suggestion engine
+(double-progression next-moves, deload/overtraining detection) that surfaces a
+"Next Moves" panel prioritising progressions toward your goals, a deload card,
+and per-exercise hints while logging. The logger stays a logger unless you ask
+for a coach.
 
 Also working: native desktop app via Tauri 2 (`src-tauri/`) — the same frontend
 in a WebKit window, PWA layer off; and the **Rust/Axum backend** (`server/`) —
