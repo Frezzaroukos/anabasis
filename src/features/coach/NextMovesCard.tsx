@@ -8,12 +8,15 @@
 import { useTranslation } from 'react-i18next';
 import { Compass } from 'lucide-react';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { formatWeight } from '@/lib/units';
 import { useCoachData } from './useCoachData';
+import { formatMove } from './format';
 import type { NextMove } from '@/lib/domain/coach';
 
 export function NextMovesCard() {
   const { t } = useTranslation();
   const settings = useAppSettings();
+  const unit = settings?.weight_unit ?? 'kg';
   const enabled = !!settings?.coach_enabled;
 
   // Hook ΠΑΝΤΑ (rules-of-hooks)· ο ίδιος ο hook δεν τρέχει queries όταν off.
@@ -30,7 +33,7 @@ export function NextMovesCard() {
       <div className="space-y-4 rounded-lg border border-border/50 bg-card p-4">
         <div className="flex items-center gap-2">
           <Compass className="h-5 w-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{t('coach.nextMoves')}</h2>
+          <h2 className="font-semibold text-foreground">{t('settings.coach.nextMoves')}</h2>
         </div>
         <div className="space-y-2">
           {[1, 2].map((i) => (
@@ -47,9 +50,9 @@ export function NextMovesCard() {
       <div className="space-y-4 rounded-lg border border-border/50 bg-card p-4">
         <div className="flex items-center gap-2">
           <Compass className="h-5 w-5 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{t('coach.nextMoves')}</h2>
+          <h2 className="font-semibold text-foreground">{t('settings.coach.nextMoves')}</h2>
         </div>
-        <p className="text-sm text-muted-foreground">{t('coach.nextMovesEmpty')}</p>
+        <p className="text-sm text-muted-foreground">{t('settings.coach.nextMovesEmpty')}</p>
       </div>
     );
   }
@@ -62,13 +65,13 @@ export function NextMovesCard() {
     <div className="space-y-4 rounded-lg border border-border/50 bg-card p-4">
       <div className="flex items-center gap-2">
         <Compass className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold text-foreground">{t('coach.nextMoves')}</h2>
+        <h2 className="font-semibold text-foreground">{t('settings.coach.nextMoves')}</h2>
       </div>
 
       <div className="space-y-3">
         {/* Goal-linked moves */}
         {goalMoves.map((move) => (
-          <MoveRow key={move.exerciseId} move={move} isGoalLinked={true} />
+          <MoveRow key={move.exerciseId} move={move} isGoalLinked={true} unit={unit} />
         ))}
 
         {/* General moves */}
@@ -76,14 +79,22 @@ export function NextMovesCard() {
           <div className="my-2 border-t border-border/40" />
         )}
         {generalMoves.map((move) => (
-          <MoveRow key={move.exerciseId} move={move} isGoalLinked={false} />
+          <MoveRow key={move.exerciseId} move={move} isGoalLinked={false} unit={unit} />
         ))}
       </div>
     </div>
   );
 }
 
-function MoveRow({ move, isGoalLinked }: { move: NextMove; isGoalLinked: boolean }) {
+function MoveRow({
+  move,
+  isGoalLinked,
+  unit,
+}: {
+  move: NextMove;
+  isGoalLinked: boolean;
+  unit: 'kg' | 'lb';
+}) {
   const { t } = useTranslation();
 
   return (
@@ -92,11 +103,13 @@ function MoveRow({ move, isGoalLinked }: { move: NextMove; isGoalLinked: boolean
         <span className="font-semibold text-foreground">{move.exerciseName}</span>
         {isGoalLinked && move.goalLabel && (
           <span className="text-xs text-muted-foreground">
-            {t('coach.goalLinked', { label: move.goalLabel })}
+            {t('settings.coach.goalLinked', { label: move.goalLabel })}
           </span>
         )}
       </div>
-      <div className="mt-0.5 text-xs text-muted-foreground">→ {move.move}</div>
+      <div className="mt-0.5 text-xs text-muted-foreground">
+        → {formatMove(move.move, t, (kg) => formatWeight(kg, unit, { withUnit: true }))}
+      </div>
     </div>
   );
 }

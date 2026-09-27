@@ -305,6 +305,12 @@
       "nextMovesEmpty": "Καταγράψε μερικές προπονήσεις για να πάρεις προτάσεις προόδου.",
       "goalLinked": "Στόχος: {{label}}",
       "general": "Γενική πρόοδος",
+      "hint": {
+        "addWeight": "+{{increment}} → {{weight}}",
+        "addRep": "+1 επαν. → {{reps}}",
+        "addHold": "+{{delta}} {{sec}} → {{target}} {{sec}}",
+        "skillStep": "Βήμα {{step}}/{{max}}"
+      },
       "deload": {
         "title": "Συνιστάται deload",
         "consider": "Σκέψου μια εβδομάδα ξεφόρτωσης.",

@@ -17,6 +17,7 @@ import { db } from '@/lib/db';
 import { getVolumeTrend, getAllSkillProgress } from '@/lib/db/queries';
 import { getAllGoalProgress } from '@/lib/db/goals';
 import {
+  buildLastPerformance,
   detectDeloadRisk,
   planNextPeriod,
   suggestNextForExercise,
@@ -29,8 +30,6 @@ import {
 
 /** Πόσο πίσω κοιτάμε για «ενεργές» ασκήσεις. */
 const RECENT_DAYS = 21;
-/** Οροφή rep-range για double progression (πάνω από αυτό → +βάρος). */
-const DEFAULT_REP_TARGET = 12;
 
 interface CoachData {
   moves: NextMove[];
@@ -70,23 +69,19 @@ export function useCoachData(enabled: boolean): CoachData {
       for (const [exId, s] of lastByEx) {
         const ex = exById.get(exId);
         if (!ex) continue;
-        const isHold = ex.default_unit === 'sec';
-        const reps = s.reps ?? 0;
-        lastPerfByExercise.set(exId, {
-          id: s.id,
-          exercise_id: exId,
-          exercise_name: ex.name,
-          max_reps_in_set: reps,
-          target_reps: DEFAULT_REP_TARGET,
-          top_weight_kg: s.weight_kg ?? 0,
-          is_body_weight: ex.is_bodyweight,
-          completed_all_reps: reps >= DEFAULT_REP_TARGET,
-          is_hold_exercise: isHold,
-          max_hold_seconds: s.hold_seconds ?? undefined,
-          // Default hold στόχος: λίγο πάνω από το τρέχον (progression), αν έχει hold.
-          target_hold_seconds:
-            isHold && s.hold_seconds != null ? s.hold_seconds + 5 : undefined,
-        });
+        lastPerfByExercise.set(
+          exId,
+          buildLastPerformance({
+            id: s.id,
+            exerciseId: exId,
+            exerciseName: ex.name,
+            isBodyweight: ex.is_bodyweight,
+            isHold: ex.default_unit === 'sec',
+            reps: s.reps,
+            weightKg: s.weight_kg,
+            holdSeconds: s.hold_seconds,
+          }),
+        );
       }
 
       const activeExercises = [...lastByEx.keys()];
