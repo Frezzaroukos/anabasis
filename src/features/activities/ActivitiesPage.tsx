@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Activity as ActivityGlyph, Archive, ChevronDown, ChevronUp, Pencil, Plus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { reorderActivities, updateActivity } from '@/lib/db/queries';
 import type { Activity } from '@/lib/db/types';
 import { ActivityIcon } from '@/components/activityIcon';
@@ -57,10 +58,7 @@ export function ActivitiesPage() {
       </header>
 
       {active.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-card px-6 py-10 text-center">
-          <ActivityGlyph className="h-8 w-8 text-muted-foreground/60" aria-hidden />
-          <p className="text-sm text-muted-foreground">{t('activities.empty')}</p>
-        </div>
+        <EmptyState icon={ActivityGlyph} title={t('activities.empty')} />
       ) : (
         /* Μία λίστα με hairlines αντί για 8 ξεχωριστές κάρτες — ίδια γλώσσα με
            Skills/Settings· τα 4 controls ανά γραμμή στα 44px, χωρίς να φουσκώνει
