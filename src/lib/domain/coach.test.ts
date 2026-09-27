@@ -28,9 +28,7 @@ describe('suggestNextForExercise', () => {
       };
 
       const result = suggestNextForExercise(perf);
-      expect(result).toBeTruthy();
-      expect(result?.kind).toBe('add_rep');
-      expect(result?.text).toContain('9 reps');
+      expect(result).toEqual({ kind: 'add_rep', reps: 9 });
     });
 
     it('προτείνει +2.5kg όταν έπιασε το target (weighted)', () => {
@@ -47,10 +45,7 @@ describe('suggestNextForExercise', () => {
       };
 
       const result = suggestNextForExercise(perf);
-      expect(result).toBeTruthy();
-      expect(result?.kind).toBe('add_weight');
-      expect(result?.text).toContain('22.5');
-      expect(result?.text).toContain('2.5');
+      expect(result).toEqual({ kind: 'add_weight', weightKg: 22.5, incrementKg: 2.5 });
     });
 
     it('προτείνει +1kg όταν έπιασε το target (bodyweight)', () => {
@@ -67,10 +62,7 @@ describe('suggestNextForExercise', () => {
       };
 
       const result = suggestNextForExercise(perf);
-      expect(result).toBeTruthy();
-      expect(result?.kind).toBe('add_weight');
-      expect(result?.text).toContain('51');
-      expect(result?.text).toContain('+1');
+      expect(result).toEqual({ kind: 'add_weight', weightKg: 51, incrementKg: 1 });
     });
   });
 
@@ -109,10 +101,7 @@ describe('suggestNextForExercise', () => {
       };
 
       const result = suggestNextForExercise(perf);
-      expect(result).toBeTruthy();
-      expect(result?.kind).toBe('add_hold');
-      expect(result?.text).toContain('Hold');
-      expect(result?.text).toContain('25');
+      expect(result).toEqual({ kind: 'add_hold', targetSeconds: 25, deltaSeconds: 5 });
     });
 
     it('cap hold time στο target + 10s buffer', () => {
@@ -131,11 +120,8 @@ describe('suggestNextForExercise', () => {
       };
 
       const result = suggestNextForExercise(perf);
-      expect(result).toBeTruthy();
-      expect(result?.kind).toBe('add_hold');
-      // max(45 + 5, 50 + 10) = max(50, 60) = 60, but capped
-      // min(50, 60) = 50
-      expect(result?.text).toContain('50');
+      // min(45 + 5, 50 + 10) = min(50, 60) = 50· delta = ceil(50 - 45) = 5
+      expect(result).toEqual({ kind: 'add_hold', targetSeconds: 50, deltaSeconds: 5 });
     });
   });
 });
@@ -163,7 +149,7 @@ describe('detectDeloadRisk', () => {
 
     expect(result.level).toBe('caution');
     expect(result.reasons).toHaveLength(1);
-    expect(result.reasons[0]).toContain('Volume');
+    expect(result.reasons[0]).toMatchObject({ code: 'volume' });
   });
 
   it('caution: 6+ consecutive days', () => {
@@ -176,7 +162,7 @@ describe('detectDeloadRisk', () => {
 
     expect(result.level).toBe('caution');
     expect(result.reasons).toHaveLength(1);
-    expect(result.reasons[0]).toContain('consecutive');
+    expect(result.reasons[0]).toMatchObject({ code: 'consecutive', days: 6 });
   });
 
   it('deload: both volume jump AND consecutive days', () => {
@@ -332,7 +318,7 @@ describe('planNextPeriod', () => {
 
       const result = planNextPeriod(plan);
       expect(result).toHaveLength(1);
-      expect(result[0]!.move).toContain('Step 4/5');
+      expect(result[0]!.move).toEqual({ kind: 'skill_step', step: 4, max: 5 });
       expect(result[0]!.priority).toBe(0);
     });
 

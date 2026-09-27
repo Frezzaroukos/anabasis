@@ -8,6 +8,8 @@ import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
+import { buildLastPerformance, suggestNextForExercise } from '@/lib/domain/coach';
+import { formatMove } from '@/features/coach/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Exercise, ProgramExercise, SetEntry, SetType } from '@/lib/db/types';
@@ -100,6 +102,27 @@ export function ExerciseCard({
   // «ίδιο βάρος με πέρσι» να μη θέλει καθόλου πληκτρολόγηση.
   const last = useLiveQuery(() => getLastPerformance(exercise.id), [exercise.id]);
 
+  // Coach hint: ίδιος κανόνας double-progression με το Next Moves panel
+  // (coach.ts), localized. Κενό όταν coach OFF ή χωρίς ιστορικό (no invented data).
+  const coachMove =
+    settings?.coach_enabled && last
+      ? suggestNextForExercise(
+          buildLastPerformance({
+            id: exercise.id,
+            exerciseId: exercise.id,
+            exerciseName: exercise.name,
+            isBodyweight: exercise.is_bodyweight,
+            isHold,
+            reps: last.reps,
+            weightKg: last.weight_kg,
+            holdSeconds: last.hold_seconds,
+          }),
+        )
+      : null;
+  const coachHint = coachMove
+    ? formatMove(coachMove, t, (kg) => formatWeight(kg, unit, { withUnit: true }))
+    : null;
+
   const onSave = async (
     weightKg: number | null,
     reps: number | null,
@@ -187,13 +210,7 @@ export function ExerciseCard({
             </span>
           )}
           {/* Coach mode: progression hint from last set */}
-          {settings?.coach_enabled && last && (
-            <CoachProgressionHint
-              last={last}
-              isHold={isHold}
-              exerciseIsBodyweight={exercise.is_bodyweight}
-            />
-          )}
+          {coachHint && <CoachProgressionHint hint={coachHint} />}
           {/* Γιορτή ρεκόρ: το status chip μένει (a11y — ανακοινώνεται), το
               «wow» πλέον είναι το RungCelebration δίπλα (σκαλί-σκαλί + particles). */}
           {prCount > 0 && (
@@ -390,38 +407,11 @@ export function ExerciseCard({
 }
 
 /**
- * Coach mode progression hint — shows a simple next step based on last set.
- * Non-intrusive chip that disappears when coach_enabled is off or no data.
+ * Coach mode progression hint — non-intrusive chip με την επόμενη κίνηση.
+ * Ο κανόνας (double-progression) και η μορφοποίηση (i18n) υπολογίζονται από τον
+ * γονέα μέσω coach.ts + formatMove· εδώ μόνο η παρουσίαση.
  */
-function CoachProgressionHint({
-  last,
-  isHold,
-  exerciseIsBodyweight,
-}: {
-  last: Awaited<ReturnType<typeof getLastPerformance>>;
-  isHold: boolean;
-  exerciseIsBodyweight: boolean;
-}) {
-  if (!last) return null;
-
-  let hint: string | null = null;
-
-  if (isHold && last.hold_seconds) {
-    // Hold exercises: suggest +time
-    const nextHold = Math.min(last.hold_seconds + 5, last.hold_seconds + 10);
-    hint = `+${nextHold - last.hold_seconds}s → ${nextHold}s`;
-  } else if (last.reps && last.weight_kg) {
-    // Weighted rep exercise: suggest +weight (more common than +rep)
-    const increment = exerciseIsBodyweight ? 1 : 2.5;
-    const nextWeight = last.weight_kg + increment;
-    hint = `+${increment} kg → ${nextWeight.toFixed(1)}kg`;
-  } else if (last.reps) {
-    // Just reps: suggest +1 rep
-    hint = `+1 reps → ${last.reps + 1}`;
-  }
-
-  if (!hint) return null;
-
+function CoachProgressionHint({ hint }: { hint: string }) {
   return (
     <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
       <Compass className="h-3 w-3" />

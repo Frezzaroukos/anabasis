@@ -26,19 +26,34 @@ export interface LastExercisePerformance {
 }
 
 /**
- * Πρόταση προόδου για άσκηση.
+ * Πρόταση προόδου για άσκηση — δομημένα δεδομένα, ΟΧΙ έτοιμο string.
+ * Η μορφοποίηση (i18n + μονάδες) γίνεται στο UI (features/coach/format.ts),
+ * ώστε η domain λογική να μένει καθαρή και localization-agnostic.
  */
-export interface NextExerciseMove {
-  kind: 'add_weight' | 'add_rep' | 'add_hold';
-  text: string;
-}
+export type NextExerciseMove =
+  | { kind: 'add_weight'; weightKg: number; incrementKg: number }
+  | { kind: 'add_rep'; reps: number }
+  | { kind: 'add_hold'; targetSeconds: number; deltaSeconds: number };
+
+/**
+ * Στοιχείο κίνησης όπως εμφανίζεται στο Next Moves — είτε πρόοδος άσκησης
+ * (NextExerciseMove) είτε επόμενο σκαλί skill.
+ */
+export type MoveDescriptor = NextExerciseMove | { kind: 'skill_step'; step: number; max: number };
+
+/**
+ * Αιτία deload — δομημένος κωδικός + τιμές, μορφοποιείται στο UI.
+ */
+export type DeloadReason =
+  | { code: 'volume'; percent: number; rpe: number }
+  | { code: 'consecutive'; days: number };
 
 /**
  * Ανίχνευση κινδύνου περιόδου «ξεφόρτωσης» (deload).
  */
 export interface DeloadRisk {
   level: 'normal' | 'caution' | 'deload';
-  reasons: string[];
+  reasons: DeloadReason[];
 }
 
 /**
@@ -66,11 +81,51 @@ export interface NextMove {
   exerciseName: string;
   reason: 'goal' | 'general';
   goalLabel?: string;
-  move: string;
+  move: MoveDescriptor;
   priority: number;
 }
 
 /* ─────────── Pure functions ─────────── */
+
+/**
+ * Οροφή rep-range για double progression (πάνω από αυτό → +βάρος).
+ * Στάνταρ κανόνας (8–12 range), όχι εφευρημένο νούμερο επίδοσης.
+ */
+export const DEFAULT_REP_CEILING = 12;
+
+/**
+ * buildLastPerformance — χαρτογραφεί ένα «τελευταίο σετ» (raw από τη βάση) σε
+ * LastExercisePerformance. ΕΝΑ σημείο αλήθειας για τον κανόνα double-progression,
+ * ώστε ExerciseCard και useCoachData να παράγουν ΙΔΙΑ πρόταση.
+ */
+export function buildLastPerformance(p: {
+  id: string;
+  exerciseId: string;
+  exerciseName: string;
+  isBodyweight: boolean;
+  isHold: boolean;
+  reps: number | null;
+  weightKg: number | null;
+  holdSeconds: number | null;
+  repCeiling?: number;
+}): LastExercisePerformance {
+  const ceiling = p.repCeiling ?? DEFAULT_REP_CEILING;
+  const reps = p.reps ?? 0;
+  return {
+    id: p.id,
+    exercise_id: p.exerciseId,
+    exercise_name: p.exerciseName,
+    max_reps_in_set: reps,
+    target_reps: ceiling,
+    top_weight_kg: p.weightKg ?? 0,
+    is_body_weight: p.isBodyweight,
+    completed_all_reps: reps >= ceiling,
+    is_hold_exercise: p.isHold,
+    max_hold_seconds: p.holdSeconds ?? undefined,
+    // Default hold στόχος: λίγο πάνω από το τρέχον (progression), αν έχει hold.
+    target_hold_seconds: p.isHold && p.holdSeconds != null ? p.holdSeconds + 5 : undefined,
+  };
+}
 
 /**
  * suggestNextForExercise — διπλή προόδου κανόνα.
@@ -92,26 +147,23 @@ export function suggestNextForExercise(last: LastExercisePerformance | null): Ne
     const nextHold = Math.min(last.max_hold_seconds + 5, last.target_hold_seconds + 10);
     return {
       kind: 'add_hold',
-      text: `Hold +${Math.ceil(nextHold - last.max_hold_seconds)}s → ${nextHold}s target`,
+      targetSeconds: nextHold,
+      deltaSeconds: Math.ceil(nextHold - last.max_hold_seconds),
     };
   }
 
   // Regular exercises with reps
   if (!last.completed_all_reps) {
     // Didn't hit target reps — add 1 rep
-    return {
-      kind: 'add_rep',
-      text: `${last.max_reps_in_set + 1} reps (one more set)`,
-    };
+    return { kind: 'add_rep', reps: last.max_reps_in_set + 1 };
   }
 
   // Hit target reps — add weight
   const increment = last.is_body_weight ? 1 : 2.5; // kg
-  const nextWeight = last.top_weight_kg + increment;
-
   return {
     kind: 'add_weight',
-    text: `${nextWeight.toFixed(1)} kg (+${increment} kg)`,
+    weightKg: last.top_weight_kg + increment,
+    incrementKg: increment,
   };
 }
 
@@ -132,20 +184,24 @@ export function detectDeloadRisk(params: {
 }): DeloadRisk {
   const { thisWeekVol, lastWeekVol, consecutiveDays, avgRpe } = params;
 
-  const reasons: string[] = [];
+  const reasons: DeloadReason[] = [];
 
   // Check volume jump
   const volumeIncrease = lastWeekVol > 0 ? (thisWeekVol - lastWeekVol) / lastWeekVol : 0;
   const volumeWarning = volumeIncrease >= 0.3 && avgRpe >= 8;
 
   if (volumeWarning) {
-    reasons.push(`Volume +${Math.round(volumeIncrease * 100)}% & high RPE (avg ${avgRpe})`);
+    reasons.push({
+      code: 'volume',
+      percent: Math.round(volumeIncrease * 100),
+      rpe: Math.round(avgRpe * 10) / 10,
+    });
   }
 
   // Check consecutive days
   const consecutiveWarning = consecutiveDays >= 6;
   if (consecutiveWarning) {
-    reasons.push(`${consecutiveDays} consecutive training days`);
+    reasons.push({ code: 'consecutive', days: consecutiveDays });
   }
 
   // Determine level
@@ -188,7 +244,7 @@ export function planNextPeriod(plan: NextPeriodPlan): NextMove[] {
           exerciseName: perf?.exercise_name || 'Unknown',
           reason: 'goal',
           goalLabel: goal.label,
-          move: nextMove.text,
+          move: nextMove,
           priority: 0,
         });
       }
@@ -204,7 +260,7 @@ export function planNextPeriod(plan: NextPeriodPlan): NextMove[] {
             exerciseName: skillProg.skill_name,
             reason: 'goal',
             goalLabel: goal.label,
-            move: `Step ${nextStep}/${skillProg.max_step}`,
+            move: { kind: 'skill_step', step: nextStep, max: skillProg.max_step },
             priority: 0,
           });
         }
@@ -224,7 +280,7 @@ export function planNextPeriod(plan: NextPeriodPlan): NextMove[] {
         exerciseId: exId,
         exerciseName: perf?.exercise_name || 'Unknown',
         reason: 'general',
-        move: nextMove.text,
+        move: nextMove,
         priority: 10,
       });
     }

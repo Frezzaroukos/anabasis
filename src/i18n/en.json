@@ -305,6 +305,12 @@
       "nextMovesEmpty": "Log a few sessions to get progression suggestions.",
       "goalLinked": "Goal: {{label}}",
       "general": "General progression",
+      "hint": {
+        "addWeight": "+{{increment}} → {{weight}}",
+        "addRep": "+1 rep → {{reps}}",
+        "addHold": "+{{delta}} {{sec}} → {{target}} {{sec}}",
+        "skillStep": "Step {{step}}/{{max}}"
+      },
       "deload": {
         "title": "Deload recommended",
         "consider": "Consider a deload week.",
