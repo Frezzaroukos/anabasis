@@ -17,6 +17,7 @@ import type { Exercise } from '@/lib/db/types';
 import { BUILTIN_SKILL_CATEGORIES } from '@/lib/db/types';
 import { getCurrentUserId } from '@/lib/db/session';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/input';
 import { SkillCreateForm } from '@/features/skills/components/SkillCreateForm';
 import { SkillRow } from '@/features/skills/components/SkillRow';
@@ -183,20 +184,18 @@ export function ExercisesPage() {
       </div>
 
       {groups.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Dumbbell className="h-5 w-5" />
-          </span>
-          <p className="text-sm font-medium">
-            {filter === 'archived' ? t('exercises.emptyArchived') : t('exercises.empty')}
-          </p>
-          {filter !== 'archived' && (
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              {t('exercises.new')}
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon={Dumbbell}
+          title={filter === 'archived' ? t('exercises.emptyArchived') : t('exercises.empty')}
+          action={
+            filter !== 'archived' && (
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                {t('exercises.new')}
+              </Button>
+            )
+          }
+        />
       ) : (
         <div className="space-y-2">
           {groups.map(({ category, items }) => (
