@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { Plus, Target, ChevronDown } from 'lucide-react';
 import { deleteGoal, getAllGoalProgress, listGoals, reorderGoals } from '@/lib/db/goals';
 import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
@@ -10,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { GoalFormSheet } from './components/GoalFormSheet';
 import { GoalRow } from './components/GoalRow';
+
+const VIRTUALIZE_THRESHOLD = 50;
 
 /**
  * Οι στόχοι του χρήστη — μία λίστα, με τη σειρά που τους έβαλε.
@@ -30,6 +33,22 @@ export function GoalsPage() {
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(true), [], []);
   const trackers = useLiveQuery(() => listTrackers(true), [], []);
+  const virtualized = progress.length > VIRTUALIZE_THRESHOLD;
+  const virtualListRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    if (!virtualized) return;
+    const update = () => setScrollMargin(virtualListRef.current?.offsetTop ?? 0);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [virtualized, progress.length]);
+  const rowVirtualizer = useWindowVirtualizer({
+    count: virtualized ? progress.length : 0,
+    estimateSize: () => 142,
+    overscan: 5,
+    scrollMargin,
+  });
 
   const activityLabel = (key: string | null) =>
     key == null ? null : (activities.find((a) => a.key === key)?.label ?? key);
@@ -97,23 +116,60 @@ export function GoalsPage() {
               <p className="text-xs leading-relaxed text-muted-foreground">{t('goals.intro')}</p>
             </div>
           )}
-          <ul className="stagger space-y-3">
-            {progress.map((p, index) => (
-              <GoalRow
-                key={p.goal.id}
-                progress={p}
-                index={index}
-                total={progress.length}
-                activityLabel={activityLabel}
-                exerciseName={exerciseName}
-                skillName={skillName}
-                trackerName={trackerName}
-                onMove={(i, delta) => void move(i, delta)}
-                onEdit={openEdit}
-                onDelete={(id) => void deleteGoal(id)}
-              />
-            ))}
-          </ul>
+          {virtualized ? (
+            <div
+              ref={virtualListRef}
+              className="relative"
+              style={{ height: rowVirtualizer.getTotalSize() }}
+              role="list"
+              aria-label={t('goals.title')}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const p = progress[virtualRow.index];
+                if (!p) return null;
+                return (
+                  <div
+                    key={p.goal.id}
+                    data-index={virtualRow.index}
+                    ref={rowVirtualizer.measureElement}
+                    className="absolute left-0 top-0 w-full pb-3"
+                    style={{ transform: `translateY(${virtualRow.start - scrollMargin}px)` }}
+                  >
+                    <GoalRow
+                      progress={p}
+                      index={virtualRow.index}
+                      total={progress.length}
+                      activityLabel={activityLabel}
+                      exerciseName={exerciseName}
+                      skillName={skillName}
+                      trackerName={trackerName}
+                      onMove={(i, delta) => void move(i, delta)}
+                      onEdit={openEdit}
+                      onDelete={(id) => void deleteGoal(id)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <ul className="stagger space-y-3">
+              {progress.map((p, index) => (
+                <GoalRow
+                  key={p.goal.id}
+                  progress={p}
+                  index={index}
+                  total={progress.length}
+                  activityLabel={activityLabel}
+                  exerciseName={exerciseName}
+                  skillName={skillName}
+                  trackerName={trackerName}
+                  onMove={(i, delta) => void move(i, delta)}
+                  onEdit={openEdit}
+                  onDelete={(id) => void deleteGoal(id)}
+                />
+              ))}
+            </ul>
+          )}
         </>
       )}
 
