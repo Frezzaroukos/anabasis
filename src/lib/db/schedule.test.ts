@@ -5,9 +5,10 @@ import {
   addProgramExercise,
   createProgram,
   createProgramDay,
+  endWorkout,
   startWorkoutFromProgramDay,
 } from './queries';
-import { countProgramDayExercises, getWorkoutPlan } from './schedule';
+import { countProgramDayExercises, getNextProgramDay, getWorkoutPlan } from './schedule';
 
 beforeEach(async () => {
   setCurrentUserId('schedule-test');
@@ -91,5 +92,20 @@ describe('countProgramDayExercises', () => {
 
     expect(await countProgramDayExercises(upper.id)).toBe(2);
     expect(await countProgramDayExercises(legs.id)).toBe(1);
+  });
+});
+
+describe('getNextProgramDay', () => {
+  it('συνεχίζει με τη λιγότερο εκτελεσμένη μέρα και κρατά τη σειρά σε ισοπαλία', async () => {
+    const program = await createProgram('Upper / Lower');
+    const upper = await createProgramDay(program.id, 'Upper');
+    const lower = await createProgramDay(program.id, 'Lower');
+
+    expect((await getNextProgramDay(program.id))?.id).toBe(upper.id);
+
+    const started = await startWorkoutFromProgramDay(upper.id);
+    await endWorkout(started!.workout.id, 60);
+
+    expect((await getNextProgramDay(program.id))?.id).toBe(lower.id);
   });
 });
