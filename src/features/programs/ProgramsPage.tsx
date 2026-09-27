@@ -12,8 +12,10 @@ import {
   renameProgram,
   softDeleteProgram,
   startWorkoutFromProgram,
+  startWorkoutFromProgramDay,
   createProgramFromTemplate,
 } from '@/lib/db/queries';
+import { getNextProgramDay } from '@/lib/db/schedule';
 import { PROGRAM_TEMPLATES } from '@/lib/programTemplates';
 import { db } from '@/lib/db';
 import type { ActivityKind, ProgramDay } from '@/lib/db/types';
@@ -120,11 +122,13 @@ export function ProgramsPage() {
     }
   };
 
-  // Δομημένο πρόγραμμα (έχει μέρες) → δεν ξέρουμε ΠΟΙΑ μέρα, πάμε στον editor να
-  // διαλέξει· flat πρόγραμμα (καμία μέρα) → ξεκινά κατευθείαν όπως πριν το v12.
+  // Δομημένο πρόγραμμα → συνέχισε τον κύκλο από τη λιγότερο εκτελεσμένη μέρα
+  // κατευθείαν στο logger. Ο editor παραμένει διαθέσιμος πατώντας το πρόγραμμα.
   const onStart = async (programId: string) => {
     if ((programDays.get(programId)?.length ?? 0) > 0) {
-      navigate(`/programs/${programId}`);
+      const nextDay = await getNextProgramDay(programId);
+      const started = nextDay ? await startWorkoutFromProgramDay(nextDay.id) : null;
+      if (started) navigate('/workout/active');
       return;
     }
     const started = await startWorkoutFromProgram(programId);

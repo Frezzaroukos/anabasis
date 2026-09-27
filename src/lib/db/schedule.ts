@@ -1,5 +1,33 @@
 import { db } from './index';
-import type { ProgramExercise, Workout } from './types';
+import type { ProgramDay, ProgramExercise, Workout } from './types';
+
+/**
+ * Η επόμενη μέρα ενός structured προγράμματος: πρώτα εκείνη με τις λιγότερες
+ * ολοκληρωμένες εκτελέσεις και, σε ισοπαλία, η φυσική σειρά του προγράμματος.
+ * Έτσι το Start από τη λίστα προγραμμάτων συνεχίζει τον κύκλο αντί να ανοίγει
+ * τον editor ή να ξεκινά πάντα αυθαίρετα την πρώτη μέρα.
+ */
+export async function getNextProgramDay(programId: string): Promise<ProgramDay | null> {
+  const [allDays, workouts] = await Promise.all([
+    db.program_days.where('program_id').equals(programId).sortBy('position'),
+    db.workouts.where('program_id').equals(programId).toArray(),
+  ]);
+  const days = allDays.filter((day) => day.deleted_at == null);
+  if (days.length === 0) return null;
+
+  const completedByDay = new Map<string, number>();
+  for (const workout of workouts) {
+    if (workout.deleted_at != null || workout.ended_at == null || !workout.program_day_id) continue;
+    completedByDay.set(
+      workout.program_day_id,
+      (completedByDay.get(workout.program_day_id) ?? 0) + 1,
+    );
+  }
+
+  return days.reduce((next, day) =>
+    (completedByDay.get(day.id) ?? 0) < (completedByDay.get(next.id) ?? 0) ? day : next,
+  );
+}
 
 /**
  * Το πλάνο μιας προπόνησης — οι γραμμές του προγράμματος που ΑΝΤΙΣΤΟΙΧΟΥΝ σε
