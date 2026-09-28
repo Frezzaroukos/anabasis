@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -98,6 +98,21 @@ export function AddSetInline({
   // ο χρήστης διαλέξει set type που μετριέται σε δευτερόλεπτα (isometric/half_hold).
   const holdActive = holdMode || setType === 'isometric' || setType === 'half_hold';
   const valid = (holdActive ? holdValid : repsValid) && weightValid;
+
+  // Εναλλαγή reps↔hold (π.χ. διάλεξες set type isometric/half_hold εν ώρα
+  // καταγραφής): καθάρισε το πεδίο που μόλις κρύφτηκε ώστε να μη μείνει stale
+  // τιμή που θα μπέρδευε μια μετέπειτα εναλλαγή, και κράτα το keyboard στο
+  // ενεργό πεδίο. Δεν τρέχει στο πρώτο render — δεν κλέβει focus στο άνοιγμα.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (holdActive) setReps('');
+    else setHold('');
+    primaryInputRef.current?.focus();
+  }, [holdActive]);
 
   const submit = async () => {
     if (!valid || busy) return;
