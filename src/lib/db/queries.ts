@@ -258,6 +258,7 @@ export interface AddSetInput {
   weight_kg: number | null;
   bodyweight_kg: number | null;
   reps: number | null;
+  rest_pause_reps?: number[];
   hold_seconds: number | null;
   is_warmup?: boolean;
   is_failure?: boolean;
@@ -295,6 +296,7 @@ export async function addSet(input: AddSetInput): Promise<AddSetResult> {
     weight_kg: input.weight_kg,
     bodyweight_kg: input.bodyweight_kg,
     reps: input.reps,
+    rest_pause_reps: input.set_type === 'rest_pause' ? (input.rest_pause_reps ?? []) : [],
     hold_seconds: input.hold_seconds,
     rpe: input.rpe ?? null,
     rir: input.rir ?? null,
@@ -461,6 +463,7 @@ export async function updateSet(
       SetEntry,
       | 'weight_kg'
       | 'reps'
+      | 'rest_pause_reps'
       | 'hold_seconds'
       | 'notes'
       | 'rpe'

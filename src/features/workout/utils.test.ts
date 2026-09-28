@@ -70,18 +70,16 @@ describe('resolveSetGroup', () => {
     expect(result).toEqual({ groupId: 'group-2', chain: { id: 'group-2', type: 'dropset' } });
   });
 
-  it('rest_pause συνεχίζει επίσης σωστά αλυσίδα', () => {
-    const active = { id: 'group-9', type: 'rest_pause' as const };
-    const result = resolveSetGroup('rest_pause', active, 'ignored');
-    expect(result.groupId).toBe('group-9');
+  it('rest_pause είναι ένα parent set με mini-sets, όχι αλυσίδα', () => {
+    expect(resolveSetGroup('rest_pause', null, 'ignored')).toEqual({ groupId: null, chain: null });
   });
 });
 
 describe('isChainSetType', () => {
-  it('αναγνωρίζει μόνο dropset/superset/rest_pause', () => {
+  it('αναγνωρίζει μόνο dropset/superset', () => {
     expect(isChainSetType('dropset')).toBe(true);
     expect(isChainSetType('superset')).toBe(true);
-    expect(isChainSetType('rest_pause')).toBe(true);
+    expect(isChainSetType('rest_pause')).toBe(false);
     expect(isChainSetType('normal')).toBe(false);
     expect(isChainSetType('warmup')).toBe(false);
     expect(isChainSetType('amrap')).toBe(false);

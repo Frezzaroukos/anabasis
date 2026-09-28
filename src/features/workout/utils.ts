@@ -57,15 +57,15 @@ export interface SetFormValues {
 }
 
 /** Τύποι σετ που ενώνονται σε αλυσίδα μέσω κοινού group_id. */
-export const CHAIN_SET_TYPES: SetType[] = ['dropset', 'superset', 'rest_pause'];
+export const CHAIN_SET_TYPES: SetType[] = ['dropset', 'superset'];
 
-export type ChainType = 'dropset' | 'superset' | 'rest_pause';
+export type ChainType = 'dropset' | 'superset';
 
 export function isChainSetType(t: SetType): t is ChainType {
   return (CHAIN_SET_TYPES as SetType[]).includes(t);
 }
 
-/** Ενεργή αλυσίδα σετ (dropset/superset/rest_pause) στο τρέχον workout. */
+/** Ενεργή αλυσίδα σετ (dropset/superset) στο τρέχον workout. */
 export interface SetChain {
   id: string;
   type: ChainType;
@@ -82,7 +82,7 @@ export interface ResolvedSetGroup {
  * ξαναχρησιμοποιεί το group_id (συνέχεια της αλυσίδας). Διαφορετικός
  * chain-τύπος (ή καμία ενεργή αλυσίδα) → ανοίγει καινούρια με το `newId`
  * που παράγεται απ' έξω (crypto.randomUUID), ώστε η συνάρτηση να μένει pure.
- * Μη-chain τύποι (normal/warmup/amrap/failure) δεν αγγίζουν την αλυσίδα.
+ * Μη-chain τύποι (normal/warmup/rest_pause/amrap/failure) δεν αγγίζουν την αλυσίδα.
  */
 export function resolveSetGroup(
   setType: SetType,

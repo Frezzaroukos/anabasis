@@ -30,11 +30,13 @@ interface AddSetInlineProps {
   initialWeight?: number | null;
   initialReps?: number | null;
   initialHoldSeconds?: number | null;
+  initialRestPauseReps?: number[];
   onSave: (
     weightKg: number | null,
     reps: number | null,
     holdSeconds: number | null,
     intensity: SetIntensity,
+    restPauseReps: number[],
   ) => Promise<void> | void;
   onCancel?: () => void;
   saveLabelKey?: 'workout.addSet' | 'workout.save';
@@ -52,6 +54,7 @@ export function AddSetInline({
   initialWeight,
   initialReps,
   initialHoldSeconds,
+  initialRestPauseReps = [],
   onSave,
   onCancel,
   saveLabelKey = 'workout.addSet',
@@ -69,6 +72,7 @@ export function AddSetInline({
   const [hold, setHold] = useState<string>(
     initialHoldSeconds != null ? String(initialHoldSeconds) : '',
   );
+  const [restPauseReps, setRestPauseReps] = useState(initialRestPauseReps.join(', '));
   const [busy, setBusy] = useState(false);
   // Κρυμμένα πίσω από toggle: στο γυμναστήριο η γρήγορη καταγραφή δεν πρέπει
   // να επιβραδύνεται από πεδία που συμπληρώνονται σπάνια.
@@ -98,6 +102,14 @@ export function AddSetInline({
   // ο χρήστης διαλέξει set type που μετριέται σε δευτερόλεπτα (isometric/half_hold).
   const holdActive = holdMode || setType === 'isometric' || setType === 'half_hold';
   const valid = (holdActive ? holdValid : repsValid) && weightValid;
+  const parsedRestPauseReps = restPauseReps
+    .split(/[,+\s]+/)
+    .filter(Boolean)
+    .map(Number);
+  const restPauseValid =
+    setType !== 'rest_pause' ||
+    (parsedRestPauseReps.length > 0 &&
+      parsedRestPauseReps.every((value) => Number.isInteger(value) && value > 0));
 
   // Εναλλαγή reps↔hold (π.χ. διάλεξες set type isometric/half_hold εν ώρα
   // καταγραφής): καθάρισε το πεδίο που μόλις κρύφτηκε ώστε να μη μείνει stale
@@ -115,7 +127,7 @@ export function AddSetInline({
   }, [holdActive]);
 
   const submit = async () => {
-    if (!valid || busy) return;
+    if (!valid || !restPauseValid || busy) return;
     setBusy(true);
     try {
       await onSave(
@@ -127,6 +139,7 @@ export function AddSetInline({
           rir: numOrNull(rir),
           tempo: tempo.trim() === '' ? null : tempo.trim(),
         },
+        setType === 'rest_pause' ? parsedRestPauseReps : [],
       );
       // Το βάρος συνήθως μένει ίδιο σετ-σετ (π.χ. ίδιο κιλό, διαφορετικά reps
       // λόγω κόπωσης) — ΔΕΝ το σβήνουμε, μόνο τα reps/hold που αλλάζουν.
@@ -283,7 +296,7 @@ export function AddSetInline({
         )}
         <Button
           size="sm"
-          disabled={!valid || busy}
+          disabled={!valid || !restPauseValid || busy}
           onClick={() => void submit()}
           className="h-9 shrink-0"
         >
@@ -295,6 +308,24 @@ export function AddSetInline({
           </Button>
         )}
       </div>
+
+      {setType === 'rest_pause' && (
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {t('workout.restPauseMiniSets')}
+          </span>
+          <Input
+            value={restPauseReps}
+            onChange={(e) => setRestPauseReps(e.target.value)}
+            placeholder={t('workout.restPauseMiniSetsPlaceholder')}
+            aria-label={t('workout.restPauseMiniSets')}
+            className="h-9 font-mono tabular-nums"
+          />
+          <span className="text-[10px] text-muted-foreground">
+            {t('workout.restPauseMiniSetsHint')}
+          </span>
+        </label>
+      )}
 
       <button
         type="button"

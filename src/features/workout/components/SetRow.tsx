@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import type { SetEntry, SetType } from '@/lib/db/types';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { AddSetInline } from './AddSetInline';
+import { AddSetInline, type SetIntensity } from './AddSetInline';
 import { formatLoad, groupColorClass, isChainSetType } from '../utils';
 
 interface SetRowProps {
@@ -80,8 +80,15 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
     weightKg: number | null,
     reps: number | null,
     holdSeconds: number | null,
+    _intensity: SetIntensity,
+    restPauseReps: number[],
   ) => {
-    await queries.updateSet(set.id, { weight_kg: weightKg, reps, hold_seconds: holdSeconds });
+    await queries.updateSet(set.id, {
+      weight_kg: weightKg,
+      reps,
+      rest_pause_reps: restPauseReps,
+      hold_seconds: holdSeconds,
+    });
     setEditing(false);
   };
 
@@ -90,6 +97,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
   const onChangeSetType = async (nextType: SetType) => {
     await queries.updateSet(set.id, {
       set_type: nextType,
+      ...(nextType === 'rest_pause' ? {} : { rest_pause_reps: [] }),
       group_id: isChainSetType(nextType) ? (set.group_id ?? crypto.randomUUID()) : null,
     });
   };
@@ -104,6 +112,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
           initialWeight={set.weight_kg}
           initialReps={set.reps}
           initialHoldSeconds={set.hold_seconds}
+          initialRestPauseReps={set.rest_pause_reps ?? []}
           onSave={onSaveEdit}
           onCancel={() => setEditing(false)}
           saveLabelKey="workout.save"
@@ -178,6 +187,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
           <span className="font-mono font-semibold tabular-nums">
             {formatLoad(set.weight_kg, set.bodyweight_kg, unit)}
             {set.reps != null ? <> × {set.reps}</> : null}
+            {(set.rest_pause_reps?.length ?? 0) > 0 ? <> + {set.rest_pause_reps.join(' + ')}</> : null}
             {set.hold_seconds != null ? <> · {set.hold_seconds}s</> : null}
           </span>
           {/* Η ένταση φαίνεται μόνο όταν καταγράφηκε — αλλιώς θα ήταν

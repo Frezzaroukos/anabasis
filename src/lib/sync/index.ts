@@ -317,11 +317,21 @@ async function applyPulledChanges(changes: SyncChange[]): Promise<void> {
       // Tombstones (deleted=1) περνάνε κανονικά — το payload κουβαλάει ήδη
       // deleted_at, ο τοπικός κώδικας διαβάζει soft-deletes παντού.
       if (!table || rows.length === 0) continue;
+      // Παλιότεροι clients δεν στέλνουν το v17 additive πεδίο. Το Dexie δεν
+      // εφαρμόζει migration σε rows που φτάνουν αργότερα από sync, άρα το
+      // κανονικοποιούμε στο pull boundary για forward/backward compatibility.
+      const compatibleRows =
+        tbl === 'sets'
+          ? (rows as SyncRow[]).map((row) => ({
+              ...row,
+              rest_pause_reps: row.rest_pause_reps ?? [],
+            }))
+          : (rows as SyncRow[]);
       const findDup = UNIQUE_DUP_FINDER[tbl];
       if (findDup) {
-        await putResolvingUnique(table, rows as SyncRow[], findDup);
+        await putResolvingUnique(table, compatibleRows as SyncRow[], findDup);
       } else {
-        await table.bulkPut(rows as SyncRow[]);
+        await table.bulkPut(compatibleRows as SyncRow[]);
       }
     }
   });

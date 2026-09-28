@@ -190,6 +190,8 @@ export interface SetEntry {
   weight_kg: number | null;
   bodyweight_kg: number | null;
   reps: number | null;
+  /** v17: επαναλήψεις των mini-sets μετά το κύριο rest-pause set. */
+  rest_pause_reps: number[];
   hold_seconds: number | null;
   /** 1-10 — πόσο κοντά στην αποτυχία ήταν το σετ */
   rpe: number | null;

@@ -4,11 +4,13 @@ import { bootstrapDB } from '../db/bootstrap';
 import { DEFAULT_USER_ID, setCurrentUserId } from '../db/session';
 import {
   addProgramExercise,
+  addSet,
   createExercise,
   createProgram,
   createProgramDay,
   deleteProgramDay,
   listProgramDays,
+  startWorkout,
 } from '../db/queries';
 import { fullResync, syncNow } from './index';
 
@@ -125,6 +127,33 @@ describe('syncNow — push', () => {
         else expect(row.user_id).toBe(DEFAULT_USER_ID);
       }
     }
+  });
+
+  it('μεταφέρει τα rest-pause mini-sets μέσα στο set row', async () => {
+    const workout = await startWorkout('strength');
+    const exercise = await createExercise({ name: 'Rest-pause Sync' });
+    const set = await addSet({
+      workout_id: workout.id,
+      exercise_id: exercise.id,
+      weight_kg: 40,
+      bodyweight_kg: null,
+      reps: 8,
+      rest_pause_reps: [3, 2],
+      hold_seconds: null,
+      set_type: 'rest_pause',
+    });
+    const { calls } = stubFetch({});
+
+    await fullResync();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+    const synced = changes.find((change) => change.tbl === 'sets')?.rows.find(
+      (row) => row.id === set.id,
+    );
+    expect(synced).toMatchObject({ rest_pause_reps: [3, 2], user_id: DEFAULT_USER_ID });
   });
 });
 
@@ -287,6 +316,45 @@ describe('backfill νέου πίνακα στο push set', () => {
 });
 
 describe('syncNow — pull', () => {
+  it('κανονικοποιεί set από παλιό client χωρίς rest_pause_reps', async () => {
+    const workout = await startWorkout('strength');
+    const exercise = await createExercise({ name: 'Legacy Synced Set' });
+    const incoming = {
+      id: 'legacy-set-without-mini-reps',
+      workout_id: workout.id,
+      exercise_id: exercise.id,
+      set_number: 1,
+      weight_kg: 20,
+      bodyweight_kg: null,
+      reps: 10,
+      hold_seconds: null,
+      rpe: null,
+      rir: null,
+      tempo: null,
+      is_warmup: false,
+      is_failure: false,
+      set_type: 'normal',
+      group_id: null,
+      notes: null,
+      rest_seconds: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      deleted_at: null,
+      user_id: DEFAULT_USER_ID,
+    };
+    stubFetch({
+      pull: () => jsonResponse({
+        changes: [{ tbl: 'sets', rows: [incoming] }],
+        cursor: 1,
+        has_more: false,
+      }),
+    });
+
+    await syncNow();
+
+    expect((await db.sets.get(incoming.id))?.rest_pause_reps).toEqual([]);
+  });
+
   it('εφαρμόζει rows ΚΑΙ tombstones, προχωρά τον cursor', async () => {
     const normalId = 'sync-pull-normal';
     const tombstoneId = 'sync-pull-tombstone';
