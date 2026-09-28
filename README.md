@@ -14,7 +14,7 @@ Offline-first PWA · native desktop · optional accounts & sync · TypeScript st
 
 **[▶ Live demo](https://anabasis.axonos.dev)** · works offline, no signup required — an account is optional, only to sync across devices
 
-<img src="docs/screenshots/hero.png" alt="Dashboard with skill ladder, calendar, the skill catalogue and the settings hub" width="100%">
+<img src="docs/screenshots/hero.png" alt="Anabasis home, calendar, programs and exercise library on mobile" width="100%">
 
 </div>
 
@@ -134,7 +134,7 @@ cd server && cargo run --release     # Axum + SQLite on :8121
 Screenshots in this README are generated, not hand-taken:
 
 ```bash
-node scripts/shots.mjs        # headless Chromium, 390×844
+node scripts/screenshots/generate.mjs  # isolated Demo profile, 390×844 @2x
 node scripts/gen-brand-assets.mjs   # favicon/PWA/OG from one source of truth
 ```
 
