@@ -59,10 +59,20 @@ export function HistoryPage() {
   const [scrollMargin, setScrollMargin] = useState(0);
   useLayoutEffect(() => {
     if (!virtualized) return;
-    const update = () => setScrollMargin(virtualListRef.current?.offsetTop ?? 0);
+    const el = virtualListRef.current;
+    if (!el) return;
+    const update = () => setScrollMargin(el.offsetTop);
     update();
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    // Το περιεχόμενο πάνω από τη λίστα (VolumeChart/FeelChart/PRs) φορτώνει async
+    // και αλλάζει το offsetTop χωρίς resize ή αλλαγή πλήθους γραμμών· χωρίς αυτό
+    // ο window virtualizer κρατά stale margin → κενά/clipping σε 50+ items.
+    const ro = new ResizeObserver(update);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener('resize', update);
+      ro.disconnect();
+    };
   }, [virtualized, historyRows.length]);
   const rowVirtualizer = useWindowVirtualizer({
     count: virtualized ? historyRows.length : 0,

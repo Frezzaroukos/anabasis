@@ -38,10 +38,20 @@ export function GoalsPage() {
   const [scrollMargin, setScrollMargin] = useState(0);
   useLayoutEffect(() => {
     if (!virtualized) return;
-    const update = () => setScrollMargin(virtualListRef.current?.offsetTop ?? 0);
+    const el = virtualListRef.current;
+    if (!el) return;
+    const update = () => setScrollMargin(el.offsetTop);
     update();
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    // Το «τι είναι στόχος» intro (showIntro) και τα async φορτωμένα δεδομένα
+    // πάνω από τη λίστα αλλάζουν το offsetTop χωρίς resize ή αλλαγή πλήθους
+    // γραμμών· χωρίς αυτό ο virtualizer κρατά stale margin → κενά/clipping.
+    const ro = new ResizeObserver(update);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener('resize', update);
+      ro.disconnect();
+    };
   }, [virtualized, progress.length]);
   const rowVirtualizer = useWindowVirtualizer({
     count: virtualized ? progress.length : 0,
