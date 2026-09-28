@@ -39,7 +39,7 @@ export interface LeaderboardCacheRow {
   updated_at: string;
 }
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -388,6 +388,13 @@ export class AnabasisDB extends Dexie {
         .modify((s) => {
           s.coach_enabled ??= false;
         });
+    });
+
+    /** v17 — additive rest-pause mini-sets στο γονικό set. */
+    this.version(17).upgrade(async (tx) => {
+      await tx.table('sets').toCollection().modify((s) => {
+        s.rest_pause_reps ??= [];
+      });
     });
   }
 }

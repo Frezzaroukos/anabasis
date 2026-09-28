@@ -81,6 +81,24 @@ describe('τύποι σετ (dropset / superset)', () => {
     });
     expect(n.set_type).toBe('normal');
     expect(u.set_type).toBe('warmup');
+    expect(n.rest_pause_reps).toEqual([]);
+  });
+
+  it('αποθηκεύει τα rest-pause mini-sets στο γονικό set', async () => {
+    const w = await startWorkout('strength');
+    const ex = SEED_EXERCISES[0]!;
+    const set = await addSet({
+      workout_id: w.id,
+      exercise_id: ex.id,
+      weight_kg: 50,
+      bodyweight_kg: null,
+      reps: 8,
+      rest_pause_reps: [3, 2],
+      hold_seconds: null,
+      set_type: 'rest_pause',
+    });
+    expect(set.rest_pause_reps).toEqual([3, 2]);
+    expect(await db.sets.get(set.id)).toMatchObject({ rest_pause_reps: [3, 2] });
   });
 });
 

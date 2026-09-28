@@ -28,6 +28,7 @@ const baseSet = (over: Partial<SetEntry> = {}): SetEntry => ({
   updated_at: '2026-01-01T00:00:00.000Z',
   deleted_at: null,
   ...over,
+  rest_pause_reps: over.rest_pause_reps ?? [],
 });
 
 describe('candidatesFromSet', () => {
@@ -79,6 +80,13 @@ describe('candidatesFromSet', () => {
     expect(types).toContain('max_volume');
     expect(types).not.toContain('max_weight');
     expect(types).not.toContain('e1rm');
+  });
+
+  it('rest-pause mini-sets αυξάνουν μόνο το volume candidate, όχι reps/e1RM', () => {
+    const c = candidatesFromSet(baseSet({ reps: 8, rest_pause_reps: [3, 2] }));
+    expect(c.find((x) => x.type === 'max_volume')?.value).toBe(1300);
+    expect(c.find((x) => x.type === 'max_reps')?.value).toBe(8);
+    expect(c.find((x) => x.type === 'e1rm')?.value).toBeCloseTo(126.67, 1);
   });
 });
 

@@ -128,6 +128,7 @@ export function ExerciseCard({
     reps: number | null,
     holdSeconds: number | null,
     intensity: SetIntensity,
+    restPauseReps: number[],
   ) => {
     const { groupId, chain: nextChain } = resolveSetGroup(setType, chain, crypto.randomUUID());
     if (nextChain !== chain) onChainChange(nextChain);
@@ -137,6 +138,7 @@ export function ExerciseCard({
       weight_kg: weightKg,
       bodyweight_kg: setBodyweight,
       reps,
+      rest_pause_reps: restPauseReps,
       hold_seconds: holdSeconds,
       set_type: setType,
       group_id: groupId,
