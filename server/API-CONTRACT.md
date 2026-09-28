@@ -77,6 +77,12 @@ Body: `{ email, password }`. 200 ίδιο σχήμα με signup.
 ### POST /api/auth/logout  (auth)
 Σβήνει το session row. 200 `{}`.
 
+### POST /api/auth/delete_account  (auth)
+Body: `{ confirm_email }`. Το email πρέπει να ταιριάζει με του session
+(case-insensitive). Διαγράφει μόνιμα account, sessions, sync rows, social
+profile/friendships και εκκρεμή magic links σε μία transaction. 200 `{}` ή
+400 `confirmation_mismatch`.
+
 ### GET /api/me  (auth)
 200 `{ id, email, role, created_at, last_sync_at }`.
 

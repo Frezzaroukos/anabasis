@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Card } from '@/components/ui/Section';
+import { Card, SectionTitle } from '@/components/ui/Section';
 import { Wordmark } from '@/components/Logo';
 import { ShareCard } from '../components/ShareCard';
 import { SettingsHeader } from '../components/SettingsList';
@@ -23,6 +23,13 @@ export function AboutSettingsPage() {
         </div>
         <p className="mt-2 text-sm text-muted-foreground">{t('app.tagline')}</p>
         <p className="mt-3 text-xs text-muted-foreground">{t('settings.offlineNote')}</p>
+      </Card>
+
+      <Card>
+        <SectionTitle>{t('settings.privacyTitle')}</SectionTitle>
+        <p className="-mt-2 text-xs leading-relaxed text-muted-foreground">
+          {t('settings.privacySummary')}
+        </p>
       </Card>
 
       <ShareCard />

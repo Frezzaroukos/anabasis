@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowRight, Sparkles, Target, Scale } from 'lucide-react';
+import { ArrowRight, Sparkles, Target, Dumbbell } from 'lucide-react';
 import { hasAnyCompletedWorkout } from '@/lib/db/queries';
 import { listGoals } from '@/lib/db/goals';
 import { getAllSkillProgress } from '@/lib/db/queries';
@@ -41,8 +41,8 @@ export function EmptyDashboardHint() {
     },
     {
       done: hasWorkout,
-      to: '/body',
-      Icon: Scale,
+      to: '/calendar',
+      Icon: Dumbbell,
       title: t('dashboard.next.body'),
       hint: t('dashboard.next.bodyHint'),
     },

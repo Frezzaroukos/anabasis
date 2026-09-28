@@ -300,6 +300,8 @@
     "aboutDesc": "What Anabasis is, who made it, and how to share it.",
     "storageNote": "Everything is stored in this browser (IndexedDB). Clearing site data deletes it — export a backup first.",
     "dataOfProfile": "Counts for the active device profile only.",
+    "privacyTitle": "Privacy",
+    "privacySummary": "No ads or analytics. Training data stays in this browser unless you choose cloud sync. A cloud account stores your private sync rows and account email; social profile sharing is opt-in and exposes aggregates only. Export is available under Data & backups, and permanent cloud-account deletion under Account.",
     "coach": {
       "title": "Coach mode",
       "enable": "Enable Coach mode",
@@ -460,7 +462,7 @@
       "goal": "Set a goal in your own terms",
       "goalHint": "Sessions, volume, kilometres — whatever you actually count.",
       "body": "Log your first workout →",
-      "bodyHint": "Everything else builds on it."
+      "bodyHint": "Pick a day in the calendar and add exercises."
     },
     "hero": {
       "streakUnit": "day streak",
@@ -765,7 +767,12 @@
     "moreOptions": "More sign-in options",
     "magicSent": "Check your inbox — if that email has an account, a login link is on its way (expires in 15 minutes).",
     "errorEmailRequired": "Enter your email first.",
-    "vsProfiles": "Sharing this device with someone? Set up device profiles"
+    "vsProfiles": "Sharing this device with someone? Set up device profiles",
+    "deleteAccount": "Delete cloud account",
+    "deleteWarning": "Permanent: removes your account, sync data, sessions, friends and public profile. Your local device data remains until you remove its profile.",
+    "confirmEmail": "Type your email to confirm",
+    "deleteForever": "Delete permanently",
+    "deleteError": "The account could not be deleted. Check your connection and confirmation email."
   },
   "admin": {
     "title": "Admin",

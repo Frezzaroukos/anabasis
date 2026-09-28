@@ -112,6 +112,13 @@ export async function logout(): Promise<void> {
   if (typeof window !== 'undefined') window.location.reload();
 }
 
+export async function deleteAccount(confirmEmail: string): Promise<void> {
+  await api.deleteAccount(confirmEmail);
+  const fresh = await createProfile('');
+  setCurrentUserId(fresh.id);
+  if (typeof window !== 'undefined') window.location.reload();
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await api.changePassword(currentPassword, newPassword);
 }

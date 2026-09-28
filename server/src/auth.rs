@@ -435,6 +435,61 @@ pub async fn logout(
     Ok(Json(serde_json::json!({})))
 }
 
+#[derive(Deserialize)]
+pub struct DeleteAccountRequest {
+    confirm_email: String,
+}
+
+/// Permanently removes the cloud account and every server-side row owned by
+/// it. Requiring the exact email prevents an accidental single-click delete;
+/// the bearer session still provides authentication for passwordless users.
+pub async fn delete_account(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    AppJson(body): AppJson<DeleteAccountRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let email: String = sqlx::query_scalar("SELECT email FROM accounts WHERE id = ?")
+        .bind(&auth.account_id)
+        .fetch_one(&state.pool)
+        .await?;
+    if normalize_email(&body.confirm_email) != email {
+        return Err(AppError::bad_request(
+            "confirmation_mismatch",
+            "Το email επιβεβαίωσης δεν ταιριάζει.",
+        ));
+    }
+
+    let mut tx = state.pool.begin().await?;
+    sqlx::query("DELETE FROM friendships WHERE requester_id = ? OR addressee_id = ?")
+        .bind(&auth.account_id)
+        .bind(&auth.account_id)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("DELETE FROM profile_stats WHERE account_id = ?")
+        .bind(&auth.account_id)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("DELETE FROM sync_rows WHERE account_id = ?")
+        .bind(&auth.account_id)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("DELETE FROM sessions WHERE account_id = ?")
+        .bind(&auth.account_id)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("DELETE FROM login_tokens WHERE email = ?")
+        .bind(&email)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("DELETE FROM accounts WHERE id = ?")
+        .bind(&auth.account_id)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+
+    Ok(Json(serde_json::json!({})))
+}
+
 #[derive(Serialize, sqlx::FromRow)]
 pub struct MeResponse {
     id: String,
