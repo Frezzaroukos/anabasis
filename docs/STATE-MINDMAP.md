@@ -25,7 +25,7 @@ Anabasis  (~/code/anabasis · github.com/Frezzaroukos/anabasis · renamed from s
 │
 ├── BACKEND  [Rust · Axum0.8 · SQLite/sqlx0.9 · :8121]
 │   ├── Accounts: argon2id · opaque bearer tokens (session tbl) .... ✅
-│   ├── Admin: claim_admin via ANABASIS_ADMIN_CODE=7431agg ......... ✅
+│   ├── Admin: claim_admin via ANABASIS_ADMIN_CODE (από το secrets env) ......... ✅
 │   ├── OAuth Google: scaffold ................................... ⚠️ scaffold only
 │   ├── Sync: row-level last-write-wins · per-acct seq · epoch ..... ✅ VERIFIED
 │   ├── Rate limit: tower_governor keyed CF-Connecting-IP ......... ✅
