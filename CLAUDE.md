@@ -142,8 +142,8 @@ verified: app/api/portfolio 200, PWA manifest+SW served (installable any device)
 
 ## 4. Ο λογαριασμός του Aggelos + δεδομένα + κινητό
 
-- **Account:** `***REMOVED***` — role **admin**. Password build-time:
-  `***REMOVED***` (⚠️ **ΝΑ ΑΛΛΑΞΕΙ** πριν wide sharing).
+- **Account:** ο Aggelos — role **admin**. Credentials ΠΟΤΕ σε tracked αρχεία
+  (το repo είναι public)· ζουν μόνο στο `~/.config/aggelos-stack/secrets/`.
 - **Data (server):** `~/.local/share/anabasis-server/anabasis.db` — 57 workouts,
   3208 sets, 26 custom exercises, 1 custom tracker, **2 programs** (Upper 10ασκ. +
   Legs & Core 8ασκ. — στημένα από τα πραγματικά του δεδομένα, 04/09).
