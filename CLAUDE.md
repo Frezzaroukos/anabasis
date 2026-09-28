@@ -273,6 +273,12 @@ git push github main              # remote "github" = GitHub (origin = local win
 
 ## 9. Gotchas (μη χάσεις χρόνο)
 
+- **`npm run build` = ΖΩΝΤΑΝΟ deploy του web:** το `anabasis.service` (serve.py)
+  σερβίρει ΚΑΤΕΥΘΕΙΑΝ το `dist/`, οπότε ένα σκέτο `npm run build` δημοσιεύει
+  ΑΜΕΣΩΣ ό,τι έχεις τοπικά στο anabasis.axonos.dev — ακόμη κι αν το commit είναι
+  unpushed. Agents που ΔΕΝ κάνουν deploy (verify-only) να χτίζουν σε temp:
+  `npx vite build --outDir /tmp/anabasis-verify` (ΟΧΙ `npm run build`), ώστε να
+  μη μολύνουν το live `dist/`. Πραγματικό deploy = build + push + smoke μαζί.
 - **oxc/rolldown parse threshold στο `queries.ts`:** το αρχείο κάθεται ΑΚΡΙΒΩΣ στο
   όριο· **οποιαδήποτε νέα function** εκεί σπάει το vitest transform (misreported
   line ~411, «Parse failure»). Το cache το κρύβει — `rm -rf node_modules/.vite` για
