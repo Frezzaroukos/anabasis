@@ -174,6 +174,7 @@ pub fn router(state: AppState) -> Router {
         .route("/signup", post(auth::signup))
         .route("/login", post(auth::login))
         .route("/logout", post(auth::logout))
+        .route("/delete_account", post(auth::delete_account))
         .route("/change_password", post(auth::change_password))
         .route("/claim_admin", post(auth::claim_admin))
         .route("/oauth/providers", get(oauth::providers))

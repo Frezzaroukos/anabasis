@@ -14,6 +14,7 @@ import '@fontsource-variable/manrope';
 import '@fontsource-variable/jetbrains-mono';
 import '@/styles/globals.css';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
+import { reloadOnServiceWorkerUpdate } from '@/lib/pwa';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element #root not found');
@@ -36,12 +37,7 @@ navigator.storage?.persist?.().catch(() => {});
  * IndexedDB, δεν χάνεται τίποτα).
  */
 if ('serviceWorker' in navigator) {
-  let reloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded) return;
-    reloaded = true;
-    globalThis.location.reload();
-  });
+  reloadOnServiceWorkerUpdate(navigator.serviceWorker, () => globalThis.location.reload());
 }
 
 createRoot(root).render(

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import {
   ApiError,
   changePassword,
+  deleteAccount,
   login,
   logout,
   requestMagicLink,
@@ -271,6 +272,10 @@ function SignedInPanel({
   const [changeBusy, setChangeBusy] = useState(false);
   const [changeStatusKey, setChangeStatusKey] = useState<string | null>(null);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
 
   const onChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -321,6 +326,19 @@ function SignedInPanel({
       await logout();
     } finally {
       setLogoutBusy(false);
+    }
+  };
+
+  const onDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (deleteBusy || deleteConfirmation.trim().toLowerCase() !== accountEmail.toLowerCase()) return;
+    setDeleteBusy(true);
+    setDeleteErrorKey(null);
+    try {
+      await deleteAccount(deleteConfirmation.trim());
+    } catch {
+      setDeleteErrorKey('account.deleteError');
+      setDeleteBusy(false);
     }
   };
 
@@ -453,6 +471,39 @@ function SignedInPanel({
         <Button size="sm" variant="ghost" disabled={logoutBusy} onClick={() => void onLogout()}>
           {t('account.logout')}
         </Button>
+      </div>
+
+      <div className="mt-3 border-t border-border/60 pt-3">
+        <button
+          type="button"
+          onClick={() => setShowDelete((v) => !v)}
+          className="text-sm text-destructive underline-offset-2 hover:underline"
+        >
+          {t('account.deleteAccount')}
+        </button>
+        {showDelete && (
+          <form onSubmit={(e) => void onDeleteAccount(e)} className="mt-3 space-y-3">
+            <p className="text-xs text-muted-foreground">{t('account.deleteWarning')}</p>
+            <Field label={t('account.confirmEmail')}>
+              <Input
+                type="email"
+                autoComplete="email"
+                required
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+              />
+            </Field>
+            {deleteErrorKey && <p className="text-xs text-destructive" role="alert">{t(deleteErrorKey)}</p>}
+            <Button
+              type="submit"
+              size="sm"
+              variant="destructive"
+              disabled={deleteBusy || deleteConfirmation.trim().toLowerCase() !== accountEmail.toLowerCase()}
+            >
+              {deleteBusy ? t('common.loading') : t('account.deleteForever')}
+            </Button>
+          </form>
+        )}
       </div>
     </section>
   );

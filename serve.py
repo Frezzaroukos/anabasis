@@ -21,6 +21,12 @@ NO_CACHE = {"/", "/index.html", "/sw.js", "/registerSW.js", "/manifest.webmanife
 
 class Handler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
+        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
         if self.path.split("?")[0] in NO_CACHE:
             self.send_header("Cache-Control", "no-cache, must-revalidate")
         else:

@@ -77,7 +77,7 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 500+ tests (449 frontend + 58 Rust backend) concentrated on migrations, the goal
+**Testing where it pays.** 530+ tests (473 frontend + 64 Rust backend) concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
 Monday" does not depend on the day CI runs), PR detection, the card-order
 resolver, and the sync engine (push/pull cursors, epoch handling, last-write-wins
@@ -114,7 +114,8 @@ i18next · Vitest
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 419 frontend tests (+ 40 in server/ via cargo test)
+npm test         # frontend tests
+cd server && cargo test  # backend tests
 npm run build    # production + service worker
 ```
 

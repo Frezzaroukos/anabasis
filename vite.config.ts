@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 
+const basePath = process.env.BASE_PATH ?? '/';
+
 export default defineConfig({
   /*
    * Σερβίρεται από δύο σημεία:
@@ -10,7 +12,7 @@ export default defineConfig({
    *  · frezzaroukos.github.io/anabasis/ — GitHub Pages, πάντα ζωντανό
    * Το BASE_PATH το θέτει το CI· τοπικά μένει '/'.
    */
-  base: process.env.BASE_PATH ?? '/',
+  base: basePath,
   // Μέσα στο Tauri (desktop app) δεν έχει νόημα service worker: τα assets
   // είναι ήδη τοπικά, κι ένας stale SW θα σέρβιρε παλιά έκδοση μετά από update.
   // Το tauri-cli θέτει TAURI_ENV_PLATFORM στα before*Command — εκεί κόβεται το PWA.
@@ -29,18 +31,18 @@ export default defineConfig({
         background_color: '#101013',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: basePath,
         categories: ['health', 'fitness', 'sports'],
         icons: [
-          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: `${basePath}pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: `${basePath}pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
           // Ξεχωριστό maskable: το Android κόβει κύκλο — το σήμα είναι μικρότερο εκεί.
-          { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: `${basePath}pwa-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         shortcuts: [
-          { name: 'Νέα προπόνηση', short_name: 'Προπόνηση', url: '/workout' },
-          { name: 'Ημερολόγιο', short_name: 'Ημερολόγιο', url: '/calendar' },
-          { name: 'Πρόοδος', short_name: 'Πρόοδος', url: '/progress' },
+          { name: 'Νέα προπόνηση', short_name: 'Προπόνηση', url: `${basePath}workout` },
+          { name: 'Ημερολόγιο', short_name: 'Ημερολόγιο', url: `${basePath}calendar` },
+          { name: 'Πρόοδος', short_name: 'Πρόοδος', url: `${basePath}progress` },
         ],
       },
       workbox: {

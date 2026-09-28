@@ -199,6 +199,14 @@ export const api = {
     }
   },
 
+  async deleteAccount(confirmEmail: string): Promise<void> {
+    await request('/auth/delete_account', {
+      method: 'POST',
+      body: { confirm_email: confirmEmail },
+    });
+    writeStoredAuth(null);
+  },
+
   me(): Promise<Me> {
     return request<Me>('/me');
   },

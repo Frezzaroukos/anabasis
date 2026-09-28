@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { db } from '../db';
 import { bootstrapDB } from '../db/bootstrap';
 import { DEFAULT_USER_ID, getCurrentUserId, setCurrentUserId } from '../db/session';
-import { initMagicLink, initOAuthFragment, logout } from './auth';
+import { deleteAccount, initMagicLink, initOAuthFragment, logout } from './auth';
 import { readStoredAuth } from './client';
 
 /**
@@ -261,5 +261,58 @@ describe('logout — shared-device protection', () => {
 
     const oldStillThere = await db.workouts.where('user_id').equals(accountId).count();
     expect(oldStillThere).toBe(1); // δεν σβήνεται, απλώς δεν είναι πια «ενεργό»
+  });
+});
+
+describe('deleteAccount — server deletion and local isolation', () => {
+  const originalLocation = window.location;
+
+  beforeEach(() => {
+    // @ts-expect-error -- jsdom Location, επίτηδες αντικαθίσταται για το test
+    delete window.location;
+    window.location = { ...originalLocation, reload: vi.fn() } as unknown as Location;
+  });
+
+  afterEach(() => {
+    window.location = originalLocation;
+  });
+
+  it('στέλνει bearer + email, καθαρίζει auth και αλλάζει σε φρέσκο προφίλ', async () => {
+    const accountId = 'account-to-delete';
+    setCurrentUserId(accountId);
+    localStorage.setItem(
+      'anabasis.auth',
+      JSON.stringify({
+        token: 'delete-session-token',
+        account: {
+          id: accountId,
+          email: 'delete@example.com',
+          role: 'user',
+          created_at: '2026-01-01T00:00:00.000Z',
+        },
+      }),
+    );
+
+    const calls: FetchCall[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        calls.push({ url: String(input), init });
+        return jsonResponse({});
+      }),
+    );
+
+    await deleteAccount('delete@example.com');
+
+    const call = calls[0];
+    expect(call?.url).toContain('/api/auth/delete_account');
+    expect(call?.init?.method).toBe('POST');
+    expect(call?.init?.body).toBe(JSON.stringify({ confirm_email: 'delete@example.com' }));
+    expect((call?.init?.headers as Record<string, string>).Authorization).toBe(
+      'Bearer delete-session-token',
+    );
+    expect(readStoredAuth()).toBeNull();
+    expect(getCurrentUserId()).not.toBe(accountId);
+    expect(window.location.reload).toHaveBeenCalledOnce();
   });
 });

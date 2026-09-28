@@ -116,6 +116,64 @@ async fn signup_login_me_happy_path() {
 }
 
 #[tokio::test]
+async fn delete_account_requires_email_and_removes_all_owned_server_data() {
+    let (app, state, _dir) = test_app(None).await;
+    let (_, body) = signup(&app, "delete-me@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let account_id = body["account"]["id"].as_str().unwrap().to_string();
+
+    sqlx::query(
+        "INSERT INTO sync_rows (account_id, tbl, row_id, payload, seq, deleted, server_updated_at)
+         VALUES (?, 'workouts', 'row-1', '{}', 1, 0, '2026-01-01T00:00:00Z')",
+    )
+    .bind(&account_id)
+    .execute(&state.pool)
+    .await
+    .unwrap();
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/delete_account",
+        Some(&token),
+        Some(json!({ "confirm_email": "wrong@example.com" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "confirmation_mismatch");
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/auth/delete_account",
+        Some(&token),
+        Some(json!({ "confirm_email": " DELETE-ME@EXAMPLE.COM " })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let accounts: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM accounts WHERE id = ?")
+        .bind(&account_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_rows WHERE account_id = ?")
+        .bind(&account_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    let sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE account_id = ?")
+        .bind(&account_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!((accounts, rows, sessions), (0, 0, 0));
+
+    let (status, _) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn wrong_password_and_unknown_email_return_identical_body() {
     let (app, _state, _dir) = test_app(None).await;
     signup(&app, "real@example.com", "correcthorsebattery").await;

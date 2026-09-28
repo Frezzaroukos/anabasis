@@ -33,3 +33,7 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Backend tests
+        working-directory: server
+        run: cargo test --locked
