@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildLastPerformance,
   suggestNextForExercise,
   detectDeloadRisk,
   planNextPeriod,
@@ -11,6 +12,21 @@ describe('suggestNextForExercise', () => {
   it('επιστρέφει null όταν δεν υπάρχει ιστορικό', () => {
     const result = suggestNextForExercise(null);
     expect(result).toBeNull();
+  });
+
+  it('επιστρέφει null για μη-hold χωρίς καταγεγραμμένα reps (ελλιπές record)', () => {
+    // reps: null → buildLastPerformance βάζει 0· δεν πρέπει να βγει ψεύτικο «+1 rep».
+    const perf = buildLastPerformance({
+      id: 'x',
+      exerciseId: 'e',
+      exerciseName: 'Legacy set',
+      isBodyweight: true,
+      isHold: false,
+      reps: null,
+      weightKg: 20,
+      holdSeconds: null,
+    });
+    expect(suggestNextForExercise(perf)).toBeNull();
   });
 
   describe('Regular exercises (non-hold)', () => {

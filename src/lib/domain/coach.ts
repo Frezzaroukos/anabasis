@@ -152,6 +152,10 @@ export function suggestNextForExercise(last: LastExercisePerformance | null): Ne
     };
   }
 
+  // Χωρίς καταγεγραμμένες επαναλήψεις (legacy/ελλιπές record — reps null→0):
+  // ΔΕΝ εφευρίσκουμε πρόταση από απούσα μέτρηση (no invented data).
+  if (last.max_reps_in_set < 1) return null;
+
   // Regular exercises with reps
   if (!last.completed_all_reps) {
     // Didn't hit target reps — add 1 rep
