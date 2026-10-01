@@ -8,7 +8,7 @@ import { SectionTitle } from '@/components/ui/Section';
 import { Logo } from '@/components/Logo';
 import { db, queries } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/db/session';
-import { listActivities, listPrograms } from '@/lib/db/queries';
+import { listActivities, listPrograms, localDay } from '@/lib/db/queries';
 import type { ActivityKind } from '@/lib/db/types';
 import { ActivityChip } from '@/components/ActivityChip';
 import { LastWorkoutCard } from './components/LastWorkoutCard';
@@ -24,11 +24,11 @@ export function WorkoutPage() {
    * να ανοίγεις ημερολόγιο γι' αυτό.
    */
   const [whenMode, setWhenMode] = useState<'now' | 'yesterday' | 'pick'>('now');
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = localDay();
   const yesterdayIso = (() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    return d.toISOString().slice(0, 10);
+    return localDay(d);
   })();
   const [pickedDate, setPickedDate] = useState(todayIso);
 

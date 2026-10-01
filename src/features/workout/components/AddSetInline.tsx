@@ -74,6 +74,8 @@ export function AddSetInline({
   );
   const [restPauseReps, setRestPauseReps] = useState(initialRestPauseReps.join(', '));
   const [busy, setBusy] = useState(false);
+  const submitting = useRef(false);
+  const [saveError, setSaveError] = useState(false);
   // Κρυμμένα πίσω από toggle: στο γυμναστήριο η γρήγορη καταγραφή δεν πρέπει
   // να επιβραδύνεται από πεδία που συμπληρώνονται σπάνια.
   const [showIntensity, setShowIntensity] = useState(false);
@@ -94,14 +96,19 @@ export function AddSetInline({
   const repsNum = reps.trim() === '' ? null : Number(reps);
   const holdNum = hold.trim() === '' ? null : Number(hold);
   const weightNum = weight.trim() === '' ? null : Number(weight);
-  const repsValid = repsNum != null && Number.isFinite(repsNum) && repsNum > 0;
-  const holdValid = holdNum != null && Number.isFinite(holdNum) && holdNum > 0;
+  const repsValid = repsNum != null && Number.isSafeInteger(repsNum) && repsNum > 0;
+  const holdValid = holdNum != null && Number.isSafeInteger(holdNum) && holdNum > 0;
   const weightValid =
     !weighted || (weightNum != null && Number.isFinite(weightNum) && weightNum >= 0);
   // Hold-based logging όταν ο caller το ζητά (skill/isometric exercise) Ή όταν
   // ο χρήστης διαλέξει set type που μετριέται σε δευτερόλεπτα (isometric/half_hold).
   const holdActive = holdMode || setType === 'isometric' || setType === 'half_hold';
-  const valid = (holdActive ? holdValid : repsValid) && weightValid;
+  const rpeNum = numOrNull(rpe);
+  const rirNum = numOrNull(rir);
+  const intensityValid =
+    (rpe.trim() === '' || (rpeNum != null && rpeNum >= 1 && rpeNum <= 10)) &&
+    (rir.trim() === '' || (rirNum != null && Number.isSafeInteger(rirNum) && rirNum >= 0));
+  const valid = (holdActive ? holdValid : repsValid) && weightValid && intensityValid;
   const parsedRestPauseReps = restPauseReps
     .split(/[,+\s]+/)
     .filter(Boolean)
@@ -109,7 +116,7 @@ export function AddSetInline({
   const restPauseValid =
     setType !== 'rest_pause' ||
     (parsedRestPauseReps.length > 0 &&
-      parsedRestPauseReps.every((value) => Number.isInteger(value) && value > 0));
+      parsedRestPauseReps.every((value) => Number.isSafeInteger(value) && value > 0));
 
   // Εναλλαγή reps↔hold (π.χ. διάλεξες set type isometric/half_hold εν ώρα
   // καταγραφής): καθάρισε το πεδίο που μόλις κρύφτηκε ώστε να μη μείνει stale
@@ -127,7 +134,9 @@ export function AddSetInline({
   }, [holdActive]);
 
   const submit = async () => {
-    if (!valid || !restPauseValid || busy) return;
+    if (!valid || !restPauseValid || submitting.current) return;
+    submitting.current = true;
+    setSaveError(false);
     setBusy(true);
     try {
       await onSave(
@@ -135,8 +144,8 @@ export function AddSetInline({
         holdActive ? null : repsNum,
         holdActive ? holdNum : null,
         {
-          rpe: numOrNull(rpe),
-          rir: numOrNull(rir),
+          rpe: rpeNum,
+          rir: rirNum,
           tempo: tempo.trim() === '' ? null : tempo.trim(),
         },
         setType === 'rest_pause' ? parsedRestPauseReps : [],
@@ -148,14 +157,19 @@ export function AddSetInline({
       setRpe('');
       setRir('');
       // Το tempo συνήθως επαναλαμβάνεται μέσα στην ίδια άσκηση — δεν το σβήνουμε.
-      primaryInputRef.current?.focus();
+    } catch {
+      // Keep every entered value intact: a failed write must be visibly retryable.
+      setSaveError(true);
     } finally {
+      submitting.current = false;
       setBusy(false);
+      requestAnimationFrame(() => primaryInputRef.current?.focus());
     }
   };
 
   return (
-    <div className="space-y-2">
+    <fieldset disabled={busy} aria-busy={busy} className="min-w-0 space-y-2">
+      {saveError && <p role="alert" className="text-sm text-destructive">{t('workout.saveFailed')}</p>}
       {lastLabel && (
         <button
           type="button"
@@ -167,7 +181,7 @@ export function AddSetInline({
               setReps(String(initialReps));
             }
           }}
-          className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="min-h-11 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
           {lastLabel}
         </button>
@@ -193,7 +207,7 @@ export function AddSetInline({
               aria-checked={setType === st}
               onClick={() => onSetTypeChange(st)}
               className={cn(
-                'rounded-full border border-border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'min-h-11 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 setType === st
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent',
@@ -228,7 +242,7 @@ export function AddSetInline({
               type="button"
               onClick={() => setCustomOpen(true)}
               aria-label={t('setType.custom')}
-              className="rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="min-h-11 min-w-11 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               +
             </button>
@@ -237,7 +251,7 @@ export function AddSetInline({
       )}
       <div className="flex items-end gap-2">
         {weighted && (
-          <label className="flex flex-1 flex-col gap-1">
+          <label className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('common.weight')} ({t(`common.${unit}`)})
             </span>
@@ -248,13 +262,17 @@ export function AddSetInline({
               min="0"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="h-9 font-mono tabular-nums"
+              className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
+              aria-invalid={weight.trim() !== '' && !weightValid}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); primaryInputRef.current?.focus(); }
+              }}
             />
           </label>
         )}
         {holdActive ? (
-          <label className="flex flex-1 flex-col gap-1">
+          <label className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('workout.holdSeconds')}
             </span>
@@ -266,15 +284,16 @@ export function AddSetInline({
               step="1"
               value={hold}
               onChange={(e) => setHold(e.target.value)}
-              className="h-9 font-mono tabular-nums"
+              className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={t('workout.holdSeconds')}
+              aria-invalid={hold.trim() !== '' && !holdValid}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && valid) void submit();
+                if (e.key === 'Enter') { e.preventDefault(); void submit(); }
               }}
             />
           </label>
         ) : (
-          <label className="flex flex-1 flex-col gap-1">
+          <label className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('workout.reps')}
             </span>
@@ -286,10 +305,11 @@ export function AddSetInline({
               step="1"
               value={reps}
               onChange={(e) => setReps(e.target.value)}
-              className="h-9 font-mono tabular-nums"
+              className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={t('workout.reps')}
+              aria-invalid={reps.trim() !== '' && !repsValid}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && valid) void submit();
+                if (e.key === 'Enter') { e.preventDefault(); void submit(); }
               }}
             />
           </label>
@@ -298,12 +318,12 @@ export function AddSetInline({
           size="sm"
           disabled={!valid || !restPauseValid || busy}
           onClick={() => void submit()}
-          className="h-9 shrink-0"
+          className="h-11 shrink-0"
         >
           {t(saveLabelKey)}
         </Button>
         {onCancel && (
-          <Button size="sm" variant="ghost" onClick={onCancel} className="h-9 shrink-0">
+          <Button size="sm" variant="ghost" onClick={onCancel} className="h-11 shrink-0">
             {t('common.cancel')}
           </Button>
         )}
@@ -319,7 +339,10 @@ export function AddSetInline({
             onChange={(e) => setRestPauseReps(e.target.value)}
             placeholder={t('workout.restPauseMiniSetsPlaceholder')}
             aria-label={t('workout.restPauseMiniSets')}
-            className="h-9 font-mono tabular-nums"
+            className="h-11 min-w-0 font-mono tabular-nums"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); void submit(); }
+            }}
           />
           <span className="text-[10px] text-muted-foreground">
             {t('workout.restPauseMiniSetsHint')}
@@ -331,14 +354,14 @@ export function AddSetInline({
         type="button"
         aria-expanded={showIntensity}
         onClick={() => setShowIntensity((v) => !v)}
-        className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+        className="min-h-11 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
       >
         {showIntensity ? t('workout.intensityHide') : t('workout.intensityShow')}
       </button>
 
       {showIntensity && (
         <div className="flex items-end gap-2">
-          <label className="flex flex-1 flex-col gap-1">
+          <label className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('workout.rpe')}
             </span>
@@ -350,11 +373,12 @@ export function AddSetInline({
               max="10"
               value={rpe}
               onChange={(e) => setRpe(e.target.value)}
-              className="h-9 font-mono tabular-nums"
+              className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={t('workout.rpe')}
+              aria-invalid={rpe.trim() !== '' && (rpeNum == null || rpeNum < 1 || rpeNum > 10)}
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1">
+          <label className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('workout.rir')}
             </span>
@@ -365,11 +389,12 @@ export function AddSetInline({
               min="0"
               value={rir}
               onChange={(e) => setRir(e.target.value)}
-              className="h-9 font-mono tabular-nums"
+              className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={t('workout.rir')}
+              aria-invalid={rir.trim() !== '' && (rirNum == null || !Number.isSafeInteger(rirNum) || rirNum < 0)}
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1">
+          <label className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {t('workout.tempo')}
             </span>
@@ -377,12 +402,12 @@ export function AddSetInline({
               value={tempo}
               onChange={(e) => setTempo(e.target.value)}
               placeholder="3-1-1-0"
-              className="h-9 font-mono"
+              className="h-11 min-w-0 font-mono"
               aria-label={t('workout.tempo')}
             />
           </label>
         </div>
       )}
-    </div>
+    </fieldset>
   );
 }
