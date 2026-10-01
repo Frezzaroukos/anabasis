@@ -77,6 +77,7 @@
     "notes": "Notes",
     "notesPlaceholder": "How did it go?",
     "intensityShow": "+ intensity",
+    "saveFailed": "Set was not saved. Your entries are still here — try again.",
     "intensityHide": "− intensity",
     "rpe": "RPE",
     "rir": "RIR",

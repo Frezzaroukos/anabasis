@@ -59,6 +59,9 @@ export default defineConfig({
     },
   },
   build: {
+    // Production CSP only permits same-origin fonts; embedded data: fonts
+    // otherwise fail silently (including Greek glyph subsets).
+    assetsInlineLimit: 0,
     rollupOptions: {
       output: {
         // Το recharts + d3 είναι το βαρύτερο dependency· δικό του chunk ώστε

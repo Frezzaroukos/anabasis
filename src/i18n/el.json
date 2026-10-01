@@ -77,6 +77,7 @@
     "notes": "Σημειώσεις",
     "notesPlaceholder": "Πώς πήγε;",
     "intensityShow": "+ ένταση",
+    "saveFailed": "Το σετ δεν αποθηκεύτηκε. Οι τιμές σου παραμένουν εδώ — δοκίμασε ξανά.",
     "intensityHide": "− ένταση",
     "rpe": "RPE",
     "rir": "RIR",
