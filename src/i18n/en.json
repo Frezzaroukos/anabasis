@@ -287,6 +287,7 @@
     "hubAppGroup": "App",
     "hubDataGroup": "Data",
     "hubAboutGroup": "About",
+    "hubLegalGroup": "Legal & safety",
     "account": "Account",
     "accountDesc": "Your cloud account. It syncs the active device profile across your devices. Everything works without it — offline, on this device.",
     "notSignedIn": "Not signed in",
@@ -647,6 +648,10 @@
     "slide3": {
       "title": "Yours, offline, private",
       "desc": "Local-first. Your data stays on your device and works without a connection. Let’s go."
+    },
+    "safety": {
+      "title": "Train smart, stay safe",
+      "desc": "Anabasis is a training log, not medical or coaching advice. Warm up, progress gradually, and stop if something hurts. If you have a health condition, check with a professional first. By starting you accept the Terms and acknowledge this."
     }
   },
   "plate": {
@@ -970,6 +975,51 @@
       "manage": "Manage",
       "hide": "Hide",
       "remove": "Remove"
+    }
+  },
+  "legal": {
+    "back": "Back to About",
+    "updated": "Last updated: 9 October 2026",
+    "privacy": {
+      "title": "Privacy Policy",
+      "intro": "Anabasis is local-first. Your training data stays in your browser and is never sent anywhere unless you choose to create a cloud account for sync. There are no ads, no analytics and no third-party trackers.",
+      "sections": [
+        { "h": "What stays on your device", "p": "All your workouts, exercises, goals and body metrics are stored in your browser (IndexedDB). They work fully offline and never leave your device unless you enable cloud sync. Clearing your browser's site data deletes them — export a backup first." },
+        { "h": "If you create a cloud account", "p": "A cloud account stores your account email and your private sync rows on the Anabasis server so you can sync across devices. The server may keep short-lived technical logs (such as IP address and request metadata) to operate securely and rate-limit abuse. This data is used only to run the sync service — never sold or shared." },
+        { "h": "No ads, no analytics, no trackers", "p": "Anabasis runs no advertising, no analytics and no third-party tracking scripts, and sets no advertising cookies. We cannot see how you use the app." },
+        { "h": "Social sharing is opt-in", "p": "Friends, ranking and the leaderboard are off by default. If you opt in, only aggregate figures (such as level and totals) are shared with friends — never your raw training data." },
+        { "h": "Your rights", "p": "You can export all your data at any time from Settings → Data & backups. You can permanently delete your cloud account and its server-side rows from Settings → Account. Local data is removed by clearing the app's site data." },
+        { "h": "Contact", "p": "Questions about this policy can be raised on the project repository: github.com/Frezzaroukos/anabasis. Anabasis is a personal, non-commercial project by Aggelos Frezzaroukos." }
+      ]
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "intro": "By using Anabasis you accept these terms. Anabasis is a free, open-source training log provided as-is by an individual, not a company.",
+      "sections": [
+        { "h": "What Anabasis is", "p": "A free, offline-first log for weighted calisthenics and skill progression. The app itself is yours to use; cloud sync is an optional, best-effort convenience." },
+        { "h": "No warranty", "p": "Anabasis is provided \"as is\", without warranty of any kind. Cloud sync is self-hosted and best-effort — it may be slow, unavailable or interrupted. Keep your own backups (export is always available). To the maximum extent permitted by law, the author is not liable for any loss or damage arising from use of the app or service." },
+        { "h": "Not professional advice", "p": "Anabasis does not provide medical, health or coaching advice. See the Safety notice. You are responsible for your own training decisions." },
+        { "h": "Acceptable use", "p": "Do not attempt to disrupt the service, access other users' data, or abuse the sync server (for example by automated bulk writes). Accounts that do so may be removed." },
+        { "h": "Your account", "p": "You are responsible for keeping your account credentials safe. You can delete your account at any time from Settings → Account." },
+        { "h": "Changes", "p": "These terms may be updated as the app evolves. Continued use after a change means you accept the updated terms." },
+        { "h": "Governing law", "p": "As a personal, non-commercial project based in Greece, these terms are governed by Greek law where applicable." }
+      ]
+    },
+    "safety": {
+      "title": "Safety notice",
+      "intro": "Anabasis is a training log, not medical or coaching advice. Strength training carries risk. Train sensibly and at your own risk.",
+      "banner": "Anabasis is a training log, not medical or coaching advice. Warm up, progress gradually, and stop if something hurts — you train at your own risk.",
+      "readMore": "Read the safety notice",
+      "gotIt": "Got it",
+      "accept": "I understand and accept",
+      "acked": "Safety notice acknowledged",
+      "sections": [
+        { "h": "Not medical advice", "p": "Anabasis logs and structures training. It does not diagnose, treat or replace a doctor or coach. If you have a health condition, an injury, are pregnant, or feel pain or dizziness, consult a qualified professional before training." },
+        { "h": "Warm up and progress gradually", "p": "Weighted calisthenics loads your joints, tendons and connective tissue, which adapt slower than muscle. Warm up properly, add weight in small steps, and master each progression before moving to the next." },
+        { "h": "Use safe form and equipment", "p": "Check your bar, rings, belt and anchors before loading them. Keep good form, and avoid training to failure on risky movements without a safe setup." },
+        { "h": "Listen to your body", "p": "Sharp pain, joint pain or dizziness means stop. Rest and recover — progress comes from consistency over time, not from a single hard session." },
+        { "h": "You train at your own risk", "p": "By using Anabasis you accept that you are responsible for your own training decisions and their outcomes." }
+      ]
     }
   }
 }

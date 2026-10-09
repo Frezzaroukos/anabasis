@@ -29,6 +29,16 @@ const PAGES = [
   ['/goals', 'goals'],
   ['/skills', 'skills'],
   ['/settings', 'settings'],
+  ['/legal/safety', 'legal-safety'],
+  ['/legal/privacy', 'legal-privacy'],
+  ['/legal/terms', 'legal-terms'],
+];
+
+// Mobile keeps the bare names (hero montage + README point at those); desktop
+// gets a `-1440` suffix so both sets live side by side without clobbering.
+const VIEWPORTS = [
+  { width: 390, height: 844, suffix: '' },
+  { width: 1440, height: 900, suffix: '-1440' },
 ];
 
 function freePort() {
@@ -273,32 +283,37 @@ try {
     launchOptions.executablePath = '/usr/bin/brave';
     browser = await chromium.launch(launchOptions);
   }
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 }, deviceScaleFactor: 2,
-    colorScheme: 'dark', locale: 'en-US', timezoneId: 'Europe/Athens',
-    serviceWorkers: 'block', reducedMotion: 'reduce',
-  });
-  await context.route(`${baseUrl}/api/**`, (route) => route.abort('blockedbyclient'));
-  await context.addInitScript((demoUser) => {
-    localStorage.setItem('anabasis.activeProfile', demoUser);
-    localStorage.setItem('anabasis.onboarded', '1');
-    localStorage.setItem('i18nextLng', 'en');
-    localStorage.removeItem('anabasis.auth');
-  }, DEMO_USER);
-  const page = await context.newPage();
-  page.on('console', (message) => {
-    if (message.type() === 'error') console.error(`[browser] ${message.text()}`);
-  });
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
-  await seedDemo(page);
-  await page.reload({ waitUntil: 'networkidle' });
+  for (const vp of VIEWPORTS) {
+    const context = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 2,
+      colorScheme: 'dark', locale: 'en-US', timezoneId: 'Europe/Athens',
+      serviceWorkers: 'block', reducedMotion: 'reduce',
+    });
+    await context.route(`${baseUrl}/api/**`, (route) => route.abort('blockedbyclient'));
+    await context.addInitScript((demoUser) => {
+      localStorage.setItem('anabasis.activeProfile', demoUser);
+      localStorage.setItem('anabasis.onboarded', '1');
+      // Suppress the one-time safety banner so marketing shots stay clean.
+      localStorage.setItem('anabasis.safety.ack', '1');
+      localStorage.setItem('i18nextLng', 'en');
+      localStorage.removeItem('anabasis.auth');
+    }, DEMO_USER);
+    const page = await context.newPage();
+    page.on('console', (message) => {
+      if (message.type() === 'error') console.error(`[browser] ${message.text()}`);
+    });
+    await page.goto(baseUrl, { waitUntil: 'networkidle' });
+    await seedDemo(page);
+    await page.reload({ waitUntil: 'networkidle' });
 
-  for (const [path, name] of PAGES) {
-    await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle' });
-    await page.locator('#root').waitFor({ state: 'visible' });
-    await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: join(OUT, `${name}.png`), fullPage: false });
-    console.log(`captured ${name}.png`);
+    for (const [path, name] of PAGES) {
+      await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle' });
+      await page.locator('#root').waitFor({ state: 'visible' });
+      await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({ path: join(OUT, `${name}${vp.suffix}.png`), fullPage: false });
+      console.log(`captured ${name}${vp.suffix}.png (${vp.width}w)`);
+    }
+    await context.close();
   }
   makeHero();
   console.log(`generated ${join(OUT, 'hero.png')} at 1200x708`);

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Anabasis — weighted calisthenics & skill progression</title>
+    <meta
+      name="description"
+      content="A training log for weighted calisthenics and skills. Log your weighted basics and your skill progressions in one place — offline-first, private, no signup to try."
+    />
+    <link rel="icon" href="/favicon.svg" />
+    <meta name="theme-color" content="#101013" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Anabasis — weighted calisthenics & skill progression" />
+    <meta
+      property="og:description"
+      content="Log weighted basics and skill ladders in one place. Offline-first, private, no signup to try."
+    />
+    <meta property="og:url" content="https://anabasis.axonos.dev/landing.html" />
+    <meta property="og:image" content="https://anabasis.axonos.dev/og.png" />
+    <style>
+      :root {
+        --bg: #101013;
+        --card: #1c1c21;
+        --elevated: #26262c;
+        --fg: #e8e8ec;
+        --muted: #9a9aa3;
+        --border: #2b2b31;
+        --gold: #f0b429;
+        --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--sans);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: inherit; }
+      img { display: block; max-width: 100%; height: auto; }
+      .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px;
+        max-width: 1080px;
+        margin: 0 auto;
+      }
+      .brand {
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        font-size: 1.05rem;
+      }
+      .brand .peak { color: var(--gold); }
+      .lang {
+        display: inline-flex;
+        gap: 2px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 3px;
+      }
+      .lang button {
+        font: inherit;
+        font-size: 0.78rem;
+        color: var(--muted);
+        background: transparent;
+        border: 0;
+        border-radius: 999px;
+        padding: 4px 11px;
+        cursor: pointer;
+      }
+      .lang button[aria-pressed="true"] {
+        background: var(--elevated);
+        color: var(--fg);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 40px;
+        align-items: center;
+        padding: 48px 0 24px;
+      }
+      @media (min-width: 820px) {
+        .hero { grid-template-columns: 1.15fr 0.85fr; gap: 56px; padding: 72px 0 40px; }
+      }
+      h1 {
+        font-size: clamp(2rem, 5vw, 3.1rem);
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+        margin: 0 0 18px;
+        font-weight: 700;
+      }
+      .lead { font-size: 1.12rem; color: var(--muted); margin: 0 0 28px; max-width: 34ch; }
+      .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 22px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.98rem;
+        text-decoration: none;
+        border: 1px solid transparent;
+        transition: transform 0.12s ease, background 0.12s ease;
+      }
+      .btn:active { transform: translateY(1px); }
+      .btn-primary { background: var(--fg); color: #0c0c0f; }
+      .btn-ghost { background: transparent; color: var(--fg); border-color: var(--border); }
+      .hint { margin: 14px 0 0; font-size: 0.85rem; color: var(--muted); }
+
+      .shot-hero {
+        justify-self: center;
+        width: 260px;
+        border-radius: 26px;
+        border: 1px solid var(--border);
+        box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.8);
+        background: var(--card);
+      }
+
+      section { padding: 44px 0; }
+      .eyebrow {
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin: 0 0 10px;
+      }
+      h2 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.01em; margin: 0 0 8px; }
+
+      .grid3 { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 28px; }
+      @media (min-width: 720px) { .grid3 { grid-template-columns: repeat(3, 1fr); } }
+      .feature {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 22px;
+      }
+      .feature h3 { margin: 0 0 8px; font-size: 1.08rem; }
+      .feature p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+      .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 28px; }
+      @media (min-width: 720px) { .shots { grid-template-columns: repeat(4, 1fr); } }
+      .shots figure { margin: 0; }
+      .shots img {
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: var(--card);
+      }
+      .shots figcaption { color: var(--muted); font-size: 0.82rem; margin-top: 8px; text-align: center; }
+
+      .install ol { color: var(--muted); padding-left: 20px; margin: 16px 0 0; }
+      .install li { margin-bottom: 8px; }
+      .install b { color: var(--fg); font-weight: 600; }
+
+      footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 0.9rem; }
+      footer a { color: var(--fg); text-decoration: none; }
+      footer a:hover { text-decoration: underline; }
+      .foot-links { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; }
+      .peak-rule { height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.5; margin: 0 auto; max-width: 1080px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">Anabasis<span class="peak"> ▲</span></div>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap">
+        <div class="hero">
+          <div>
+            <h1
+              data-en="Track weighted calisthenics and the skills behind them."
+              data-el="Κατέγραψε τα weighted calisthenics και τα skills πίσω τους."
+            >
+              Track weighted calisthenics and the skills behind them.
+            </h1>
+            <p
+              class="lead"
+              data-en="One log for your weighted basics and your skill progressions. Each skill is a ladder — Anabasis shows the rung you're on and the next one. Offline-first, private, no signup to try."
+              data-el="Ένα log για τα βασικά με βάρος και τα skill progressions σου. Κάθε skill είναι μια σκάλα — το Anabasis δείχνει σε ποιο σκαλί είσαι και ποιο το επόμενο. Offline-first, ιδιωτικό, χωρίς εγγραφή για δοκιμή."
+            >
+              One log for your weighted basics and your skill progressions.
+            </p>
+            <div class="cta">
+              <a class="btn btn-primary" href="/" data-en="Open the app" data-el="Άνοιξε την εφαρμογή">Open the app</a>
+              <a class="btn btn-ghost" href="#install" data-en="Install" data-el="Εγκατάσταση">Install</a>
+            </div>
+            <p
+              class="hint"
+              data-en="Free · open source · works on phone, tablet and desktop."
+              data-el="Δωρεάν · open source · σε κινητό, tablet και desktop."
+            >
+              Free · open source · works on phone, tablet and desktop.
+            </p>
+          </div>
+          <img
+            class="shot-hero"
+            src="/landing/dashboard.png"
+            width="780"
+            height="1688"
+            alt="Anabasis dashboard showing training overview"
+            fetchpriority="high"
+          />
+        </div>
+      </div>
+
+      <section>
+        <div class="wrap">
+          <p class="eyebrow" data-en="What it solves" data-el="Τι λύνει">What it solves</p>
+          <h2
+            data-en="The only two things that matter for this kind of training."
+            data-el="Τα μόνα δύο πράγματα που μετράνε σε αυτή την προπόνηση."
+          >
+            The only two things that matter for this kind of training.
+          </h2>
+          <div class="grid3">
+            <div class="feature">
+              <h3 data-en="Weighted basics + skills, together" data-el="Βάρη + skills, μαζί">Weighted basics + skills, together</h3>
+              <p
+                data-en="Log load and reps for your pull-ups, dips and pistols, and track where you are on each skill — in one place. Most apps do one or the other."
+                data-el="Κατέγραψε φορτίο και reps για pull-ups, dips, pistols, και παρακολούθησε πού είσαι σε κάθε skill — σε ένα μέρος. Τα περισσότερα apps κάνουν μόνο το ένα."
+              >
+                Log load and reps for your pull-ups, dips and pistols, and track where you are on each skill — in one place.
+              </p>
+            </div>
+            <div class="feature">
+              <h3 data-en="See the next rung" data-el="Δες το επόμενο σκαλί">See the next rung</h3>
+              <p
+                data-en="Every skill is a ladder, from tuck to straddle to full. Anabasis shows the step you're on and what comes next, so progress is a path — not a guess."
+                data-el="Κάθε skill είναι μια σκάλα, από tuck σε straddle σε full. Το Anabasis δείχνει το σκαλί σου και το επόμενο, ώστε η πρόοδος να είναι μονοπάτι — όχι μάντεμα."
+              >
+                Every skill is a ladder. Anabasis shows the step you're on and what comes next.
+              </p>
+            </div>
+            <div class="feature">
+              <h3 data-en="Yours, offline, private" data-el="Δικό σου, offline, ιδιωτικό">Yours, offline, private</h3>
+              <p
+                data-en="Everything works offline in your browser. No ads, no analytics, no trackers. Add a free account only if you want cross-device sync."
+                data-el="Όλα δουλεύουν offline στον browser σου. Χωρίς διαφημίσεις, analytics ή trackers. Πρόσθεσε δωρεάν λογαριασμό μόνο αν θες sync μεταξύ συσκευών."
+              >
+                Everything works offline in your browser. No ads, no analytics, no trackers.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="peak-rule"></div>
+
+      <section>
+        <div class="wrap">
+          <p class="eyebrow" data-en="A look inside" data-el="Μια ματιά μέσα">A look inside</p>
+          <h2
+            data-en="Calendar-centric, built for the climb."
+            data-el="Με κέντρο το ημερολόγιο, φτιαγμένο για την ανάβαση."
+          >
+            Calendar-centric, built for the climb.
+          </h2>
+          <div class="shots">
+            <figure>
+              <img src="/landing/dashboard.png" width="780" height="1688" loading="lazy" alt="Dashboard" />
+              <figcaption data-en="Overview" data-el="Επισκόπηση">Overview</figcaption>
+            </figure>
+            <figure>
+              <img src="/landing/calendar.png" width="780" height="1688" loading="lazy" alt="Training calendar" />
+              <figcaption data-en="Calendar" data-el="Ημερολόγιο">Calendar</figcaption>
+            </figure>
+            <figure>
+              <img src="/landing/skills.png" width="780" height="1688" loading="lazy" alt="Skill ladders" />
+              <figcaption data-en="Skill ladders" data-el="Σκάλες skill">Skill ladders</figcaption>
+            </figure>
+            <figure>
+              <img src="/landing/goals.png" width="780" height="1688" loading="lazy" alt="Goals" />
+              <figcaption data-en="Goals" data-el="Στόχοι">Goals</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="install" id="install">
+        <div class="wrap">
+          <p class="eyebrow" data-en="For whom" data-el="Για ποιον">For whom</p>
+          <h2
+            data-en="For people who train weighted calisthenics and skills."
+            data-el="Για όσους προπονούνται weighted calisthenics και skills."
+          >
+            For people who train weighted calisthenics and skills.
+          </h2>
+          <p
+            class="lead"
+            data-en="Weighted pull-ups, dips and pistols, and skills like the front lever, planche and muscle-up. If that's your training, this is your log."
+            data-el="Weighted pull-ups, dips, pistols, και skills όπως front lever, planche, muscle-up. Αν έτσι προπονείσαι, αυτό είναι το log σου."
+          >
+            Weighted pull-ups, dips and pistols, and skills like the front lever, planche and muscle-up.
+          </p>
+
+          <h3 data-en="Install it" data-el="Εγκατέστησέ το" style="margin-top:28px">Install it</h3>
+          <ol>
+            <li
+              data-en="iPhone (Safari): open the app, tap Share, then <b>Add to Home Screen</b>."
+              data-el="iPhone (Safari): άνοιξε την εφαρμογή, πάτα Κοινή χρήση, μετά <b>Προσθήκη στην οθόνη Αφετηρίας</b>."
+            >
+              iPhone (Safari): open the app, tap Share, then <b>Add to Home Screen</b>.
+            </li>
+            <li
+              data-en="Android (Chrome): open the app, menu, then <b>Install app</b>."
+              data-el="Android (Chrome): άνοιξε την εφαρμογή, μενού, μετά <b>Εγκατάσταση εφαρμογής</b>."
+            >
+              Android (Chrome): open the app, menu, then <b>Install app</b>.
+            </li>
+            <li
+              data-en="It installs like a native app and works fully offline. A Linux desktop build is also available."
+              data-el="Εγκαθίσταται σαν native app και δουλεύει πλήρως offline. Υπάρχει και Linux desktop build."
+            >
+              It installs like a native app and works fully offline. A Linux desktop build is also available.
+            </li>
+          </ol>
+          <div class="cta" style="margin-top:22px">
+            <a class="btn btn-primary" href="/" data-en="Open the app" data-el="Άνοιξε την εφαρμογή">Open the app</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div data-en="Made by Aggelos Frezzaroukos." data-el="Φτιαγμένο από τον Άγγελο Φρεζζαρούκο.">Made by Aggelos Frezzaroukos.</div>
+        <div class="foot-links">
+          <a href="https://github.com/Frezzaroukos/anabasis">GitHub</a>
+          <a href="/legal/privacy" data-en="Privacy" data-el="Απόρρητο">Privacy</a>
+          <a href="/legal/terms" data-en="Terms" data-el="Όροι">Terms</a>
+          <a href="/legal/safety" data-en="Safety" data-el="Ασφάλεια">Safety</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="/landing/landing.js"></script>
+  </body>
+</html>

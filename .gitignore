@@ -45,3 +45,7 @@ src-tauri/target/
 src-tauri/gen/
 dist-tauri
 server/target/
+
+# transient agent/CLI artifacts
+output/
+.playwright-cli/
