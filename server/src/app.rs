@@ -44,6 +44,52 @@ pub struct EmailConfig {
     pub public_url: String,
 }
 
+impl EmailConfig {
+    /// Resolve SMTP config from an env-style lookup. Accepts BOTH the canonical
+    /// `ANABASIS_SMTP_*` names and the shared `SMTP_*` names used by the axonos
+    /// `email.env` (Gmail app password), so a single `EnvironmentFile=` can
+    /// supply either without copying secret values into this repo. Returns
+    /// `None` (feature dormant) unless host + username + password are all set
+    /// and non-empty. Pure over `get` so it is unit-testable without real env.
+    pub fn resolve(get: impl Fn(&str) -> Option<String>) -> Option<EmailConfig> {
+        let pick = |keys: &[&str]| -> Option<String> {
+            keys.iter()
+                .filter_map(|k| get(k))
+                .map(|v| v.trim().to_string())
+                .find(|v| !v.is_empty())
+        };
+
+        let host = pick(&["ANABASIS_SMTP_HOST", "SMTP_HOST"])?;
+        let username = pick(&["ANABASIS_SMTP_USERNAME", "SMTP_USER"])?;
+        let password = pick(&["ANABASIS_SMTP_PASSWORD", "SMTP_PASS"])?;
+
+        let port = pick(&["ANABASIS_SMTP_PORT", "SMTP_PORT"])
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(587);
+        let public_url =
+            pick(&["ANABASIS_PUBLIC_URL"]).unwrap_or_else(|| "https://anabasis.axonos.dev".into());
+        // From: explicit ANABASIS_SMTP_FROM wins; else build from the shared
+        // SMTP_FROM (+ optional display name); else fall back to the SMTP user.
+        let from = pick(&["ANABASIS_SMTP_FROM"])
+            .or_else(|| {
+                pick(&["SMTP_FROM"]).map(|addr| match pick(&["SMTP_FROM_NAME"]) {
+                    Some(name) => format!("{name} <{addr}>"),
+                    None => addr,
+                })
+            })
+            .unwrap_or_else(|| format!("Anabasis <{username}>"));
+
+        Some(EmailConfig {
+            host,
+            port,
+            username,
+            password,
+            from,
+            public_url,
+        })
+    }
+}
+
 #[derive(Clone)]
 pub struct AppState {
     pub pool: sqlx::SqlitePool,
@@ -264,4 +310,97 @@ async fn health(axum::extract::State(state): axum::extract::State<AppState>) -> 
 pub fn default_db_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     Path::new(&home).join(".local/share/anabasis-server/anabasis.db")
+}
+
+#[cfg(test)]
+mod email_config_tests {
+    use super::EmailConfig;
+    use std::collections::HashMap;
+
+    fn lookup(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
+        let map: HashMap<String, String> =
+            pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        move |k: &str| map.get(k).cloned()
+    }
+
+    #[test]
+    fn dormant_when_nothing_set() {
+        assert!(EmailConfig::resolve(lookup(&[])).is_none());
+    }
+
+    #[test]
+    fn dormant_when_password_missing() {
+        let cfg = EmailConfig::resolve(lookup(&[
+            ("ANABASIS_SMTP_HOST", "smtp.gmail.com"),
+            ("ANABASIS_SMTP_USERNAME", "a@b.com"),
+        ]));
+        assert!(cfg.is_none());
+    }
+
+    #[test]
+    fn empty_values_are_treated_as_unset() {
+        let cfg = EmailConfig::resolve(lookup(&[
+            ("ANABASIS_SMTP_HOST", "  "),
+            ("ANABASIS_SMTP_USERNAME", "a@b.com"),
+            ("ANABASIS_SMTP_PASSWORD", "pw"),
+        ]));
+        assert!(cfg.is_none());
+    }
+
+    #[test]
+    fn canonical_anabasis_vars_resolve() {
+        let cfg = EmailConfig::resolve(lookup(&[
+            ("ANABASIS_SMTP_HOST", "smtp.gmail.com"),
+            ("ANABASIS_SMTP_USERNAME", "user@gmail.com"),
+            ("ANABASIS_SMTP_PASSWORD", "secretpw"),
+            ("ANABASIS_SMTP_PORT", "2525"),
+            ("ANABASIS_SMTP_FROM", "Anabasis <no-reply@axonos.dev>"),
+        ]))
+        .expect("should resolve");
+        assert_eq!(cfg.host, "smtp.gmail.com");
+        assert_eq!(cfg.username, "user@gmail.com");
+        assert_eq!(cfg.password, "secretpw");
+        assert_eq!(cfg.port, 2525);
+        assert_eq!(cfg.from, "Anabasis <no-reply@axonos.dev>");
+    }
+
+    #[test]
+    fn shared_smtp_vars_resolve_with_from_name() {
+        // The axonos email.env shape: SMTP_* names, display name separate.
+        let cfg = EmailConfig::resolve(lookup(&[
+            ("SMTP_HOST", "smtp.gmail.com"),
+            ("SMTP_USER", "axonos@gmail.com"),
+            ("SMTP_PASS", "apppassword16ch"),
+            ("SMTP_FROM", "no-reply@axonos.dev"),
+            ("SMTP_FROM_NAME", "Anabasis"),
+        ]))
+        .expect("should resolve from shared vars");
+        assert_eq!(cfg.host, "smtp.gmail.com");
+        assert_eq!(cfg.username, "axonos@gmail.com");
+        assert_eq!(cfg.port, 587, "defaults to 587 when no port given");
+        assert_eq!(cfg.from, "Anabasis <no-reply@axonos.dev>");
+    }
+
+    #[test]
+    fn canonical_vars_win_over_shared() {
+        let cfg = EmailConfig::resolve(lookup(&[
+            ("ANABASIS_SMTP_HOST", "canonical.example"),
+            ("SMTP_HOST", "shared.example"),
+            ("SMTP_USER", "u@e.com"),
+            ("SMTP_PASS", "pw"),
+        ]))
+        .expect("resolves");
+        assert_eq!(cfg.host, "canonical.example");
+    }
+
+    #[test]
+    fn from_falls_back_to_username_when_absent() {
+        let cfg = EmailConfig::resolve(lookup(&[
+            ("SMTP_HOST", "smtp.gmail.com"),
+            ("SMTP_USER", "solo@gmail.com"),
+            ("SMTP_PASS", "pw"),
+        ]))
+        .expect("resolves");
+        assert_eq!(cfg.from, "Anabasis <solo@gmail.com>");
+    }
 }

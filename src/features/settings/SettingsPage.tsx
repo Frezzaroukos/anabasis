@@ -5,9 +5,12 @@ import {
   Cloud,
   Database,
   Download,
+  FileText,
+  HeartPulse,
   Info,
   ListChecks,
   Palette,
+  ShieldCheck,
   Sparkles,
   Timer,
   Users,
@@ -103,6 +106,12 @@ export function SettingsPage() {
 
       <SettingsGroup title={t('settings.hubAboutGroup')}>
         <SettingsRow to="/settings/about" Icon={Info} label={t('settings.about')} />
+      </SettingsGroup>
+
+      <SettingsGroup title={t('settings.hubLegalGroup')}>
+        <SettingsRow to="/legal/safety" Icon={HeartPulse} label={t('legal.safety.title')} />
+        <SettingsRow to="/legal/privacy" Icon={ShieldCheck} label={t('legal.privacy.title')} />
+        <SettingsRow to="/legal/terms" Icon={FileText} label={t('legal.terms.title')} />
       </SettingsGroup>
 
       <p className="text-center text-xs text-muted-foreground">

@@ -1,16 +1,17 @@
 import { useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Dumbbell, Wifi } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Dumbbell, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { cn } from '@/lib/utils';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { setSafetyAck } from '@/lib/safety';
 
 /** localStorage key: αν υπάρχει, ο χρήστης έχει ήδη δει το onboarding. */
 export const ONBOARDING_STORAGE_KEY = 'anabasis.onboarded';
 
-const SLIDE_COUNT = 3;
+const SLIDE_COUNT = 4;
 const SWIPE_THRESHOLD_PX = 40;
 
 function hasOnboarded(): boolean {
@@ -44,6 +45,8 @@ export function OnboardingOverlay() {
     } catch {
       // αγνόησε — απλά θα ξαναδείξει το onboarding στο επόμενο load
     }
+    // Το τελευταίο slide είναι το health-disclaimer· η ολοκλήρωση = αποδοχή.
+    setSafetyAck();
     setDismissed(true);
   };
 
@@ -82,6 +85,12 @@ export function OnboardingOverlay() {
       mark: false,
       title: t('onboarding.slide3.title'),
       desc: t('onboarding.slide3.desc'),
+    },
+    {
+      icon: <AlertTriangle className="h-14 w-14 text-primary" />,
+      mark: false,
+      title: t('onboarding.safety.title'),
+      desc: t('onboarding.safety.desc'),
     },
   ] as const;
 

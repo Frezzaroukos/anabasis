@@ -44,39 +44,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     /*
-     * Magic-link email login — δορμάν μέχρι να οριστούν ΟΛΑ τα ANABASIS_SMTP_*
-     * (host/user/pass). Ίδιο EnvironmentFile με τα υπόλοιπα secrets. Gmail:
-     * host=smtp.gmail.com port=587, user=<gmail>, pass=<app-password 16 char>.
+     * Magic-link email login — δορμάν μέχρι να οριστούν host/user/pass. Δέχεται
+     * ΚΑΙ τα ANABASIS_SMTP_* ΚΑΙ τα generic SMTP_* (axonos email.env), ώστε ένα
+     * EnvironmentFile= να αρκεί χωρίς αντιγραφή secrets εδώ (βλ. EmailConfig::
+     * resolve). Gmail: host=smtp.gmail.com port=587, pass=<app-password 16 char>.
      */
-    let smtp_host = std::env::var("ANABASIS_SMTP_HOST").ok();
-    let smtp_user = std::env::var("ANABASIS_SMTP_USERNAME").ok();
-    let smtp_pass = std::env::var("ANABASIS_SMTP_PASSWORD").ok();
-    let email = match (smtp_host, smtp_user, smtp_pass) {
-        (Some(host), Some(username), Some(password))
-            if !host.trim().is_empty()
-                && !username.trim().is_empty()
-                && !password.trim().is_empty() =>
-        {
-            let public_url = std::env::var("ANABASIS_PUBLIC_URL")
-                .unwrap_or_else(|_| "https://anabasis.axonos.dev".to_string());
-            Some(EmailConfig {
-                host: host.trim().to_string(),
-                port: std::env::var("ANABASIS_SMTP_PORT")
-                    .ok()
-                    .and_then(|s| s.trim().parse().ok())
-                    .unwrap_or(587),
-                username: username.trim().to_string(),
-                password,
-                // From default = ο SMTP user, αν δεν δοθεί ρητό ANABASIS_SMTP_FROM.
-                from: std::env::var("ANABASIS_SMTP_FROM")
-                    .ok()
-                    .filter(|s| !s.trim().is_empty())
-                    .unwrap_or_else(|| format!("Anabasis <{}>", username.trim())),
-                public_url,
-            })
-        }
-        _ => None,
-    };
+    let email = EmailConfig::resolve(|k| std::env::var(k).ok());
 
     let state = build_state(db_path, admin_email, admin_code, google_oauth, email).await?;
     let app = router(state);

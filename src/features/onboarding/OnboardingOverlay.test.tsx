@@ -39,6 +39,7 @@ const RESOURCE = {
     slide1: { title: 'Welcome to Anabasis', desc: 'The map of your ascent.' },
     slide2: { title: 'Not just another gym app', desc: 'Log weights and skill progressions.' },
     slide3: { title: 'Local-first', desc: 'Your data, works offline. Start.' },
+    safety: { title: 'Train smart, stay safe', desc: 'Not medical advice; train at your own risk.' },
   },
 };
 
@@ -85,7 +86,11 @@ describe('OnboardingOverlay', () => {
     expect(screen.getByText('Not just another gym app')).toBeTruthy();
     fireEvent.click(screen.getByText('Next'));
     expect(screen.getByText('Local-first')).toBeTruthy();
+    fireEvent.click(screen.getByText('Next'));
+    expect(screen.getByText('Train smart, stay safe')).toBeTruthy();
     fireEvent.click(screen.getByText('Start'));
     expect(window.localStorage.getItem(ONBOARDING_STORAGE_KEY)).toBe('1');
+    // Το τελευταίο slide είναι το health-disclaimer — η ολοκλήρωση σφραγίζει το ack.
+    expect(window.localStorage.getItem('anabasis.safety.ack')).toBe('1');
   });
 });
