@@ -154,7 +154,7 @@ export function WorkoutDetailPage() {
                           .join(' ') || '—'}
                       </span>
                       {warmup && (
-                        <span className="shrink-0 font-sans text-[10px] uppercase tracking-wide">
+                        <span className="shrink-0 font-sans text-xs uppercase tracking-wide">
                           {t('setType.warmup')}
                         </span>
                       )}
@@ -187,7 +187,7 @@ export function WorkoutDetailPage() {
 function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div className="rounded-lg bg-muted/40 px-3 py-2.5 text-center">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-0.5 font-mono text-lg tabular-nums leading-none">
         {value}
         {unit && <span className="ml-0.5 text-xs text-muted-foreground">{unit}</span>}

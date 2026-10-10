@@ -39,7 +39,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
               {mastered && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />}
               <CategoryBadge category={skill.category} />
               {!isBuiltin && (
-                <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary">
+                <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-primary">
                   {t('skills.custom')}
                 </span>
               )}

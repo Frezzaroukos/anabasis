@@ -116,7 +116,7 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
             <span className="font-display text-4xl font-semibold leading-none tabular-nums">
               {profile.level}
             </span>
-            <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
               {t('gami.level')}
             </span>
           </div>
@@ -143,7 +143,7 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
       </section>
 
       <section>
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('gami.badges')}
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

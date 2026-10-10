@@ -39,24 +39,24 @@ export function BrandingPage() {
         <div className="flex flex-wrap items-center gap-8">
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-16 w-16 text-primary" />
-            <span className="text-[11px] text-muted-foreground">accent (currentColor)</span>
+            <span className="text-xs text-muted-foreground">accent (currentColor)</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-16 w-16" gradient />
-            <span className="text-[11px] text-muted-foreground">Altitude Violet gradient</span>
+            <span className="text-xs text-muted-foreground">Altitude Violet gradient</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-16 w-16 text-primary" summit />
-            <span className="text-[11px] text-muted-foreground">summit (achievement)</span>
+            <span className="text-xs text-muted-foreground">summit (achievement)</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             {/* Πραγματικό αρχείο — αυτό ακριβώς σερβίρεται ως PWA/app icon */}
             <img src="/app-icon.svg" alt="Anabasis app icon" className="h-16 w-16 rounded-2xl" />
-            <span className="text-[11px] text-muted-foreground">app icon (bg-base)</span>
+            <span className="text-xs text-muted-foreground">app icon (bg-base)</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-6 w-6 text-primary" />
-            <span className="text-[11px] text-muted-foreground">24px (bottom nav)</span>
+            <span className="text-xs text-muted-foreground">24px (bottom nav)</span>
           </div>
         </div>
       </section>
@@ -67,7 +67,7 @@ export function BrandingPage() {
           {PALETTE.map((p) => (
             <div key={p.key} className="flex flex-col items-center gap-1.5">
               <span className={`h-12 w-12 rounded-lg ${p.cls}`} />
-              <span className="text-[11px] text-muted-foreground">{p.label}</span>
+              <span className="text-xs text-muted-foreground">{p.label}</span>
             </div>
           ))}
         </div>
@@ -96,7 +96,7 @@ export function BrandingPage() {
           <div key={key} className="rounded-xl bg-card p-5">
             <div className="mb-4 flex items-center justify-between">
               <span className="text-sm font-medium">{label}</span>
-              <code className="text-[11px] text-muted-foreground">{key}</code>
+              <code className="text-xs text-muted-foreground">{key}</code>
             </div>
             <div className="flex items-center gap-6">
               {/* Σε accent χρώμα */}

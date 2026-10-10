@@ -18,7 +18,7 @@ export function SessionTimer({ workoutId }: { workoutId: string }) {
       type="button"
       onClick={toggle}
       aria-label={running ? t('workout.timer.pause') : t('workout.timer.start')}
-      className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[11px] tabular-nums transition-colors ${
+      className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs tabular-nums transition-colors ${
         running
           ? 'bg-primary/15 text-foreground'
           : 'text-muted-foreground/70 hover:bg-elevated hover:text-foreground'

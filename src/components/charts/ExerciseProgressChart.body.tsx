@@ -81,7 +81,7 @@ export default function ExerciseProgressChartBody({
               value={`PR ${prValue}${unitless ? '' : ` ${unit}`}`}
               position="insideTopRight"
               fill={CHART_GOLD}
-              className="text-[10px]"
+              className="text-xs"
             />
           </ReferenceLine>
         )}

@@ -182,7 +182,7 @@ export function ProgramsPage() {
               «αποθήκευση custom template» = απλώς φτιάχνεις ένα πρόγραμμα. */}
           {programs.length > 0 && (
             <>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {t('programs.reuseTitle')}
               </p>
               <ul className="grid gap-2">
@@ -213,7 +213,7 @@ export function ProgramsPage() {
               <div className="h-px bg-border/60" />
             </>
           )}
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             {t('programs.templatesHint')}
           </p>
           <ul className="grid gap-2">

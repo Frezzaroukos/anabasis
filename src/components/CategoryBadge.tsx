@@ -39,7 +39,7 @@ export function CategoryBadge({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide',
         tone.text,
         tone.bg,
         className,

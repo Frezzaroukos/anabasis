@@ -59,7 +59,7 @@ export function GoalsCard() {
               label={`${Math.round(p.ratio * 100)}%`}
               tone={p.ratio >= 1 ? 'gold' : 'primary'}
             />
-            <span className="line-clamp-2 text-center text-[10px] leading-tight text-muted-foreground">
+            <span className="line-clamp-2 text-center text-xs leading-tight text-muted-foreground">
               {p.goal.label ??
                 goalTitle(t, p.goal, {
                   activity: p.goal.activity_key

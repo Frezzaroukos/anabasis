@@ -34,7 +34,7 @@ export function WeeklyVolumeCard() {
   return (
     <div className="rounded-xl bg-card p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('dashboard.weeklyVolume')}
         </h2>
         {deltaPct != null && (

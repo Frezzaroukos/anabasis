@@ -123,7 +123,7 @@ export function ExercisePickerSheet({
           {grouped.map(({ cat, items }) =>
             items.length === 0 ? null : (
               <section key={cat} className="mb-2">
-                <h3 className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <h3 className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t(`workout.category.${cat}`)}
                 </h3>
                 <ul>
@@ -151,7 +151,7 @@ export function ExercisePickerSheet({
                         />
                         <span className="flex-1 truncate">{ex.name}</span>
                         {ex.is_bodyweight && (
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <span className="text-xs uppercase tracking-wide text-muted-foreground">
                             BW
                           </span>
                         )}

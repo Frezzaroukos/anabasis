@@ -42,7 +42,7 @@ export function ShareCard() {
 
   return (
     <section className="rounded-xl bg-card p-4">
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('share.title')}
       </p>
       <p className="mb-3 text-sm text-muted-foreground">{t('share.tagline')}</p>

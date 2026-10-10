@@ -94,7 +94,7 @@ function ProfileCard({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {t('social.profile.usernameLabel')}
               </p>
               <p className="font-mono text-sm">@{me.username}</p>
@@ -174,7 +174,7 @@ function ShareToggle({ on, onToggle }: { on: boolean; onToggle: (v: boolean) => 
       onClick={() => onToggle(!on)}
       className="flex items-center gap-2 text-right"
     >
-      <span className="text-[11px] leading-tight text-muted-foreground">
+      <span className="text-xs leading-tight text-muted-foreground">
         {t('social.profile.share')}
       </span>
       <span
@@ -224,7 +224,7 @@ function AddFriend({
 
   return (
     <section className="rounded-xl bg-card p-4">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('social.add.title')}
       </p>
       <form onSubmit={submit} className="flex gap-2">
@@ -267,7 +267,7 @@ function Requests({
 
   return (
     <section className="rounded-xl bg-card p-4">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('social.requests.title')}
       </p>
       <ul className="space-y-2">
@@ -311,7 +311,7 @@ function Leaderboard({
   return (
     <section className="rounded-xl bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('social.board.title')}
         </p>
         <div className="flex rounded-lg bg-elevated p-0.5 text-xs">
@@ -359,17 +359,17 @@ function Leaderboard({
                     r.display_name || t('social.anon')
                   )}
                   {r.is_self && (
-                    <span className="ml-1.5 text-[11px] text-muted-foreground">
+                    <span className="ml-1.5 text-xs text-muted-foreground">
                       {t('social.board.you')}
                     </span>
                   )}
                 </p>
-                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>{t(`gami.tier.${r.tier}`)}</span>
                   <Flair streakDays={r.streak_days} badges={r.badges} />
                 </div>
                 {r.is_self && i > 0 && rows[i - 1]!.xp > r.xp && (
-                  <p className="mt-0.5 text-[11px] text-[hsl(var(--gold))] tabular-nums">
+                  <p className="mt-0.5 text-xs text-[hsl(var(--gold))] tabular-nums">
                     {t('social.board.behind', {
                       xp: (rows[i - 1]!.xp - r.xp).toLocaleString(),
                       rank: i,
@@ -381,7 +381,7 @@ function Leaderboard({
                 <p className="font-display text-sm font-semibold tabular-nums">
                   {t('social.board.level')} {r.level}
                 </p>
-                <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                <p className="font-mono text-xs tabular-nums text-muted-foreground">
                   {r.xp.toLocaleString()} XP
                 </p>
               </div>
@@ -435,7 +435,7 @@ function FriendsManage({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between"
       >
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('social.friends.title')} · {friends.length}
         </span>
         <span className="text-xs text-muted-foreground">{open ? t('social.friends.hide') : t('social.friends.manage')}</span>
@@ -476,7 +476,7 @@ function NameCell({ row }: { row: FriendRow }) {
             row.display_name || t('social.anon')
           )}
         </p>
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="tabular-nums">
             {t('social.board.level')} {row.level} · {row.xp.toLocaleString()} XP
           </span>

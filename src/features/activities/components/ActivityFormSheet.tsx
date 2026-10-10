@@ -83,7 +83,7 @@ export function ActivityFormSheet({ open, onClose, activity = null }: ActivityFo
         */}
         <div className="flex items-end gap-2">
           <label className="flex flex-1 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('activities.label')}
             </span>
             <Input
@@ -97,7 +97,7 @@ export function ActivityFormSheet({ open, onClose, activity = null }: ActivityFo
         </div>
 
         <div className="space-y-1.5">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('activities.icon')}
           </span>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('activities.icon')}>
@@ -127,7 +127,7 @@ export function ActivityFormSheet({ open, onClose, activity = null }: ActivityFo
         </div>
 
         <div className="space-y-1.5">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('activities.color')}
           </span>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('activities.color')}>

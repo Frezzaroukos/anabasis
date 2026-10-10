@@ -43,7 +43,7 @@ export function LastWorkoutCard() {
       )}
       <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg bg-muted/40 py-2">
-          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('workout.duration')}
           </dt>
           <dd className="mt-0.5 font-mono text-base tabular-nums leading-none">
@@ -51,13 +51,13 @@ export function LastWorkoutCard() {
           </dd>
         </div>
         <div className="rounded-lg bg-muted/40 py-2">
-          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('workout.exercises')}
           </dt>
           <dd className="mt-0.5 font-mono text-base tabular-nums leading-none">{exercisesCount}</dd>
         </div>
         <div className="rounded-lg bg-muted/40 py-2">
-          <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('workout.sets')}
           </dt>
           <dd className="mt-0.5 font-mono text-base tabular-nums leading-none">{setsCount}</dd>

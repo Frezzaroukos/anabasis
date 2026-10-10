@@ -98,7 +98,7 @@ function XpHero({ data }: { data: GamificationInput }) {
           <span className="font-display text-4xl font-semibold leading-none tabular-nums">
             {prog.level}
           </span>
-          <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+          <span className="mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
             {t('gami.level')}
           </span>
         </div>
@@ -120,7 +120,7 @@ function Badges({ data }: { data: GamificationInput }) {
   const badges = badgeStates(data);
   return (
     <section>
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('gami.badges')}
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -139,7 +139,7 @@ function Badges({ data }: { data: GamificationInput }) {
               </span>
             )}
             <span className="mt-2 text-sm font-medium">{t(b.nameKey)}</span>
-            <span className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+            <span className="mt-0.5 text-xs leading-tight text-muted-foreground">
               {t(b.descKey)}
             </span>
           </div>
@@ -155,7 +155,7 @@ function Breakdown({ data }: { data: GamificationInput }) {
   if (rows.length === 0) return null;
   return (
     <section className="rounded-xl bg-card p-4">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('gami.breakdown')}
       </p>
       <ul className="divide-y divide-border/60">

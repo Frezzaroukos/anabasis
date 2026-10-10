@@ -53,7 +53,7 @@ export function EmptyDashboardHint() {
 
   return (
     <section className="rounded-xl bg-card p-4">
-      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('dashboard.next.title')}
       </h2>
       <ul className="space-y-2">

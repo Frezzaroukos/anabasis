@@ -87,7 +87,7 @@ export function EditWorkoutSheet({
     <BottomSheet open={open} onClose={onClose} title={t('history.editWorkout')}>
       <div className="space-y-5 px-4 pb-6">
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('history.workoutName')}
           </span>
           <Input
@@ -99,7 +99,7 @@ export function EditWorkoutSheet({
         </label>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('workout.activityKind')}
           </span>
           <div className="flex flex-wrap gap-2">
@@ -115,7 +115,7 @@ export function EditWorkoutSheet({
         </div>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('history.workoutDate')}
           </span>
           <input
@@ -130,7 +130,7 @@ export function EditWorkoutSheet({
         {/* Χειροκίνητη διάρκεια — προαιρετική. Δεν χρειάζεται ζωντανό χρονόμετρο·
             γράψε πόσα λεπτά κράτησε, ή άφησέ το κενό. */}
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('history.workoutDuration')}
           </span>
           <Input

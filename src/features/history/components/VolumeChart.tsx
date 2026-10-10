@@ -53,7 +53,7 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
           ] as const
         ).map(([k, v]) => (
           <div key={k} className="rounded-md bg-muted/50 py-2">
-            <dt className="text-[10px] uppercase text-muted-foreground">
+            <dt className="text-xs uppercase text-muted-foreground">
               {t(`history.${k}`)}
             </dt>
             <dd className="font-mono text-sm tabular-nums">{v}</dd>

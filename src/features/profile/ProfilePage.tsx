@@ -150,13 +150,13 @@ export function ProfilePage() {
                     <p className="flex items-center gap-1.5 text-sm font-medium">
                       {label(p)}
                       {isActive && (
-                        <span className="flex items-center gap-0.5 text-[10px] uppercase text-primary">
+                        <span className="flex items-center gap-0.5 text-xs uppercase text-primary">
                           <Check className="h-3 w-3" aria-hidden />
                           {t('profile.active')}
                         </span>
                       )}
                       {isActive && auth && (
-                        <span className="text-[10px] uppercase text-muted-foreground">
+                        <span className="text-xs uppercase text-muted-foreground">
                           · {t('profile.syncedByAccount')}
                         </span>
                       )}
@@ -225,7 +225,7 @@ export function ProfilePage() {
       </section>
 
       <section className="rounded-lg bg-card p-4">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('profile.newProfile')}
         </p>
         <div className="flex items-center gap-2">

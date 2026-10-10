@@ -86,7 +86,7 @@ export function GoalRow({
           {completed && (
             <span
               className={cn(
-                'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-gold/10 px-1.5 py-0.5 text-[10px] font-semibold text-gold',
+                'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-gold/10 px-1.5 py-0.5 text-xs font-semibold text-gold',
                 justCompleted && 'animate-glow-pulse',
               )}
             >
@@ -124,7 +124,7 @@ export function GoalRow({
         </div>
         {/* Κυλιόμενο παράθυρο δεν έχει προθεσμία — «μένουν 0 μέρες»
             θα ήταν ψέμα, όχι πληροφορία. */}
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {p.daysLeft == null
             ? t('goals.noDeadline')
             : p.daysLeft > 1
@@ -136,7 +136,7 @@ export function GoalRow({
         {p.goal.exercise_id != null && (
           <Link
             to={`/progress?exerciseId=${p.goal.exercise_id}`}
-            className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             <LineChart className="h-3 w-3" aria-hidden />
             {t('goals.viewProgress')}
@@ -146,7 +146,7 @@ export function GoalRow({
         {p.goal.skill_id != null && (
           <Link
             to={`/skills/${p.goal.skill_id}`}
-            className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             <LineChart className="h-3 w-3" aria-hidden />
             {t('goals.viewSkill')}

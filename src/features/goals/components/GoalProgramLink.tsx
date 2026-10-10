@@ -48,7 +48,7 @@ export function GoalProgramLink({ goal }: { goal: Goal }) {
         <Link
           key={program.id}
           to={`/programs/${program.id}`}
-          className="flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <CalendarCheck className="h-3 w-3 shrink-0" aria-hidden />
           {program.name} ·{' '}

@@ -38,7 +38,7 @@ export function BottomTabNav() {
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors duration-200',
+                    'relative flex flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors duration-200',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                     isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                   )
@@ -68,7 +68,7 @@ export function BottomTabNav() {
               aria-haspopup="dialog"
               aria-expanded={moreOpen}
               className={cn(
-                'flex w-full flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors duration-200',
+                'flex w-full flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors duration-200',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 moreOpen ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}

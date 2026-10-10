@@ -145,7 +145,7 @@ export function SkillDetailPage() {
             <p className="truncate text-sm text-muted-foreground">{skill.ultimate_goal}</p>
           </div>
           {masteredSkill && (
-            <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">
+            <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-gold">
               ★ {t('skills.mastered')}
             </span>
           )}
@@ -361,7 +361,7 @@ export function SkillDetailPage() {
         banner στο header: ένας αρχάριος πρέπει να το διαβάσει, αλλά όχι πριν
         καν δει τι είναι το skill.
       */}
-      <p className="px-1 text-[11px] leading-snug text-muted-foreground">
+      <p className="px-1 text-xs leading-snug text-muted-foreground">
         {t('skills.targetsAreSuggestions')}
       </p>
 
@@ -411,7 +411,7 @@ export function SkillDetailPage() {
                         value={t('skills.mastered')}
                         position="insideTopRight"
                         fill={CHART_GOLD}
-                        className="text-[10px]"
+                        className="text-xs"
                       />
                     </ReferenceLine>
                   )}
