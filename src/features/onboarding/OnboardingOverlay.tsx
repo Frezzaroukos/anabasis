@@ -108,7 +108,7 @@ export function OnboardingOverlay() {
       onTouchEnd={onTouchEnd}
     >
       <div className="flex justify-end p-4">
-        <Button variant="ghost" size="sm" onClick={finish}>
+        <Button variant="ghost" size="sm" className="tap:min-h-11 tap:min-w-11" onClick={finish}>
           {t('onboarding.skip')}
         </Button>
       </div>

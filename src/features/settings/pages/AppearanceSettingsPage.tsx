@@ -63,7 +63,7 @@ export function AppearanceSettingsPage() {
         </div>
 
         {/* Accent — το κύριο χρώμα του app. Το χρυσό των ρεκόρ μένει σταθερό. */}
-        <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('settings.accent')}
         </p>
         <div className="flex flex-wrap items-center gap-2">
@@ -77,7 +77,7 @@ export function AppearanceSettingsPage() {
               aria-label={a.label}
               aria-pressed={accent === a.key}
               title={a.label}
-              className={`h-10 w-10 rounded-full border-2 transition-transform active:scale-90 ${
+              className={`h-10 w-10 rounded-full border-2 transition-transform active:scale-90 tap:min-h-11 tap:min-w-11 ${
                 accent === a.key ? 'border-foreground scale-110' : 'border-transparent'
               }`}
               style={{ background: a.swatch }}

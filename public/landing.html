@@ -128,7 +128,7 @@
 
       section { padding: 44px 0; }
       .eyebrow {
-        font-size: 0.74rem;
+        font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.12em;
         color: var(--muted);
@@ -167,6 +167,21 @@
       footer a:hover { text-decoration: underline; }
       .foot-links { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; }
       .peak-rule { height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.5; margin: 0 auto; max-width: 1080px; }
+
+      /* Στόχοι αφής ≥44×44 (WCAG 2.5.5) σε κάθε συσκευή αφής — τηλέφωνα
+         (max-width) ΚΑΙ tablet (pointer:coarse). Το desktop (ποντίκι, ≥1100px)
+         δεν ταιριάζει σε κανένα από τα δύο, οπότε μένει συμπαγές. */
+      @media (max-width: 1099px), (pointer: coarse) {
+        .lang button { min-height: 44px; min-width: 44px; }
+        .foot-links { gap: 6px 4px; }
+        .foot-links a {
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          padding: 0 10px;
+          margin-left: -10px;
+        }
+      }
     </style>
   </head>
   <body>

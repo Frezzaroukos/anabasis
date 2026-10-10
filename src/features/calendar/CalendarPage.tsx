@@ -315,12 +315,14 @@ export function CalendarPage() {
 
       {/* key = μήνας: αλλαγή μήνα ξαναπαίζει το rise-in — «η σελίδα άλλαξε»,
           όχι απότομο swap πλέγματος. */}
-      <div key={`${cursor.year}-${cursor.month}`} className="animate-rise-in rounded-lg bg-card p-3">
+      {/* max-sm:px-1.5 → σε στενά τηλέφωνα (375px) τα 7 κελιά της ημέρας
+          φτάνουν ≥44px πλάτος (WCAG 2.5.5)· tablet/desktop κρατούν άνετο p-3. */}
+      <div key={`${cursor.year}-${cursor.month}`} className="animate-rise-in rounded-lg bg-card p-3 max-sm:px-1.5">
         <div className="mb-1 grid grid-cols-7 gap-1 border-b border-border/60 pb-1.5">
           {weekdays.map((w) => (
             <div
               key={w}
-              className="py-1 text-center text-[10px] uppercase tracking-wide text-muted-foreground"
+              className="py-1 text-center text-xs uppercase tracking-wide text-muted-foreground"
             >
               {w}
             </div>
@@ -384,7 +386,7 @@ export function CalendarPage() {
                               />
                             ))}
                             {overflow && (
-                              <span className="font-mono text-[9px] leading-none text-muted-foreground">
+                              <span className="font-mono text-xs leading-none text-muted-foreground">
                                 +{ws.length - 3}
                               </span>
                             )}
@@ -396,7 +398,7 @@ export function CalendarPage() {
                         θόρυβος στα 9px — μένει από sm και πάνω, και πάντα στη
                         λεπτομέρεια της ημέρας. */}
                     {cal.get(c.key)?.weight != null && (
-                      <span className="hidden font-mono text-[10px] tabular-nums text-muted-foreground sm:block">
+                      <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:block">
                         {formatWeight(cal.get(c.key)!.weight!, unit, {
                           granularity: 'body',
                           withUnit: false,
@@ -414,7 +416,7 @@ export function CalendarPage() {
             `title` — αόρατο σε κάθε συσκευή αφής, δηλαδή εκεί που χρησιμοποιείται
             το app. Ο υπόμνηση μπαίνει μόνο όταν υπάρχει κάτι να εξηγηθεί. */}
         {monthStats.workouts > 0 && (
-          <div className="mt-2.5 flex items-center justify-center gap-1.5 border-t border-border/40 pt-2.5 text-[10px] text-muted-foreground">
+          <div className="mt-2.5 flex items-center justify-center gap-1.5 border-t border-border/40 pt-2.5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1" aria-hidden>
               <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
               <span className="h-2 w-2 rounded-full bg-muted-foreground/60" />
@@ -441,7 +443,7 @@ export function CalendarPage() {
               : t('calendar.pickDay')}
           </h2>
           {selected === today && (
-            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
               {t('calendar.today')}
             </span>
           )}
@@ -508,7 +510,7 @@ export function CalendarPage() {
           )}
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t('calendar.pickProgramDay')}
               </h3>
               <button
@@ -573,7 +575,7 @@ export function CalendarPage() {
           <div className="h-px bg-border/70" />
 
           <div>
-            <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t('calendar.adHoc')}
             </h3>
             <p className="mb-2 text-xs text-muted-foreground">{t('calendar.adHocHint')}</p>

@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 import animate from 'tailwindcss-animate';
+import plugin from 'tailwindcss/plugin';
 
 const config: Config = {
   darkMode: 'class',
@@ -68,7 +69,18 @@ const config: Config = {
       },
     },
   },
-  plugins: [animate],
+  plugins: [
+    animate,
+    // `tap:` — στοχεύει κάθε συσκευή αφής (τηλέφωνο ΚΑΙ tablet), ΟΧΙ ποντίκι/desktop.
+    // Δύο μέτωπα γιατί κανένα μόνο media δεν τα πιάνει όλα: τα τηλέφωνα (narrow
+    // viewport) αναφέρουν pointer:fine στα headless προφίλ, ενώ τα tablet
+    // αναφέρουν pointer:coarse. Το max-width πιάνει τα τηλέφωνα, το coarse τα
+    // tablet· το desktop (fine + ≥1100px) δεν ταιριάζει σε κανένα → μένει πυκνό.
+    // Χρήση: `tap:min-h-11 tap:min-w-11` για WCAG 2.5.5 στόχους αφής 44×44.
+    plugin(({ addVariant }) => {
+      addVariant('tap', ['@media (max-width: 1099px)', '@media (pointer: coarse)']);
+    }),
+  ],
 };
 
 export default config;

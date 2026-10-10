@@ -91,7 +91,10 @@ export function ProgressPage() {
   return (
     <div className="space-y-6">
       <header>
-        <Link to="/history" className="text-xs text-muted-foreground hover:text-foreground">
+        <Link
+          to="/history"
+          className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground tap:min-h-11"
+        >
           ← {t('history.title')}
         </Link>
         <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">
