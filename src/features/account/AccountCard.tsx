@@ -44,7 +44,7 @@ function Field({
 }) {
   return (
     <label className={cn('flex flex-col gap-1.5', className)}>
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -151,7 +151,7 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
   return (
     <section className="rounded-lg bg-card p-4">
       {showTitle && (
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {t('account.title')}
         </p>
       )}
@@ -164,7 +164,7 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
               setMode(m);
               setErrorKey(null);
             }}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm transition-colors ${
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm transition-colors tap:flex tap:min-h-11 tap:items-center tap:justify-center ${
               mode === m ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent'
             }`}
           >
@@ -228,7 +228,7 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
           </p>
         ) : (
           <div className="mt-4 space-y-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               {t('account.moreOptions')}
             </h3>
             <Button
@@ -240,7 +240,7 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
             >
               {magicBusy ? t('common.loading') : t('account.emailLink')}
             </Button>
-            <p className="text-center text-[11px] text-muted-foreground">
+            <p className="text-center text-xs text-muted-foreground">
               {t('account.emailLinkHint')}
             </p>
           </div>
@@ -350,12 +350,12 @@ function SignedInPanel({
     <section className="rounded-lg bg-card p-4">
       <div className="flex items-center justify-between gap-2">
         {title && (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             {title}
           </p>
         )}
         {role === 'admin' && (
-          <span className="ml-auto flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+          <span className="ml-auto flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
             <ShieldCheck className="h-3 w-3" aria-hidden />
             {t('account.roleAdmin')}
           </span>

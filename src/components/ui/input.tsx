@@ -15,7 +15,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         // στο hover/focus χωρίς να σπάει το borderless ηρεμία σε idle state.
         // 16px στο κινητό (text-base) ώστε το iOS να ΜΗΝ ζουμάρει σε κάθε tap
         // σε πεδίο (~40 taps/προπόνηση)· 14px από sm και πάνω για πυκνότητα.
-        'flex h-10 w-full rounded-md border border-transparent bg-elevated px-3 py-2 text-base sm:text-sm text-foreground',
+        // tap:min-h-11 → 44px ύψος πεδίου σε συσκευές αφής (τηλέφωνο + tablet)·
+        // στο desktop μένει h-10 (40px) για πυκνότητα φόρμας.
+        'flex h-10 w-full rounded-md border border-transparent bg-elevated px-3 py-2 text-base sm:text-sm text-foreground tap:min-h-11',
         'ring-offset-background transition-colors duration-150',
         'placeholder:text-muted-foreground',
         'hover:border-border/70',

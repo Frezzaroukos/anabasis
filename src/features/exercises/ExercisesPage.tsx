@@ -172,7 +172,7 @@ export function ExercisesPage() {
             type="button"
             onClick={() => setFilter(f)}
             className={cn(
-              'rounded-md border border-border px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'rounded-md border border-border px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 tap:inline-flex tap:min-h-11 tap:min-w-11 tap:items-center tap:justify-center',
               filter === f
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'hover:bg-accent',
@@ -200,7 +200,7 @@ export function ExercisesPage() {
         <div className="space-y-2">
           {groups.map(({ category, items }) => (
             <section key={category}>
-              <h3 className="px-1 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              <h3 className="px-1 pb-1.5 pt-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {category}
               </h3>
               <ul className="divide-y divide-border/60 rounded-lg bg-card">
@@ -269,11 +269,11 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
           )}
           {exercise.name}
           {exercise.user_id === null ? (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs uppercase text-muted-foreground">
               {t('exercises.builtin')}
             </span>
           ) : (
-            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase text-primary">
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs uppercase text-primary">
               {t('exercises.custom')}
             </span>
           )}

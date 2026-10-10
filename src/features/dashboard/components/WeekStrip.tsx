@@ -28,7 +28,7 @@ export function WeekStrip() {
   const cal = useLiveQuery(() => getCalendar(fromKey, toKey), [fromKey, toKey], undefined);
 
   return (
-    <div className="grid grid-cols-7 gap-1.5">
+    <div className="grid grid-cols-7 gap-1">
       {days.map((d) => {
         const key = localDay(d);
         const weekdayLabel = d.toLocaleDateString(i18n.resolvedLanguage, { weekday: 'narrow' });
@@ -43,9 +43,9 @@ export function WeekStrip() {
             key={key}
             to="/calendar"
             aria-label={fullLabel}
-            className="flex flex-col items-center gap-1 rounded-lg py-1.5 ring-offset-background transition-all duration-150 hover:bg-elevated active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex flex-col items-center justify-center gap-1 rounded-lg py-1.5 ring-offset-background transition-all duration-150 hover:bg-elevated active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 tap:min-h-11"
           >
-            <span className="text-[9px] uppercase text-muted-foreground">{weekdayLabel}</span>
+            <span className="text-xs uppercase leading-none text-muted-foreground">{weekdayLabel}</span>
             {trained === undefined ? (
               <span className="h-7 w-7 animate-pulse rounded-full bg-muted/40" />
             ) : (

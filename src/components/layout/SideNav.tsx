@@ -46,7 +46,9 @@ function SideLink({ item, label }: { item: NavItem; label: string }) {
       end={end}
       className={({ isActive }) =>
         cn(
-          'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
+          // tap:min-h-11 → 44px ύψος στα tablet (touch)· στο desktop (ποντίκι)
+          // μένει py-2 (~36px) ώστε να μη χαλάσει η πυκνότητα της πλαϊνής στήλης.
+          'relative flex min-h-9 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150 tap:min-h-11',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
           isActive
             ? 'bg-primary/10 font-medium text-primary'

@@ -105,7 +105,7 @@ export function BodyPage() {
             <p className="font-mono text-lg font-semibold tabular-nums leading-none">
               {formatWeight(latest, unit)}
             </p>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('body.current')}
             </p>
           </div>
@@ -132,7 +132,7 @@ export function BodyPage() {
             ] as const
           ).map(([label, val, set, u]) => (
             <label key={label} className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-muted-foreground">
                 {label}
                 {u ? ` (${u})` : ''}
               </span>
@@ -146,12 +146,12 @@ export function BodyPage() {
             </label>
           ))}
         </div>
-        <Button className="mt-3 h-9" onClick={save}>
+        <Button className="mt-3 h-9 tap:min-h-11" onClick={save}>
           {t('body.save')}
         </Button>
         {/* Σύνδεση με την προπόνηση: το βάρος εδώ είναι το bodyweight που μπαίνει
             στο φορτίο των ασκήσεων σωματικού βάρους (bw + πρόσθετο). */}
-        <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
+        <p className="mt-3 text-xs leading-snug text-muted-foreground">
           {t('body.weightFeedsLoad')}
         </p>
       </section>

@@ -31,11 +31,17 @@ export function SafetyNotice() {
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <p className="text-xs leading-relaxed text-muted-foreground">{t('legal.safety.banner')}</p>
-        <div className="mt-2 flex items-center gap-3">
-          <Link to="/legal/safety" className="text-xs font-medium text-primary hover:underline">
+        {/* tap:min-h-11 δίνει 44px περιοχή αφής στα touch (τηλέφωνο + tablet)·
+            στο desktop μένει συμπαγές banner. inline-flex ώστε το μεγαλύτερο
+            ύψος αφής να μη σπρώχνει το κείμενο. */}
+        <div className="mt-2 flex items-center gap-1">
+          <Link
+            to="/legal/safety"
+            className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium text-primary hover:underline tap:min-h-11"
+          >
             {t('legal.safety.readMore')}
           </Link>
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={dismiss}>
+          <Button variant="ghost" size="sm" className="px-3 text-xs tap:min-h-11" onClick={dismiss}>
             {t('legal.safety.gotIt')}
           </Button>
         </div>

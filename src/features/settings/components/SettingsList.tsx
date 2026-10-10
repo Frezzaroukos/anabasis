@@ -21,7 +21,7 @@ export function SettingsGroup({
 }) {
   return (
     <section>
-      <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {title}
       </h2>
       <div className="divide-y divide-border/50 overflow-hidden rounded-xl bg-card shadow-elevated">
@@ -86,7 +86,7 @@ export function CrossLink({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="flex items-center justify-between gap-2 rounded-lg bg-elevated px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      className="flex items-center justify-between gap-2 rounded-lg bg-elevated px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap:min-h-11"
     >
       <span className="min-w-0 flex-1">{label}</span>
       <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
