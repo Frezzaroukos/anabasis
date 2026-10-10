@@ -242,7 +242,7 @@ export function ExerciseFormSheet({
               {t('exercises.merge.title')}
             </summary>
             <div className="space-y-2 px-3 pb-3">
-              <p className="text-[11px] leading-snug text-muted-foreground">
+              <p className="text-xs leading-snug text-muted-foreground">
                 {t('exercises.merge.hint')}
               </p>
               {mergeTarget ? (

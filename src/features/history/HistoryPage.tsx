@@ -151,7 +151,7 @@ export function HistoryPage() {
                       ? formatWeight(pr.value, unit)
                       : Math.round(pr.value * 10) / 10}
                   </p>
-                  <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <p className="font-mono text-xs tabular-nums text-muted-foreground">
                     {new Date(pr.achieved_at).toLocaleDateString(locale)}
                   </p>
                 </div>
@@ -193,7 +193,7 @@ export function HistoryPage() {
                 style={{ transform: `translateY(${virtualRow.start - scrollMargin}px)` }}
               >
                 {row.type === 'month' ? (
-                  <h2 className="px-1 pb-2 pt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <h2 className="px-1 pb-2 pt-5 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     {new Date(`${row.key}-01T12:00:00`).toLocaleDateString(locale, {
                       month: 'long',
                       year: 'numeric',
@@ -217,7 +217,7 @@ export function HistoryPage() {
         <div className="space-y-5">
           {months.map(([key, items]) => (
             <section key={key}>
-              <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {new Date(`${key}-01T12:00:00`).toLocaleDateString(locale, {
                   month: 'long',
                   year: 'numeric',

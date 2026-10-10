@@ -50,7 +50,7 @@ export function DashboardLayoutSettings() {
 
   return (
     <section className="rounded-lg bg-card p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('settings.dashboardLayout')}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">{t('settings.dashboardLayoutHint')}</p>

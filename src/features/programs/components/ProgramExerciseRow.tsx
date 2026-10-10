@@ -103,7 +103,7 @@ export function ProgramExerciseRow({
 
       <div className="grid grid-cols-3 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('programs.targetSets')}
           </span>
           <Input
@@ -121,7 +121,7 @@ export function ProgramExerciseRow({
 
         {showHold ? (
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('programs.targetHold')}
             </span>
             <Input
@@ -138,7 +138,7 @@ export function ProgramExerciseRow({
           </label>
         ) : (
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('programs.targetReps')}
             </span>
             <Input
@@ -157,7 +157,7 @@ export function ProgramExerciseRow({
 
         {showWeight ? (
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('common.weight')} ({t(`common.${unit}`)})
             </span>
             <Input

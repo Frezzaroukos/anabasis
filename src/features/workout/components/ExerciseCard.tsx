@@ -207,7 +207,7 @@ export function ExerciseCard({
               έφτανε ως εδώ (σωστή άσκηση, σωστή σειρά) αλλά το «πόσα» έμενε
               στο πρόγραμμα — έπρεπε να το θυμάσαι ή να γυρίσεις πίσω. */}
           {targetLabel && (
-            <span className="shrink-0 rounded-full bg-elevated px-2 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+            <span className="shrink-0 rounded-full bg-elevated px-2 py-0.5 font-mono text-xs tabular-nums text-muted-foreground">
               {targetLabel}
             </span>
           )}
@@ -217,7 +217,7 @@ export function ExerciseCard({
               «wow» πλέον είναι το RungCelebration δίπλα (σκαλί-σκαλί + particles). */}
           {prCount > 0 && (
             <span
-              className="flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-gold"
+              className="flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold"
               role="status"
             >
               🏆 {prCount > 1 ? `${prCount} ${t('workout.prs')}` : t('workout.pr')}
@@ -228,7 +228,7 @@ export function ExerciseCard({
         {supportsToggle && (
           <div
             role="tablist"
-            className="flex shrink-0 rounded-md bg-elevated p-0.5 text-[11px] font-medium"
+            className="flex shrink-0 rounded-md bg-elevated p-0.5 text-xs font-medium"
           >
             <button
               type="button"
@@ -265,7 +265,7 @@ export function ExerciseCard({
       {needsBodyweight && (
         <Link
           to="/body"
-          className="flex items-center gap-1.5 border-t border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-primary"
+          className="flex items-center gap-1.5 border-t border-border/60 px-3 py-1.5 text-xs text-muted-foreground hover:text-primary"
         >
           <Weight className="h-3 w-3 shrink-0" aria-hidden />
           {t('workout.setBodyweightHint')}
@@ -331,13 +331,13 @@ export function ExerciseCard({
             </div>
             {/* Format hint */}
             {showQuickHelp && (
-              <div className="rounded-md bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground space-y-0.5">
+              <div className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground space-y-0.5">
                 <p>{t('workout.quickLogFormat')}: <span className="font-mono">{t('workout.quickLogFormatExample')}</span></p>
               </div>
             )}
             {/* Ζωντανή προεπισκόπηση: ο χρήστης βλέπει τι θα καταγραφεί καθώς γράφει */}
             {quickPreview.length > 0 && (
-              <p className="rounded-md bg-background/60 px-2 py-1 font-mono text-[11px] tabular-nums text-muted-foreground">
+              <p className="rounded-md bg-background/60 px-2 py-1 font-mono text-xs tabular-nums text-muted-foreground">
                 {quickPreview
                   .map((s) => {
                     const repsLabel = isHold ? `${s.reps}s` : `${s.reps}`;
@@ -376,7 +376,7 @@ export function ExerciseCard({
             <button
               type="button"
               onClick={() => setQuickMode(true)}
-              className="mt-2 flex w-full items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-primary"
+              className="mt-2 flex w-full items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary"
             >
               <Zap className="h-3 w-3" />
               {t('workout.quickLog')}
@@ -415,7 +415,7 @@ export function ExerciseCard({
  */
 function CoachProgressionHint({ hint }: { hint: string }) {
   return (
-    <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+    <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
       <Compass className="h-3 w-3" />
       <span className="font-medium">{hint}</span>
     </span>

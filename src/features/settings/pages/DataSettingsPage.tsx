@@ -66,7 +66,7 @@ export function DataSettingsPage() {
             ] as const
           ).map(([k, v]) => (
             <div key={k} className="rounded-md bg-elevated py-2">
-              <dt className="text-[10px] uppercase text-muted-foreground">{t(`settings.${k}`)}</dt>
+              <dt className="text-xs uppercase text-muted-foreground">{t(`settings.${k}`)}</dt>
               <dd className="font-mono text-sm">{v}</dd>
             </div>
           ))}

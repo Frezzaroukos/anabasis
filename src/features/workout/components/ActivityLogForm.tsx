@@ -63,7 +63,7 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
     <div className="space-y-5">
       {showDistance && (
         <div className="space-y-1">
-          <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <label className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('workout.distanceKm')}
           </label>
           <Input
@@ -86,7 +86,7 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
       )}
 
       <div className="space-y-1">
-        <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <label className="text-xs uppercase tracking-wide text-muted-foreground">
           {t('workout.feel')}
         </label>
         <div className="flex gap-2" role="radiogroup" aria-label={t('workout.feel')}>
@@ -112,7 +112,7 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
       </div>
 
       <div className="space-y-1">
-        <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <label className="text-xs uppercase tracking-wide text-muted-foreground">
           {t('workout.notes')}
         </label>
         <textarea

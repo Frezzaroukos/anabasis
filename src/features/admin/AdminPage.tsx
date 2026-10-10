@@ -163,7 +163,7 @@ export function AdminPage() {
       {state !== 'error' && (
         <section className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               {t('admin.usersHeading')}
             </h2>
             {state === 'ready' && (
@@ -333,9 +333,9 @@ function StatTile({
 }) {
   return (
     <div className="rounded-xl bg-card p-3 shadow-elevated">
-      <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <p className="mt-1 font-mono text-xl tabular-nums">{value ?? '—'}</p>
-      {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -385,19 +385,19 @@ function UserCard({
       <div className="flex flex-wrap items-center gap-2">
         <p className="min-w-0 flex-1 truncate font-mono text-sm">{user.email}</p>
         {user.role === 'admin' && (
-          <span className="flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+          <span className="flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
             <ShieldCheck className="h-3 w-3" aria-hidden />
             {t('admin.roleAdmin')}
           </span>
         )}
         {isSelf && (
-          <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="rounded-full bg-elevated px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t('admin.you')}
           </span>
         )}
         <span
           className={cn(
-            'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+            'rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide',
             user.disabled ? 'bg-destructive/15 text-destructive' : 'bg-elevated text-muted-foreground',
           )}
         >
@@ -438,7 +438,7 @@ function UserCard({
 
       {tempPassword && (
         <div className="mt-3 rounded-lg border border-primary/40 bg-primary/5 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-primary">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">
             {t('admin.tempPasswordTitle')}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">{t('admin.tempPasswordWarning')}</p>
@@ -465,7 +465,7 @@ function UserCard({
 function Field({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="rounded-md bg-elevated px-2.5 py-2">
-      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
       {/* null = δεν υπάρχει τιμή. «—», ποτέ ψεύτικο μηδέν/σημερινή ώρα. */}
       <dd className="mt-0.5 truncate font-mono text-xs tabular-nums">{value ?? '—'}</dd>
     </div>
@@ -516,7 +516,7 @@ function RowBreakdown({ userId, locale }: { userId: string; locale: string | und
   return (
     <div className="mt-3 overflow-hidden rounded-lg bg-elevated">
       <table className="w-full text-left text-xs">
-        <thead className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        <thead className="text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-3 py-2 font-medium">{t('admin.colTable')}</th>
             <th className="px-3 py-2 text-right font-medium">{t('admin.colRows')}</th>

@@ -181,7 +181,7 @@ export function AddSetInline({
               setReps(String(initialReps));
             }
           }}
-          className="min-h-11 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="min-h-11 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
           {lastLabel}
         </button>
@@ -194,7 +194,7 @@ export function AddSetInline({
               type="button"
               role="radio"
               aria-checked
-              className="rounded-full border border-border bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground"
+              className="rounded-full border border-border bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
             >
               {setType}
             </button>
@@ -207,7 +207,7 @@ export function AddSetInline({
               aria-checked={setType === st}
               onClick={() => onSetTypeChange(st)}
               className={cn(
-                'min-h-11 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'min-h-11 rounded-full border border-border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 setType === st
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent',
@@ -235,14 +235,14 @@ export function AddSetInline({
                 }
               }}
               placeholder={t('setType.customPlaceholder')}
-              className="h-7 w-28 text-[11px]"
+              className="h-7 w-28 text-xs"
             />
           ) : (
             <button
               type="button"
               onClick={() => setCustomOpen(true)}
               aria-label={t('setType.custom')}
-              className="min-h-11 min-w-11 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="min-h-11 min-w-11 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               +
             </button>
@@ -252,7 +252,7 @@ export function AddSetInline({
       <div className="flex items-end gap-2">
         {weighted && (
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('common.weight')} ({t(`common.${unit}`)})
             </span>
             <Input
@@ -273,7 +273,7 @@ export function AddSetInline({
         )}
         {holdActive ? (
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('workout.holdSeconds')}
             </span>
             <Input
@@ -294,7 +294,7 @@ export function AddSetInline({
           </label>
         ) : (
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('workout.reps')}
             </span>
             <Input
@@ -331,7 +331,7 @@ export function AddSetInline({
 
       {setType === 'rest_pause' && (
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('workout.restPauseMiniSets')}
           </span>
           <Input
@@ -344,7 +344,7 @@ export function AddSetInline({
               if (e.key === 'Enter') { e.preventDefault(); void submit(); }
             }}
           />
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {t('workout.restPauseMiniSetsHint')}
           </span>
         </label>
@@ -354,7 +354,7 @@ export function AddSetInline({
         type="button"
         aria-expanded={showIntensity}
         onClick={() => setShowIntensity((v) => !v)}
-        className="min-h-11 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+        className="min-h-11 text-xs text-muted-foreground underline-offset-2 hover:underline"
       >
         {showIntensity ? t('workout.intensityHide') : t('workout.intensityShow')}
       </button>
@@ -362,7 +362,7 @@ export function AddSetInline({
       {showIntensity && (
         <div className="flex items-end gap-2">
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('workout.rpe')}
             </span>
             <Input
@@ -379,7 +379,7 @@ export function AddSetInline({
             />
           </label>
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('workout.rir')}
             </span>
             <Input
@@ -395,7 +395,7 @@ export function AddSetInline({
             />
           </label>
           <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {t('workout.tempo')}
             </span>
             <Input

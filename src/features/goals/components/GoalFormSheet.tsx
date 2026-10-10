@@ -355,7 +355,7 @@ export function GoalFormSheet({
                   </button>
                 ))}
               </div>
-              <span className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              <span className="mt-1 text-xs leading-snug text-muted-foreground">
                 {t(`goals.anchorHint.${anchor}.${period}`)}
               </span>
             </Field>
@@ -438,7 +438,7 @@ export function GoalFormSheet({
                     )}
                   </ul>
                 )}
-                <p className="text-[11px] text-muted-foreground">{t('goals.exerciseAllHint')}</p>
+                <p className="text-xs text-muted-foreground">{t('goals.exerciseAllHint')}</p>
               </div>
             )}
           </Field>
@@ -454,7 +454,7 @@ export function GoalFormSheet({
         </Field>
 
         <div className="rounded-lg bg-muted/40 px-3 py-2.5">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('goals.preview')}
           </p>
           <p className="mt-1 text-sm font-medium">{label.trim() || preview}</p>
@@ -479,7 +479,7 @@ function Field({
 }) {
   return (
     <label className={cn('flex flex-col gap-1.5', className)}>
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       {children}
     </label>
   );

@@ -28,7 +28,7 @@ export function SkillLadderCard() {
       className="block overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-card to-card p-4 ring-offset-background transition-all duration-150 hover:via-elevated hover:to-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-primary">
+        <span className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">
           {t('dashboard.skillLadder')}
         </span>
         <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
@@ -86,7 +86,7 @@ export function SkillLadderCard() {
             </div>
             <span
               className={cn(
-                'line-clamp-2 w-full text-balance px-0.5 text-center text-[9px] leading-tight',
+                'line-clamp-2 w-full text-balance px-0.5 text-center text-xs leading-tight',
                 s.state === 'current' ? 'font-medium text-foreground' : 'text-muted-foreground',
               )}
             >

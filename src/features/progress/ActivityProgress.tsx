@@ -61,7 +61,7 @@ export function ActivityProgress() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {t('progress.activities')}
       </h2>
 

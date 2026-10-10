@@ -45,7 +45,7 @@ export function SectionTitle({
 }) {
   return (
     <div className={cn('mb-3 flex items-baseline justify-between gap-2', className)}>
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {children}
       </h2>
       {action}
@@ -73,7 +73,7 @@ export function Stat({
 }) {
   return (
     <div className={cn('rounded-lg bg-muted/40 px-3 py-2.5', className)}>
-      <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+      <div className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </div>
       <div
@@ -87,7 +87,7 @@ export function Stat({
       >
         {value}
       </div>
-      {hint != null && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
+      {hint != null && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
 }

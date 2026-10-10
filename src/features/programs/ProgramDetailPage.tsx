@@ -499,7 +499,7 @@ export function ProgramDetailPage() {
                 )}
               >
                 <div className="flex items-center justify-between gap-2 border-b border-border/40 py-0.5 pl-4 pr-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">
                     {group.kind !== 'single' &&
                       t(group.kind === 'dropset' ? 'setType.dropset' : 'setType.superset')}
                   </span>
@@ -511,7 +511,7 @@ export function ProgramDetailPage() {
                         onClick={() => void linkWithPrevious(index)}
                         aria-label={t('programs.supersetWithPrevious')}
                         title={t('programs.supersetWithPrevious')}
-                        className="flex h-11 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="flex h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <Link2 className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">{t('programs.supersetWithPrevious')}</span>

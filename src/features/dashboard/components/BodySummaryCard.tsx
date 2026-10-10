@@ -67,7 +67,7 @@ export function BodySummaryCard() {
 function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-md bg-elevated px-1 py-2.5">
-      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="font-mono text-sm tabular-nums">{children}</dd>
     </div>
   );

@@ -193,23 +193,23 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
           {/* Η ένταση φαίνεται μόνο όταν καταγράφηκε — αλλιώς θα ήταν
               write-only πεδίο, δηλαδή άχρηστο. */}
           {set.rpe != null && (
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-xs text-muted-foreground">
               RPE {set.rpe}
             </span>
           )}
           {set.rir != null && (
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-xs text-muted-foreground">
               RIR {set.rir}
             </span>
           )}
           {set.tempo && (
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-xs text-muted-foreground">
               {set.tempo}
             </span>
           )}
         </div>
         {set.set_type !== 'normal' && (
-          <span className="flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {set.group_id && <Link2 className="h-3 w-3" aria-hidden />}
             {t(`setType.${set.set_type}`)}
           </span>

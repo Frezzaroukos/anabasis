@@ -97,8 +97,8 @@ const PLATE_SIZE_CLASS: Record<number, string> = {
   15: 'h-12 w-12 text-xs',
   10: 'h-11 w-11 text-xs',
   5: 'h-10 w-10 text-xs',
-  2.5: 'h-9 w-9 text-[10px]',
-  1.25: 'h-8 w-8 text-[10px]',
+  2.5: 'h-9 w-9 text-xs',
+  1.25: 'h-8 w-8 text-xs',
 };
 
 interface PlateCalculatorProps {
