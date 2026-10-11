@@ -26,6 +26,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         self.send_header("X-Frame-Options", "DENY")
         if self.path.split("?")[0] in NO_CACHE:
             self.send_header("Cache-Control", "no-cache, must-revalidate")
