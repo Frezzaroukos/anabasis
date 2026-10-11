@@ -38,7 +38,7 @@ export function BodySummaryCard() {
   return (
     <Link
       to="/body"
-      className="block rounded-xl bg-card p-4 ring-offset-background transition-all duration-150 hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="block rounded-xl bg-card p-4 ring-offset-background transition-all duration-150 hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <SectionTitle action={<span className="text-muted-foreground">→</span>}>
         {t('body.title')}

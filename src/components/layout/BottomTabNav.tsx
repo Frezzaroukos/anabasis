@@ -39,7 +39,7 @@ export function BottomTabNav() {
                 className={({ isActive }) =>
                   cn(
                     'relative flex flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors duration-200',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                    'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                     isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                   )
                 }
@@ -69,7 +69,7 @@ export function BottomTabNav() {
               aria-expanded={moreOpen}
               className={cn(
                 'flex w-full flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors duration-200',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 moreOpen ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -86,7 +86,7 @@ export function BottomTabNav() {
             <li key={to}>
               <button
                 onClick={() => go(to)}
-                className="flex w-full items-center gap-3 rounded-lg bg-card px-3 py-3 text-left text-sm transition-colors duration-150 hover:bg-accent active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
+                className="flex w-full items-center gap-3 rounded-lg bg-card px-3 py-3 text-left text-sm transition-colors duration-150 hover:bg-accent active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
               >
                 <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">{t(labelKey)}</span>

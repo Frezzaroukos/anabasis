@@ -53,7 +53,7 @@ export function ConfirmDialog({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative z-10 w-full max-w-sm animate-in fade-in zoom-in-95 rounded-xl border border-border/60 bg-elevated p-5 shadow-elevated-lg duration-200 focus:outline-none"
+        className="relative z-10 w-full max-w-sm animate-in fade-in zoom-in-95 rounded-xl border border-border/60 bg-elevated p-5 shadow-elevated-lg duration-200 focus:outline-hidden"
       >
         <p className="text-base font-semibold">{title}</p>
         {description != null && (

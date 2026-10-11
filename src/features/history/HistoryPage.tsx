@@ -115,7 +115,7 @@ export function HistoryPage() {
       {list.length > 0 && (
         <Link
           to="/progress"
-          className="flex min-h-[3rem] items-center gap-3 rounded-xl bg-card px-4 py-3 text-sm transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex min-h-[3rem] items-center gap-3 rounded-xl bg-card px-4 py-3 text-sm transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <LineChart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <span className="flex-1">{t('progress.title')}</span>
@@ -167,7 +167,7 @@ export function HistoryPage() {
           <p className="text-sm text-muted-foreground">{t('history.empty')}</p>
           <Link
             to="/calendar"
-            className="mt-1 flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mt-1 flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <CalendarPlus className="h-4 w-4" aria-hidden />
             {t('history.logFirst')}
@@ -258,7 +258,7 @@ function WorkoutHistoryCard({
   return (
     <Link
       to={`/history/${w.id}`}
-      className="block rounded-xl bg-card px-4 py-3 transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="block rounded-xl bg-card px-4 py-3 transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="truncate text-sm font-medium">{w.workout_type ?? activity}</p>

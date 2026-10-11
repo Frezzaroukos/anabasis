@@ -197,7 +197,7 @@ export function AdminPage() {
                 aria-pressed={filter === f}
                 className={cn(
                   'h-9 rounded-full px-3 text-xs font-medium transition-colors duration-150',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                   filter === f
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-elevated text-muted-foreground hover:bg-accent hover:text-foreground',

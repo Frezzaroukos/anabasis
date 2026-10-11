@@ -62,7 +62,7 @@ export function WorkoutDetailPage() {
           <button
             onClick={() => setEditOpen(true)}
             aria-label={t('history.editWorkout')}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -119,7 +119,7 @@ export function WorkoutDetailPage() {
             <Card key={ex.exerciseId}>
               <Link
                 to={`/exercises/${ex.exerciseId}`}
-                className="-mx-1 mb-2 flex items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="-mx-1 mb-2 flex items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{ex.name}</span>
                 <span className="font-mono text-xs tabular-nums text-muted-foreground">

@@ -6,14 +6,15 @@ import { cn } from '@/lib/utils';
 const buttonVariants = cva(
   // active:scale = «πάτημα» αισθητό στο χέρι· focus-visible:shadow-glow-sm
   // βαθαίνει το ring σε ελαφριά λάμψη αντί για ξερό contour.
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-4 sm:focus-visible:ring-2 sm:focus-visible:ring-offset-2 focus-visible:shadow-glow-sm disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-4 sm:focus-visible:ring-2 sm:focus-visible:ring-offset-2 focus-visible:shadow-glow-sm disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         // Απαλή διαβάθμιση αντί για επίπεδο γέμισμα — το κύριο κουμπί «αναπνέει».
-        // shadow-sm σε ηρεμία, glow στο hover: το ίδιο ring token απλά βαθαίνει.
+        // shadow-xs σε ηρεμία, glow στο hover: το ίδιο ring token απλά βαθαίνει.
+        // (v4: το παλιό `shadow-sm` μετονομάστηκε σε `shadow-xs` — ίδιο visual.)
         default:
-          'bg-gradient-to-b from-primary to-primary/85 text-primary-foreground shadow-sm hover:opacity-90 hover:shadow-glow-sm',
+          'bg-gradient-to-b from-primary to-primary/85 text-primary-foreground shadow-xs hover:opacity-90 hover:shadow-glow-sm',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-accent',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         destructive:

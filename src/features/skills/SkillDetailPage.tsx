@@ -233,7 +233,7 @@ export function SkillDetailPage() {
                       type="button"
                       onClick={() => setEditingStep(step)}
                       aria-label={t('skills.editStep')}
-                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
@@ -241,7 +241,7 @@ export function SkillDetailPage() {
                       type="button"
                       onClick={() => setDeleteStepId(step.id)}
                       aria-label={t('skills.deleteStep')}
-                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

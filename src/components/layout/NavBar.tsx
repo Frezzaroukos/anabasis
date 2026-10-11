@@ -37,7 +37,7 @@ export function NavBar() {
           <button
             type="button"
             onClick={back.go}
-            className="-ml-1 flex h-11 items-center gap-0.5 rounded-lg pl-1 pr-3 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground active:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-ml-1 flex h-11 items-center gap-0.5 rounded-lg pl-1 pr-3 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground active:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ChevronLeft className="h-5 w-5 shrink-0" aria-hidden />
             <span className="max-w-[12rem] truncate">{back.label}</span>
@@ -48,7 +48,7 @@ export function NavBar() {
             type="button"
             onClick={goForward}
             aria-label={t('nav.forward')}
-            className="-mr-1 ml-auto flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:text-foreground active:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-mr-1 ml-auto flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:text-foreground active:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>

@@ -1,6 +1,31 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/* Tailwind v4: το v3-style JS config (χρώματα HSL-var, fonts, container, το
+   `tap:` variant, tailwindcss-animate) φορτώνεται ρητά — δεν ανιχνεύεται αυτόματα
+   πλέον. Μηδενική οπτική αλλαγή: ίδιο theme, ίδια utilities. */
+@config '../../tailwind.config.ts';
+
+/* Class-based dark mode (η βάση μας γυρίζει με .dark στο <html>, όχι με
+   prefers-color-scheme) — ρητό ώστε τα λίγα `dark:` utilities να μένουν σωστά. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * v4 compatibility shims — κρατούν ΑΚΡΙΒΩΣ την οπτική/συμπεριφορά του v3
+ * Preflight που άλλαξε στο v4:
+ *  · τα κουμπιά είχαν cursor:pointer (το v4 τα γυρίζει σε default)
+ *  · τα placeholders ήταν χρωματισμένα (το v4 πέφτει σε currentColor/50%) —
+ *    τα δένουμε στο brand muted-foreground, ίδιο με το Input component.
+ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+}
 
 /*
  * Χρωματικό σύστημα Anabasis v3 — «Carbon».

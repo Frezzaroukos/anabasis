@@ -100,7 +100,7 @@ export function OnboardingOverlay() {
     <div
       ref={containerRef}
       tabIndex={-1}
-      className="fixed inset-0 z-[100] flex flex-col bg-background safe-top safe-bottom focus:outline-none"
+      className="fixed inset-0 z-[100] flex flex-col bg-background safe-top safe-bottom focus:outline-hidden"
       role="dialog"
       aria-modal="true"
       aria-label={t('onboarding.title')}

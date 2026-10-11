@@ -85,7 +85,7 @@ export function ProgramExerciseRow({
               type="button"
               onClick={onUnlink}
               aria-label={t('programs.unlink')}
-              className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Unlink className="h-4 w-4" />
             </button>
@@ -94,7 +94,7 @@ export function ProgramExerciseRow({
             type="button"
             onClick={onDelete}
             aria-label={t('common.delete')}
-            className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -185,7 +185,7 @@ export function ProgramExerciseRow({
             onClick={() => void updateProgramExercise(item.id, { set_type: st })}
             aria-pressed={item.set_type === st}
             className={cn(
-              'h-10 rounded-md px-3 text-xs ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'h-10 rounded-md px-3 text-xs ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               item.set_type === st
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',

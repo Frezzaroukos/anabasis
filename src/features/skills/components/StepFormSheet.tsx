@@ -111,7 +111,7 @@ export function StepFormSheet({
                 type="button"
                 onClick={() => setTargetType(tt)}
                 className={cn(
-                  'rounded-md border border-border px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                  'rounded-md border border-border px-2.5 py-1 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                   targetType === tt
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-accent',
@@ -148,7 +148,7 @@ export function StepFormSheet({
               type="button"
               onClick={() => setTargetUnit(u)}
               className={cn(
-                'rounded-md border border-border px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'rounded-md border border-border px-2.5 py-1 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 targetUnit === u
                   ? 'bg-primary text-primary-foreground'
                   : 'hover:bg-accent',

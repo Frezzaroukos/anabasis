@@ -207,7 +207,7 @@ export function AddSetInline({
               aria-checked={setType === st}
               onClick={() => onSetTypeChange(st)}
               className={cn(
-                'min-h-11 rounded-full border border-border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'min-h-11 rounded-full border border-border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 setType === st
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent',

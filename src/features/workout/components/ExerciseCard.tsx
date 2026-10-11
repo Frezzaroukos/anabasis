@@ -236,7 +236,7 @@ export function ExerciseCard({
               aria-selected={!weighted}
               onClick={() => onWeightedChange(false)}
               className={cn(
-                'rounded px-2 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                 !weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -248,7 +248,7 @@ export function ExerciseCard({
               aria-selected={weighted}
               onClick={() => onWeightedChange(true)}
               className={cn(
-                'rounded px-2 py-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                 weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >

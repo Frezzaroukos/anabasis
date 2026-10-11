@@ -74,7 +74,7 @@ export function ActivityProgress() {
                   setActivityKey(a.key);
                   setMetric(a.tracks_distance ? 'distanceKm' : 'paceSecPerKm');
                 }}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
                 <span aria-hidden>{a.icon}</span>
                 <span className="flex-1 truncate text-sm font-medium">{a.label}</span>
@@ -125,7 +125,7 @@ export function ActivityProgress() {
                     key={m}
                     onClick={() => setMetric(m)}
                     className={cn(
-                      'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                      'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                       metric === m
                         ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
                         : 'hover:bg-elevated',

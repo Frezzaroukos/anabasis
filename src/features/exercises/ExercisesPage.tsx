@@ -172,7 +172,7 @@ export function ExercisesPage() {
             type="button"
             onClick={() => setFilter(f)}
             className={cn(
-              'rounded-md border border-border px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 tap:inline-flex tap:min-h-11 tap:min-w-11 tap:items-center tap:justify-center',
+              'rounded-md border border-border px-3 py-1.5 text-sm ring-offset-background transition-all duration-150 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 tap:inline-flex tap:min-h-11 tap:min-w-11 tap:items-center tap:justify-center',
               filter === f
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'hover:bg-accent',
@@ -261,7 +261,7 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
       <button
         type="button"
         onClick={onOpen}
-        className="min-w-0 flex-1 rounded-sm text-left ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="min-w-0 flex-1 rounded-sm text-left ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <p className="flex items-center gap-2 text-sm font-medium">
           {summary?.hasPR && (
@@ -287,7 +287,7 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
         type="button"
         onClick={onEdit}
         aria-label={t('exercises.editTitle')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <Pencil className="h-4 w-4" />
       </button>
@@ -295,7 +295,7 @@ function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
         type="button"
         onClick={() => void setExerciseArchived(exercise.id, !exercise.is_archived)}
         aria-label={t(exercise.is_archived ? 'exercises.unarchive' : 'exercises.archive')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {exercise.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
       </button>

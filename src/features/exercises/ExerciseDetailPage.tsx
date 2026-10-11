@@ -90,7 +90,7 @@ export function ExerciseDetailPage() {
               type="button"
               onClick={() => setFormOpen(true)}
               aria-label={t('exercises.editTitle')}
-              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Pencil className="h-4 w-4" />
             </button>
@@ -98,7 +98,7 @@ export function ExerciseDetailPage() {
               type="button"
               onClick={() => void setExerciseArchived(exercise.id, !exercise.is_archived)}
               aria-label={t(exercise.is_archived ? 'exercises.unarchive' : 'exercises.archive')}
-              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               {exercise.is_archived ? (
                 <ArchiveRestore className="h-4 w-4" />

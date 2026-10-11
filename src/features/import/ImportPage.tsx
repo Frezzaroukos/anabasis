@@ -171,7 +171,7 @@ export function ImportPage() {
               aria-selected={source === s.id}
               onClick={() => switchSource(s.id)}
               className={cn(
-                'h-11 rounded-md px-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'h-11 rounded-md px-4 text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                 source === s.id ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent',
               )}
             >
@@ -189,7 +189,7 @@ export function ImportPage() {
                   key={y}
                   onClick={() => setYear(y)}
                   className={cn(
-                    'h-11 rounded-md px-4 font-mono text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'h-11 rounded-md px-4 font-mono text-sm tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                     year === y ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent',
                   )}
                 >

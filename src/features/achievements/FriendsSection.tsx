@@ -407,7 +407,7 @@ function ScopeTab({
       type="button"
       onClick={onClick}
       className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
-        active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+        active ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground'
       }`}
     >
       {children}

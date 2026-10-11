@@ -30,7 +30,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
       <div className="flex min-h-[3.5rem] items-center gap-1 py-2.5 pl-4 pr-1.5 transition-colors hover:bg-elevated">
         <Link
           to={`/skills/${skill.id}`}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <SkillIcon skill={skill.short_code} className="h-5 w-5 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
@@ -61,7 +61,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
           type="button"
           onClick={onToggleArchive}
           aria-label={skill.is_archived ? t('skills.restore') : t('skills.archive')}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           {skill.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
         </button>

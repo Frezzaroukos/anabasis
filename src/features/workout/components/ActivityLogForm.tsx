@@ -99,7 +99,7 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
               onClick={() => onFeelSelect(f)}
               className={cn(
                 'h-10 flex-1 rounded-md text-sm font-mono font-medium tabular-nums transition-colors active:scale-[0.97]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 workout.feel === f
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-elevated text-muted-foreground hover:text-foreground',
@@ -120,7 +120,7 @@ export function ActivityLogForm({ workout }: ActivityLogFormProps) {
           onChange={(e) => setNotes(e.target.value)}
           onBlur={onNotesBlur}
           rows={4}
-          className="w-full rounded-md bg-elevated px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="w-full rounded-md bg-elevated px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           placeholder={t('workout.notesPlaceholder')}
         />
       </div>

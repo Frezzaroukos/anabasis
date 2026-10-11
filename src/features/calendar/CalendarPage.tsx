@@ -289,7 +289,7 @@ export function CalendarPage() {
           <button
             onClick={() => shift(-1)}
             aria-label={t('calendar.prev')}
-            className="flex h-11 w-11 items-center justify-center rounded-l-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 w-11 items-center justify-center rounded-l-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -299,14 +299,14 @@ export function CalendarPage() {
               setCursor({ year: d.getFullYear(), month: d.getMonth() });
               setSelected(today);
             }}
-            className="h-11 border-x border-border/70 px-4 text-xs font-medium ring-offset-background transition-all duration-150 hover:bg-accent active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-11 border-x border-border/70 px-4 text-xs font-medium ring-offset-background transition-all duration-150 hover:bg-accent active:scale-95 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {t('calendar.today')}
           </button>
           <button
             onClick={() => shift(1)}
             aria-label={t('calendar.next')}
-            className="flex h-11 w-11 items-center justify-center rounded-r-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-11 w-11 items-center justify-center rounded-r-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -345,7 +345,7 @@ export function CalendarPage() {
                       // min-h 48px (≥ WCAG 2.5.5) στο κινητό, πιο άνετο από sm.
                       // Ήταν 56px με gap-1: ένας άδειος μήνας έπιανε ~700px ύψος
                       // για μηδέν πληροφορία και σε ανάγκαζε να σκρολάρεις.
-                      'flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg p-0.5 ring-offset-background transition-all duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-16',
+                      'flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg p-0.5 ring-offset-background transition-all duration-150 active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-16',
                       // Δύο ΞΕΧΩΡΙΣΤΑ σήματα: «σήμερα» ζει στον αριθμό (γεμάτος
                       // κύκλος), «επιλεγμένη» στο κελί. Πριν το σήμερα είχε ΚΑΙ
                       // κύκλο ΚΑΙ ring γύρω από το κελί — δύο σήματα για το ίδιο
@@ -458,7 +458,7 @@ export function CalendarPage() {
               <li key={w.id}>
                 <Link
                   to={`/history/${w.id}`}
-                  className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2 ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2 ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <span className={cn('h-2 w-2 shrink-0 rounded-full', dotOf(w.kind))} />
                   <div className="min-w-0 flex-1">
@@ -488,7 +488,7 @@ export function CalendarPage() {
         {selected && (
           <button
             onClick={() => setAddOpen(true)}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Plus className="h-4 w-4" />
             {t('calendar.addWorkout')}
@@ -541,7 +541,7 @@ export function CalendarPage() {
                           <button
                             key={programDay.id}
                             onClick={() => void onPickProgramDay(programDay.id)}
-                            className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           >
                             <span className="min-w-0 flex-1">
                               <span className="block truncate font-medium">{programDay.name}</span>
@@ -561,7 +561,7 @@ export function CalendarPage() {
                     <button
                       key={program.id}
                       onClick={() => void onPickProgram(program.id)}
-                      className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <span className="min-w-0 truncate font-medium">{program.name}</span>
                       <Plus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -595,7 +595,7 @@ export function CalendarPage() {
                 type="submit"
                 disabled={!adHocLabel.trim()}
                 aria-label={t('calendar.adHocStart')}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground ring-offset-background transition-all duration-150 hover:opacity-90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-40"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground ring-offset-background transition-all duration-150 hover:opacity-90 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-40"
               >
                 <Plus className="h-4 w-4" />
               </button>

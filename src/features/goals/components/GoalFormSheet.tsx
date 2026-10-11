@@ -166,7 +166,7 @@ export function GoalFormSheet({
 
   const chip = (active: boolean) =>
     cn(
-      'rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+      'rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
       active
         ? 'border-primary bg-primary/10 font-medium text-foreground'
         : 'border-border/70 text-muted-foreground hover:text-foreground',
@@ -299,7 +299,7 @@ export function GoalFormSheet({
                       <button
                         type="button"
                         onClick={() => void pickSkill(s.id)}
-                        className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                       >
                         {s.name}
                       </button>
@@ -418,7 +418,7 @@ export function GoalFormSheet({
                             setExerciseId(e.id);
                             setExerciseQuery('');
                           }}
-                          className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                          className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                         >
                           {e.name}
                         </button>
@@ -429,7 +429,7 @@ export function GoalFormSheet({
                         <button
                           type="button"
                           onClick={() => void createExerciseNow(exerciseQuery)}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                         >
                           <Plus className="h-4 w-4 shrink-0" />
                           {t('goals.createNewExercise', { name: exerciseQuery.trim() })}

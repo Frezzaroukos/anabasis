@@ -195,7 +195,7 @@ export function ProgramsPage() {
                         setTemplatesOpen(false);
                         void onDuplicate(p.id);
                       }}
-                      className="w-full rounded-lg bg-card px-4 py-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                      className="w-full rounded-lg bg-card px-4 py-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                     >
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="font-medium">{p.name}</span>
@@ -223,7 +223,7 @@ export function ProgramsPage() {
                   type="button"
                   disabled={busy}
                   onClick={() => void onPickTemplate(tpl.id)}
-                  className="w-full rounded-lg bg-card px-4 py-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+                  className="w-full rounded-lg bg-card px-4 py-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">{t(tpl.nameKey)}</span>
@@ -323,7 +323,7 @@ export function ProgramsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <Link
                     to={`/programs/${p.id}`}
-                    className="min-w-0 flex-1 rounded-md ring-offset-background transition-all duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="min-w-0 flex-1 rounded-md ring-offset-background transition-all duration-150 hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <p className="truncate font-display text-sm font-semibold">{p.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
@@ -353,7 +353,7 @@ export function ProgramsPage() {
                         setRenameDraft(p.name);
                       }}
                       aria-label={t('common.edit')}
-                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -361,7 +361,7 @@ export function ProgramsPage() {
                       type="button"
                       onClick={() => void onDuplicate(p.id)}
                       aria-label={t('programs.duplicate')}
-                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Copy className="h-4 w-4" />
                     </button>
@@ -369,7 +369,7 @@ export function ProgramsPage() {
                       type="button"
                       onClick={() => setDeleteId(p.id)}
                       aria-label={t('common.delete')}
-                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

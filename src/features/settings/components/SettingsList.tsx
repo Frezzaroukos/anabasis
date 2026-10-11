@@ -50,7 +50,7 @@ export function SettingsRow({
       to={to}
       className={cn(
         'flex min-h-[3rem] items-center gap-3 px-4 py-3 text-sm transition-colors duration-150',
-        'hover:bg-accent active:bg-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+        'hover:bg-accent active:bg-accent/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
       )}
     >
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />

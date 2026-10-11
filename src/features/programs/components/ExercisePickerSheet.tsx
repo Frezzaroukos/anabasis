@@ -111,7 +111,7 @@ export function ExercisePickerSheet({
               type="button"
               disabled={creatingExercise}
               onClick={() => void createExerciseNow(q)}
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-primary/10 px-4 py-2 text-sm font-medium text-primary ring-offset-background transition-all duration-150 hover:bg-primary/20 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-primary/10 px-4 py-2 text-sm font-medium text-primary ring-offset-background transition-all duration-150 hover:bg-primary/20 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
               {t('programs.createNewExercise', { name: q.trim() })}
@@ -141,7 +141,7 @@ export function ExercisePickerSheet({
                           }
                         }}
                         className={cn(
-                          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                           mode === 'multi' && isSelected(ex.id) && 'bg-accent',
                         )}
                       >

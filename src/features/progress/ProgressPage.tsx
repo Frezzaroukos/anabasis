@@ -118,7 +118,7 @@ export function ProgressPage() {
                 <li key={e.id}>
                   <button
                     onClick={() => setExerciseId(e.id)}
-                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       {/* Trophy (χρυσό) = έχει PR· διακριτική κουκκίδα = έχει
