@@ -17,5 +17,5 @@
 - Οι αποφάσεις 1 και 3 παραπάνω
 
 ## Κανόνες
-- Deploy: `npm run build` (γράφει στο live dist/ — backup πρώτα) · API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)
+- Deploy: `npm run build` (γράφει στο live dist/· ξαναχτίζεται από το git) · API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)
 - Public repo: commit messages χωρίς AI trailers · ποτέ fake χρήστες/μετρικές
