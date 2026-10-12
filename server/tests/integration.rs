@@ -71,6 +71,19 @@ async fn call(
     (status, value)
 }
 
+/// Σαν την `call`, αλλά με ρητό `CF-Connecting-IP` — ώστε τα rate-limit tests
+/// να ελέγχουν per-IP buckets (ο governor κλειδώνει στο CF-Connecting-IP).
+async fn call_ip(app: &Router, method: &str, uri: &str, ip: &str) -> StatusCode {
+    let req = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header("cf-connecting-ip", ip)
+        .header("content-type", "application/json")
+        .body(Body::empty())
+        .unwrap();
+    app.clone().oneshot(req).await.unwrap().status()
+}
+
 async fn signup(app: &Router, email: &str, password: &str) -> (StatusCode, Value) {
     call(
         app,
@@ -210,6 +223,41 @@ async fn five_failures_trigger_lockout() {
     let (status, body) = login(&app, "lockme@example.com", "correcthorsebattery").await;
     assert_eq!(status, StatusCode::LOCKED);
     assert_eq!(body["error"], "locked");
+}
+
+#[tokio::test]
+async fn auth_rate_limit_is_per_ip() {
+    let (app, _state, _dir) = test_app(None).await;
+
+    // Ο auth governor: burst 10, refill 1/6s, κλειδί CF-Connecting-IP.
+    // Από μία IP τα πρώτα 10 (burst) περνούν το όριο· το 11ο γρήγορο = 429.
+    // (empty body → 400 parse error στα πρώτα 10, ποτέ 429 — επιβεβαιώνει ότι
+    // ο governor αφήνει το burst να φτάσει στον handler.)
+    let ip_a = "198.51.100.10";
+    for i in 1..=10 {
+        let status = call_ip(&app, "POST", "/api/auth/login", ip_a).await;
+        assert_ne!(
+            status,
+            StatusCode::TOO_MANY_REQUESTS,
+            "request {i}/10 από την ίδια IP πρέπει να μένει εντός burst (10)"
+        );
+    }
+    let status = call_ip(&app, "POST", "/api/auth/login", ip_a).await;
+    assert_eq!(
+        status,
+        StatusCode::TOO_MANY_REQUESTS,
+        "το 11ο γρήγορο request από την ίδια IP πρέπει να πάρει 429"
+    );
+
+    // Το bucket είναι per-IP: μια διαφορετική IP δεν επηρεάζεται από το όριο
+    // της πρώτης — αλλιώς ένας επιτιθέμενος θα έκλεινε όλους τους χρήστες έξω.
+    let ip_b = "198.51.100.20";
+    let status = call_ip(&app, "POST", "/api/auth/login", ip_b).await;
+    assert_ne!(
+        status,
+        StatusCode::TOO_MANY_REQUESTS,
+        "άλλη IP έχει δικό της bucket — δεν πρέπει να επηρεάζεται"
+    );
 }
 
 #[tokio::test]
