@@ -7,10 +7,13 @@ import {
   Download,
   FileText,
   HeartPulse,
+  HelpCircle,
   Info,
   ListChecks,
+  MessageSquare,
   Palette,
   ShieldCheck,
+  Sparkle,
   Sparkles,
   Timer,
   Users,
@@ -106,6 +109,12 @@ export function SettingsPage() {
 
       <SettingsGroup title={t('settings.hubAboutGroup')}>
         <SettingsRow to="/settings/about" Icon={Info} label={t('settings.about')} />
+      </SettingsGroup>
+
+      <SettingsGroup title={t('settings.hubHelpGroup')}>
+        <SettingsRow to="/help" Icon={HelpCircle} label={t('help.title')} />
+        <SettingsRow to="/whats-new" Icon={Sparkle} label={t('changelog.title')} />
+        <SettingsRow to="/feedback" Icon={MessageSquare} label={t('feedback.title')} />
       </SettingsGroup>
 
       <SettingsGroup title={t('settings.hubLegalGroup')}>

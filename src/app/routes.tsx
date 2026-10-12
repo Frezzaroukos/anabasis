@@ -41,6 +41,9 @@ const AdminPage = lazyPage(() => import('@/features/admin/AdminPage'), 'AdminPag
 const AchievementsPage = lazyPage(() => import('@/features/achievements/AchievementsPage'), 'AchievementsPage');
 const PublicProfilePage = lazyPage(() => import('@/features/achievements/PublicProfilePage'), 'PublicProfilePage');
 const LegalPage = lazyPage(() => import('@/features/legal/LegalPage'), 'LegalPage');
+const HelpPage = lazyPage(() => import('@/features/support/HelpPage'), 'HelpPage');
+const ChangelogPage = lazyPage(() => import('@/features/support/ChangelogPage'), 'ChangelogPage');
+const FeedbackPage = lazyPage(() => import('@/features/support/FeedbackPage'), 'FeedbackPage');
 
 /*
  * Το app σερβίρεται και από υποφάκελο (GitHub Pages: /anabasis/). Χωρίς
@@ -92,6 +95,9 @@ export const router = createBrowserRouter(
       { path: 'import', element: <ImportPage /> },
       { path: 'branding', element: <BrandingPage /> },
       { path: 'legal/:doc', element: <LegalPage /> },
+      { path: 'help', element: <HelpPage /> },
+      { path: 'whats-new', element: <ChangelogPage /> },
+      { path: 'feedback', element: <FeedbackPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

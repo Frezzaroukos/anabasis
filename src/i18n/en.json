@@ -288,6 +288,7 @@
     "hubDataGroup": "Data",
     "hubAboutGroup": "About",
     "hubLegalGroup": "Legal & safety",
+    "hubHelpGroup": "Help & feedback",
     "account": "Account",
     "accountDesc": "Your cloud account. It syncs the active device profile across your devices. Everything works without it — offline, on this device.",
     "notSignedIn": "Not signed in",
@@ -976,6 +977,119 @@
       "hide": "Hide",
       "remove": "Remove"
     }
+  },
+  "help": {
+    "title": "Help & FAQ",
+    "desc": "Answers to the questions people ask most.",
+    "back": "Back to Settings",
+    "intro": "Anabasis is meant to be self-explanatory, but here are answers to the things people ask most. Still stuck? Send a note — we read every message.",
+    "faq": [
+      {
+        "q": "Do I need an account?",
+        "a": "No. Anabasis works fully without signing up — open it and start logging straight away. An account is optional and only adds cross-device sync."
+      },
+      {
+        "q": "Where is my data stored?",
+        "a": "On your device, in your browser (IndexedDB). It works offline and never leaves your device unless you create a cloud account to sync. Clearing your browser's site data erases it, so export a backup first."
+      },
+      {
+        "q": "Is it free?",
+        "a": "Yes. The full app is free and runs locally. There are no ads, no analytics and no third-party trackers."
+      },
+      {
+        "q": "How do I install it on my phone?",
+        "a": "Open anabasis.axonos.dev in your browser, then use “Add to Home Screen” (the Share menu on iOS, the ⋮ menu on Android). It installs like a native app and works offline."
+      },
+      {
+        "q": "How does cross-device sync work?",
+        "a": "Create a free account and sign in on each device — your data then syncs automatically. Sync is last-write-wins per row and keeps working offline; changes sync when you reconnect."
+      },
+      {
+        "q": "How do I back up or move my data?",
+        "a": "Settings → Data → Export writes a single JSON file with everything. Import reads it back on any device. This works with or without an account."
+      },
+      {
+        "q": "Can I delete my account and data?",
+        "a": "Yes. Settings → Account → Delete account removes your cloud account and its synced rows from the server. Local data on a device is removed by clearing the browser's site data."
+      },
+      {
+        "q": "Which languages are supported?",
+        "a": "English and Greek. Switch any time in Settings → Appearance."
+      },
+      {
+        "q": "Is it safe to follow the training?",
+        "a": "Anabasis is a tracker, not a coach or medical advice. Read the Safety & health notice, warm up, progress gradually and stop if something hurts. Train at your own risk."
+      },
+      {
+        "q": "Is the code open?",
+        "a": "Yes — Anabasis is open source. The repository is linked from Settings → About."
+      }
+    ],
+    "stillStuck": "Still have a question?",
+    "contactCta": "Send feedback",
+    "legalCta": "Safety, privacy & terms"
+  },
+  "changelog": {
+    "title": "What's new",
+    "desc": "Notable updates to Anabasis.",
+    "back": "Back to Settings",
+    "intro": "A short history of the bigger changes.",
+    "releases": [
+      {
+        "date": "October 2026",
+        "title": "Getting ready to share",
+        "items": [
+          "Safety & health notice with a one-time acknowledgement.",
+          "Privacy Policy and Terms of Service pages.",
+          "A value-proposition landing page for first-time visitors.",
+          "A device-wide pass for touch and readability: 44px touch targets and a 12px minimum text size across phones, tablets and desktop.",
+          "Help & FAQ, this “What's new” page, and an in-app feedback form."
+        ]
+      },
+      {
+        "date": "September 2026",
+        "title": "Accounts, sync & social",
+        "items": [
+          "Optional cloud accounts with cross-device, offline-first sync.",
+          "Google sign-in and passwordless email sign-in links.",
+          "Friends, ranking and an opt-in leaderboard (“Your Ascent”).",
+          "A reorganised Settings hub and an admin view."
+        ]
+      },
+      {
+        "date": "Earlier",
+        "title": "The core tracker",
+        "items": [
+          "Set-by-set logging with a calendar-centric home.",
+          "Weighted calisthenics and skill ladders (tuck → straddle → full).",
+          "Goals — including skill-mastery and target-weight goals — and custom trackers.",
+          "Multi-day programs and a unified progress chart.",
+          "Offline-first storage, PWA install and a Linux desktop build."
+        ]
+      }
+    ]
+  },
+  "feedback": {
+    "title": "Send feedback",
+    "desc": "Tell us what's broken or what you'd like.",
+    "back": "Back to Settings",
+    "intro": "Found a bug or have an idea? Write it below. It opens your email app with everything pre-filled, addressed to contact@axonos.dev — nothing is sent until you press send there.",
+    "typeLabel": "Type",
+    "types": {
+      "bug": "Bug",
+      "idea": "Idea or request",
+      "question": "Question",
+      "other": "Other"
+    },
+    "messageLabel": "Your message",
+    "messagePlaceholder": "What happened, or what would you like?",
+    "includeDevice": "Include basic device info (browser, screen size, language) to help diagnose",
+    "deviceInfoTitle": "Device info that will be included",
+    "send": "Open email",
+    "emptyError": "Write a message first.",
+    "fallbackNote": "If your email app didn't open, write to contact@axonos.dev directly.",
+    "copyEmail": "Copy address",
+    "copied": "Copied"
   },
   "legal": {
     "back": "Back to About",
