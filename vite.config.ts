@@ -47,12 +47,22 @@ export default defineConfig({
           { name: 'Ημερολόγιο', short_name: 'Ημερολόγιο', url: `${basePath}calendar` },
           { name: 'Πρόοδος', short_name: 'Πρόοδος', url: `${basePath}progress` },
         ],
+        // Screenshots → το Chrome/Android δείχνει το πλούσιο install prompt
+        // (προεπισκόπηση app) αντί για το μίνιμαλ. Χρειάζεται ≥1 narrow + ≥1 wide.
+        screenshots: [
+          { src: `${basePath}screenshots/mobile-dashboard.png`, sizes: '780x1688', type: 'image/png', form_factor: 'narrow', label: 'Πίνακας — η πρόοδός σου με μια ματιά' },
+          { src: `${basePath}screenshots/mobile-calendar.png`, sizes: '780x1688', type: 'image/png', form_factor: 'narrow', label: 'Ημερολόγιο — το σπίτι του logging' },
+          { src: `${basePath}screenshots/mobile-skills.png`, sizes: '780x1688', type: 'image/png', form_factor: 'narrow', label: 'Skills — κάθε skill μια σκάλα' },
+          { src: `${basePath}screenshots/desktop-dashboard.png`, sizes: '1920x1200', type: 'image/png', form_factor: 'wide', label: 'Anabasis στον υπολογιστή' },
+          { src: `${basePath}screenshots/desktop-calendar.png`, sizes: '1920x1200', type: 'image/png', form_factor: 'wide', label: 'Ημερολόγιο σε πλήρη οθόνη' },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // Τα press assets είναι για ανθρώπους (README/δελτίο τύπου), όχι για
-        // την εφαρμογή — 2.7MB δεν έχουν λόγο να μπουν στο offline cache.
-        globIgnores: ['press/**'],
+        // Τα press assets είναι για ανθρώπους (README/δελτίο τύπου) και τα
+        // screenshots για το install-prompt του browser — κανένα δεν το χρειάζεται
+        // η εφαρμογή offline, οπότε έξω από το precache.
+        globIgnores: ['press/**', 'screenshots/**'],
       },
     }),
   ].filter(Boolean),

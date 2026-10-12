@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BottomTabNav } from '@/components/layout/BottomTabNav';
 import { NavBar } from '@/components/layout/NavBar';
+import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { SideNav } from '@/components/layout/SideNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingOverlay } from '@/features/onboarding/OnboardingOverlay';
@@ -45,6 +46,9 @@ export function AppShell() {
           γραμμή κάθε σελίδας.
         */}
         <main className="mx-auto w-full max-w-md flex-1 px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl">
+          <div className="mb-4 empty:mb-0">
+            <OfflineBanner />
+          </div>
           <SafetyNotice />
           <ErrorBoundary
             key={pathname}

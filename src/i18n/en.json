@@ -343,7 +343,9 @@
     "retry": "Try again",
     "weight": "Weight",
     "on": "On",
-    "off": "Off"
+    "off": "Off",
+    "offline": "You're offline",
+    "offlineHint": "Logging works as usual — your changes sync when you reconnect."
   },
   "activity": {
     "strength": "Strength",
