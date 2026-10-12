@@ -21,6 +21,9 @@ export default defineConfig({
     !process.env.TAURI_ENV_PLATFORM &&
     VitePWA({
       registerType: 'autoUpdate',
+      // Ο κώδικας εγγραφής του service worker δεν χρειάζεται να μπλοκάρει το
+      // πρώτο paint — defer ώστε το FCP/LCP να μη χρεώνονται ~300ms.
+      injectRegister: 'script-defer',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'og.png', 'robots.txt'],
       manifest: {
         name: 'Anabasis — weighted calisthenics & skill progression',
@@ -67,6 +70,18 @@ export default defineConfig({
         // Το recharts + d3 είναι το βαρύτερο dependency· δικό του chunk ώστε
         // να cache-άρεται ξεχωριστά και να μη φουσκώνει το κύριο bundle.
         manualChunks(id: string) {
+          // Μικρά utils που χρησιμοποιεί το `cn()` (utils.ts) ΠΑΝΤΟΥ, eager:
+          // δέσ' τα στο σταθερό 'react' chunk. Αλλιώς, επειδή το recharts
+          // εξαρτάται κι αυτό από το clsx, το clsx απορροφιόταν μέσα στο
+          // recharts chunk — και το `cn()` έσερνε ΟΛΟ το recharts (~107KB gz)
+          // σε κάθε σελίδα, ακόμη κι εκεί που δεν υπάρχει γράφημα.
+          if (
+            id.includes('node_modules/clsx') ||
+            id.includes('node_modules/class-variance-authority') ||
+            id.includes('node_modules/tailwind-merge')
+          ) {
+            return 'react';
+          }
           if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
             return 'recharts';
           }

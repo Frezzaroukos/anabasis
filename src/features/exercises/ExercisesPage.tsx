@@ -200,9 +200,12 @@ export function ExercisesPage() {
         <div className="space-y-2">
           {groups.map(({ category, items }) => (
             <section key={category}>
-              <h3 className="px-1 pb-1.5 pt-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {/* h2: άμεσο υπο-section του h1 «Exercises» — χωρίς skip επιπέδου
+                  (WCAG heading-order)· η εμφάνιση έρχεται από τις κλάσεις, όχι
+                  από το tag, άρα καμία οπτική αλλαγή. */}
+              <h2 className="px-1 pb-1.5 pt-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {category}
-              </h3>
+              </h2>
               <ul className="divide-y divide-border/60 rounded-lg bg-card">
                 {items.map((item) =>
                   item.kind === 'skill' ? (
