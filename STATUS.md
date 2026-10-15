@@ -20,6 +20,11 @@
 - Deploy: `npm run build` (γράφει στο live dist/· ξαναχτίζεται από το git) · API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)
 - Public repo: commit messages χωρίς AI trailers · ποτέ fake χρήστες/μετρικές
 
+## Lane A4 — Codex blockers κλεισμένα 2026-10-15 (branch pro-2026-10, UNPUSHED)
+- Έγινε: uncommitted perf (gzip origin + app-shell) committed· (1) export μόνο τρέχοντος profile + ειλικρινές UI, (2) logout/deleteAccount σβήνουν τα τοπικά δεδομένα του λογαριασμού, (3) import version-gate + LWW no-clobber + preview, (4) sync gc_floor reset-guard + clock-skew clamp (cargo+vitest), (5) staged build (`build:staged` + promote/rollback, docs/STAGED-BUILD.md).
+- Verify: vitest 501/501, cargo 74/74, tsc+eslint clean, `build:staged` ok, device-check 10 profiles × 8 routes = 80/80 (0 overflow, 0 console errors). 7 commits 1ae87bd→0881245.
+- Περιμένει Aggelos: QA + ρητό «ναι» για push/deploy (ΟΧΙ έγινε)· Notion Warrior import εκκρεμεί (θέλει απαντήσεις)· 4b clamp είναι bounded skew-guard, όχι πλήρες HLC (προς επιβεβαίωση αν θέλουμε full).
+
 ## Έλεγχος ολοκλήρωσης — Codex 13/10/2026
 - Έγινε: read-only audit pro-2026-10@3f25e2a· frontend suite PASS σε73files, backend72tests και lint PASS· παραδοτέο anabasis-readiness-2026-10-13.md στα outputs του τρέχοντος Codex chat.
 - Μένει: release artifact/staged build, backup all-profile scope/import policy, old-offline-client GC/clock-skew sync και Tauri API portability· τελικό build/typecheck/10-device+real-device/login/restore QA δεν έγινε τώρα.
