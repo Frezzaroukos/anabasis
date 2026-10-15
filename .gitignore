@@ -10,6 +10,9 @@ lerna-debug.log*
 # Build / deps
 node_modules
 dist
+dist-staging
+dist-prev
+dist-bad
 dist-ssr
 build
 .cache
