@@ -2070,11 +2070,78 @@ async fn push_below_gc_floor_rejected_no_resurrection() {
     assert_eq!(ok["reset_required"], false, "ενημερωμένη συσκευή γράφει κανονικά");
     assert!(goal_payload(&state, &user_id, "g-new").await.is_some(), "γνήσιο νέο row γράφτηκε");
 
-    // Παλιός client (χωρίς πεδίο cursor) διατηρεί την προηγούμενη συμπεριφορά — περνά.
+    // Παλιός client (χωρίς πεδίο cursor): ΓΝΗΣΙΟ νέο row (id που δεν ζει στο
+    // graveyard) περνά κανονικά — ο legacy client πρέπει να μπορεί να δημιουργεί.
     let legacy = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
         { "id": "g-legacy", "user_id": user_id, "title": "legacy", "updated_at": "2026-06-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
-    assert_eq!(legacy["reset_required"], false, "παλιός client χωρίς cursor: safe passthrough");
-    assert!(goal_payload(&state, &user_id, "g-legacy").await.is_some(), "legacy push γράφτηκε");
+    assert_eq!(legacy["reset_required"], false, "legacy: γνήσιο νέο id περνά");
+    assert!(goal_payload(&state, &user_id, "g-legacy").await.is_some(), "legacy νέο row γράφτηκε");
+
+    // Codex QA6 bypass: ο ΙΔΙΟΣ legacy client (χωρίς cursor — όπως το live bundle)
+    // προσπαθεί να αναστήσει το GC-αρισμένο g-del. Ο A6 gc_floor guard ΔΕΝ τον
+    // πιάνει (δεν στέλνει cursor), ΑΛΛΑ το push-side graveyard guard ΑΠΟΡΡΙΠΤΕΙ:
+    // reset_required, ΜΗΔΕΝ write — ανεξάρτητα από τον client.
+    let rows_pre_legacy = row_count(&state, &user_id).await;
+    let legacy_ghost = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-del", "user_id": user_id, "title": "legacy resurrection!", "updated_at": "2026-07-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
+    assert_eq!(legacy_ghost["reset_required"], true, "legacy resurrection graveyard id → reset_required");
+    assert_eq!(row_count(&state, &user_id).await, rows_pre_legacy, "legacy resurrection δεν έγραψε row");
+    assert!(goal_payload(&state, &user_id, "g-del").await.is_none(), "g-del δεν ανασταίνεται από legacy client");
+}
+
+/// Codex QA6 (γύρος 4): το live bundle (/assets/index-p6EiHEk-.js) καλεί
+/// `syncPush({changes})` ΧΩΡΙΣ cursor και αγνοεί την απάντηση. Ο A6 gc_floor guard
+/// (`if let Some(cursor)`) παρακάμπτεται για τέτοιο client, οπότε ένα GC-αρισμένο
+/// row ανασταινόταν ως νέα γραμμή. Ο server πρέπει να μπλοκάρει την ανάσταση
+/// ΜΟΝΟΣ του (gc_graveyard), ανεξάρτητα από το αν ο client στέλνει cursor.
+#[tokio::test]
+async fn legacy_push_without_cursor_cannot_resurrect_gc_graveyard_row() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    async fn push(app: &Router, token: &str, body: Value) -> Value {
+        let (status, body) = call(app, "POST", "/api/sync/push", Some(token), Some(body)).await;
+        assert_eq!(status, StatusCode::OK);
+        body
+    }
+    async fn goal_payload(state: &AppState, user_id: &str, id: &str) -> Option<String> {
+        sqlx::query_scalar(
+            "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = ?",
+        )
+        .bind(user_id)
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await
+        .unwrap()
+    }
+
+    // Live row → tombstone της ίδιας γραμμής. ΟΛΑ ΧΩΡΙΣ cursor, όπως το live bundle.
+    let c1 = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-ghost", "user_id": user_id, "title": "live", "updated_at": "2026-01-01T00:00:00Z", "deleted_at": null } ] } ] }))
+        .await["cursor"].as_i64().unwrap();
+    push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-ghost", "user_id": user_id, "title": "live", "updated_at": "2026-02-01T00:00:00Z", "deleted_at": "2026-02-01T00:00:00Z" } ] } ] })).await;
+    assert!(c1 > 0);
+
+    // GC κόβει το tombstone και γράφει το g-ghost στο gc_graveyard.
+    anabasis_api::sync::prune_tombstones(&state.pool, 0).await.unwrap();
+    assert!(goal_payload(&state, &user_id, "g-ghost").await.is_none(), "το g-ghost κόπηκε στο GC");
+
+    // Το cached live bundle ξανασπρώχνει το τοπικά-edited ghost ΧΩΡΙΣ cursor.
+    let resurrect = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-ghost", "user_id": user_id, "title": "back from the dead", "updated_at": "2026-03-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
+    assert_eq!(resurrect["reset_required"], true, "graveyard id χωρίς cursor → reset_required");
+    assert!(goal_payload(&state, &user_id, "g-ghost").await.is_none(), "ο server ΔΕΝ ανάστησε το g-ghost ανεξάρτητα από cursor");
+
+    // Το ίδιο batch με ΓΝΗΣΙΟ νέο row + graveyard id: το γνήσιο row δεν χάνεται
+    // (δεν κάνουμε whole-push reject — ο legacy client αγνοεί το reset_required
+    // και δεν θα ξανάστελνε), το ghost κόβεται.
+    let mixed = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-ghost", "user_id": user_id, "title": "ghost again", "updated_at": "2026-04-01T00:00:00Z", "deleted_at": null },
+        { "id": "g-fresh", "user_id": user_id, "title": "genuine", "updated_at": "2026-04-02T00:00:00Z", "deleted_at": null } ] } ] })).await;
+    assert_eq!(mixed["reset_required"], true, "μικτό batch με graveyard id → reset_required");
+    assert!(goal_payload(&state, &user_id, "g-ghost").await.is_none(), "ghost στο μικτό batch κόπηκε");
+    assert!(goal_payload(&state, &user_id, "g-fresh").await.is_some(), "γνήσιο row στο ίδιο batch ΔΕΝ χάθηκε");
 }
 
 /// Codex audit §3: το LWW συγκρίνει client `updated_at`. Μια συσκευή με μπροστά

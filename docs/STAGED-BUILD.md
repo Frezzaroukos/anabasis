@@ -60,13 +60,20 @@ npm run deploy:rollback   # atomic: dist → προηγούμενη release (δ�
 rollback να κάνει **redo**.
 
 > ⚠️ **Το rollback αφορά ΜΟΝΟ το frontend (`dist/` symlink) — ΟΧΙ τη βάση.** Τα
-> SQLite migrations του Rust server είναι **μονόδρομα** (δεν υπάρχει `down`). Το
-> **0006 (`gc_floor`)** προσθέτει στήλη στο `accounts`· το `deploy:rollback` δεν
-> την αναιρεί, κι ένας παλιός server που δεν την ξέρει απλώς την αγνοεί (additive,
-> δεν σπάει). Αν χρειαστεί πραγματική επαναφορά σχήματος, ο μόνος δρόμος είναι
-> **restore του DB backup που πάρθηκε ΠΡΙΝ το deploy** (restic — δες CLAUDE.md §6).
-> Γι' αυτό: πριν από deploy που τρέχει νέο migration, κράτα ρητό snapshot της
-> `anabasis.db`.
+> SQLite migrations του Rust server είναι **μονόδρομα** (δεν υπάρχει `down`):
+>
+> - **0006 (`gc_floor`)** — προσθέτει στήλη στο `accounts`.
+> - **0007 (`gc_graveyard`)** — νέος πίνακας με τα (tbl, row_id) που έγιναν GC.
+>   Είναι **append-only by design**: κρατά μόνιμο το «ποια ids πέθαναν» ώστε ο
+>   server να απορρίπτει resurrection ακόμη κι από παλιό/cached client που δεν
+>   στέλνει cursor (δες `server/src/sync.rs`). Ένα `down` εδώ θα ξαναένοιγε
+>   ακριβώς το anti-ghost παράθυρο — γι' αυτό δεν υπάρχει.
+>
+> Το `deploy:rollback` δεν αναιρεί κανένα από τα δύο, κι ένας παλιός server που
+> δεν τα ξέρει απλώς τα αγνοεί (additive, δεν σπάει). Αν χρειαστεί πραγματική
+> επαναφορά σχήματος, ο μόνος δρόμος είναι **restore του DB backup που πάρθηκε
+> ΠΡΙΝ το deploy** (restic — δες CLAUDE.md §6). Γι' αυτό: πριν από deploy που
+> τρέχει νέο migration, κράτα ρητό snapshot της `anabasis.db`.
 
 ## Σημ.
 

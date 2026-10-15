@@ -147,13 +147,19 @@ pub async fn push(
     // λογαριασμού (μαζί με tombstones — καταναλώνουν κι αυτά χώρο) στην αρχή της
     // transaction· επιτρέπουμε updates/deletes ακόμα και στο cap, αλλά μπλοκάρουμε
     // ΝΕΑ row_ids πέρα από το όριο. Το admin GC (prune_tombstones) ελευθερώνει χώρο.
-    let existing_rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_rows WHERE account_id = ?")
-        .bind(&auth.account_id)
-        .fetch_one(&mut *tx)
-        .await?;
+    let existing_rows: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM sync_rows WHERE account_id = ?")
+            .bind(&auth.account_id)
+            .fetch_one(&mut *tx)
+            .await?;
     let quota = state.max_rows_per_account;
     let mut new_rows = 0i64;
     let mut written = 0i64;
+    // Αν έστω ένα row στόχευε graveyard-αρισμένο id (resurrection προσπάθεια που
+    // κόπηκε χωρίς write), το σηματοδοτούμε με reset_required στην απάντηση ώστε
+    // ένας σύγχρονος client να καθαρίσει το τοπικό ghost. Ο legacy client το
+    // αγνοεί — αβλαβές (δες push-side graveyard guard παρακάτω).
+    let mut graveyard_hit = false;
 
     for change in &body.changes {
         for row in &change.rows {
@@ -162,6 +168,28 @@ pub async fn push(
                 .and_then(Value::as_str)
                 .expect("επιβεβαιώθηκε πιο πάνω");
             let deleted = row.get("deleted_at").map(|v| !v.is_null()).unwrap_or(false);
+
+            // Push-side graveyard guard (ανεξάρτητος από τον client). Αν το
+            // (tbl, row_id) έχει ήδη γίνει GC (ζει στο gc_graveyard), ΚΑΘΕ push
+            // γι' αυτό είναι resurrection ενός οριστικά σβησμένου row — το
+            // κόβουμε ΧΩΡΙΣ write, είτε ο client έστειλε cursor είτε όχι (το
+            // live bundle δεν στέλνει). Έτσι ο anti-ghost έλεγχος δεν εξαρτάται
+            // από συμπεριφορά του client (gc_floor πιάνει μόνο έγκυρο cursor <
+            // floor). Τα soft-deleted ids δεν ξαναγεννιούνται με το ίδιο uuid,
+            // οπότε η απόρριψη δεν χάνει ποτέ γνήσιο νέο row.
+            let in_graveyard: Option<String> = sqlx::query_scalar(
+                "SELECT row_id FROM gc_graveyard
+                     WHERE account_id = ? AND tbl = ? AND row_id = ?",
+            )
+            .bind(&auth.account_id)
+            .bind(&change.tbl)
+            .bind(row_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+            if in_graveyard.is_some() {
+                graveyard_hit = true;
+                continue;
+            }
 
             // Clock-skew guard (4b): το LWW συγκρίνει client `updated_at`, οπότε
             // μια συσκευή με μπροστά ρολόι θα «κέρδιζε» πάντα με μελλοντικό
@@ -289,12 +317,15 @@ pub async fn push(
         written,
         new_rows,
         cursor,
+        graveyard_hit,
         "sync push committed"
     );
 
     Ok(Json(PushResponse {
         cursor,
-        reset_required: false,
+        // Γνήσια rows γράφτηκαν κανονικά· αν έστω ένα graveyard id κόπηκε,
+        // ζητάμε reset ώστε σύγχρονος client να καθαρίσει το τοπικό ghost.
+        reset_required: graveyard_hit,
     }))
 }
 
@@ -317,6 +348,7 @@ pub async fn prune_tombstones(
     horizon_days: i64,
 ) -> Result<u64, sqlx::Error> {
     let cutoff = crate::util::iso_days_ago(horizon_days);
+    let now = crate::util::now_iso();
     let mut tx = pool.begin().await?;
 
     // ΠΡΙΝ το delete (όσο τα tombstones υπάρχουν ακόμα): ανέβασε το gc_floor κάθε
@@ -330,6 +362,24 @@ pub async fn prune_tombstones(
                   AND deleted = 1 AND server_updated_at < ?),
              gc_floor))",
     )
+    .bind(&cutoff)
+    .execute(&mut *tx)
+    .await?;
+
+    // ΠΡΙΝ το delete (ίδιο παράθυρο): κατέγραψε τα (account_id, tbl, row_id) που
+    // πρόκειται να κοπούν στο gc_graveyard. Το gc_floor πιάνει μόνο clients με
+    // έγκυρο cursor κάτω από το floor· ένας παλιός/cached client που δεν στέλνει
+    // cursor το παρακάμπτει. Το graveyard κάνει τον anti-resurrection έλεγχο
+    // ΑΝΕΞΑΡΤΗΤΟ από τον client — το push() απορρίπτει κάθε id που ζει εδώ.
+    // ON CONFLICT DO NOTHING: idempotent αν το GC ξανατρέξει (gc_at κρατά το
+    // πρώτο ίχνος· ο πίνακας είναι append-only by design).
+    sqlx::query(
+        "INSERT INTO gc_graveyard (account_id, tbl, row_id, gc_at)
+         SELECT account_id, tbl, row_id, ? FROM sync_rows
+            WHERE deleted = 1 AND server_updated_at < ?
+         ON CONFLICT(account_id, tbl, row_id) DO NOTHING",
+    )
+    .bind(&now)
     .bind(&cutoff)
     .execute(&mut *tx)
     .await?;
