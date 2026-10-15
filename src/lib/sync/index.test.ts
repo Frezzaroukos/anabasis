@@ -506,6 +506,38 @@ describe('epoch (restore-desync protection)', () => {
   });
 });
 
+describe('gc_floor reset (Codex §3 — παλιές offline συσκευές)', () => {
+  it('reset_required: μηδενίζει τον cursor και ξανακατεβάζει από 0 (ΟΧΙ re-push ghost)', async () => {
+    // Αποθηκευμένος cursor 5, ίδιο epoch (δεν πυροδοτείται το epoch path).
+    localStorage.setItem(
+      'anabasis.sync',
+      JSON.stringify({ pullCursor: 5, epoch: 'e1', lastPushAt: new Date().toISOString() }),
+    );
+
+    const pullCursors: number[] = [];
+    stubFetch({
+      pull: (call) => {
+        const cursor = (JSON.parse(String(call.init?.body)) as { cursor: number }).cursor;
+        pullCursors.push(cursor);
+        // Πίσω από το floor → reset. Το pull από 0 είναι η πηγή αλήθειας.
+        if (cursor > 0) {
+          return jsonResponse({ changes: [], cursor, has_more: false, epoch: 'e1', reset_required: true });
+        }
+        return jsonResponse({ changes: [], cursor: 3, has_more: false, epoch: 'e1', reset_required: false });
+      },
+    });
+
+    await syncNow();
+
+    expect(pullCursors[0]).toBe(5); // ξεκίνησε από τον αποθηκευμένο cursor
+    expect(pullCursors).toContain(0); // το reset ξαναξεκίνησε από 0
+    // Κατέληξε στον cursor του pull-από-0, όχι στον νεκρό 5.
+    expect(
+      (JSON.parse(localStorage.getItem('anabasis.sync')!) as { pullCursor: number }).pullCursor,
+    ).toBe(3);
+  });
+});
+
 describe('two-device unique-index convergence (δεν κολλάει το sync)', () => {
   it('pull ξένου app_settings (ίδιο user_id, άλλο id) ΔΕΝ σκάει — συγκλίνει στον νικητή', async () => {
     // Το bootstrap έχει ήδη φτιάξει ΤΟΠΙΚΟ app_settings με τυχαίο id για το

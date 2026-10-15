@@ -1924,3 +1924,132 @@ async fn login_overlong_password_is_bad_credentials_without_enumeration() {
     assert_eq!(body_known, body_unknown);
     assert_eq!(body_known["error"], "bad_credentials");
 }
+
+/* ─────────── Blocker 4: GC-floor reset guard + clock-skew LWW ─────────── */
+
+/// Codex audit §3: μετά το tombstone GC, μια συσκευή που είχε συγχρονίσει ΠΡΙΝ
+/// τη διαγραφή (cursor κάτω από το gc_floor) δεν μπορεί πια να μάθει για τη
+/// διαγραφή — ο server της ζητά reset αντί να την αφήσει να αναστήσει ghost row.
+#[tokio::test]
+async fn pull_below_gc_floor_demands_reset() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    async fn push_cursor(app: &Router, token: &str, tbl: &str, row: Value) -> i64 {
+        let (status, body) = call(
+            app,
+            "POST",
+            "/api/sync/push",
+            Some(token),
+            Some(json!({ "changes": [ { "tbl": tbl, "rows": [ row ] } ] })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        body["cursor"].as_i64().unwrap()
+    }
+
+    // Συσκευή συγχρονίζει ένα live goal (cursor c1 = ΠΡΙΝ τη διαγραφή).
+    let c1 = push_cursor(
+        &app,
+        &token,
+        "goals",
+        json!({ "id": "g-del", "user_id": user_id, "title": "live", "updated_at": "2026-01-01T00:00:00Z", "deleted_at": null }),
+    )
+    .await;
+
+    // Η ίδια γραμμή διαγράφεται (tombstone, seq = c2) και μετά έρχεται κι άλλη.
+    let c2 = push_cursor(
+        &app,
+        &token,
+        "goals",
+        json!({ "id": "g-del", "user_id": user_id, "title": "live", "updated_at": "2026-02-01T00:00:00Z", "deleted_at": "2026-02-01T00:00:00Z" }),
+    )
+    .await;
+    let c3 = push_cursor(
+        &app,
+        &token,
+        "goals",
+        json!({ "id": "g-keep", "user_id": user_id, "title": "keep", "updated_at": "2026-03-01T00:00:00Z", "deleted_at": null }),
+    )
+    .await;
+    assert!(c1 < c2 && c2 <= c3, "seq πρέπει να προχωρά ({c1} < {c2} <= {c3})");
+
+    // GC με horizon 0 → κόβει το tombstone και ανεβάζει το gc_floor στο c2.
+    let pruned = anabasis_api::sync::prune_tombstones(&state.pool, 0)
+        .await
+        .unwrap();
+    assert_eq!(pruned, 1, "το tombstone κόπηκε");
+    let gc_floor: i64 = sqlx::query_scalar("SELECT gc_floor FROM accounts WHERE id = ?")
+        .bind(&user_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!(gc_floor, c2, "gc_floor = ο seq του κομμένου tombstone");
+
+    // Συσκευή πίσω από το floor (cursor c1) → reset_required.
+    let (_, behind) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": c1 }))).await;
+    assert_eq!(behind["reset_required"], true, "πίσω από το gc_floor → reset");
+
+    // Φρέσκο pull (cursor 0) και ενημερωμένη συσκευή (cursor c3) → κανένα reset.
+    let (_, fresh) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": 0 }))).await;
+    assert_eq!(fresh["reset_required"], false, "cursor 0 κατεβάζει όλο το ζωντανό σύνολο");
+    let (_, caught_up) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": c3 }))).await;
+    assert_eq!(caught_up["reset_required"], false, "ενημερωμένη συσκευή δεν χρειάζεται reset");
+}
+
+/// Codex audit §3: το LWW συγκρίνει client `updated_at`. Μια συσκευή με μπροστά
+/// ρολόι δεν πρέπει να «κλειδώνει» τη γραμμή με μελλοντικό timestamp — ο server
+/// κόβει (clamp) ό,τι είναι μπροστά από το δικό του ρολόι, ώστε μια μεταγενέστερη
+/// (πραγματική) αλλαγή να μπορεί ακόμα να κερδίσει.
+#[tokio::test]
+async fn future_dated_push_is_clamped_so_later_edit_still_wins() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    async fn push(app: &Router, token: &str, row: Value) {
+        let (status, _) = call(
+            app,
+            "POST",
+            "/api/sync/push",
+            Some(token),
+            Some(json!({ "changes": [ { "tbl": "goals", "rows": [ row ] } ] })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+    }
+
+    // Συσκευή με μπροστά ρολόι: γράφει με timestamp πολύ στο μέλλον.
+    push(
+        &app,
+        &token,
+        json!({ "id": "g-skew", "user_id": user_id, "title": "fast clock", "updated_at": "2999-01-01T00:00:00Z", "deleted_at": null }),
+    )
+    .await;
+
+    let payload: String = sqlx::query_scalar(
+        "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'g-skew'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    assert!(!payload.contains("2999"), "το μελλοντικό updated_at κόπηκε (clamp): {payload}");
+
+    // Μεταγενέστερη, πραγματική αλλαγή με ΜΙΚΡΟΤΕΡΟ raw timestamp από το 2999.
+    // Χωρίς clamp θα έχανε ως «stale»· με clamp κερδίζει.
+    push(
+        &app,
+        &token,
+        json!({ "id": "g-skew", "user_id": user_id, "title": "correct later", "updated_at": "2100-01-01T00:00:00Z", "deleted_at": null }),
+    )
+    .await;
+
+    let title: String = sqlx::query_scalar(
+        "SELECT json_extract(payload, '$.title') FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'g-skew'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    assert_eq!(title, "correct later", "η μεταγενέστερη αλλαγή κέρδισε παρά το μικρότερο raw timestamp");
+}

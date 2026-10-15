@@ -51,6 +51,10 @@ export interface SyncPullResponse {
   cursor: number;
   has_more: boolean;
   epoch: string;
+  /** Η συσκευή είναι πίσω από το server gc_floor — πρέπει να κάνει destructive
+   * resync (wipe + pull από 0) αντί να σπρώξει παλιά κατάσταση και να αναστήσει
+   * σβησμένα rows. Προαιρετικό για συμβατότητα με παλιό server. */
+  reset_required?: boolean;
 }
 
 export interface AdminUser {

@@ -344,6 +344,21 @@ async function pullLoop(): Promise<void> {
     const res = await api.syncPull({ cursor, limit: PULL_LIMIT });
 
     /*
+     * gc_floor reset (Codex §3): ο server μας λέει ότι ο cursor μας είναι πίσω
+     * από το σημείο όπου κράτησε διαγραφές — μπορεί να χάσαμε tombstones που
+     * σβήστηκαν οριστικά. ΔΕΝ ξανασπρώχνουμε (όπως το epoch path) γιατί τα παλιά
+     * τοπικά rows θα ανάσταιναν σβησμένα· αντ' αυτού μηδενίζουμε τον cursor και
+     * ξανακατεβάζουμε όλο το ΖΩΝΤΑΝΟ σύνολο από την αρχή ως πηγή αλήθειας. Το
+     * cursor 0 pull δεν επιστρέφει ποτέ reset_required, οπότε δεν υπάρχει loop.
+     */
+    if (res.reset_required) {
+      writeCursors({ pullCursor: 0 });
+      cursor = 0;
+      hasMore = true;
+      continue;
+    }
+
+    /*
      * Epoch check: αν ο server έχει ΑΛΛΗ βάση από αυτήν που θυμόμαστε
      * (restore από backup ή recreate), ο cursor μας δείχνει σε ιστορία που
      * δεν υπάρχει — χωρίς αυτό, θα «τραβούσαμε στο κενό» σιωπηλά για πάντα.

@@ -120,8 +120,27 @@ pub async fn push(
                 .and_then(Value::as_str)
                 .expect("επιβεβαιώθηκε πιο πάνω");
             let deleted = row.get("deleted_at").map(|v| !v.is_null()).unwrap_or(false);
-            let payload = serde_json::to_string(row)
-                .map_err(|_| AppError::internal("Αποτυχία σειριοποίησης row."))?;
+
+            // Clock-skew guard (4b): το LWW συγκρίνει client `updated_at`, οπότε
+            // μια συσκευή με μπροστά ρολόι θα «κέρδιζε» πάντα με μελλοντικό
+            // timestamp — κι ένα νεότερο (αλλά σωστό) edit άλλης συσκευής θα
+            // έχανε. Κόβουμε (clamp) ό,τι είναι μπροστά από το ρολόι του server
+            // (η ΜΙΑ κοινή αναφορά) ΚΑΙ στη σύγκριση ΚΑΙ στο αποθηκευμένο
+            // payload, ώστε να μην ξανα-«φουσκώσει» σε επόμενο pull/σύγκριση.
+            let raw_updated_at = row.get("updated_at").and_then(Value::as_str).unwrap_or("");
+            let (incoming_updated_at, payload) = if raw_updated_at > now.as_str() {
+                let mut clamped = row.clone();
+                if let Some(obj) = clamped.as_object_mut() {
+                    obj.insert("updated_at".to_string(), Value::String(now.clone()));
+                }
+                let p = serde_json::to_string(&clamped)
+                    .map_err(|_| AppError::internal("Αποτυχία σειριοποίησης row."))?;
+                (now.clone(), p)
+            } else {
+                let p = serde_json::to_string(row)
+                    .map_err(|_| AppError::internal("Αποτυχία σειριοποίησης row."))?;
+                (raw_updated_at.to_string(), p)
+            };
 
             // Πραγματικό last-WRITE-wins: πριν το χτύπησε δεδομένα ταξιδιού
             // από παλιότερο push (π.χ. συσκευή offline που ξαναβγαίνει
@@ -149,9 +168,7 @@ pub async fn push(
                         .ok()
                         .and_then(|v| v.get("updated_at").and_then(Value::as_str).map(str::to_owned))
                         .unwrap_or_default();
-                    let incoming_updated_at =
-                        row.get("updated_at").and_then(Value::as_str).unwrap_or("");
-                    incoming_updated_at > existing_updated_at.as_str()
+                    incoming_updated_at.as_str() > existing_updated_at.as_str()
                 }
             };
 
@@ -255,10 +272,29 @@ pub async fn prune_tombstones(
     horizon_days: i64,
 ) -> Result<u64, sqlx::Error> {
     let cutoff = crate::util::iso_days_ago(horizon_days);
+    let mut tx = pool.begin().await?;
+
+    // ΠΡΙΝ το delete (όσο τα tombstones υπάρχουν ακόμα): ανέβασε το gc_floor κάθε
+    // λογαριασμού στον μεγαλύτερο seq που πρόκειται να κοπεί. Έτσι μένει μόνιμο
+    // ίχνος «μέχρι εδώ υπήρχαν διαγραφές που χάθηκαν» — ο pull το χρησιμοποιεί
+    // για να ζητήσει reset από συσκευές πολύ πίσω (αλλιώς θα ανάσταιναν ghost).
+    sqlx::query(
+        "UPDATE accounts SET gc_floor = MAX(gc_floor, COALESCE(
+             (SELECT MAX(seq) FROM sync_rows
+                WHERE sync_rows.account_id = accounts.id
+                  AND deleted = 1 AND server_updated_at < ?),
+             gc_floor))",
+    )
+    .bind(&cutoff)
+    .execute(&mut *tx)
+    .await?;
+
     let result = sqlx::query("DELETE FROM sync_rows WHERE deleted = 1 AND server_updated_at < ?")
         .bind(&cutoff)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+
+    tx.commit().await?;
     Ok(result.rows_affected())
 }
 
@@ -280,6 +316,9 @@ pub struct PullResponse {
     cursor: i64,
     has_more: bool,
     epoch: String,
+    /// Η συσκευή είναι πίσω από το gc_floor (έχασε διαγραφές που έγιναν GC) και
+    /// πρέπει να ξανασυγχρονίσει από την αρχή αντί να σπρώξει παλιά κατάσταση.
+    reset_required: bool,
 }
 
 #[derive(sqlx::FromRow)]
@@ -306,6 +345,16 @@ pub async fn pull(
         .clamp(1, MAX_PULL_LIMIT);
 
     let mut tx = state.pool.begin().await?;
+
+    // gc_floor: ο μεγαλύτερος seq του οποίου το tombstone έχει γίνει GC. Αν ο
+    // cursor της συσκευής είναι κάτω από αυτό (και όχι 0 = φρέσκο pull), μπορεί
+    // να έχασε διαγραφές που δεν στέλνονται πια — ζητάμε reset. cursor == 0
+    // κατεβάζει ούτως ή άλλως ολόκληρο το ζωντανό σύνολο, άρα είναι ασφαλές.
+    let gc_floor: i64 = sqlx::query_scalar("SELECT gc_floor FROM accounts WHERE id = ?")
+        .bind(&auth.account_id)
+        .fetch_one(&mut *tx)
+        .await?;
+    let reset_required = body.cursor > 0 && body.cursor < gc_floor;
 
     // limit+1 για να ξέρουμε αν υπάρχουν κι άλλα, χωρίς δεύτερο COUNT query.
     let mut rows = sqlx::query_as::<_, SyncRowRecord>(
@@ -357,5 +406,6 @@ pub async fn pull(
         cursor: new_cursor,
         has_more,
         epoch: state.epoch.clone(),
+        reset_required,
     }))
 }
