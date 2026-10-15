@@ -18,7 +18,7 @@ import {
   clearPendingOAuthToken,
   type StoredAuth,
 } from './client';
-import { createProfile, migrateProfileUserId } from '../db/queries';
+import { createProfile, deleteProfile, migrateProfileUserId } from '../db/queries';
 import { getCurrentUserId, setCurrentUserId } from '../db/session';
 import { fullResync } from '../sync';
 import type { Account } from './types';
@@ -86,21 +86,25 @@ export async function signup(email: string, password: string): Promise<Account> 
 }
 
 /**
- * Shared-device protection: μετά το logout, ΔΕΝ μένει «ενεργό» το τοπικό
- * προφίλ αυτού του λογαριασμού — μεταπηδάμε σε ένα φρέσκο, άδειο προφίλ.
+ * Shared-device protection: το logout είναι ΠΡΑΓΜΑΤΙΚΟ όριο ιδιωτικότητας —
+ * μεταπηδάμε σε φρέσκο, άδειο προφίλ ΚΑΙ σβήνουμε τα τοπικά δεδομένα του
+ * λογαριασμού που αποσυνδέεται.
  *
- * Χωρίς αυτό υπάρχουν δύο διαρροές σε κοινόχρηστη συσκευή: (α) τα δεδομένα
- * του λογαριασμού που μόλις αποσυνδέθηκε παραμένουν πλήρως ορατά (Dashboard/
- * Calendar/History...) σε όποιον χρησιμοποιήσει επόμενος τη συσκευή, και
- * (β) αν αυτός ο επόμενος συνδεθεί με ΔΙΚΟ ΤΟΥ, διαφορετικό λογαριασμό, το
- * bindLocalProfileAndResync/migrateProfileUserId δουλεύει πάνω στο *τρέχον*
- * τοπικό προφίλ της συσκευής (`getCurrentUserId()`) — θα «δώριζε» σιωπηλά
- * τα προσωπικά δεδομένα του πρώτου λογαριασμού μέσα στον δεύτερο, μόνιμα,
- * με το επόμενο push. Το reload είναι απαραίτητο ώστε τα liveQueries (που
- * παρακολουθούν πίνακες, όχι τη μεταβλητή session) να μη δείξουν στιγμιαία
- * τα παλιά δεδομένα.
+ * Χωρίς το σβήσιμο, σε κοινόχρηστη συσκευή τα δεδομένα του λογαριασμού που
+ * έφυγε έμεναν φυσικά στο IndexedDB: ορατά μέσω του profile switcher, εξαγώγιμα
+ * από το «export all profiles», και υλικό για σιωπηλό «δώρισμα» σε επόμενο
+ * login (migrateProfileUserId πάνω στο τρέχον προφίλ). Το μόνο που κρατούσε
+ * ήταν ότι δεν ήταν «ενεργό» — ανεπαρκές (Codex audit §2).
+ *
+ * Ασφαλές ως προς απώλεια: ένας cloud λογαριασμός κρατά την αλήθεια στον
+ * server· το επόμενο login κατεβάζει ξανά τα πάντα (fullResync pull-first).
+ * Δημιουργούμε ΠΡΩΤΑ το φρέσκο προφίλ και το κάνουμε ενεργό, μετά σβήνουμε το
+ * παλιό — ώστε να μη μείνει ποτέ η συσκευή χωρίς έγκυρο ενεργό προφίλ. Το
+ * reload είναι απαραίτητο ώστε τα liveQueries (που παρακολουθούν πίνακες, όχι
+ * τη μεταβλητή session) να μη δείξουν στιγμιαία τα παλιά δεδομένα.
  */
 export async function logout(): Promise<void> {
+  const previous = getCurrentUserId();
   try {
     await api.logout();
   } catch {
@@ -109,13 +113,30 @@ export async function logout(): Promise<void> {
   }
   const fresh = await createProfile('');
   setCurrentUserId(fresh.id);
+  try {
+    await deleteProfile(previous);
+  } catch {
+    // Αν το σβήσιμο αποτύχει, το ενεργό προφίλ είναι ήδη το φρέσκο/κενό —
+    // δεν αφήνουμε τον χρήστη χωρίς session, κι ας μείνει (σπάνια) ορφανό data.
+  }
   if (typeof window !== 'undefined') window.location.reload();
 }
 
+/**
+ * Διαγραφή cloud λογαριασμού: ο server σβήνει την αλήθεια, άρα το τοπικό
+ * αντίγραφο πρέπει οπωσδήποτε να φύγει κι αυτό (δεν υπάρχει πια πηγή για
+ * επαναφορά). Ίδιο μοτίβο με το logout — φρέσκο προφίλ πρώτα, μετά σβήσιμο.
+ */
 export async function deleteAccount(confirmEmail: string): Promise<void> {
+  const previous = getCurrentUserId();
   await api.deleteAccount(confirmEmail);
   const fresh = await createProfile('');
   setCurrentUserId(fresh.id);
+  try {
+    await deleteProfile(previous);
+  } catch {
+    // βλ. logout — το ενεργό προφίλ είναι ήδη φρέσκο· δεν μπλοκάρουμε τον χρήστη.
+  }
   if (typeof window !== 'undefined') window.location.reload();
 }
 

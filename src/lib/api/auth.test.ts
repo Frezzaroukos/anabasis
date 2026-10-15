@@ -194,10 +194,10 @@ describe('initMagicLink', () => {
 });
 
 /**
- * Item #2 του backlog: shared-device leak. Πριν, το logout άφηνε το τοπικό
- * προφίλ του λογαριασμού «ενεργό» — ένα επόμενο login με ΑΛΛΟ λογαριασμό στην
- * ίδια συσκευή θα το απορροφούσε σιωπηλά (migrateProfileUserId πάνω στο
- * τρέχον προφίλ, όχι σε κάποιο «σωστό»).
+ * Item #2 του backlog + Codex audit §2: shared-device leak. Το logout πρέπει να
+ * είναι ΠΡΑΓΜΑΤΙΚΟ όριο ιδιωτικότητας — όχι μόνο να αλλάζει ενεργό προφίλ, αλλά
+ * να ΣΒΗΝΕΙ τα τοπικά δεδομένα του λογαριασμού που αποσυνδέεται (η αλήθεια ζει
+ * στον server, ξανακατεβαίνει στο επόμενο login).
  */
 describe('logout — shared-device protection', () => {
   function stubLogoutFetch(): void {
@@ -226,7 +226,7 @@ describe('logout — shared-device protection', () => {
     window.location = originalLocation;
   });
 
-  it('μεταπηδά σε ΦΡΕΣΚΟ, ΑΔΕΙΟ προφίλ — δεν αφήνει το παλιό «ενεργό»', async () => {
+  it('μεταπηδά σε ΦΡΕΣΚΟ προφίλ ΚΑΙ σβήνει τα τοπικά δεδομένα του λογαριασμού που έφυγε', async () => {
     const accountId = 'account-a-boundlocalprofile';
     setCurrentUserId(accountId);
     await db.workouts.add({
@@ -253,14 +253,14 @@ describe('logout — shared-device protection', () => {
     const afterId = getCurrentUserId();
     expect(afterId).not.toBe(accountId);
 
-    // Το φρέσκο προφίλ δεν βλέπει τα δεδομένα του λογαριασμού που έφυγε —
-    // αν συνδεθεί κάποιος άλλος τώρα, το migrateProfileUserId θα δουλέψει
-    // πάνω σε ΑΥΤΟ (κενό), όχι πάνω στα workouts του account-a.
+    // Το φρέσκο προφίλ είναι κενό.
     const visible = await db.workouts.where('user_id').equals(afterId).count();
     expect(visible).toBe(0);
 
-    const oldStillThere = await db.workouts.where('user_id').equals(accountId).count();
-    expect(oldStillThere).toBe(1); // δεν σβήνεται, απλώς δεν είναι πια «ενεργό»
+    // Και το κρίσιμο: τα δεδομένα του λογαριασμού που αποσυνδέθηκε ΔΕΝ μένουν
+    // πίσω στη συσκευή — ούτε ορατά, ούτε εξαγώγιμα, ούτε «δωρίσιμα».
+    const oldPurged = await db.workouts.where('user_id').equals(accountId).count();
+    expect(oldPurged).toBe(0);
   });
 });
 
@@ -277,9 +277,26 @@ describe('deleteAccount — server deletion and local isolation', () => {
     window.location = originalLocation;
   });
 
-  it('στέλνει bearer + email, καθαρίζει auth και αλλάζει σε φρέσκο προφίλ', async () => {
+  it('στέλνει bearer + email, καθαρίζει auth, αλλάζει σε φρέσκο προφίλ και σβήνει το τοπικό', async () => {
     const accountId = 'account-to-delete';
     setCurrentUserId(accountId);
+    await db.workouts.add({
+      id: 'w-account-delete',
+      user_id: accountId,
+      started_at: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
+      duration_seconds: 60,
+      notes: null,
+      workout_type: null,
+      activity_kind: 'strength',
+      program_id: null,
+      program_day_id: null,
+      distance_km: null,
+      feel: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+    });
     localStorage.setItem(
       'anabasis.auth',
       JSON.stringify({
@@ -314,5 +331,8 @@ describe('deleteAccount — server deletion and local isolation', () => {
     expect(readStoredAuth()).toBeNull();
     expect(getCurrentUserId()).not.toBe(accountId);
     expect(window.location.reload).toHaveBeenCalledOnce();
+
+    // Ο server έσβησε τον λογαριασμό — το τοπικό αντίγραφο φεύγει κι αυτό.
+    expect(await db.workouts.where('user_id').equals(accountId).count()).toBe(0);
   });
 });
