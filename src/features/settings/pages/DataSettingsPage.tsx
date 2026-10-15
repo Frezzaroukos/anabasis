@@ -139,7 +139,7 @@ export function DataSettingsPage() {
         <div className="mt-4 border-t border-border pt-3">
           <Button
             variant="ghost"
-            className="h-auto px-0 text-xs text-muted-foreground"
+            className="h-auto min-h-11 px-0 text-xs text-muted-foreground"
             onClick={() => void onExportAllProfiles()}
           >
             {t('settings.exportAllProfiles')}
