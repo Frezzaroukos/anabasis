@@ -41,6 +41,11 @@ const MAX_PULL_LIMIT: i64 = 2000;
 #[derive(Deserialize)]
 pub struct PushRequest {
     changes: Vec<PushChange>,
+    /// Ο pull cursor της συσκευής τη στιγμή του push. Αν είναι πίσω από το
+    /// gc_floor, το push ΔΕΝ εφαρμόζεται (reset_required) — αλλιώς ένα τοπικά
+    /// edited ghost θα ανασταινόταν. `None` = παλιός client (δες push()).
+    #[serde(default)]
+    cursor: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -52,6 +57,9 @@ pub struct PushChange {
 #[derive(Serialize)]
 pub struct PushResponse {
     cursor: i64,
+    /// Η συσκευή είναι πίσω από το gc_floor· το push ΑΠΟΡΡΙΦΘΗΚΕ (τίποτα δεν
+    /// γράφτηκε) και πρέπει πρώτα να κάνει destructive reset. Βλ. pull()·reset.
+    reset_required: bool,
 }
 
 pub async fn push(
@@ -89,12 +97,46 @@ pub async fn push(
         }
     }
 
+    // Push-side gc_floor guard. Ο client στέλνει τον pull cursor του· αν είναι
+    // πίσω από το gc_floor (έχασε GC-αρισμένες διαγραφές) ΔΕΝ εφαρμόζουμε τίποτα
+    // και απαντάμε reset_required. Χωρίς αυτό, ένα τοπικά edited ghost (row που
+    // διαγράφηκε+GC-άρθηκε αλλού αλλά επιβιώνει στη συσκευή, updated_at μετά το
+    // τελευταίο push) θα έφτανε εδώ με existing_payload == None και θα γραφόταν
+    // ως ΝΕΑ γραμμή — resurrection — ΠΡΙΝ προλάβει το pull-side reset. Αφού το
+    // push προηγείται του pull στον κύκλο, ο έλεγχος πρέπει να γίνεται κι εδώ.
+    // Ο client, βλέποντας reset_required, κάνει destructive reset (pull από 0 +
+    // purge ghosts) και ξαναστέλνει ΜΟΝΟ ό,τι είναι γνήσια νεότερο.
+    //
+    // Συμβατότητα: `cursor == None` = παλιός client (δεν στέλνει cursor) → κρατά
+    // την προηγούμενη συμπεριφορά, το push εφαρμόζεται και η προστασία μένει στο
+    // pull-side μόνο (ίδιο παράθυρο resurrection που υπήρχε ήδη — καμία οπισθοδρόμηση).
+    // `cursor == 0` = φρέσκια συσκευή/fullResync → δεν φρενάρεται ποτέ (ίδια
+    // συνθήκη με το pull: cursor > 0 && cursor < gc_floor).
+    if let Some(cursor) = body.cursor {
+        if cursor > 0 {
+            let (gc_floor, last_seq): (i64, i64) =
+                sqlx::query_as("SELECT gc_floor, last_seq FROM accounts WHERE id = ?")
+                    .bind(&auth.account_id)
+                    .fetch_one(&state.pool)
+                    .await?;
+            if cursor < gc_floor {
+                return Ok(Json(PushResponse {
+                    cursor: last_seq,
+                    reset_required: true,
+                }));
+            }
+        }
+    }
+
     if total_rows == 0 {
         let last_seq: i64 = sqlx::query_scalar("SELECT last_seq FROM accounts WHERE id = ?")
             .bind(&auth.account_id)
             .fetch_one(&state.pool)
             .await?;
-        return Ok(Json(PushResponse { cursor: last_seq }));
+        return Ok(Json(PushResponse {
+            cursor: last_seq,
+            reset_required: false,
+        }));
     }
 
     let now = now_iso();
@@ -250,7 +292,10 @@ pub async fn push(
         "sync push committed"
     );
 
-    Ok(Json(PushResponse { cursor }))
+    Ok(Json(PushResponse {
+        cursor,
+        reset_required: false,
+    }))
 }
 
 /// Tombstone garbage-collection: σβήνει soft-deleted sync_rows (`deleted = 1`)

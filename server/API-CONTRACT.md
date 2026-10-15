@@ -96,7 +96,7 @@ profile/friendships και εκκρεμή magic links σε μία transaction. 2
 Body: `{ current_password, new_password }`. Ακυρώνει όλα τα ΑΛΛΑ sessions.
 
 ### POST /api/sync/push  (auth)
-Body: `{ changes: [ { tbl, rows: [ <row JSON> ] } ] }`
+Body: `{ changes: [ { tbl, rows: [ <row JSON> ] } ], cursor?: <i64> }`
 Κάθε row ΠΡΕΠΕΙ να έχει `id` (uuid) και `user_id` == account id (ο server
 το επιβάλλει — 400 `wrong_user` αλλιώς). Σε ΜΙΑ transaction: για κάθε row
 σύγκρινε το incoming `updated_at` με το αποθηκευμένο — **last-WRITE-wins, ΟΧΙ
@@ -106,7 +106,20 @@ last-push/σειρά άφιξης**: νεότερο `updated_at` κερδίζε�
 στη σύγκριση ΚΑΙ στο αποθηκευμένο payload, ώστε ένα μελλοντικό-dated row να μη
 «κλειδώνει» τη νίκη για πάντα. Ο νικητής: bump `accounts.last_seq`, upsert στο
 sync_rows με νέο seq, `deleted` από το `payload.deleted_at`. Όριο: 5000
-rows/request (413). 200: `{ cursor: <νέο max seq> }`.
+rows/request (413). 200: `{ cursor: <νέο max seq>, reset_required: bool }`.
+
+**gc_floor guard στο push** (αντιστοιχεί στο pull guard): το `cursor` είναι ο
+pull cursor της συσκευής. Αν `cursor > 0 && cursor < gc_floor`, ο server
+**ΔΕΝ εφαρμόζει τίποτα** και απαντά `{ cursor: <τρέχον last_seq>, reset_required:
+true }`. Χωρίς αυτό, επειδή ο client σπρώχνει ΠΡΙΝ τραβήξει, μια συσκευή πίσω από
+το floor θα ανάσταινε GC-αρισμένο row (το `updated_at > last_push` edit φτάνει με
+`existing_payload == None` και γράφεται ως νέα γραμμή) πριν προλάβει το pull-side
+reset. Ο client, βλέποντας `reset_required`, κάνει destructive resync (pull από 0
++ purge ghosts) και ξαναστέλνει μόνο γνήσια νεότερα, με φρέσκο cursor πάνω από το
+floor. **Συμβατότητα:** `cursor` απόν (παλιός client) ⇒ ο guard παρακάμπτεται και
+το push εφαρμόζεται όπως πριν (η προστασία μένει pull-side μόνο — ίδιο προϋπάρχον
+παράθυρο, καμία οπισθοδρόμηση)· `cursor == 0` (φρέσκια συσκευή/fullResync) δεν
+φρενάρεται ποτέ.
 
 ### POST /api/sync/pull  (auth)
 Body: `{ cursor: <i64, 0 για φρέσκια συσκευή>, limit?: <=2000 default 1000 }`
@@ -141,7 +154,9 @@ failed-login lockout στο accounts (πιο πάνω).
   Μετά: full push (όλα τα rows του user_id), μετά pull από cursor 0.
 - Sync cursors σε `localStorage['anabasis.sync']` = `{ pullCursor, lastPushAt, lastSyncAt }`.
 - Push επιλογή: rows με `updated_at > lastPushAt - 5min` (client clock ΜΟΝΟ
-  τοπικά — idempotent upserts, τα διπλοστάλματα είναι ακίνδυνα).
+  τοπικά — idempotent upserts, τα διπλοστάλματα είναι ακίνδυνα). Το push στέλνει
+  και τον τρέχοντα `pullCursor` (gc_floor guard — βλ. /api/sync/push)· σε
+  `reset_required` ο client κάνει destructive resync αντί για κανονικό pull.
 - Auto-sync: στο boot, κάθε 5 λεπτά, και 15s debounce μετά από γράψιμο·
   σιωπηλά offline-tolerant (καμία ειδοποίηση σε αποτυχία δικτύου, μόνο ένδειξη
   "τελευταίο sync" στις Ρυθμίσεις).

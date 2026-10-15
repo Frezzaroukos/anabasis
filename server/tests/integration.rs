@@ -1997,6 +1997,86 @@ async fn pull_below_gc_floor_demands_reset() {
     assert_eq!(caught_up["reset_required"], false, "ενημερωμένη συσκευή δεν χρειάζεται reset");
 }
 
+/// Grok QA5 probe (γύρος 3): ο client σπρώχνει ΠΡΙΝ τραβήξει (sync/index.ts),
+/// οπότε μια συσκευή ΠΙΣΩ από το gc_floor έγραφε στον server πριν δει το
+/// reset_required του pull — ανασταίνοντας GC-αρισμένο row ("το id στάλθηκε και
+/// έμεινε"). Διόρθωση πρωτοκόλλου: το push κουβαλά τον pull cursor· κάτω από το
+/// gc_floor ο server απορρίπτει (reset_required, ΜΗΔΕΝ write). Γνήσιο push (cursor
+/// πάνω από το floor, 0, ή παλιός client χωρίς cursor) περνά κανονικά.
+#[tokio::test]
+async fn push_below_gc_floor_rejected_no_resurrection() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    async fn push(app: &Router, token: &str, body: Value) -> Value {
+        let (status, body) = call(app, "POST", "/api/sync/push", Some(token), Some(body)).await;
+        assert_eq!(status, StatusCode::OK);
+        body
+    }
+
+    async fn row_count(state: &AppState, user_id: &str) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM sync_rows WHERE account_id = ?")
+            .bind(user_id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap()
+    }
+
+    async fn goal_payload(state: &AppState, user_id: &str, id: &str) -> Option<String> {
+        sqlx::query_scalar(
+            "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = ?",
+        )
+        .bind(user_id)
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await
+        .unwrap()
+    }
+
+    // Live goal (c1), μετά tombstone της ίδιας γραμμής (c2), μετά άλλο live (c3).
+    let c1 = push(&app, &token, json!({ "cursor": 0, "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-del", "user_id": user_id, "title": "live", "updated_at": "2026-01-01T00:00:00Z", "deleted_at": null } ] } ] }))
+        .await["cursor"].as_i64().unwrap();
+    push(&app, &token, json!({ "cursor": c1, "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-del", "user_id": user_id, "title": "live", "updated_at": "2026-02-01T00:00:00Z", "deleted_at": "2026-02-01T00:00:00Z" } ] } ] })).await;
+    let c3 = push(&app, &token, json!({ "cursor": c1, "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-keep", "user_id": user_id, "title": "keep", "updated_at": "2026-03-01T00:00:00Z", "deleted_at": null } ] } ] }))
+        .await["cursor"].as_i64().unwrap();
+
+    // GC horizon 0 → κόβει το tombstone του g-del και ανεβάζει το gc_floor.
+    anabasis_api::sync::prune_tombstones(&state.pool, 0).await.unwrap();
+    let gc_floor: i64 = sqlx::query_scalar("SELECT gc_floor FROM accounts WHERE id = ?")
+        .bind(&user_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert!(gc_floor > c1, "gc_floor πάνω από τον cursor c1 της πίσω συσκευής");
+    assert!(goal_payload(&state, &user_id, "g-del").await.is_none(), "το g-del κόπηκε στο GC");
+
+    let rows_before = row_count(&state, &user_id).await;
+
+    // Συσκευή ΠΙΣΩ από το floor (cursor c1) προσπαθεί να αναστήσει το g-del ως live.
+    let stale = push(&app, &token, json!({ "cursor": c1, "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-del", "user_id": user_id, "title": "resurrected!", "updated_at": "2026-04-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
+    assert_eq!(stale["reset_required"], true, "push κάτω από gc_floor → reset_required");
+
+    // ΤΙΠΟΤΑ δεν γράφτηκε — το GC-αρισμένο g-del ΔΕΝ αναστήθηκε.
+    assert_eq!(row_count(&state, &user_id).await, rows_before, "stale push δεν έγραψε κανένα row");
+    assert!(goal_payload(&state, &user_id, "g-del").await.is_none(), "το g-del δεν ανασταίνεται");
+
+    // Γνήσιες αλλαγές ΔΕΝ χάνονται: ίδια συσκευή με φρέσκο cursor (πάνω από το floor).
+    let ok = push(&app, &token, json!({ "cursor": c3, "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-new", "user_id": user_id, "title": "genuine", "updated_at": "2026-05-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
+    assert_eq!(ok["reset_required"], false, "ενημερωμένη συσκευή γράφει κανονικά");
+    assert!(goal_payload(&state, &user_id, "g-new").await.is_some(), "γνήσιο νέο row γράφτηκε");
+
+    // Παλιός client (χωρίς πεδίο cursor) διατηρεί την προηγούμενη συμπεριφορά — περνά.
+    let legacy = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
+        { "id": "g-legacy", "user_id": user_id, "title": "legacy", "updated_at": "2026-06-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
+    assert_eq!(legacy["reset_required"], false, "παλιός client χωρίς cursor: safe passthrough");
+    assert!(goal_payload(&state, &user_id, "g-legacy").await.is_some(), "legacy push γράφτηκε");
+}
+
 /// Codex audit §3: το LWW συγκρίνει client `updated_at`. Μια συσκευή με μπροστά
 /// ρολόι δεν πρέπει να «κλειδώνει» τη γραμμή με μελλοντικό timestamp — ο server
 /// κόβει (clamp) ό,τι είναι μπροστά από το δικό του ρολόι, ώστε μια μεταγενέστερη
