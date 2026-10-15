@@ -15,6 +15,7 @@ import {
   exportProfile,
   importAll,
   importBodyMetrics,
+  previewImport,
   startWorkout,
 } from './queries';
 import { createGoal } from './goals';
@@ -177,5 +178,89 @@ describe('exportProfile (current-profile scope)', () => {
     expect(parsed.scope).toBe('device');
     // Both profiles present in the device-wide copy.
     expect(parsed.data.workouts.length).toBe(2);
+  });
+});
+
+/**
+ * Codex audit §2: import έκανε τυφλό bulkPut — ένα παλιό backup πατούσε σιωπηλά
+ * νεότερα rows (lost update), δεν τσέκαρε version, και δεν υπήρχε preview.
+ */
+describe('import policy — version gate, LWW, preview', () => {
+  beforeEach(async () => {
+    setCurrentUserId('import-policy');
+    await db.exercises.clear();
+  });
+
+  it('rejects a backup from a newer format version', async () => {
+    const res = await importAll(
+      JSON.stringify({ format: 'anabasis-backup', version: 99, data: {} }),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.message).toBe('backupTooNew');
+  });
+
+  it('an older backup does NOT clobber a newer local row', async () => {
+    const ex = await createExercise({ name: 'Local Newer' }); // updated_at = now (2026)
+    const stale = {
+      format: 'anabasis-backup',
+      version: 3,
+      scope: 'profile',
+      data: { exercises: [{ ...ex, name: 'Stale Name', updated_at: '2000-01-01T00:00:00.000Z' }] },
+    };
+
+    const res = await importAll(JSON.stringify(stale));
+
+    expect(res.ok).toBe(true);
+    expect(res.skipped).toBe(1);
+    expect((await db.exercises.get(ex.id))!.name).toBe('Local Newer');
+  });
+
+  it('a newer backup DOES update the local row', async () => {
+    const ex = await createExercise({ name: 'Local Old' });
+    const fresh = {
+      format: 'anabasis-backup',
+      version: 3,
+      data: { exercises: [{ ...ex, name: 'From Backup', updated_at: '2999-01-01T00:00:00.000Z' }] },
+    };
+
+    const res = await importAll(JSON.stringify(fresh));
+
+    expect(res.ok).toBe(true);
+    expect(res.skipped).toBe(0);
+    expect((await db.exercises.get(ex.id))!.name).toBe('From Backup');
+  });
+
+  it('previewImport reports add/update/skip and writes NOTHING', async () => {
+    const existing = await createExercise({ name: 'Existing' });
+    const json = JSON.stringify({
+      format: 'anabasis-backup',
+      version: 3,
+      data: {
+        exercises: [
+          { ...existing, name: 'Would Update', updated_at: '2999-01-01T00:00:00.000Z' },
+          { id: 'brand-new-id', updated_at: '2999-01-01T00:00:00.000Z' },
+        ],
+      },
+    });
+
+    const p = await previewImport(json);
+
+    expect(p.ok).toBe(true);
+    expect(p.version).toBe(3);
+    expect(p.update).toBe(1);
+    expect(p.add).toBe(1);
+    expect(p.skip).toBe(0);
+
+    // Στεγνό: τίποτα δεν γράφτηκε.
+    expect(await db.exercises.get('brand-new-id')).toBeUndefined();
+    expect((await db.exercises.get(existing.id))!.name).toBe('Existing');
+  });
+
+  it('previewImport flags a too-new backup without throwing', async () => {
+    const p = await previewImport(
+      JSON.stringify({ format: 'anabasis-backup', version: 99, data: {} }),
+    );
+    expect(p.ok).toBe(false);
+    expect(p.message).toBe('backupTooNew');
   });
 });

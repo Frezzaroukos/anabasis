@@ -2,7 +2,14 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download } from 'lucide-react';
-import { exportAll, exportProfile, getCurrentProfileDataCounts, importAll } from '@/lib/db/queries';
+import {
+  exportAll,
+  exportProfile,
+  getCurrentProfileDataCounts,
+  importAll,
+  previewImport,
+  type ImportPreview,
+} from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, SectionTitle } from '@/components/ui/Section';
@@ -18,6 +25,9 @@ export function DataSettingsPage() {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  // Preview-before-import: κρατάμε το περιεχόμενο του αρχείου ΚΑΙ τη στεγνή
+  // προεπισκόπηση, ώστε κανένα overwrite να μη γίνεται χωρίς ρητή επιβεβαίωση.
+  const [pending, setPending] = useState<{ json: string; preview: ImportPreview } | null>(null);
 
   // ΠΡΟΣΟΧΗ: db.workouts.count() κλπ χωρίς φίλτρο user_id μετρούσαν δεδομένα
   // ΟΛΩΝ των προφίλ — «τα δικά σου» έδειχνε ξένα workouts/sets/PRs.
@@ -53,11 +63,29 @@ export function DataSettingsPage() {
     setStatus(t('settings.exported'));
   };
 
+  // Βήμα 1: διάβασε το αρχείο και δείξε προεπισκόπηση (καμία εγγραφή ακόμα).
   const onImportFile = async (file: File) => {
-    const res = await importAll(await file.text());
+    setStatus(null);
+    const json = await file.text();
+    const preview = await previewImport(json);
+    if (!preview.ok) {
+      setPending(null);
+      setStatus(t(`settings.${preview.message}`));
+      return;
+    }
+    setPending({ json, preview });
+  };
+
+  // Βήμα 2: ο χρήστης επιβεβαιώνει ρητά → εφαρμογή (με LWW, χωρίς clobber).
+  const onConfirmImport = async () => {
+    if (!pending) return;
+    const res = await importAll(pending.json);
+    setPending(null);
     setStatus(
       res.ok
-        ? `${t('settings.imported')} (${Object.values(res.counts ?? {}).reduce((a, b) => a + b, 0)})`
+        ? `${t('settings.imported')} (${Object.values(res.counts ?? {}).reduce((a, b) => a + b, 0)}${
+            res.skipped ? `, ${t('settings.importKeptNewer', { count: res.skipped })}` : ''
+          })`
         : t(`settings.${res.message}`),
     );
   };
@@ -120,6 +148,24 @@ export function DataSettingsPage() {
             {t('settings.exportAllProfilesHint')}
           </p>
         </div>
+
+        {/* Preview-before-import: ρητή επιβεβαίωση, με το τι ακριβώς θα γίνει. */}
+        {pending && (
+          <div className="mt-4 rounded-md border border-border bg-elevated p-3" role="group">
+            <p className="text-sm font-medium">{t('settings.importPreviewTitle')}</p>
+            <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+              <li>{t('settings.importAdd', { count: pending.preview.add })}</li>
+              <li>{t('settings.importUpdate', { count: pending.preview.update })}</li>
+              <li>{t('settings.importKeepNewer', { count: pending.preview.skip })}</li>
+            </ul>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={() => void onConfirmImport()}>{t('settings.importConfirm')}</Button>
+              <Button variant="outline" onClick={() => setPending(null)}>
+                {t('common.cancel')}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {status && (
           <p className="mt-3 text-xs text-muted-foreground" role="status">

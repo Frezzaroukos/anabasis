@@ -817,8 +817,8 @@ export const USER_DATA_TABLES = () => ({
  * oxc parser — νέος κώδικας εδώ σπάει το vitest transform). Re-exported ώστε οι
  * παλιοί καταναλωτές (`@/lib/db/queries`) να μη χρειαστεί να αλλάξουν import.
  */
-export { exportAll, exportProfile, importAll } from './backup';
-export type { ImportResult, BackupScope } from './backup';
+export { exportAll, exportProfile, importAll, previewImport } from './backup';
+export type { ImportResult, ImportPreview, BackupScope } from './backup';
 
 /* ─────────── Settings ─────────── */
 
