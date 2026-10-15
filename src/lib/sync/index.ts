@@ -469,6 +469,39 @@ async function syncNowInner(): Promise<void> {
 }
 
 /**
+ * Logout flush: σπρώχνει ό,τι δεν έχει συγχρονιστεί ΠΡΙΝ το logout σβήσει τα
+ * τοπικά δεδομένα. Χωρίς αυτό, τοπικές αλλαγές που δεν πρόλαβαν να φύγουν
+ * χάνονταν οριστικά στο purge (ο server δεν τις είχε ποτέ). Καλείται ενώ το
+ * token είναι ΑΚΟΜΑ έγκυρο (πριν το api.logout()).
+ *
+ * Επιστρέφει πόσες αλλαγές ΕΜΕΙΝΑΝ ασυγχρόνιστες: 0 = τίποτα εκκρεμές ή όλα
+ * έφτασαν στον server (ασφαλές να σβήσεις)· >0 = δεν έφτασαν (offline/σφάλμα)
+ * και ο caller αποφασίζει (προειδοποίηση + επιλογή «logout ούτως ή άλλως»).
+ */
+export async function flushUnsynced(): Promise<number> {
+  if (!isLoggedIn()) return 0;
+  const cursors = readCursors();
+  const needsBackfill = cursors.pushSchemaVersion !== PUSH_SCHEMA_VERSION;
+  const cutoff =
+    !needsBackfill && cursors.lastPushAt
+      ? new Date(new Date(cursors.lastPushAt).getTime() - PUSH_OVERLAP_MS).toISOString()
+      : '';
+  const changes = await collectPushChanges(cutoff);
+  const pending = changes.reduce((n, c) => n + c.rows.length, 0);
+  if (pending === 0) return 0;
+  try {
+    const t0 = new Date().toISOString();
+    await pushInBatches(changes);
+    // Γράφεται ΜΟΝΟ μετά από επιτυχημένο push (ίδια σύμβαση με syncNowInner).
+    writeCursors({ lastPushAt: t0, pushSchemaVersion: PUSH_SCHEMA_VERSION });
+    return 0;
+  } catch {
+    // Δίκτυο κάτω / σφάλμα: δεν έφτασαν — ο caller προειδοποιεί.
+    return pending;
+  }
+}
+
+/**
  * Πλήρες sync — push ΟΛΩΝ (χωρίς cutoff) + pull από cursor 0. Καλείται ΜΙΑ
  * φορά, αμέσως μετά το bind ενός τοπικού προφίλ σε λογαριασμό (login/signup,
  * βλ. migrateProfileUserId στο queries.ts): ο server δεν έχει ξαναδεί αυτά τα

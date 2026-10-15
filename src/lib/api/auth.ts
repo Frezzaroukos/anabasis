@@ -20,8 +20,20 @@ import {
 } from './client';
 import { createProfile, deleteProfile, migrateProfileUserId } from '../db/queries';
 import { getCurrentUserId, setCurrentUserId } from '../db/session';
-import { fullResync } from '../sync';
+import { fullResync, flushUnsynced } from '../sync';
 import type { Account } from './types';
+
+/**
+ * Πετιέται όταν ένα logout/deleteAccount θα έσβηνε τοπικές αλλαγές που ΔΕΝ
+ * πρόλαβαν να συγχρονιστούν (π.χ. offline). Το UI προειδοποιεί και προσφέρει
+ * «logout ούτως ή άλλως» → ξανακαλεί με `{ force: true }`.
+ */
+export class UnsyncedChangesError extends Error {
+  constructor(public readonly pending: number) {
+    super(`${pending} unsynced change(s) would be lost`);
+    this.name = 'UnsyncedChangesError';
+  }
+}
 
 export type { StoredAuth, Account };
 export { ApiError };
@@ -103,8 +115,13 @@ export async function signup(email: string, password: string): Promise<Account> 
  * reload είναι απαραίτητο ώστε τα liveQueries (που παρακολουθούν πίνακες, όχι
  * τη μεταβλητή session) να μη δείξουν στιγμιαία τα παλιά δεδομένα.
  */
-export async function logout(): Promise<void> {
+export async function logout(opts: { force?: boolean } = {}): Promise<void> {
   const previous = getCurrentUserId();
+  // Σπρώξε ό,τι εκκρεμεί ΠΡΙΝ χαθεί το token (api.logout) ή τα δεδομένα (purge).
+  // Αν δεν προλάβει (offline) και ο χρήστης δεν έχει πει ρητά «ούτως ή άλλως»,
+  // σταμάτα και άσε το UI να προειδοποιήσει — αλλιώς οι αλλαγές χάνονται σιωπηλά.
+  const pending = await flushUnsynced();
+  if (pending > 0 && !opts.force) throw new UnsyncedChangesError(pending);
   try {
     await api.logout();
   } catch {

@@ -2063,70 +2063,74 @@ export async function renameProfile(id: string, displayName: string): Promise<vo
  * να ζητήσει ρητή επιβεβαίωση. Τα seeded δεδομένα (`user_id === null`)
  * είναι κοινά και δεν αγγίζονται.
  *
- * Ελέγχεται και τα 16 tables του schema — πριν έμεναν ορφανά goals (και θα
- * έμεναν ορφανά skills/skill_steps για δικά σου skills, καθώς και events),
- * γιατί η λίστα cascade δεν ακολουθούσε το σχήμα. Όλο το σβήσιμο τρέχει σε
- * ΜΙΑ transaction: ή φεύγουν όλα μαζί ή τίποτα — ένα crash στη μέση δεν
- * πρέπει να αφήνει το προφίλ μισοσβησμένο.
+ * Η λίστα πινάκων ΔΕΝ γράφεται πια με το χέρι — παράγεται από το ΙΔΙΟ
+ * `USER_DATA_TABLES` που τρέφει το export/import/sync, ώστε να μην ξεσυγχρονίζεται
+ * (πριν έλειπαν `program_days`, `custom_trackers`, `custom_tracker_entries`:
+ * σβήνοντας προφίλ έμεναν ορφανές μέρες προγράμματος και όλοι οι custom
+ * trackers/entries — η λίστα cascade δεν ακολουθούσε το σχήμα). Οι 4 πίνακες
+ * χωρίς δικό τους `user_id` (`sets`, `skill_steps`, `program_days`,
+ * `program_exercises`) σβήνονται μέσω των γονικών ids — ίδιο μοτίβο ιδιοκτησίας
+ * με `exportProfile`/`migrateProfileUserId`. Όλο το σβήσιμο τρέχει σε ΜΙΑ
+ * transaction: ή φεύγουν όλα μαζί ή τίποτα — ένα crash στη μέση δεν πρέπει να
+ * αφήνει το προφίλ μισοσβησμένο.
  */
 export async function deleteProfile(id: string): Promise<void> {
+  const tables = USER_DATA_TABLES();
+  // Πίνακες χωρίς δικό τους `user_id` (ανήκουν μέσω γονέα) + ο `users` (PK=id).
+  // Local (όχι top-level) ώστε να μη σπάσει το oxc parse-threshold του queries.ts.
+  const CASCADE_NON_OWNER = new Set<string>([
+    'users', 'sets', 'skill_steps', 'program_days', 'program_exercises',
+  ]);
   await db.transaction(
     'rw',
-    [
-      db.workouts,
-      db.sets,
-      db.programs,
-      db.program_exercises,
-      db.personal_records,
-      db.body_metrics,
-      db.user_skill_progress,
-      db.user_skill_step_completions,
-      db.app_settings,
-      db.exercises,
-      db.activities,
-      db.skills,
-      db.skill_steps,
-      db.goals,
-      db.events_outgoing,
-      db.users,
-    ],
+    [...Object.values(tables), db.events_outgoing],
     async () => {
-      const workouts = await db.workouts.where('user_id').equals(id).toArray();
-      const workoutIds = new Set(workouts.map((w) => w.id));
-
-      const sets = await db.sets.toArray();
+      // 1) Child tables (χωρίς user_id) — βρες τα ids των γονέων μου, σβήσε τα
+      //    παιδιά ΠΡΙΝ φύγουν οι γονείς.
+      const workoutIds = new Set(
+        (await db.workouts.where('user_id').equals(id).toArray()).map((w) => w.id),
+      );
+      const allSets = await db.sets.toArray();
       await db.sets.bulkDelete(
-        sets.filter((s) => workoutIds.has(s.workout_id)).map((s) => s.id),
+        allSets.filter((s) => workoutIds.has(s.workout_id)).map((s) => s.id),
       );
 
-      const programs = await db.programs.where('user_id').equals(id).toArray();
-      const programIds = new Set(programs.map((p) => p.id));
-      const programExercises = await db.program_exercises.toArray();
+      const programIds = new Set(
+        (await db.programs.where('user_id').equals(id).toArray()).map((p) => p.id),
+      );
+      const allProgEx = await db.program_exercises.toArray();
       await db.program_exercises.bulkDelete(
-        programExercises.filter((r) => programIds.has(r.program_id)).map((r) => r.id),
+        allProgEx.filter((r) => programIds.has(r.program_id)).map((r) => r.id),
+      );
+      // program_days: ΕΛΕΙΠΕ — έμεναν ορφανές μέρες προγράμματος (child των programs).
+      const allProgDays = await db.program_days.toArray();
+      await db.program_days.bulkDelete(
+        allProgDays.filter((d) => programIds.has(d.program_id)).map((d) => d.id),
       );
 
       // Δικά του skills (τα seeded, user_id === null, μένουν κοινά) + τα
       // βήματά τους — αλλιώς ένα skill_step μένει πίσω δείχνοντας σε ένα
       // skill_id που δεν υπάρχει πια.
-      const skills = await db.skills.where('user_id').equals(id).toArray();
-      const skillIds = new Set(skills.map((s) => s.id));
-      const skillSteps = await db.skill_steps.toArray();
-      await db.skill_steps.bulkDelete(
-        skillSteps.filter((s) => skillIds.has(s.skill_id)).map((s) => s.id),
+      const skillIds = new Set(
+        (await db.skills.where('user_id').equals(id).toArray()).map((s) => s.id),
       );
-      await db.skills.where('user_id').equals(id).delete();
+      const allSteps = await db.skill_steps.toArray();
+      await db.skill_steps.bulkDelete(
+        allSteps.filter((s) => skillIds.has(s.skill_id)).map((s) => s.id),
+      );
 
-      await db.workouts.where('user_id').equals(id).delete();
-      await db.programs.where('user_id').equals(id).delete();
-      await db.personal_records.where('user_id').equals(id).delete();
-      await db.body_metrics.where('user_id').equals(id).delete();
-      await db.user_skill_progress.where('user_id').equals(id).delete();
-      await db.user_skill_step_completions.where('user_id').equals(id).delete();
-      await db.app_settings.where('user_id').equals(id).delete();
-      await db.exercises.where('user_id').equals(id).delete();
-      await db.activities.where('user_id').equals(id).delete();
-      await db.goals.where('user_id').equals(id).delete();
+      // 2) Direct-owner tables (δικό τους `user_id`) — παράγονται από το
+      //    USER_DATA_TABLES, άρα ένας νέος πίνακας εκεί σβήνεται αυτόματα εδώ
+      //    (εκτός αν είναι child: τότε μπαίνει στο CASCADE_NON_OWNER + handler).
+      for (const [name, table] of Object.entries(tables)) {
+        if (CASCADE_NON_OWNER.has(name)) continue;
+        await (table as Table<{ user_id: string }, string>)
+          .where('user_id')
+          .equals(id)
+          .delete();
+      }
+
+      // 3) events_outgoing (νεκρό sync stub, εκτός USER_DATA_TABLES) + ο ίδιος ο χρήστης.
       await db.events_outgoing.where('user_id').equals(id).delete();
       await db.users.delete(id);
     },

@@ -15,6 +15,7 @@ import {
   createExercise,
   createProfile,
   createProgram,
+  createProgramDay,
   createSkill,
   deleteProfile,
   endWorkout,
@@ -29,6 +30,7 @@ import {
   startWorkout,
 } from './queries';
 import { createGoal } from './goals';
+import { addTrackerEntry, createTracker } from './trackers';
 
 beforeAll(async () => {
   await bootstrapDB();
@@ -197,6 +199,30 @@ describe('διαγραφή προφίλ', () => {
     expect(await db.skill_steps.get(step.id)).toBeUndefined();
     // τα seeded skills (κοινά) δεν αγγίζονται από τη διαγραφή ενός προφίλ
     expect((await listSkills()).length).toBeGreaterThan(0);
+  });
+
+  it('σβήνει program_days + custom_trackers + custom_tracker_entries (έλειπαν από το cascade)', async () => {
+    const doomed = await createProfile('Μέρες & Trackers');
+    setCurrentUserId(doomed.id);
+
+    const program = await createProgram('Πρόγραμμα με μέρες');
+    const day = await createProgramDay(program.id, 'Μέρα Α');
+    const tracker = await createTracker('Νερό', 'L');
+    await addTrackerEntry(tracker.id, 2);
+
+    // sanity: υπάρχουν πριν τη διαγραφή
+    expect(await db.program_days.get(day.id)).toBeTruthy();
+    expect(await db.custom_trackers.where('user_id').equals(doomed.id).count()).toBe(1);
+    expect(await db.custom_tracker_entries.where('user_id').equals(doomed.id).count()).toBe(1);
+
+    setCurrentUserId(DEFAULT_USER_ID);
+    await deleteProfile(doomed.id);
+
+    // ΟΛΑ φεύγουν — καμία ορφανή μέρα/tracker/entry πίσω στη συσκευή.
+    expect(await db.program_days.get(day.id)).toBeUndefined();
+    expect(await db.program_days.where('program_id').equals(program.id).count()).toBe(0);
+    expect(await db.custom_trackers.where('user_id').equals(doomed.id).count()).toBe(0);
+    expect(await db.custom_tracker_entries.where('user_id').equals(doomed.id).count()).toBe(0);
   });
 });
 

@@ -2,7 +2,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { db } from '../db';
 import { bootstrapDB } from '../db/bootstrap';
 import { DEFAULT_USER_ID, getCurrentUserId, setCurrentUserId } from '../db/session';
-import { deleteAccount, initMagicLink, initOAuthFragment, logout } from './auth';
+import {
+  deleteAccount,
+  initMagicLink,
+  initOAuthFragment,
+  logout,
+  UnsyncedChangesError,
+} from './auth';
 import { readStoredAuth } from './client';
 
 /**
@@ -261,6 +267,126 @@ describe('logout — shared-device protection', () => {
     // πίσω στη συσκευή — ούτε ορατά, ούτε εξαγώγιμα, ούτε «δωρίσιμα».
     const oldPurged = await db.workouts.where('user_id').equals(accountId).count();
     expect(oldPurged).toBe(0);
+  });
+});
+
+/**
+ * Item (2) round-2: πριν το logout σβήσει τα τοπικά, οι ασυγχρόνιστες αλλαγές
+ * πρέπει να φτάνουν στον server — αλλιώς χάνονται οριστικά. Αν δεν προλάβουν
+ * (offline), ο χρήστης προειδοποιείται (UnsyncedChangesError) αντί σιωπηλής
+ * απώλειας, και μπορεί να επιμείνει με `{ force: true }`.
+ */
+describe('logout — flush unsynced πριν το purge', () => {
+  const originalLocation = window.location;
+
+  beforeEach(() => {
+    // @ts-expect-error -- jsdom Location, επίτηδες αντικαθίσταται για το test
+    delete window.location;
+    window.location = { ...originalLocation, reload: vi.fn() } as unknown as Location;
+  });
+
+  afterEach(() => {
+    window.location = originalLocation;
+  });
+
+  function newWorkout(id: string, userId: string) {
+    const ts = new Date().toISOString();
+    return {
+      id,
+      user_id: userId,
+      started_at: ts,
+      ended_at: ts,
+      duration_seconds: 60,
+      notes: null,
+      workout_type: null,
+      activity_kind: 'strength' as const,
+      program_id: null,
+      program_day_id: null,
+      distance_km: null,
+      feel: null,
+      created_at: ts,
+      updated_at: ts,
+      deleted_at: null,
+    };
+  }
+
+  function stubSyncFetch(onPush?: (call: FetchCall) => Response): FetchCall[] {
+    const calls: FetchCall[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const call: FetchCall = { url, init };
+        calls.push(call);
+        if (url.includes('/auth/logout')) return jsonResponse({});
+        if (url.includes('/sync/push')) return onPush ? onPush(call) : jsonResponse({ cursor: 1 });
+        if (url.includes('/sync/pull'))
+          return jsonResponse({ changes: [], cursor: 0, has_more: false });
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    return calls;
+  }
+
+  function signIn(accountId: string): void {
+    localStorage.setItem(
+      'anabasis.auth',
+      JSON.stringify({
+        token: 'tok-flush',
+        account: {
+          id: accountId,
+          email: 'flush@example.com',
+          role: 'user',
+          created_at: '2026-01-01T00:00:00.000Z',
+        },
+      }),
+    );
+  }
+
+  it('σπρώχνει τις ασυγχρόνιστες αλλαγές ΠΡΙΝ σβήσει τα τοπικά (online)', async () => {
+    const accountId = 'account-flush-online';
+    setCurrentUserId(accountId);
+    signIn(accountId);
+    await db.workouts.add(newWorkout('w-flush', accountId));
+
+    const calls = stubSyncFetch();
+    await logout();
+
+    const push = calls.find((c) => c.url.includes('/sync/push'));
+    expect(push).toBeTruthy();
+    // Η εκκρεμής αλλαγή έφυγε στον server ΠΡΙΝ το purge.
+    expect(push!.init?.body as string).toContain('w-flush');
+    // Και μετά σβήστηκε τοπικά (shared-device privacy διατηρείται).
+    expect(await db.workouts.where('user_id').equals(accountId).count()).toBe(0);
+  });
+
+  it('offline με εκκρεμείς αλλαγές: throw UnsyncedChangesError, ΔΕΝ σβήνει', async () => {
+    const accountId = 'account-flush-offline';
+    setCurrentUserId(accountId);
+    signIn(accountId);
+    await db.workouts.add(newWorkout('w-offline', accountId));
+
+    stubSyncFetch(() => {
+      throw new Error('network down');
+    });
+
+    await expect(logout()).rejects.toBeInstanceOf(UnsyncedChangesError);
+    // Τίποτα δεν σβήστηκε — ο χρήστης μπορεί να ξαναπροσπαθήσει online.
+    expect(await db.workouts.where('user_id').equals(accountId).count()).toBe(1);
+  });
+
+  it('force: αποσυνδέεται ούτως ή άλλως και σβήνει, ακόμη κι αν το push αποτύχει', async () => {
+    const accountId = 'account-flush-force';
+    setCurrentUserId(accountId);
+    signIn(accountId);
+    await db.workouts.add(newWorkout('w-force', accountId));
+
+    stubSyncFetch(() => {
+      throw new Error('network down');
+    });
+
+    await logout({ force: true });
+    expect(await db.workouts.where('user_id').equals(accountId).count()).toBe(0);
   });
 });
 

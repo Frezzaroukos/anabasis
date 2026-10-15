@@ -13,6 +13,7 @@ import {
   logout,
   requestMagicLink,
   signup,
+  UnsyncedChangesError,
   useAuth,
 } from '@/lib/api/auth';
 import { api, googleStart } from '@/lib/api/client';
@@ -272,6 +273,8 @@ function SignedInPanel({
   const [changeBusy, setChangeBusy] = useState(false);
   const [changeStatusKey, setChangeStatusKey] = useState<string | null>(null);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  // >0 = υπάρχουν ασυγχρόνιστες αλλαγές· δείχνουμε «logout ούτως ή άλλως;».
+  const [unsyncedPending, setUnsyncedPending] = useState(0);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -319,11 +322,16 @@ function SignedInPanel({
     }
   };
 
-  const onLogout = async () => {
+  const onLogout = async (force = false) => {
     if (logoutBusy) return;
     setLogoutBusy(true);
     try {
-      await logout();
+      await logout({ force });
+      setUnsyncedPending(0);
+    } catch (err) {
+      // Ασυγχρόνιστες αλλαγές: μην αποσυνδεθείς σιωπηλά — ρώτα τον χρήστη.
+      if (err instanceof UnsyncedChangesError) setUnsyncedPending(err.pending);
+      else throw err;
     } finally {
       setLogoutBusy(false);
     }
@@ -471,6 +479,31 @@ function SignedInPanel({
         <Button size="sm" variant="ghost" disabled={logoutBusy} onClick={() => void onLogout()}>
           {t('account.logout')}
         </Button>
+        {unsyncedPending > 0 && (
+          <div className="mt-2 rounded-md bg-destructive/10 p-2 text-xs" role="alert">
+            <p className="text-destructive">
+              {t('account.logoutUnsynced', { count: unsyncedPending })}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={logoutBusy}
+                onClick={() => setUnsyncedPending(0)}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={logoutBusy}
+                onClick={() => void onLogout(true)}
+              >
+                {t('account.logoutAnyway')}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-3 border-t border-border/60 pt-3">

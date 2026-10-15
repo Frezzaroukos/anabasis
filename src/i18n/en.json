@@ -776,6 +776,8 @@
     "currentPassword": "Current password",
     "newPassword": "New password",
     "logout": "Log out",
+    "logoutUnsynced": "{{count}} change(s) haven't synced yet. Logging out now will erase them from this device.",
+    "logoutAnyway": "Log out anyway",
     "adminCode": "Admin code",
     "adminCodePlaceholder": "Enter the admin code",
     "adminClaimed": "You are now an admin.",
