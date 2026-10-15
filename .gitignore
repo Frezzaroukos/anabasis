@@ -14,6 +14,10 @@ dist-staging
 dist-prev
 dist-bad
 dist-ssr
+releases
+.dist.new.*
+.dist.prev.*
+.dist.rb.*
 build
 .cache
 .parcel-cache
