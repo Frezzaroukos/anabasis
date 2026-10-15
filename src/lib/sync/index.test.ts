@@ -536,6 +536,56 @@ describe('gc_floor reset (Codex §3 — παλιές offline συσκευές)',
       (JSON.parse(localStorage.getItem('anabasis.sync')!) as { pullCursor: number }).pullCursor,
     ).toBe(3);
   });
+
+  it('reset_required: σβήνει τα τοπικά «φαντάσματα» και ΔΕΝ ανασταίνει τίποτα', async () => {
+    // Ξεχωριστός χρήστης ώστε το localBefore του reset να είναι ΜΟΝΟ το ghost
+    // (καθαρή απομόνωση — δεν αγγίζει rows άλλων tests).
+    const ghostUser = 'ghost-device-user';
+    setCurrentUserId(ghostUser);
+
+    // «Φάντασμα»: ζωντανή τοπική άσκηση, ΠΑΛΙΑ (synced πριν το boundary), που ο
+    // server έχει GC-άρει — δεν θα επιστραφεί στο snapshot από cursor 0.
+    const ghost = await createExercise({ name: 'Ghost Lift' });
+    await db.exercises.update(ghost.id, { updated_at: '2000-01-01T00:00:00.000Z' });
+
+    // boundary = lastPushAt μεταγενέστερο του ghost → το ghost μετρά ως synced
+    // (παλιό), ΟΧΙ ως γνήσια νέα γραμμή. pushSchemaVersion:1 → χωρίς backfill,
+    // ώστε το αρχικό push να σέβεται το cutoff και να ΜΗΝ στείλει το παλιό ghost.
+    localStorage.setItem(
+      'anabasis.sync',
+      JSON.stringify({
+        pullCursor: 5,
+        epoch: 'e1',
+        lastPushAt: '2001-01-01T00:00:00.000Z',
+        pushSchemaVersion: 1,
+      }),
+    );
+
+    const pushBodies: string[] = [];
+    stubFetch({
+      push: (call) => {
+        pushBodies.push(String(call.init?.body));
+        return jsonResponse({ cursor: 1 });
+      },
+      pull: (call) => {
+        const cursor = (JSON.parse(String(call.init?.body)) as { cursor: number }).cursor;
+        if (cursor > 0) {
+          return jsonResponse({ changes: [], cursor, has_more: false, epoch: 'e1', reset_required: true });
+        }
+        // Ζωντανό snapshot ΧΩΡΙΣ το ghost — ο server το έχει σβήσει οριστικά.
+        return jsonResponse({ changes: [], cursor: 3, has_more: false, epoch: 'e1' });
+      },
+    });
+
+    await syncNow();
+
+    // 1) Το ghost σβήστηκε τοπικά (δεν μένει στο IndexedDB).
+    expect(await db.exercises.get(ghost.id)).toBeUndefined();
+    // 2) Δεν ξανα-στάλθηκε ΠΟΤΕ — καμία ανάσταση σβησμένης γραμμής.
+    expect(pushBodies.some((b) => b.includes(ghost.id))).toBe(false);
+
+    setCurrentUserId(DEFAULT_USER_ID);
+  });
 });
 
 describe('two-device unique-index convergence (δεν κολλάει το sync)', () => {

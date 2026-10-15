@@ -341,6 +341,157 @@ async function applyPulledChanges(changes: SyncChange[]): Promise<void> {
   });
 }
 
+/* ─────────── Destructive reset (gc_floor) ─────────── */
+
+/** Πίνακες-παιδιά (χωρίς δικό τους `user_id`) — το wire payload θέλει user_id. */
+const CHILD_WIRE_TABLES = new Set(['sets', 'skill_steps', 'program_days', 'program_exercises']);
+
+/** Προσθέτει `user_id` στο payload όπου ο server το απαιτεί (παιδιά + users),
+ * ίδιο μοτίβο με το collectPushChanges — ΔΕΝ γράφεται τοπικά. */
+function toWireRow(tbl: string, row: SyncRow, uid: string): SyncRow {
+  return tbl === 'users' || CHILD_WIRE_TABLES.has(tbl) ? { ...row, user_id: uid } : row;
+}
+
+/**
+ * ΩΜΑ τοπικά rows του χρήστη, ανά πίνακα, ΧΩΡΙΣ injection — στιγμιότυπο πριν το
+ * reset snapshot τα γράψει από πάνω. Ιδιοκτησία: direct-owner μέσω `user_id`,
+ * users μέσω PK, παιδιά μέσω γονέα (ίδιο μοτίβο με collectPushChanges).
+ */
+async function collectOwnedLocalRaw(uid: string): Promise<SyncChange[]> {
+  const out: SyncChange[] = [];
+  const tables = userDataTablesGeneric();
+
+  for (const name of DIRECT_OWNER_TABLES) {
+    const rows = await tables[name]!.where('user_id').equals(uid).toArray();
+    if (rows.length) out.push({ tbl: name, rows });
+  }
+
+  const me = await db.users.get(uid);
+  if (me) out.push({ tbl: 'users', rows: [me] });
+
+  const myWorkoutIds = new Set(
+    (await db.workouts.where('user_id').equals(uid).toArray()).map((w) => w.id),
+  );
+  const sets = (await db.sets.toArray()).filter((s) => myWorkoutIds.has(s.workout_id));
+  if (sets.length) out.push({ tbl: 'sets', rows: sets });
+
+  const mySkillIds = new Set(
+    (await db.skills.where('user_id').equals(uid).toArray()).map((s) => s.id),
+  );
+  const steps = (await db.skill_steps.toArray()).filter((s) => mySkillIds.has(s.skill_id));
+  if (steps.length) out.push({ tbl: 'skill_steps', rows: steps });
+
+  const myProgramIds = new Set(
+    (await db.programs.where('user_id').equals(uid).toArray()).map((p) => p.id),
+  );
+  const pdays = (await db.program_days.toArray()).filter((d) => myProgramIds.has(d.program_id));
+  if (pdays.length) out.push({ tbl: 'program_days', rows: pdays });
+  const pex = (await db.program_exercises.toArray()).filter((pe) =>
+    myProgramIds.has(pe.program_id),
+  );
+  if (pex.length) out.push({ tbl: 'program_exercises', rows: pex });
+
+  return out;
+}
+
+/** tbl → (row id → updated_at του snapshot). Για να ξέρουμε τι υπάρχει ΖΩΝΤΑΝΟ
+ * στον server και αν η τοπική μας έκδοση είναι νεότερη. */
+type SnapVersions = Map<string, Map<string, string>>;
+
+/** Κατεβάζει ΟΛΟ το ζωντανό snapshot από cursor 0, το εφαρμόζει τοπικά και
+ * επιστρέφει τις server versions. (cursor-0 pull δεν flag-άρει ποτέ reset.) */
+async function drainSnapshotFromZero(): Promise<SnapVersions> {
+  const snap: SnapVersions = new Map();
+  writeCursors({ pullCursor: 0 });
+  let cursor = 0;
+  let hasMore = true;
+  while (hasMore) {
+    const res = await api.syncPull({ cursor, limit: PULL_LIMIT });
+    if (readCursors().epoch === null) writeCursors({ epoch: res.epoch });
+    for (const { tbl, rows } of res.changes) {
+      let m = snap.get(tbl);
+      if (!m) {
+        m = new Map();
+        snap.set(tbl, m);
+      }
+      for (const r of rows as SyncRow[]) m.set(String(r.id), String(r.updated_at ?? ''));
+    }
+    if (res.changes.length > 0) await applyPulledChanges(res.changes);
+    cursor = res.cursor;
+    hasMore = res.has_more;
+    writeCursors({ pullCursor: cursor });
+  }
+  return snap;
+}
+
+/**
+ * Σωστό destructive reset όταν ο server επιστρέφει `reset_required` (ο cursor
+ * μας είναι πίσω από το gc_floor). Το απλό «μηδένισε cursor + ξαναπέρνα» άφηνε
+ * δύο προβλήματα: (α) το applyPulledChanges κάνει bulkPut, άρα τοπικά rows που
+ * ΛΕΙΠΟΥΝ από το ζωντανό snapshot (σβησμένα οριστικά αλλού, «φαντάσματα»)
+ * έμεναν για πάντα στο IndexedDB· (β) ένα edited ghost μπορούσε να ξανασπρωχτεί
+ * και να αναστήσει σβησμένη γραμμή.
+ *
+ * Εδώ: (1) κράτα στιγμιότυπο των τοπικών ΠΡΙΝ γραφτούν από πάνω, (2) κατέβασε
+ * όλο το ζωντανό snapshot ως πηγή αλήθειας, (3) σβήσε τα synced ghosts που
+ * λείπουν από το snapshot, (4) σπρώξε ΜΟΝΟ γνήσια νέα/νεότερα, μη-tombstoned
+ * rows. «Γνήσια νέα» = έγινε μετά το τελευταίο push (updated_at > boundary) και
+ * λείπει από τον server· ένα μη-edited ghost (παλιό, synced) σβήνεται, δεν
+ * σπρώχνεται — δεν ανασταίνει διαγραφή.
+ *
+ * Όριο (ειλικρινές): ένα edited ghost (alive, updated_at > boundary, GC-αρισμένο
+ * στον server) είναι τοπικά αδιάκριτο από μια γνήσια νέα γραμμή, οπότε σπρώχνεται
+ * — πλήρης αποτροπή θέλει server-side gc_floor απόρριψη στο push (εκτός scope).
+ */
+async function destructiveReset(): Promise<void> {
+  const uid = getCurrentUserId();
+  const boundary = readCursors().lastPushAt ?? '';
+  const localBefore = await collectOwnedLocalRaw(uid);
+  const snap = await drainSnapshotFromZero();
+
+  const tables = userDataTablesGeneric();
+  // Πίνακες ταυτότητας/συσκευής που ΔΕΝ σβήνονται ποτέ ως ghost (ο χρήστης και
+  // οι ρυθμίσεις της συσκευής ζουν τοπικά· η απουσία τους από snapshot δεν είναι
+  // «διαγραφή»).
+  const NEVER_PURGE = new Set(['users', 'app_settings']);
+  const survivors: SyncChange[] = [];
+
+  for (const { tbl, rows } of localBefore) {
+    const table = tables[tbl];
+    if (!table) continue;
+    const serverVer = snap.get(tbl);
+    const toDelete: string[] = [];
+    const toPush: SyncRow[] = [];
+
+    for (const raw of rows as SyncRow[]) {
+      const id = String(raw.id);
+      const upd = String(raw.updated_at ?? '');
+      const tombstoned = raw.deleted === 1 || raw.deleted_at != null;
+      const sv = serverVer?.get(id);
+
+      if (sv === undefined) {
+        if (!tombstoned && upd > boundary) {
+          // Γνήσια νέα τοπική γραμμή (ο server δεν την έχει) → κράτα & σπρώξε.
+          toPush.push(toWireRow(tbl, raw, uid));
+        } else if (!NEVER_PURGE.has(tbl)) {
+          // Ghost (παλιό synced row GC-αρισμένο) ή stale tombstone → σβήσε, ΜΗ σπρώξεις.
+          toDelete.push(id);
+        }
+      } else if (!tombstoned && upd > sv) {
+        // Υπάρχει στον server· το bulkPut έγραψε τη server έκδοση. Το τοπικό edit
+        // είναι νεότερο → επανάφερέ το τοπικά και σπρώξ' το (LWW).
+        await table.put(raw as Record<string, unknown>);
+        toPush.push(toWireRow(tbl, raw, uid));
+      }
+    }
+
+    if (toDelete.length) await table.bulkDelete(toDelete);
+    if (toPush.length) survivors.push({ tbl, rows: toPush });
+  }
+
+  if (survivors.length) await pushInBatches(survivors);
+}
+
 async function pullLoop(): Promise<void> {
   let cursor = readCursors().pullCursor;
   let hasMore = true;
@@ -350,16 +501,16 @@ async function pullLoop(): Promise<void> {
     /*
      * gc_floor reset (Codex §3): ο server μας λέει ότι ο cursor μας είναι πίσω
      * από το σημείο όπου κράτησε διαγραφές — μπορεί να χάσαμε tombstones που
-     * σβήστηκαν οριστικά. ΔΕΝ ξανασπρώχνουμε (όπως το epoch path) γιατί τα παλιά
-     * τοπικά rows θα ανάσταιναν σβησμένα· αντ' αυτού μηδενίζουμε τον cursor και
-     * ξανακατεβάζουμε όλο το ΖΩΝΤΑΝΟ σύνολο από την αρχή ως πηγή αλήθειας. Το
-     * cursor 0 pull δεν επιστρέφει ποτέ reset_required, οπότε δεν υπάρχει loop.
+     * σβήστηκαν οριστικά. Το σχόλιο στο types.ts το λέει destructive (wipe +
+     * pull από 0): το κάνει το `destructiveReset()`, που ΟΝΤΩΣ σβήνει τα τοπικά
+     * «φαντάσματα» που λείπουν από το ζωντανό snapshot (το παλιό μηδένιζε μόνο
+     * τον cursor και άφηνε τα ghosts στο IndexedDB) και ξανασπρώχνει ΜΟΝΟ γνήσια
+     * νέα/νεότερα, μη-tombstoned rows — ποτέ σβησμένα. Επιστρέφουμε αμέσως μετά:
+     * ο κύκλος pull ολοκληρώθηκε από το reset.
      */
     if (res.reset_required) {
-      writeCursors({ pullCursor: 0 });
-      cursor = 0;
-      hasMore = true;
-      continue;
+      await destructiveReset();
+      return;
     }
 
     /*
