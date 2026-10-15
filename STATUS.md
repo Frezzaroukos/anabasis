@@ -34,3 +34,13 @@
 - Έγινε: read-only audit pro-2026-10@3f25e2a· frontend suite PASS σε73files, backend72tests και lint PASS· παραδοτέο anabasis-readiness-2026-10-13.md στα outputs του τρέχοντος Codex chat.
 - Μένει: release artifact/staged build, backup all-profile scope/import policy, old-offline-client GC/clock-skew sync και Tauri API portability· τελικό build/typecheck/10-device+real-device/login/restore QA δεν έγινε τώρα.
 - Περιμένει Aggelos: scope v1 web/PWA και μεταγενέστερη έγκριση δημοσίευσης· σημερινές index.html/serve.py uncommitted αλλαγές διατηρήθηκαν, κανένα repo code/deploy/push/restart.
+
+## Cross-review QA6 — 2026-10-16
+- Έγινε: A6 tests/build/device-check πέρασαν· DB-copy repro επιβεβαίωσε guard για cursor client και legacy resurrection χωρίς cursor· αναλυτικά evidence στο night-log DONE QA6.
+- Μένει: στρατηγική μετάβασης για παλιούς/offline clients που δεν στέλνουν cursor πριν το API deploy.
+- Περιμένει Aggelos: απόφαση για graceful legacy-client migration/retirement· δεν έγιναν code changes, push ή deploy.
+
+## Cross-review QA7 — 2026-10-16
+- Έγινε: A7 copied-live-DB repro πέρασε για stale/fresh/legacy payloads· no server resurrection, genuine writes preserved, legacy HTTP/pull pagination finite.
+- Μένει: `gc_graveyard` rows επιβιώνουν από delete_account (επιβεβαιώθηκε σε DB copy)· ο legacy client δεν καθαρίζει το τοπικό ghost μέχρι να αναβαθμιστεί.
+- Περιμένει Aggelos: απόφαση/διόρθωση πολιτικής retention για graveyard πριν από deploy· δεν έγιναν code changes, push ή deploy.
