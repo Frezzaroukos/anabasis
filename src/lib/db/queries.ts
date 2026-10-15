@@ -813,72 +813,12 @@ export const USER_DATA_TABLES = () => ({
 });
 
 /**
- * Πλήρες JSON backup — ΟΛΗ η τοπική βάση, ΟΛΑ τα προφίλ μαζί (ΔΕΝ φιλτράρει
- * με getCurrentUserId, εξ ορισμού — βλ. `users: db.users` παραπάνω χωρίς
- * `.where('user_id')`). Δεν είναι «export του τρέχοντος προφίλ»· είναι το
- * μονοπάτι πλήρους αντιγράφου/μετακόμισης συσκευής — αν έχεις πολλά προφίλ
- * σε αυτή τη συσκευή, φεύγουν όλα μαζί σε ένα αρχείο. Local-first σημαίνει:
- * τα δεδομένα φεύγουν όποτε θες.
+ * Backup/restore μετακόμισαν στο `./backup` (το queries.ts κάθεται στο όριο του
+ * oxc parser — νέος κώδικας εδώ σπάει το vitest transform). Re-exported ώστε οι
+ * παλιοί καταναλωτές (`@/lib/db/queries`) να μη χρειαστεί να αλλάξουν import.
  */
-export async function exportAll(): Promise<string> {
-  const tables = USER_DATA_TABLES();
-  const names = Object.keys(tables) as (keyof ReturnType<typeof USER_DATA_TABLES>)[];
-  const arrays = await Promise.all(names.map((n) => tables[n].toArray()));
-  const data = Object.fromEntries(names.map((n, i) => [n, arrays[i]]));
-  return JSON.stringify(
-    {
-      format: 'anabasis-backup',
-      version: 2,
-      exported_at: now(),
-      data,
-    },
-    null,
-    2,
-  );
-}
-
-export interface ImportResult {
-  ok: boolean;
-  message: string;
-  counts?: Record<string, number>;
-}
-
-/**
- * Επαναφορά από backup. Κάνει merge (bulkPut) — δεν σβήνει ό,τι δεν είναι στο
- * αρχείο, ώστε μια λάθος επαναφορά να μην καταστρέφει δεδομένα.
- * Δέχεται και v1 αρχεία (λιγότεροι πίνακες — άγνωστα keys απλώς αγνοούνται).
- * Όλο το import τρέχει σε ΜΙΑ transaction: ή μπαίνουν όλα ή τίποτα —
- * ένα σκάρτο row στη μέση δεν αφήνει τη βάση μισο-γραμμένη.
- */
-export async function importAll(json: string): Promise<ImportResult> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    return { ok: false, message: 'invalidJson' };
-  }
-  const b = parsed as { format?: string; data?: Record<string, unknown[]> };
-  if (b?.format !== 'anabasis-backup' || !b.data) {
-    return { ok: false, message: 'notABackup' };
-  }
-
-  const tables = USER_DATA_TABLES();
-  const counts: Record<string, number> = {};
-  try {
-    await db.transaction('rw', Object.values(tables), async () => {
-      for (const [name, table] of Object.entries(tables)) {
-        const rows = b.data![name];
-        if (!Array.isArray(rows) || rows.length === 0) continue;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (table as any).bulkPut(rows);
-        counts[name] = rows.length;
-      }
-    });
-  } catch {
-    return { ok: false, message: 'importFailed' };
-  }
-  return { ok: true, message: 'imported', counts };
-}
+export { exportAll, exportProfile, importAll } from './backup';
+export type { ImportResult, BackupScope } from './backup';
 
 /* ─────────── Settings ─────────── */
 

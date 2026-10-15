@@ -3,15 +3,22 @@ import { db } from './schema';
 import { setCurrentUserId } from './session';
 import {
   addProgramExercise,
+  addSet,
+  addSkillStep,
   createActivity,
   createExercise,
+  createProfile,
   createProgram,
+  createProgramDay,
   createSkill,
   exportAll,
+  exportProfile,
   importAll,
   importBodyMetrics,
+  startWorkout,
 } from './queries';
 import { createGoal } from './goals';
+import { getCurrentUserId } from './session';
 
 /**
  * Το backup είναι η ΜΟΝΗ γραμμή άμυνας ενός no-backend app. Η v1 του format
@@ -99,5 +106,76 @@ describe('backup round-trip', () => {
     const res = await importAll(JSON.stringify(v1));
     expect(res.ok).toBe(true);
     expect(await db.exercises.get('v1-ex')).toBeTruthy();
+  });
+});
+
+/**
+ * Codex audit §2: το `exportAll` έβγαζε ΟΛΑ τα προφίλ ενώ το UI έλεγε «your
+ * data». Το `exportProfile` βγάζει ΜΟΝΟ το ενεργό προφίλ — μαζί με τα child rows
+ * του (sets/skill_steps/program_days/program_exercises μέσω parent) και τίποτα
+ * από άλλο προφίλ στην ίδια συσκευή.
+ */
+describe('exportProfile (current-profile scope)', () => {
+  const SCOPED = [
+    'users', 'exercises', 'workouts', 'sets', 'skills', 'skill_steps',
+    'programs', 'program_days', 'program_exercises', 'goals',
+  ] as const;
+
+  async function seedProfile(name: string) {
+    const profile = await createProfile(name);
+    setCurrentUserId(profile.id);
+    const ex = await createExercise({ name: `${name} Press` });
+    const w = await startWorkout('strength');
+    await addSet({ workout_id: w.id, exercise_id: ex.id, weight_kg: 40, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    const prog = await createProgram(`${name} Prog`);
+    const day = await createProgramDay(prog.id, 'Day 1');
+    await addProgramExercise(prog.id, { exercise_id: ex.id, program_day_id: day.id });
+    const skill = await createSkill({ name: `${name} Lever` });
+    await addSkillStep(skill.id, { name: 'tuck' });
+    await createGoal({ metric: 'sessions', target: 3, period: 'week' });
+    return profile.id;
+  }
+
+  beforeEach(async () => {
+    for (const name of SCOPED) await db.table(name).clear();
+    await db.custom_trackers.clear();
+    await db.custom_tracker_entries.clear();
+  });
+
+  it('exports only the active profile and its child rows, never another profile', async () => {
+    const idA = await seedProfile('Alpha');
+    const idB = await seedProfile('Beta');
+
+    setCurrentUserId(idA);
+    const parsed = JSON.parse(await exportProfile());
+
+    expect(parsed.scope).toBe('profile');
+    expect(parsed.profile_id).toBe(idA);
+    expect(getCurrentUserId()).toBe(idA);
+
+    // Only profile A's own user row.
+    expect(parsed.data.users.map((u: { id: string }) => u.id)).toEqual([idA]);
+    // Direct-owner table scoped to A.
+    expect(parsed.data.workouts.every((w: { user_id: string }) => w.user_id === idA)).toBe(true);
+    expect(parsed.data.workouts.length).toBe(1);
+    // Child tables (no own user_id) scoped via their parent: exactly A's rows.
+    expect(parsed.data.sets.length).toBe(1);
+    expect(parsed.data.program_days.length).toBe(1);
+    expect(parsed.data.program_exercises.length).toBe(1);
+    expect(parsed.data.skill_steps.length).toBe(1);
+
+    // Beta must not appear ANYWHERE in the serialized backup.
+    const blob = JSON.stringify(parsed.data);
+    expect(blob).not.toContain(idB);
+    expect(blob).not.toContain('Beta');
+  });
+
+  it('exportAll stays whole-device and tags scope=device', async () => {
+    await seedProfile('Alpha');
+    await seedProfile('Beta');
+    const parsed = JSON.parse(await exportAll());
+    expect(parsed.scope).toBe('device');
+    // Both profiles present in the device-wide copy.
+    expect(parsed.data.workouts.length).toBe(2);
   });
 });

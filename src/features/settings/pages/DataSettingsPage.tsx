@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download } from 'lucide-react';
-import { exportAll, getCurrentProfileDataCounts, importAll } from '@/lib/db/queries';
+import { exportAll, exportProfile, getCurrentProfileDataCounts, importAll } from '@/lib/db/queries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, SectionTitle } from '@/components/ui/Section';
@@ -28,15 +28,28 @@ export function DataSettingsPage() {
     steps: 0,
   });
 
-  const onExport = async () => {
-    const json = await exportAll();
+  const download = (json: string, name: string) => {
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `anabasis-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = name;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  // Προεπιλογή = ΜΟΝΟ το ενεργό προφίλ — ακριβώς ό,τι δείχνει το «Τα δεδομένα σου»
+  // από πάνω. Σε κοινόχρηστη συσκευή δεν φεύγουν σιωπηλά τα άλλα προφίλ.
+  const onExport = async () => {
+    download(await exportProfile(), `anabasis-backup-${today()}.json`);
+    setStatus(t('settings.exported'));
+  };
+
+  // Ρητή, ξεχωριστή ενέργεια: ΟΛΑ τα προφίλ αυτής της συσκευής (μετακόμιση).
+  const onExportAllProfiles = async () => {
+    download(await exportAll(), `anabasis-all-profiles-${today()}.json`);
     setStatus(t('settings.exported'));
   };
 
@@ -77,7 +90,7 @@ export function DataSettingsPage() {
         <SectionTitle>{t('settings.export')}</SectionTitle>
         <p className="-mt-2 text-xs text-muted-foreground">{t('settings.storageNote')}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => void onExport()}>{t('settings.export')}</Button>
+          <Button onClick={() => void onExport()}>{t('settings.exportProfile')}</Button>
           <Button variant="outline" onClick={() => fileRef.current?.click()}>
             {t('settings.import')}
           </Button>
@@ -93,6 +106,21 @@ export function DataSettingsPage() {
             }}
           />
         </div>
+
+        {/* Ρητή, δευτερεύουσα διαδρομή: ΟΛΑ τα προφίλ της συσκευής. */}
+        <div className="mt-4 border-t border-border pt-3">
+          <Button
+            variant="ghost"
+            className="h-auto px-0 text-xs text-muted-foreground"
+            onClick={() => void onExportAllProfiles()}
+          >
+            {t('settings.exportAllProfiles')}
+          </Button>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t('settings.exportAllProfilesHint')}
+          </p>
+        </div>
+
         {status && (
           <p className="mt-3 text-xs text-muted-foreground" role="status">
             {status}

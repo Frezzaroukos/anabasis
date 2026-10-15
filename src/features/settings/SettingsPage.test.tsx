@@ -72,7 +72,8 @@ describe('export / import', () => {
     const json = await exportAll();
     const parsed = JSON.parse(json);
     expect(parsed.format).toBe('anabasis-backup');
-    expect(parsed.version).toBe(2);
+    expect(parsed.version).toBe(3);
+    expect(parsed.scope).toBe('device');
     expect(parsed.data).toBeTruthy();
 
     const res = await importAll(json);
