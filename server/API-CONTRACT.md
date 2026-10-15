@@ -3,8 +3,14 @@
 Self-hosted Rust/Axum service. Base path: `/api` (πίσω από το Cloudflare tunnel
 στο ίδιο origin με το web app: `https://anabasis.axonos.dev/api`· τοπικά `http://localhost:8121/api`).
 Πηγές αποφάσεων: research 2026-08-28 — bearer tokens όχι cookies (Tauri prod
-cookie trap), όχι JWT (θέλουμε instant revocation), sync = row-level LWW με
-server-assigned `sync_seq` (όχι εμπιστοσύνη σε client clocks).
+cookie trap), όχι JWT (θέλουμε instant revocation), sync = row-level
+last-write-wins. Ο `sync_seq` είναι server-assigned ΜΟΝΟ για το cursor ordering
+του pull (δεν εμπιστευόμαστε client clock για σειρά). Η επίλυση συγκρούσεων
+όμως συγκρίνει το client `updated_at` — με έναν **bounded forward-skew guard**:
+ό,τι incoming `updated_at` είναι μπροστά από το ρολόι του server (η μία κοινή
+αναφορά) κόβεται (clamp) στο server-now. Αυτό φράζει μόνο το ΜΕΛΛΟΝ· δύο
+συσκευές με ρολόγια εντός ορίων εξακολουθούν να λύνονται με ωμή σύγκριση
+`updated_at` — δεν είναι πλήρες HLC/vector-clock (δες §sync/push).
 
 ## Γενικά
 
@@ -93,9 +99,14 @@ Body: `{ current_password, new_password }`. Ακυρώνει όλα τα ΑΛΛ�
 Body: `{ changes: [ { tbl, rows: [ <row JSON> ] } ] }`
 Κάθε row ΠΡΕΠΕΙ να έχει `id` (uuid) και `user_id` == account id (ο server
 το επιβάλλει — 400 `wrong_user` αλλιώς). Σε ΜΙΑ transaction: για κάθε row
-bump `accounts.last_seq`, upsert στο sync_rows με νέο seq (last-push-wins),
-`deleted` από το `payload.deleted_at`. Όριο: 5000 rows/request (413).
-200: `{ cursor: <νέο max seq> }`.
+σύγκρινε το incoming `updated_at` με το αποθηκευμένο — **last-WRITE-wins, ΟΧΙ
+last-push/σειρά άφιξης**: νεότερο `updated_at` κερδίζει, ισοπαλία/παλαιότερο
+αγνοείται (stale push, δεν καταναλώνει seq). Πριν τη σύγκριση, incoming
+`updated_at` μπροστά από το server-now κόβεται (bounded forward-skew clamp) ΚΑΙ
+στη σύγκριση ΚΑΙ στο αποθηκευμένο payload, ώστε ένα μελλοντικό-dated row να μη
+«κλειδώνει» τη νίκη για πάντα. Ο νικητής: bump `accounts.last_seq`, upsert στο
+sync_rows με νέο seq, `deleted` από το `payload.deleted_at`. Όριο: 5000
+rows/request (413). 200: `{ cursor: <νέο max seq> }`.
 
 ### POST /api/sync/pull  (auth)
 Body: `{ cursor: <i64, 0 για φρέσκια συσκευή>, limit?: <=2000 default 1000 }`

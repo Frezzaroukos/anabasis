@@ -1,7 +1,11 @@
 /**
  * Sync engine — προαιρετικό cloud sync πάνω από το τοπικό Dexie.
- * Συμβόλαιο: server/API-CONTRACT.md. Row-level last-write-wins, server-
- * assigned μονότονο `seq` ανά account (όχι εμπιστοσύνη σε client clocks).
+ * Συμβόλαιο: server/API-CONTRACT.md. Row-level last-write-wins πάνω στο client
+ * `updated_at` (δες incomingWins). Ο server-assigned μονότονος `seq` ανά account
+ * είναι ΜΟΝΟ για το cursor ordering του pull — όχι για την επίλυση συγκρούσεων.
+ * Το skew καλύπτεται από bounded forward-skew clamp στον server (ό,τι είναι
+ * μπροστά από το ρολόι του κόβεται στο now)· δεν είναι πλήρες HLC — δύο ρολόγια
+ * εντός ορίων λύνονται με ωμή σύγκριση updated_at.
  *
  * Offline-first: ΚΑΘΕ αποτυχία δικτύου μένει σιωπηλή — ποτέ exception προς
  * το UI, μόνο `useSyncStatus()`. Το app δουλεύει πανομοιότυπα χωρίς σύνδεση.
