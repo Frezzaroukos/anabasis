@@ -144,6 +144,17 @@ async fn delete_account_requires_email_and_removes_all_owned_server_data() {
     .await
     .unwrap();
 
+    // Ίχνος GC (gc_graveyard) ανήκει κι αυτό στον χρήστη — η διαγραφή πρέπει να το
+    // σβήσει (GDPR: τίποτα δεν μένει μετά τη διαγραφή). Δες server/src/auth.rs.
+    sqlx::query(
+        "INSERT INTO gc_graveyard (account_id, tbl, row_id, gc_at)
+         VALUES (?, 'workouts', 'row-dead', '2026-01-02T00:00:00Z')",
+    )
+    .bind(&account_id)
+    .execute(&state.pool)
+    .await
+    .unwrap();
+
     let (status, body) = call(
         &app,
         "POST",
@@ -180,7 +191,12 @@ async fn delete_account_requires_email_and_removes_all_owned_server_data() {
         .fetch_one(&state.pool)
         .await
         .unwrap();
-    assert_eq!((accounts, rows, sessions), (0, 0, 0));
+    let graveyard: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM gc_graveyard WHERE account_id = ?")
+        .bind(&account_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!((accounts, rows, sessions, graveyard), (0, 0, 0, 0));
 
     let (status, _) = call(&app, "GET", "/api/me", Some(&token), None).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);

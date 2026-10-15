@@ -35,6 +35,7 @@ accounts(
   failed_logins INTEGER NOT NULL DEFAULT 0,
   locked_until TEXT,         -- exponential lockout
   last_seq INTEGER NOT NULL DEFAULT 0,  -- per-account sync counter
+  gc_floor INTEGER NOT NULL DEFAULT 0,  -- max seq με GC-αρισμένο tombstone (0006)
   created_at TEXT NOT NULL,
   last_sync_at TEXT
 )
@@ -57,7 +58,34 @@ sync_rows(
   PRIMARY KEY (account_id, tbl, row_id)
 )
 CREATE INDEX idx_sync_rows_seq ON sync_rows(account_id, seq);
+
+gc_graveyard(                -- migration 0007· anti-resurrection ίχνος
+  account_id TEXT NOT NULL,  -- ιδιοκτήτης (ίδιο με sync_rows.account_id)
+  tbl TEXT NOT NULL,         -- client table του σβησμένου row
+  row_id TEXT NOT NULL,      -- το uuid του row που έγινε GC — ΟΧΙ payload
+  gc_at TEXT NOT NULL,       -- πότε το κατέγραψε το GC (server wall clock)
+  PRIMARY KEY (account_id, tbl, row_id)
+)
 ```
+
+### Πολιτική διατήρησης του gc_graveyard
+
+- **Τι κρατά:** μόνο την ταυτότητα `(account_id, tbl, row_id)` κάθε row που
+  διαγράφηκε και του οποίου το tombstone έγινε GC (`sync::prune_tombstones`),
+  συν το `gc_at`. **Κανένα payload** — μόνο «αυτό το id πέθανε».
+- **Γιατί υπάρχει:** το `gc_floor` φρενάρει μόνο clients που στέλνουν έγκυρο pull
+  cursor κάτω από το floor. Παλιός/cached client που δεν στέλνει cursor (ή αγνοεί
+  την απάντηση) το παρακάμπτει· το graveyard κάνει τον anti-resurrection έλεγχο
+  **ανεξάρτητο από τον client** — το `push` απορρίπτει (χωρίς write) κάθε id που
+  ζει εδώ (βλ. /api/sync/push).
+- **Πότε σβήνονται οι γραμμές:** είναι **append-only όσο ζει ο λογαριασμός** — μια
+  σβησμένη γραμμή δεν πρέπει ποτέ να «ξαναγεννηθεί», άρα το ίχνος πρέπει να
+  επιβιώνει (γι' αυτό το 0007 δεν έχει `down` — δες docs/STAGED-BUILD.md). Η
+  **μόνη** αφαίρεση είναι η **διαγραφή του ίδιου του λογαριασμού** (`delete_account`,
+  ίδια transaction): τότε δεν υπάρχει πια client να προστατεύσουμε και η πολιτική
+  GDPR απαιτεί να μη μείνει καμία γραμμή.
+- **Μέγεθος:** μικρό (ids, όχι payload)· μεγαλώνει μόνο με πραγματικές GC-αρισμένες
+  διαγραφές, όχι με ζωντανά rows.
 
 Ο server ΔΕΝ καταλαβαίνει τα σχήματα των rows — γενικό replicated row store.
 Μελλοντικές αλλαγές στο client schema δεν χρειάζονται server migration.
@@ -85,8 +113,9 @@ Body: `{ email, password }`. 200 ίδιο σχήμα με signup.
 
 ### POST /api/auth/delete_account  (auth)
 Body: `{ confirm_email }`. Το email πρέπει να ταιριάζει με του session
-(case-insensitive). Διαγράφει μόνιμα account, sessions, sync rows, social
-profile/friendships και εκκρεμή magic links σε μία transaction. 200 `{}` ή
+(case-insensitive). Διαγράφει μόνιμα account, sessions, sync rows, το
+gc_graveyard ίχνος του χρήστη, social profile/friendships και εκκρεμή magic
+links σε μία transaction (GDPR: δεν μένει καμία γραμμή). 200 `{}` ή
 400 `confirmation_mismatch`.
 
 ### GET /api/me  (auth)

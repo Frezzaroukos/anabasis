@@ -473,6 +473,14 @@ pub async fn delete_account(
         .bind(&auth.account_id)
         .execute(&mut *tx)
         .await?;
+    // Το gc_graveyard είναι append-only όσο ΥΠΑΡΧΕΙ ο λογαριασμός (κρατά το ίχνος
+    // «ποια ids πέθαναν» ώστε να μην ανασταθούν — δες sync.rs). Η διαγραφή του
+    // ΙΔΙΟΥ του λογαριασμού είναι η μόνη νόμιμη αφαίρεση: δεν υπάρχει πια client
+    // να προστατεύσουμε, και η πολιτική GDPR απαιτεί να μη μείνει ΚΑΜΙΑ γραμμή.
+    sqlx::query("DELETE FROM gc_graveyard WHERE account_id = ?")
+        .bind(&auth.account_id)
+        .execute(&mut *tx)
+        .await?;
     sqlx::query("DELETE FROM sessions WHERE account_id = ?")
         .bind(&auth.account_id)
         .execute(&mut *tx)
