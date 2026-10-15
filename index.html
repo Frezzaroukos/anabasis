@@ -34,9 +34,48 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
+
+    <!--
+      Critical app-shell skeleton. Το app είναι client-rendered SPA, οπότε χωρίς
+      αυτό το #root είναι κενό μέχρι να κατέβει+τρέξει το JS — το first paint
+      περίμενε το bundle (FCP/LCP ~5-6s σε mobile throttle). Αυτό το ελάχιστο,
+      inline-styled skeleton βάφεται ΑΜΕΣΩΣ από το HTML (καμία εξωτερική εξάρτηση),
+      κι ο React το αντικαθιστά στο πρώτο render. Dark bg = καθόλου white flash.
+    -->
+    <style>
+      html { background: #101013; }
+      #app-skeleton {
+        position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 1.25rem;
+        background: #101013; color: #e8e8ec;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      #app-skeleton svg { width: 64px; height: 64px; }
+      #app-skeleton .wm {
+        font-size: 1.35rem; font-weight: 600; letter-spacing: 0.08em;
+        text-transform: uppercase; opacity: 0.92;
+      }
+      #app-skeleton .spin {
+        width: 22px; height: 22px; border-radius: 9999px;
+        border: 2px solid #2b2b31; border-top-color: #8a7cff;
+        animation: app-skel-spin 0.8s linear infinite;
+      }
+      @keyframes app-skel-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { #app-skeleton .spin { animation: none; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="app-skeleton" aria-hidden="true">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <rect width="64" height="64" rx="13" fill="#16161A" />
+          <circle cx="32" cy="32" r="24" fill="none" stroke="#E8E8EC" stroke-width="4.5" />
+          <path d="M15 43 L25 27 L31 35 L39 21 L49 43 Z" fill="#E8E8EC" />
+        </svg>
+        <div class="wm">Anabasis</div>
+        <div class="spin"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
