@@ -35,10 +35,18 @@ export interface SyncChange {
 
 export interface SyncPushRequest {
   changes: SyncChange[];
+  /** Ο pull cursor της συσκευής τη στιγμή του push. Ο server το συγκρίνει με το
+   * gc_floor: αν είναι πίσω, απορρίπτει το push (reset_required) αντί να
+   * αναστήσει edited ghost. Παραλείπεται σε cursor 0 (φρέσκια/fullResync). */
+  cursor?: number;
 }
 
 export interface SyncPushResponse {
   cursor: number;
+  /** Ο server ΑΠΕΡΡΙΨΕ το push: η συσκευή είναι πίσω από το gc_floor — τίποτα δεν
+   * γράφτηκε. Ο client κάνει destructive reset και μετά ξαναστέλνει μόνο γνήσια
+   * νεότερα. Προαιρετικό για συμβατότητα με παλιό server (undefined = false). */
+  reset_required?: boolean;
 }
 
 export interface SyncPullRequest {

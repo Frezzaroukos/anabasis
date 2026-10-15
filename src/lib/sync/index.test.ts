@@ -588,6 +588,84 @@ describe('gc_floor reset (Codex §3 — παλιές offline συσκευές)',
   });
 });
 
+/**
+ * Grok QA5 probe (γύρος 3): το push προηγείται του pull, άρα μια συσκευή πίσω
+ * από το gc_floor έγραφε στον server ΠΡΙΝ δει το reset_required — resurrection.
+ * Τώρα το push κουβαλά τον cursor· ο server απαντά reset_required ΑΠΟ ΤΟ PUSH και
+ * ο client κάνει ΠΡΩΤΑ destructive reset (όχι κανονικό pull), μετά ξαναστέλνει
+ * μόνο γνήσια νέα. Έλεγχος: ghost δεν ανασταίνεται + γνήσιες αλλαγές δεν χάνονται.
+ */
+describe('gc_floor reset ΑΠΟ το push (push→pull order — Grok probe)', () => {
+  it('reset_required στο push: destructive reset — ghost purged, γνήσιο row σώζεται', async () => {
+    const probeUser = 'push-reset-probe-user';
+    setCurrentUserId(probeUser);
+
+    // Ghost: ζωντανό τοπικό row, ΠΑΛΙΟ (synced πριν το boundary, GC-αρισμένο στον
+    // server) — δεν περνά το cutoff στο push, καθαρίζεται στον reset.
+    const ghost = await createExercise({ name: 'Push Ghost' });
+    await db.exercises.update(ghost.id, { updated_at: '2000-01-01T00:00:00.000Z' });
+    // Γνήσια νέα τοπική άσκηση (updated_at = τώρα, μετά το boundary) — ΠΡΕΠΕΙ να φύγει.
+    const fresh = await createExercise({ name: 'Push Genuine' });
+
+    localStorage.setItem(
+      'anabasis.sync',
+      JSON.stringify({
+        pullCursor: 5, // > 0 → ο client το στέλνει, ο server το κρίνει πίσω από floor
+        epoch: 'e1',
+        lastPushAt: '2001-01-01T00:00:00.000Z', // boundary: ghost παλιό, fresh νέο
+        pushSchemaVersion: 1, // χωρίς backfill → το push σέβεται το cutoff
+      }),
+    );
+
+    let pushCount = 0;
+    const pushBodies: string[] = [];
+    const { calls } = stubFetch({
+      push: (call) => {
+        pushCount += 1;
+        pushBodies.push(String(call.init?.body));
+        // 1ο push = η πρόωρη απόπειρα συσκευής πίσω από floor → reset_required.
+        // Μετά τον reset ο cursor είναι φρέσκος → το re-push περνά κανονικά.
+        return pushCount === 1
+          ? jsonResponse({ cursor: 5, reset_required: true })
+          : jsonResponse({ cursor: 9, reset_required: false });
+      },
+      // destructiveReset τραβά από 0· ζωντανό snapshot ΧΩΡΙΣ ghost/fresh.
+      pull: () => jsonResponse({ changes: [], cursor: 3, has_more: false, epoch: 'e1' }),
+    });
+
+    await syncNow();
+
+    // 1) Το push πυροδότησε τον reset: το πρώτο push πήρε cursor 5, ΔΕΝ έτρεξε
+    //    κανονικό pull (μόνο ο reset τραβά, πάντα από cursor 0).
+    expect(pushCount).toBeGreaterThanOrEqual(2); // πρόωρο push + re-push μετά τον reset
+    const firstPush = JSON.parse(pushBodies[0]!) as { cursor: number };
+    expect(firstPush.cursor).toBe(5);
+    const pullReqs = calls.filter((c) => c.url.includes('/sync/pull'));
+    expect(pullReqs.length).toBeGreaterThan(0);
+    expect(pullReqs.every((c) => (JSON.parse(String(c.init?.body)) as { cursor: number }).cursor === 0))
+      .toBe(true);
+
+    // 2) Ghost: σβήστηκε τοπικά ΚΑΙ δεν στάλθηκε ΠΟΤΕ (καμία ανάσταση).
+    expect(await db.exercises.get(ghost.id)).toBeUndefined();
+    expect(pushBodies.some((b) => b.includes(ghost.id))).toBe(false);
+
+    // 3) Γνήσια νέα άσκηση: επιβίωσε τοπικά ΚΑΙ στάλθηκε (δεν χάθηκε).
+    expect(await db.exercises.get(fresh.id)).toBeTruthy();
+    expect(pushBodies.some((b) => b.includes(fresh.id))).toBe(true);
+
+    // 4) Το boundary (lastPushAt) ΔΕΝ προχώρησε — το reject δεν γράφει cursors,
+    //    ώστε ο reset να ξεχωρίζει σωστά ghost από γνήσιο. Το sync ολοκληρώθηκε.
+    const sync = JSON.parse(localStorage.getItem('anabasis.sync')!) as {
+      lastPushAt: string;
+      lastSyncAt: string | null;
+    };
+    expect(sync.lastPushAt).toBe('2001-01-01T00:00:00.000Z');
+    expect(sync.lastSyncAt).not.toBeNull();
+
+    setCurrentUserId(DEFAULT_USER_ID);
+  });
+});
+
 describe('two-device unique-index convergence (δεν κολλάει το sync)', () => {
   it('pull ξένου app_settings (ίδιο user_id, άλλο id) ΔΕΝ σκάει — συγκλίνει στον νικητή', async () => {
     // Το bootstrap έχει ήδη φτιάξει ΤΟΠΙΚΟ app_settings με τυχαίο id για το

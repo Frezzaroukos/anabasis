@@ -223,24 +223,38 @@ async function collectPushChanges(cutoffIso: string): Promise<SyncChange[]> {
   return changes;
 }
 
-/** Σπάει σε αιτήματα ≤ PUSH_BATCH_LIMIT rows συνολικά (server: 5000/request, 413 αλλιώς). */
-async function pushInBatches(changes: SyncChange[]): Promise<void> {
+/**
+ * Σπάει σε αιτήματα ≤ PUSH_BATCH_LIMIT rows συνολικά (server: 5000/request, 413
+ * αλλιώς). Στέλνει τον τρέχοντα pull cursor σε ΚΑΘΕ batch: ο server τον συγκρίνει
+ * με το gc_floor και, αν η συσκευή είναι πίσω, απορρίπτει το push (reset_required)
+ * αντί να αναστήσει edited ghost γράφοντάς το ως νέα γραμμή.
+ *
+ * Επιστρέφει `true` αν ο server ζήτησε reset — τότε ΤΙΠΟΤΑ δεν εφαρμόστηκε στον
+ * server (ούτε αυτό το batch ούτε τα επόμενα, που δεν στέλνονται) και ο caller
+ * πρέπει να κάνει destructiveReset αντί να προχωρήσει· `false` αλλιώς.
+ */
+async function pushInBatches(changes: SyncChange[]): Promise<boolean> {
+  const cursor = readCursors().pullCursor;
   let batch: SyncChange[] = [];
   let count = 0;
+  let resetRequired = false;
 
   const flush = async () => {
     if (batch.length === 0) return;
-    await api.syncPush({ changes: batch });
+    const res = await api.syncPush({ changes: batch, cursor });
     batch = [];
     count = 0;
+    if (res.reset_required) resetRequired = true;
   };
 
   for (const change of changes) {
+    if (resetRequired) break;
     let rows = change.rows;
     while (rows.length > 0) {
       const room = PUSH_BATCH_LIMIT - count;
       if (room <= 0) {
         await flush();
+        if (resetRequired) break;
         continue;
       }
       const slice = rows.slice(0, room);
@@ -249,7 +263,8 @@ async function pushInBatches(changes: SyncChange[]): Promise<void> {
       rows = rows.slice(slice.length);
     }
   }
-  await flush();
+  if (!resetRequired) await flush();
+  return resetRequired;
 }
 
 /* ─────────── Pull ─────────── */
@@ -439,9 +454,19 @@ async function drainSnapshotFromZero(): Promise<SnapVersions> {
  * λείπει από τον server· ένα μη-edited ghost (παλιό, synced) σβήνεται, δεν
  * σπρώχνεται — δεν ανασταίνει διαγραφή.
  *
- * Όριο (ειλικρινές): ένα edited ghost (alive, updated_at > boundary, GC-αρισμένο
- * στον server) είναι τοπικά αδιάκριτο από μια γνήσια νέα γραμμή, οπότε σπρώχνεται
- * — πλήρης αποτροπή θέλει server-side gc_floor απόρριψη στο push (εκτός scope).
+ * Όριο (ειλικρινές, παραμένει): ένα edited ghost (alive, updated_at > boundary,
+ * GC-αρισμένο στον server) είναι τοπικά αδιάκριτο από γνήσια νέα γραμμή, οπότε
+ * εδώ σπρώχνεται — πλήρης διάκριση θα απαιτούσε per-row «synced-once» tracking.
+ *
+ * Τι ΕΚΛΕΙΣΕ το push-side gc_floor guard: πριν, το push προηγούνταν του pull
+ * (syncNowInner), άρα μια συσκευή ΠΙΣΩ από το gc_floor έγραφε στον server ΠΡΙΝ
+ * δει το reset_required — resurrecting rows εκτός κύκλου reset και «μολύνοντας»
+ * το ζωντανό snapshot (το αναστημένο row εμφανιζόταν ως live, οπότε ακόμη κι ο
+ * σωστός καθαρισμός εδώ δεν μπορούσε να το διακρίνει). Τώρα ο server απορρίπτει
+ * κάθε push κάτω από το gc_floor (reset_required, μηδέν write) — η συσκευή κάνει
+ * ΠΡΩΤΑ αυτόν τον reset (server = αλήθεια, purge μη-edited ghosts) και ξαναγράφει
+ * μόνο με φρέσκο cursor πάνω από το floor. Παλιός client χωρίς cursor: αμετάβλητη
+ * προηγούμενη συμπεριφορά (pull-side reset μόνο) — καμία οπισθοδρόμηση.
  */
 async function destructiveReset(): Promise<void> {
   const uid = getCurrentUserId();
@@ -489,7 +514,12 @@ async function destructiveReset(): Promise<void> {
     if (toPush.length) survivors.push({ tbl, rows: toPush });
   }
 
-  if (survivors.length) await pushInBatches(survivors);
+  if (survivors.length) {
+    // Ο cursor είναι πλέον φρέσκος (drainSnapshotFromZero τον ανέβασε στην κορυφή,
+    // πάνω από το gc_floor), άρα ο server δεν ξαναζητά reset — αγνοούμε την
+    // επιστροφή ώστε να μην υπάρχει αναδρομή στο destructiveReset.
+    await pushInBatches(survivors);
+  }
 }
 
 async function pullLoop(): Promise<void> {
@@ -608,12 +638,20 @@ async function syncNowInner(): Promise<void> {
         : '';
 
     const changes = await collectPushChanges(cutoff);
-    if (changes.length > 0) await pushInBatches(changes);
-    // Η έκδοση γράφεται ΜΟΝΟ μετά από επιτυχημένο push — αλλιώς ένα αποτυχημένο
-    // backfill θα θεωρούνταν ολοκληρωμένο και τα παλιά rows δεν θα έφευγαν ποτέ.
-    writeCursors({ lastPushAt: t0, pushSchemaVersion: PUSH_SCHEMA_VERSION });
+    const resetRequired = changes.length > 0 ? await pushInBatches(changes) : false;
 
-    await pullLoop();
+    if (resetRequired) {
+      // Ο server απέρριψε το push (cursor πίσω από gc_floor): ΜΗΝ γράψεις
+      // lastPushAt/version — το push δεν εφαρμόστηκε, κι ο destructiveReset
+      // χρειάζεται το ΠΑΛΙΟ boundary για να ξεχωρίσει τα γνήσια νέα από τα ghosts.
+      // Ο reset κάνει δικό του πλήρες pull + re-push, άρα δεν τρέχουμε pullLoop.
+      await destructiveReset();
+    } else {
+      // Η έκδοση γράφεται ΜΟΝΟ μετά από επιτυχημένο push — αλλιώς ένα αποτυχημένο
+      // backfill θα θεωρούνταν ολοκληρωμένο και τα παλιά rows δεν θα έφευγαν ποτέ.
+      writeCursors({ lastPushAt: t0, pushSchemaVersion: PUSH_SCHEMA_VERSION });
+      await pullLoop();
+    }
 
     const finishedAt = new Date().toISOString();
     writeCursors({ lastSyncAt: finishedAt });
@@ -646,7 +684,14 @@ export async function flushUnsynced(): Promise<number> {
   if (pending === 0) return 0;
   try {
     const t0 = new Date().toISOString();
-    await pushInBatches(changes);
+    const resetRequired = await pushInBatches(changes);
+    if (resetRequired) {
+      // Πίσω από gc_floor: ο server απέρριψε το push — δεν επιβεβαιώνεται ότι
+      // έφτασαν. Λίγο πριν το logout-purge δεν κάνουμε βαρύ destructive reset·
+      // επιστρέφουμε pending ώστε ο caller να προειδοποιήσει τον χρήστη (το
+      // επόμενο syncNow θα κάνει τον reset αν ο χρήστης μείνει συνδεδεμένος).
+      return pending;
+    }
     // Γράφεται ΜΟΝΟ μετά από επιτυχημένο push (ίδια σύμβαση με syncNowInner).
     writeCursors({ lastPushAt: t0, pushSchemaVersion: PUSH_SCHEMA_VERSION });
     return 0;
@@ -685,10 +730,16 @@ async function fullResyncInner(order: 'push-first' | 'pull-first'): Promise<void
       await pullLoop();
     }
     const changes = await collectPushChanges('');
-    if (changes.length > 0) await pushInBatches(changes);
-    writeCursors({ lastPushAt: t0, pullCursor: order === 'pull-first' ? readCursors().pullCursor : 0 });
+    const resetRequired = changes.length > 0 ? await pushInBatches(changes) : false;
 
-    await pullLoop();
+    if (resetRequired) {
+      // Πίσω από gc_floor — ο destructiveReset αναλαμβάνει (πλήρες pull + re-push
+      // μόνο γνήσια νέων). Δεν γράφουμε cursors εδώ· τα διαχειρίζεται ο reset.
+      await destructiveReset();
+    } else {
+      writeCursors({ lastPushAt: t0, pullCursor: order === 'pull-first' ? readCursors().pullCursor : 0 });
+      await pullLoop();
+    }
 
     const finishedAt = new Date().toISOString();
     writeCursors({ lastSyncAt: finishedAt });
