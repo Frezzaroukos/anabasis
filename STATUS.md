@@ -45,3 +45,8 @@
 - Έγινε: A7 copied-live-DB repro πέρασε για stale/fresh/legacy payloads· no server resurrection, genuine writes preserved, legacy HTTP/pull pagination finite.
 - Μένει: `gc_graveyard` rows επιβιώνουν από delete_account (επιβεβαιώθηκε σε DB copy)· ο legacy client δεν καθαρίζει το τοπικό ghost μέχρι να αναβαθμιστεί.
 - Περιμένει Aggelos: απόφαση/διόρθωση πολιτικής retention για graveyard πριν από deploy· δεν έγιναν code changes, push ή deploy.
+
+## Lane A9 — mobile performance · 2026-10-16
+- Έγινε: το shell δεν περιμένει το catalog seeding· 5× interleaved Lighthouse, median score ≥95 και LCP candidate ≤ live και στα 7 routes· 508 tests, typecheck/lint/build και device-check 70/70.
+- Μένει: μερικές μεμονωμένες Lighthouse εκτελέσεις app routes βαθμολόγησαν 94· route score medians είναι 95, αναλυτικά raw vectors στο `docs/PERF-2026-10-16.md`.
+- Περιμένει Aggelos: QA και ρητή έγκριση για μελλοντικό push/deploy· καμία live αλλαγή δεν έγινε.

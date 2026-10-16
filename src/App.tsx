@@ -4,6 +4,7 @@ import { router } from '@/app/routes';
 import { bootstrapDB } from '@/lib/db';
 import { initAutoSync } from '@/lib/sync';
 import { initMagicLink, initOAuthFragment } from '@/lib/api/auth';
+import { AppBootContext } from '@/app/BootContext';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -46,13 +47,9 @@ export default function App() {
     );
   }
 
-  if (!ready) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-6 w-6 animate-pulse rounded-full bg-muted" />
-      </div>
-    );
-  }
-
-  return <RouterProvider router={router} />;
+  return (
+    <AppBootContext.Provider value={ready}>
+      <RouterProvider router={router} />
+    </AppBootContext.Provider>
+  );
 }

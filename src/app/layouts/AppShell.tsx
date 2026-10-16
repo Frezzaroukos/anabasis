@@ -10,6 +10,7 @@ import { OnboardingOverlay } from '@/features/onboarding/OnboardingOverlay';
 import { SafetyNotice } from '@/features/legal/SafetyNotice';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
 import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutView';
+import { useAppBootReady } from '@/app/BootContext';
 
 /** Διακριτικό placeholder όσο φορτώνει ένα lazy route chunk. */
 function PageFallback() {
@@ -22,6 +23,7 @@ function PageFallback() {
 
 export function AppShell() {
   const { t } = useTranslation();
+  const bootReady = useAppBootReady();
   const active = useActiveWorkout();
   const hasActive = active != null;
   // key ανά διαδρομή → το boundary ξεκαθαρίζει το σφάλμα όταν αλλάζεις σελίδα,
@@ -50,22 +52,24 @@ export function AppShell() {
             <OfflineBanner />
           </div>
           <SafetyNotice />
-          <ErrorBoundary
-            key={pathname}
-            message={t('common.pageError')}
-            retryLabel={t('common.retry')}
-          >
-            <Suspense fallback={<PageFallback />}>
-              {/*
-                Θεατρική είσοδος σελίδας (M3): το περιεχόμενο ανεβαίνει +
-                μεγαλώνει ελαφρά από 0.98 σε κάθε πλοήγηση (key={pathname}) —
-                premium, χωρίς layout shift, καταρρέει σε fade με reduced-motion.
-              */}
-              <div key={pathname} className="animate-page-enter">
-                <Outlet />
-              </div>
-            </Suspense>
-          </ErrorBoundary>
+          {bootReady ? (
+            <ErrorBoundary
+              key={pathname}
+              message={t('common.pageError')}
+              retryLabel={t('common.retry')}
+            >
+              <Suspense fallback={<PageFallback />}>
+                {/*
+                  Θεατρική είσοδος σελίδας (M3): το περιεχόμενο ανεβαίνει +
+                  μεγαλώνει ελαφρά από 0.98 σε κάθε πλοήγηση (key={pathname}) —
+                  premium, χωρίς layout shift, καταρρέει σε fade με reduced-motion.
+                */}
+                <div key={pathname} className="animate-page-enter">
+                  <Outlet />
+                </div>
+              </Suspense>
+            </ErrorBoundary>
+          ) : <PageFallback />}
         </main>
       </div>
       {!hasActive && <BottomTabNav />}

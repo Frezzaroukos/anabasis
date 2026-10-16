@@ -15,12 +15,15 @@ import '@fontsource-variable/jetbrains-mono';
 import '@/styles/globals.css';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
 import { reloadOnServiceWorkerUpdate } from '@/lib/pwa';
+import { initSession } from '@/lib/db/session';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element #root not found');
 
 // Εφάρμοσε το αποθηκευμένο θέμα ΠΡΙΝ το πρώτο render, ώστε να μην αναβοσβήσει.
 applyTheme(getStoredTheme());
+initSession();
+
 
 /*
  * Χωρίς backend, το IndexedDB είναι το ΜΟΝΑΔΙΚΟ αντίγραφο των δεδομένων —
