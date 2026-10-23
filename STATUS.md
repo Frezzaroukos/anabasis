@@ -1,8 +1,15 @@
 # Anabasis — STATUS
 
-**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-11
+**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-23
 
 ## Τώρα
+- **23/10 GitHub, έλεγχος (Claude):**
+  - **Έγινε:** report στο `~/code/axonos/docs/system/ANABASIS-GITHUB-2026-10-23.md`. Το GitHub έχει 185/213 commits· τα 28 commits του live κώδικα (12–16/10) είναι μόνο τοπικά (ούτε στο restic). Το `origin` (strength-atlas) είναι νεκρό. Prepush-gate στα 28: PASS· CI τοπικά: vitest 508, cargo 12+64, build: PASS.
+  - **Μένει:** Φ0 τοπικό τακτοποίημα (remotes, κλαδιά, `CLAUDE.md` §0/§8/§9), μετά push.
+  - **Θέλει εσένα:**
+    - Άλλαξε τον κωδικό του λογαριασμού admin πριν από το push (λεπτομέρειες στο report).
+    - Διάλεξε **A** (push ως έχει) ή **B** (καθαρό ιστορικό με filter-repo: 735MB→~18MB, χωρίς τους κωδικούς και χωρίς τα 117 AI trailers, force-push· πρόταση).
+    - Πες ένα «ναι» για push.
 - **16/10 19:11 LIVE 16d3adf** (frontend releases/20261016-191129…): γρηγορότερη πρώτη εμφάνιση — το shell δεν περιμένει το DB bootstrap· LCP / 3201→2552, /calendar 2901→2552, /settings 3057→2552 (5 εναλλάξ μετρήσεις, επιβεβαίωση Grok QA9), διάμεσος score ≥95 · ομάδα: Codex (A9), cross-review Grok (QA9) · rollback: `npm run deploy:rollback` · μένει: σύντομο κενό κείμενο ~200ms στο /history και /calendar πριν τα δεδομένα (προϋπάρχον, HistoryPage.tsx:37)
 - **16/10 LIVE c947478** (frontend releases/20261016-025232…, API migrations 0006 gc_floor + 0007 gc_graveyard): export ανά profile, logout με flush + προειδοποίηση για unsynced, πλήρης διαγραφή profile/λογαριασμού (και graveyard — GDPR), import με version/preview, destructive reset χωρίς ghosts, server-side graveyard (καμία ανάσταση ούτε από παλιούς clients), atomic promote/rollback · vitest 507, cargo 12+64, device-check live 80/80 · ομάδα: Claude (A2–A8), cross-review Grok (QA4/QA5) + Codex (QA6–QA8) · rollback frontend: `npm run deploy:rollback` · rollback API (μονόδρομα migrations): stop anabasis-api → επαναφορά `~/.local/state/backups/anabasis-db-20261016-predeploy.db` + `~/.local/state/backups/anabasis-api.prev-20261016` → start · ⏳ git push στο GitHub (public) θέλει «ναι» Aggelos
 - LIVE https://anabasis.axonos.dev (frontend `dist/` από serve.py :8120, API anabasis-api :8121) · main f25907f (GitHub `github` remote, public)
@@ -19,7 +26,7 @@
 - Οι αποφάσεις 1 και 3 παραπάνω
 
 ## Κανόνες
-- Deploy: `npm run build` (γράφει στο live dist/· ξαναχτίζεται από το git) · API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)
+- Deploy: `npm run build:staged && npm run deploy:promote` (rollback: `npm run deploy:rollback`). **ΟΧΙ `npm run build`**: το `dist` είναι symlink στο live release και θα το ξαναγράψει επί τόπου. API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)
 - Public repo: commit messages χωρίς AI trailers · ποτέ fake χρήστες/μετρικές
 
 ## Lane A5 — Grok round-2 fixes 2026-10-15 (branch pro-2026-10, UNPUSHED)
