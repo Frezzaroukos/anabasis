@@ -266,7 +266,7 @@ cd ~/code/anabasis && npm run tauri build -- --no-bundle
 cp -f src-tauri/target/release/anabasis ~/.local/bin/anabasis   # (or scripts/install-desktop.sh)
 # launch desktop (χρειάζεται Wayland env — δες gotchas):
 WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 nohup ~/.local/bin/anabasis &
-git push github main              # remote "github" = GitHub (origin = local windows mirror)
+git push origin main              # origin = GitHub (rewrite 23/10: καθαρό ιστορικό· παλιό στο tag pre-rewrite-20261023)
 ```
 
 **Deploy checklist ανά μέτωπο:** build (tsc -b) → vitest → restart web → (αν
