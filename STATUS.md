@@ -3,6 +3,10 @@
 **Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-23
 
 ## Τώρα
+- **23/10 22:20 GitHub, τέλος (Claude):**
+  - **Έγινε:** καθαρό ιστορικό στο GitHub (force push `2781e4e` από τον Aggelos, tag `pre-rewrite-20261023`, origin = GitHub). Ο παλιός κωδικός admin δεν ισχύει (έλεγχος στη DB). Το `d61417f` ανέβηκε (prepush-gate PASS) και CI + Pages είναι πράσινα.
+  - **Μένει:** τίποτα για το GitHub. Το `prepush-gate` τρέχει πλέον ως `pre-push` hook (τοπικό, όχι στο repo).
+  - **Θέλει εσένα:** «ναι» για push αυτού του STATUS commit (μόνο docs).
 - **23/10 GitHub, έλεγχος (Claude):**
   - **Έγινε:** report στο `~/code/axonos/docs/system/ANABASIS-GITHUB-2026-10-23.md`. Το GitHub έχει 185/213 commits· τα 28 commits του live κώδικα (12–16/10) είναι μόνο τοπικά (ούτε στο restic). Το `origin` (strength-atlas) είναι νεκρό. Prepush-gate στα 28: PASS· CI τοπικά: vitest 508, cargo 12+64, build: PASS.
   - **Μένει:** Φ0 τοπικό τακτοποίημα (remotes, κλαδιά, `CLAUDE.md` §0/§8/§9), μετά push.
