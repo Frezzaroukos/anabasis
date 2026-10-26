@@ -8,7 +8,7 @@
 //! URL fragment (ποτέ σε server log μέσω query string).
 
 use axum::extract::{Query, State};
-use axum::http::{header, HeaderMap, StatusCode};
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use serde::Deserialize;
@@ -17,9 +17,11 @@ use time::Duration as TimeDuration;
 use crate::app::AppState;
 use crate::auth::{create_session, generate_token, normalize_email};
 use crate::error::AppError;
-use crate::util::{iso_in, now, now_iso, parse_iso};
+use crate::util::{constant_time_eq, iso_in, now, now_iso, parse_iso};
 
 const STATE_LIFETIME: TimeDuration = TimeDuration::minutes(10);
+const STATE_COOKIE: &str = "anabasis_oauth_state";
+const STATE_COOKIE_PATH: &str = "/api/auth/oauth/google";
 
 pub async fn providers(State(state): State<AppState>) -> impl IntoResponse {
     Json(serde_json::json!({
@@ -48,10 +50,18 @@ pub async fn google_start(State(state): State<AppState>) -> Result<impl IntoResp
         .await?;
 
     let auth_url = google_auth_url(cfg, &state_token)?;
-    Ok((
-        StatusCode::FOUND,
-        [(header::LOCATION, auth_url.to_string())],
-    ))
+    let mut response_headers = HeaderMap::new();
+    response_headers.insert(
+        header::LOCATION,
+        HeaderValue::try_from(auth_url.to_string())
+            .map_err(|_| AppError::internal("Αποτυχία δημιουργίας OAuth redirect."))?,
+    );
+    response_headers.insert(
+        header::SET_COOKIE,
+        HeaderValue::try_from(state_cookie(&state_token))
+            .map_err(|_| AppError::internal("Αποτυχία δημιουργίας OAuth cookie."))?,
+    );
+    Ok((StatusCode::FOUND, response_headers))
 }
 
 #[derive(Deserialize)]
@@ -73,6 +83,15 @@ pub async fn google_callback(
     let Some(state_token) = query.state else {
         return Err(AppError::bad_request("invalid_state", "Λείπει το state."));
     };
+    let Some(cookie_state) = state_cookie_value(&headers) else {
+        return Err(AppError::bad_request("invalid_state", "Λείπει το OAuth cookie."));
+    };
+    if !constant_time_eq(cookie_state.as_bytes(), state_token.as_bytes()) {
+        return Err(AppError::bad_request(
+            "invalid_state",
+            "Το OAuth state δεν ανήκει σε αυτό το browser.",
+        ));
+    }
     // Consume ΠΡΩΤΑ (single-use, atomic DELETE…RETURNING) — πριν αγγίξουμε
     // καθόλου το attacker-controlled `code`/`error`. Το Google επιστρέφει το
     // state ό,τι κι αν απαντήσει ο χρήστης στο consent screen, οπότε αυτό
@@ -107,7 +126,40 @@ pub async fn google_callback(
         "{}/settings#oauth={token}",
         cfg.public_url.trim_end_matches('/'),
     );
-    Ok((StatusCode::FOUND, [(header::LOCATION, redirect_url)]))
+    let mut response_headers = HeaderMap::new();
+    response_headers.insert(
+        header::LOCATION,
+        HeaderValue::try_from(redirect_url)
+            .map_err(|_| AppError::internal("Αποτυχία δημιουργίας OAuth redirect."))?,
+    );
+    response_headers.insert(
+        header::SET_COOKIE,
+        HeaderValue::try_from(clear_state_cookie())
+            .map_err(|_| AppError::internal("Αποτυχία καθαρισμού OAuth cookie."))?,
+    );
+    Ok((StatusCode::FOUND, response_headers))
+}
+
+fn state_cookie(state_token: &str) -> String {
+    format!(
+        "{STATE_COOKIE}={state_token}; Path={STATE_COOKIE_PATH}; Max-Age=600; HttpOnly; Secure; SameSite=Lax"
+    )
+}
+
+fn clear_state_cookie() -> String {
+    format!(
+        "{STATE_COOKIE}=; Path={STATE_COOKIE_PATH}; Max-Age=0; HttpOnly; Secure; SameSite=Lax"
+    )
+}
+
+fn state_cookie_value(headers: &HeaderMap) -> Option<&str> {
+    headers.get_all(header::COOKIE).iter().find_map(|value| {
+        let raw = value.to_str().ok()?;
+        raw.split(';').find_map(|part| {
+            let (name, value) = part.trim().split_once('=')?;
+            (name == STATE_COOKIE).then_some(value)
+        })
+    })
 }
 
 /* ─────────── CSRF state store ─────────── */

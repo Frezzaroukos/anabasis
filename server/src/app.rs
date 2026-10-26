@@ -107,6 +107,10 @@ pub struct AppState {
     /// Ταυτότητα αυτής της βάσης (meta.epoch) — αλλάζει σε restore/recreate,
     /// ώστε οι clients να μηδενίζουν cursors αντί να ξεσυγχρονίζονται σιωπηλά.
     pub epoch: String,
+    /// Πίσω από cloudflared, το `CF-Connecting-IP` είναι αξιόπιστο μόνο όταν
+    /// το API ακούει σε loopback (default). Το main.rs το κλείνει αυτόματα σε
+    /// άλλο bind, εκτός αν ζητηθεί ρητά με ANABASIS_TRUST_CF_IP=1.
+    pub trust_cf_ip: bool,
     pub google_oauth: Option<GoogleOAuthConfig>,
     /// SMTP config για magic-link· None ⇒ δορμάν.
     pub email: Option<EmailConfig>,
@@ -148,6 +152,7 @@ pub async fn build_state(
         db_path,
         admin_email: admin_email.map(|e| e.trim().to_lowercase()),
         epoch,
+        trust_cf_ip: true,
         admin_code_hash: admin_code
             .map(|c| c.trim().to_string())
             .filter(|c| !c.is_empty())
@@ -177,19 +182,23 @@ const ALLOWED_ORIGINS: &[&str] = &[
 /// peer addr μέσω `ConnectInfo`. Ποτέ δεν αποτυγχάνει την εξαγωγή (fallback σε
 /// ένα κοινό bucket) — απουσία peer info δεν πρέπει να σκάει σε 500.
 #[derive(Debug, Clone, Copy)]
-struct CfConnectingIpKeyExtractor;
+struct CfConnectingIpKeyExtractor {
+    trust_cf_ip: bool,
+}
 
 impl KeyExtractor for CfConnectingIpKeyExtractor {
     type Key = IpAddr;
 
     fn extract<T>(&self, req: &axum::http::Request<T>) -> Result<Self::Key, GovernorError> {
-        if let Some(ip) = req
-            .headers()
-            .get("cf-connecting-ip")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
-        {
-            return Ok(ip);
+        if self.trust_cf_ip {
+            if let Some(ip) = req
+                .headers()
+                .get("cf-connecting-ip")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            {
+                return Ok(ip);
+            }
         }
         if let Some(connect_info) = req
             .extensions()
@@ -203,14 +212,18 @@ impl KeyExtractor for CfConnectingIpKeyExtractor {
 
 pub fn router(state: AppState) -> Router {
     let auth_governor = GovernorConfigBuilder::default()
-        .key_extractor(CfConnectingIpKeyExtractor)
+        .key_extractor(CfConnectingIpKeyExtractor {
+            trust_cf_ip: state.trust_cf_ip,
+        })
         .period(Duration::from_secs(6)) // 10 req/min: burst 10, refill 1 ανά 6s
         .burst_size(10)
         .finish()
         .expect("έγκυρο governor config για auth");
 
     let sync_governor = GovernorConfigBuilder::default()
-        .key_extractor(CfConnectingIpKeyExtractor)
+        .key_extractor(CfConnectingIpKeyExtractor {
+            trust_cf_ip: state.trust_cf_ip,
+        })
         .period(Duration::from_millis(500)) // 120 req/min: burst 120, refill 1 ανά 500ms
         .burst_size(120)
         .finish()
@@ -238,7 +251,9 @@ pub fn router(state: AppState) -> Router {
     // Social: πιο σφιχτό rate-limit (60/min) — το send_request είναι το κύριο
     // enumeration surface· uniform not-found + αυτό το όριο το καλύπτουν.
     let social_governor = GovernorConfigBuilder::default()
-        .key_extractor(CfConnectingIpKeyExtractor)
+        .key_extractor(CfConnectingIpKeyExtractor {
+            trust_cf_ip: state.trust_cf_ip,
+        })
         .period(Duration::from_secs(1)) // 60 req/min: burst 60, refill 1 ανά 1s
         .burst_size(60)
         .finish()

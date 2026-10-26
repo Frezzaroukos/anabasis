@@ -77,7 +77,7 @@ no DB or UI dependency, which is why they are the easiest things to test.
 no measurement behind it is misleading, not neutral. No default goals are
 seeded — a goal the user did not set is not a goal.
 
-**Testing where it pays.** 530+ tests (473 frontend + 64 Rust backend) concentrated on migrations, the goal
+**Testing where it pays.** 580+ tests (508 frontend + 80 Rust backend) concentrated on migrations, the goal
 window calculator (pure, with an injectable clock, so "the week starts on
 Monday" does not depend on the day CI runs), PR detection, the card-order
 resolver, and the sync engine (push/pull cursors, epoch handling, last-write-wins

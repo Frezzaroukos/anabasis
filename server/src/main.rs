@@ -51,9 +51,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
      */
     let email = EmailConfig::resolve(|k| std::env::var(k).ok());
 
-    let state = build_state(db_path, admin_email, admin_code, google_oauth, email).await?;
-    let app = router(state);
-
     /*
      * Default 127.0.0.1: μπροστά κάθεται ΠΑΝΤΑ το cloudflared (ίδιο host) —
      * bind σε 0.0.0.0 εξέθετε το API σε LAN/tailnet ΧΩΡΙΣ το rate limiting
@@ -64,6 +61,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or_else(|| std::net::IpAddr::from([127, 0, 0, 1]));
+
+    let mut state = build_state(db_path, admin_email, admin_code, google_oauth, email).await?;
+    state.trust_cf_ip = std::env::var("ANABASIS_TRUST_CF_IP")
+        .ok()
+        .and_then(|v| match v.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" => Some(true),
+            "0" | "false" | "no" => Some(false),
+            _ => None,
+        })
+        .unwrap_or_else(|| bind_ip.is_loopback());
+    if !bind_ip.is_loopback() && state.trust_cf_ip {
+        tracing::warn!(
+            %bind_ip,
+            "ANABASIS_TRUST_CF_IP is enabled on a non-loopback bind; only do this behind a trusted proxy"
+        );
+    }
+    let app = router(state);
+
     let addr = SocketAddr::from((bind_ip, port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(%addr, "anabasis-api listening");

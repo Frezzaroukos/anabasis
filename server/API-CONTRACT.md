@@ -170,7 +170,9 @@ payload (που ήδη κουβαλά deleted_at).
 ## Rate limiting
 
 tower_governor keyed από `CF-Connecting-IP` (fallback peer IP):
-auth endpoints 10 req/min/IP· sync 120 req/min/IP. Συν το persistent
+auth endpoints 10 req/min/IP· sync 120 req/min/IP. Το `CF-Connecting-IP`
+γίνεται trusted μόνο σε loopback bind· σε άλλο bind απαιτεί ρητό
+`ANABASIS_TRUST_CF_IP=1` (μόνο πίσω από trusted proxy). Συν το persistent
 failed-login lockout στο accounts (πιο πάνω).
 
 ## Client-side συμβόλαιο (frontend)

@@ -15,7 +15,7 @@ use uuid::Uuid;
 use crate::app::AppState;
 use crate::error::AppError;
 use crate::json::AppJson;
-use crate::util::{iso_in, now, now_iso, parse_iso};
+use crate::util::{constant_time_eq, iso_in, now, now_iso, parse_iso};
 
 const SESSION_LIFETIME: TimeDuration = TimeDuration::days(90);
 const SESSION_TOUCH_INTERVAL: TimeDuration = TimeDuration::hours(1);
@@ -236,7 +236,8 @@ pub async fn claim_admin(
             "Δεν έχει οριστεί admin code σε αυτόν τον server.",
         ));
     };
-    if sha256_hex(body.code.trim()) != expected {
+    let actual = sha256_hex(body.code.trim());
+    if !constant_time_eq(actual.as_bytes(), expected.as_bytes()) {
         return Err(AppError::forbidden("bad_code", "Λάθος κωδικός."));
     }
     sqlx::query("UPDATE accounts SET role = 'admin' WHERE id = ?")
@@ -360,19 +361,18 @@ pub async fn login(
         return Err(AppError::bad_credentials());
     };
 
-    if account.disabled {
-        return Err(AppError::disabled());
-    }
+    let locked = account
+        .locked_until
+        .as_deref()
+        .and_then(parse_iso)
+        .is_some_and(|until| until > now());
 
-    if let Some(locked_until) = account.locked_until.as_deref().and_then(parse_iso) {
-        if locked_until > now() {
-            return Err(AppError::locked(
-                "Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά αργότερα.",
-            ));
+    let password_ok = verify_password(&body.password, &account.password_hash);
+
+    if !password_ok {
+        if account.disabled || locked {
+            return Err(AppError::bad_credentials());
         }
-    }
-
-    if !verify_password(&body.password, &account.password_hash) {
         // Ατομικό increment ΣΤΗ ΒΑΣΗ (όχι read-modify-write στη Rust): αλλιώς N
         // ταυτόχρονες λάθος προσπάθειες διάβαζαν όλες το ίδιο k και έγραφαν k+1,
         // οπότε το lockout δεν πυροδοτούσε ποτέ (παράλληλο brute force).
@@ -401,6 +401,16 @@ pub async fn login(
             );
         }
         return Err(AppError::bad_credentials());
+    }
+
+    if account.disabled {
+        return Err(AppError::disabled());
+    }
+
+    if locked {
+        return Err(AppError::locked(
+            "Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά αργότερα.",
+        ));
     }
 
     sqlx::query("UPDATE accounts SET failed_logins = 0, locked_until = NULL WHERE id = ?")

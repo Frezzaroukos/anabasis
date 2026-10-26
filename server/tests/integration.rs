@@ -235,10 +235,44 @@ async fn five_failures_trigger_lockout() {
         );
     }
 
-    // Ακόμα και με ΣΩΣΤΟ password, το lockout μπλοκάρει πριν καν γίνει verify.
+    // Λάθος password πάνω σε locked account δεν αποκαλύπτει το lockout·
+    // μόνο σωστό password φτάνει στο 423.
+    let (status, body) = login(&app, "lockme@example.com", "wrong-password").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(body["error"], "bad_credentials");
+
+    // Ακόμα και με ΣΩΣΤΟ password, το lockout μπλοκάρει μετά το verify.
     let (status, body) = login(&app, "lockme@example.com", "correcthorsebattery").await;
     assert_eq!(status, StatusCode::LOCKED);
     assert_eq!(body["error"], "locked");
+}
+
+#[tokio::test]
+async fn disabled_account_needs_correct_password_to_reveal_state() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+
+    let (_, admin_body) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = admin_body["token"].as_str().unwrap().to_string();
+    let (_, user_body) = signup(&app, "disabled@example.com", "correcthorsebattery").await;
+    let user_id = user_body["account"]["id"].as_str().unwrap().to_string();
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{user_id}/disable"),
+        Some(&admin_token),
+        Some(json!({ "disabled": true })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, body) = login(&app, "disabled@example.com", "wrong-password").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(body["error"], "bad_credentials");
+
+    let (status, body) = login(&app, "disabled@example.com", "correcthorsebattery").await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(body["error"], "disabled");
 }
 
 #[tokio::test]
@@ -273,6 +307,35 @@ async fn auth_rate_limit_is_per_ip() {
         status,
         StatusCode::TOO_MANY_REQUESTS,
         "άλλη IP έχει δικό της bucket — δεν πρέπει να επηρεάζεται"
+    );
+}
+
+#[tokio::test]
+async fn auth_rate_limit_ignores_cf_header_when_trust_is_disabled() {
+    let (_app, mut state, _dir) = test_app(None).await;
+    state.trust_cf_ip = false;
+    let app = router(state);
+
+    for i in 0..10 {
+        let status = call_ip(
+            &app,
+            "POST",
+            "/api/auth/login",
+            &format!("198.51.100.{i}"),
+        )
+        .await;
+        assert_ne!(
+            status,
+            StatusCode::TOO_MANY_REQUESTS,
+            "request {i}/10 πρέπει να μείνει εντός burst"
+        );
+    }
+
+    let status = call_ip(&app, "POST", "/api/auth/login", "203.0.113.99").await;
+    assert_eq!(
+        status,
+        StatusCode::TOO_MANY_REQUESTS,
+        "με trust_cf_ip=false όλες οι IP headers πέφτουν στο ίδιο fallback bucket"
     );
 }
 
@@ -883,6 +946,67 @@ fn test_google_config() -> GoogleOAuthConfig {
     }
 }
 
+async fn start_google_oauth(app: &Router) -> (String, String, String) {
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/auth/oauth/google/start")
+        .header("cf-connecting-ip", "203.0.113.7")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::FOUND);
+
+    let location = res
+        .headers()
+        .get("location")
+        .expect("Location header")
+        .to_str()
+        .unwrap()
+        .to_string();
+    let state_token = location
+        .split("state=")
+        .nth(1)
+        .unwrap()
+        .split('&')
+        .next()
+        .unwrap()
+        .to_string();
+    let set_cookie = res
+        .headers()
+        .get("set-cookie")
+        .expect("Set-Cookie header")
+        .to_str()
+        .unwrap()
+        .to_string();
+    let cookie = set_cookie.split(';').next().unwrap().to_string();
+    (state_token, cookie, set_cookie)
+}
+
+async fn call_with_cookie(
+    app: &Router,
+    uri: &str,
+    cookie: Option<&str>,
+) -> (StatusCode, Value) {
+    let mut builder = Request::builder()
+        .method("GET")
+        .uri(uri)
+        .header("cf-connecting-ip", "203.0.113.7");
+    if let Some(cookie) = cookie {
+        builder = builder.header("cookie", cookie);
+    }
+    let res = app
+        .clone()
+        .oneshot(builder.body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let status = res.status();
+    let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let value: Value = serde_json::from_slice(&bytes).unwrap();
+    (status, value)
+}
+
 #[tokio::test]
 async fn google_oauth_providers_reports_disabled_by_default() {
     let (app, _state, _dir) = test_app(None).await;
@@ -948,6 +1072,19 @@ async fn google_oauth_start_redirects_to_google_when_configured() {
     assert!(location.contains(
         "redirect_uri=https%3A%2F%2Fanabasis.axonos.dev%2Fapi%2Fauth%2Foauth%2Fgoogle%2Fcallback"
     ));
+
+    let set_cookie = res
+        .headers()
+        .get("set-cookie")
+        .expect("Set-Cookie header")
+        .to_str()
+        .unwrap();
+    assert!(set_cookie.starts_with("anabasis_oauth_state="));
+    assert!(set_cookie.contains("Path=/api/auth/oauth/google"));
+    assert!(set_cookie.contains("Max-Age=600"));
+    assert!(set_cookie.contains("HttpOnly"));
+    assert!(set_cookie.contains("Secure"));
+    assert!(set_cookie.contains("SameSite=Lax"));
 }
 
 #[tokio::test]
@@ -985,29 +1122,7 @@ async fn google_oauth_callback_missing_state_is_400() {
 #[tokio::test]
 async fn google_oauth_start_issued_state_is_single_use() {
     let (app, state, _dir) = test_app_with_oauth(None, None, Some(test_google_config())).await;
-
-    let req = Request::builder()
-        .method("GET")
-        .uri("/api/auth/oauth/google/start")
-        .header("cf-connecting-ip", "203.0.113.7")
-        .body(Body::empty())
-        .unwrap();
-    let res = app.clone().oneshot(req).await.unwrap();
-    let location = res
-        .headers()
-        .get("location")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
-    let state_token = location
-        .split("state=")
-        .nth(1)
-        .unwrap()
-        .split('&')
-        .next()
-        .unwrap()
-        .to_string();
+    let (state_token, cookie, _) = start_google_oauth(&app).await;
 
     // Ένα ΜΗ configured state DB row επιβεβαιώνει ότι το /start πράγματι
     // το αποθήκευσε (χωρίς να χρειάζεται να χτυπήσουμε το πραγματικό Google).
@@ -1020,28 +1135,64 @@ async fn google_oauth_start_issued_state_is_single_use() {
 
     // callback χωρίς `code` μετά από consume του σωστού state → missing_code,
     // ΟΧΙ invalid_state — αποδεικνύει ότι το state validation πέρασε.
-    let (status, body) = call(
+    let (status, body) = call_with_cookie(
         &app,
-        "GET",
         &format!("/api/auth/oauth/google/callback?state={state_token}"),
-        None,
-        None,
+        Some(&cookie),
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "missing_code");
 
     // Δεύτερη χρήση του ΙΔΙΟΥ state → πλέον καταναλωμένο.
-    let (status, body) = call(
+    let (status, body) = call_with_cookie(
         &app,
-        "GET",
         &format!("/api/auth/oauth/google/callback?state={state_token}&code=whatever"),
-        None,
+        Some(&cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_state");
+}
+
+#[tokio::test]
+async fn google_oauth_callback_requires_matching_state_cookie() {
+    let (app, state, _dir) = test_app_with_oauth(None, None, Some(test_google_config())).await;
+    let (state_token, cookie, _) = start_google_oauth(&app).await;
+
+    let (status, body) = call_with_cookie(
+        &app,
+        &format!("/api/auth/oauth/google/callback?state={state_token}&code=whatever"),
         None,
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "invalid_state");
+
+    let (status, body) = call_with_cookie(
+        &app,
+        &format!("/api/auth/oauth/google/callback?state={state_token}&code=whatever"),
+        Some("anabasis_oauth_state=attacker-state"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_state");
+
+    let stored: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM oauth_states WHERE state = ?")
+        .bind(&state_token)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!(stored, 1, "mismatched cookie δεν πρέπει να καταναλώνει state");
+
+    let (status, body) = call_with_cookie(
+        &app,
+        &format!("/api/auth/oauth/google/callback?state={state_token}"),
+        Some(&cookie),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "missing_code");
 }
 
 // ── Social: φιλίες, aggregate προφίλ, leaderboard, privacy ─────────────────────
