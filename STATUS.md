@@ -5,8 +5,9 @@
 ## Τώρα
 - **26/10 P2/P3 hardening (OpenCode):**
   - **Έγινε:** OAuth state binding σε HttpOnly/Secure/SameSite=Lax cookie (login CSRF fix), login πάντα Argon2 verify πριν από disabled/locked (state/timing enumeration fix), constant-time admin-code compare, `CF-Connecting-IP` trust μόνο σε loopback ή με ρητό `ANABASIS_TRUST_CF_IP=1`. Tests: 508 frontend + 67 integration + 13 unit, `cargo build --release` PASS, clippy lib/tests PASS.
-  - **Μένει:** commit/push/deploy (εγκρίθηκε 26/10) + real-browser Google OAuth smoke test.
-  - **Θέλει εσένα:** τίποτα για αυτό το βήμα.
+  - **Deploy 16:07:** commit/push `5b178e9`· DB snapshot `~/.local/share/anabasis-server/snapshots/anabasis-pre-hardening-20261026-1608.db`· `anabasis-api` active (PID 165917, :8121)· live `/api/health` OK· `/api/auth/oauth/google/start` 302 + state cookie· mismatched state/cookie -> 400 `invalid_state`.
+  - **Μένει:** full real-browser Google login (account choice/consent).
+  - **Θέλει εσένα:** τίποτα· αν θέλεις, κάνε το Google login από browser για end-to-end.
 - **23/10 22:20 GitHub, τέλος (Claude):**
   - **Έγινε:** καθαρό ιστορικό στο GitHub (force push `2781e4e` από τον Aggelos, tag `pre-rewrite-20261023`, origin = GitHub). Ο παλιός κωδικός admin δεν ισχύει (έλεγχος στη DB). Το `d61417f` ανέβηκε (prepush-gate PASS) και CI + Pages είναι πράσινα.
   - **Μένει:** τίποτα για το GitHub. Το `prepush-gate` τρέχει πλέον ως `pre-push` hook (τοπικό, όχι στο repo).
