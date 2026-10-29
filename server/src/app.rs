@@ -233,6 +233,7 @@ pub fn router(state: AppState) -> Router {
         .route("/signup", post(auth::signup))
         .route("/login", post(auth::login))
         .route("/logout", post(auth::logout))
+        .route("/logout_others", post(auth::logout_others))
         .route("/delete_account", post(auth::delete_account))
         .route("/change_password", post(auth::change_password))
         .route("/claim_admin", post(auth::claim_admin))
@@ -265,10 +266,18 @@ pub fn router(state: AppState) -> Router {
         .route("/stats", post(social::publish_stats))
         .route("/friends", get(social::friends))
         .route("/friends/{id}/remove", post(social::remove_friend))
-        .route("/requests", get(social::requests).post(social::send_request))
+        .route(
+            "/requests",
+            get(social::requests).post(social::send_request),
+        )
         .route("/requests/{id}/accept", post(social::accept_request))
         .route("/leaderboard", get(social::leaderboard))
+        .route("/search", get(social::search))
         .route("/user/{username}", get(social::public_profile))
+        .route(
+            "/public/user/{username}",
+            get(social::public_profile_anonymous),
+        )
         .layer(GovernorLayer::new(social_governor));
 
     let admin_routes = Router::new()
@@ -333,8 +342,10 @@ mod email_config_tests {
     use std::collections::HashMap;
 
     fn lookup(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
-        let map: HashMap<String, String> =
-            pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let map: HashMap<String, String> = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         move |k: &str| map.get(k).cloned()
     }
 

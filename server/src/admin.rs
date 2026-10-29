@@ -116,10 +116,11 @@ pub async fn disable_user(
         // οπότε disable σε ΑΛΛΟΝ admin δεν αδειάζει ποτέ τη λίστα. Μένει ως
         // explicit invariant/defense-in-depth για μελλοντικά admin-management
         // endpoints (π.χ. demote/delete) που ίσως δεν περάσουν από εδώ.
-        let target_role: Option<String> = sqlx::query_scalar("SELECT role FROM accounts WHERE id = ?")
-            .bind(&id)
-            .fetch_optional(&state.pool)
-            .await?;
+        let target_role: Option<String> =
+            sqlx::query_scalar("SELECT role FROM accounts WHERE id = ?")
+                .bind(&id)
+                .fetch_optional(&state.pool)
+                .await?;
         let Some(target_role) = target_role else {
             return Err(AppError::not_found());
         };

@@ -124,6 +124,19 @@ links σε μία transaction (GDPR: δεν μένει καμία γραμμή).
 ### POST /api/auth/change_password  (auth)
 Body: `{ current_password, new_password }`. Ακυρώνει όλα τα ΑΛΛΑ sessions.
 
+### POST /api/auth/logout_others  (auth)
+Σβήνει όλα τα sessions του account **εκτός** από αυτό του token. 200
+`{ revoked: <n> }`.
+
+### Social  (auth, 60 req/min/IP)
+- `GET /api/social/me` → `{ username, display_name, share_profile, friends_count, incoming_count, outgoing_count, has_stats }`.
+- `POST /api/social/profile` body `{ username?, display_name?, share_profile? }` — `username: ""` το καθαρίζει· 409 `username_taken`· 400 `invalid_username`.
+- `POST /api/social/stats` — aggregate snapshot (level/xp/tier/altitude/badges/streaks), ποτέ raw workouts/body.
+- `GET /api/social/friends` · `GET|POST /api/social/requests` · `POST /api/social/requests/{id}/accept` · `POST /api/social/friends/{id}/remove` (decline/cancel/unfriend).
+- `GET /api/social/search?q=` (auth) — min 2 chars, max 40, μόνο `share_profile=1 AND disabled=0`, εκτός εαυτού, `LIMIT 8`· επιστρέφει aggregate + `friendship: "friend"|"in"|"out"|null`.
+- `GET /api/social/user/{username}` (auth) — self/friend exception· `GET /api/social/public/user/{username}` (anonymous) — μόνο `share_profile=1`, uniform 404.
+- `GET /api/social/leaderboard?scope=friends|global&period=all|week` — aggregate μόνο· το `week` δέχεται client-computed `week_xp`, server clamp 0..total + freshness.
+
 ### POST /api/sync/push  (auth)
 Body: `{ changes: [ { tbl, rows: [ <row JSON> ] } ], cursor?: <i64> }`
 Κάθε row ΠΡΕΠΕΙ να έχει `id` (uuid) και `user_id` == account id (ο server

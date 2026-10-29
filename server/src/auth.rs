@@ -106,12 +106,11 @@ pub(crate) async fn find_or_create_account(
     email: &str,
     provider: &str,
 ) -> Result<AccountRef, AppError> {
-    if let Some(row) = sqlx::query_as::<_, AccountRef>(
-        "SELECT id, role, disabled FROM accounts WHERE email = ?",
-    )
-    .bind(email)
-    .fetch_optional(&state.pool)
-    .await?
+    if let Some(row) =
+        sqlx::query_as::<_, AccountRef>("SELECT id, role, disabled FROM accounts WHERE email = ?")
+            .bind(email)
+            .fetch_optional(&state.pool)
+            .await?
     {
         if row.disabled {
             return Err(AppError::disabled());
@@ -170,13 +169,12 @@ pub(crate) async fn issue_auth_response(
     user_agent: Option<&str>,
 ) -> Result<AuthResponse, AppError> {
     let token = create_session(&state.pool, account_id, user_agent).await?;
-    let (id, email, role, created_at) =
-        sqlx::query_as::<_, (String, String, String, String)>(
-            "SELECT id, email, role, created_at FROM accounts WHERE id = ?",
-        )
-        .bind(account_id)
-        .fetch_one(&state.pool)
-        .await?;
+    let (id, email, role, created_at) = sqlx::query_as::<_, (String, String, String, String)>(
+        "SELECT id, email, role, created_at FROM accounts WHERE id = ?",
+    )
+    .bind(account_id)
+    .fetch_one(&state.pool)
+    .await?;
 
     Ok(AuthResponse {
         token,
@@ -445,6 +443,24 @@ pub async fn logout(
     Ok(Json(serde_json::json!({})))
 }
 
+/// Ακυρώνει όλες τις άλλες ενεργές συσκευές, κρατώντας ζωντανή μόνο αυτήν από
+/// την οποία έγινε η κλήση. Χρήσιμο όταν ο χρήστης έχασε/άλλαξε συσκευή ή
+/// υποψιάζεται διαρροή session — δεν αλλάζει τον κωδικό.
+pub async fn logout_others(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
+    let result = sqlx::query("DELETE FROM sessions WHERE account_id = ? AND token_hash != ?")
+        .bind(&auth.account_id)
+        .bind(&auth.token_hash)
+        .execute(&state.pool)
+        .await?;
+
+    Ok(Json(
+        serde_json::json!({ "revoked": result.rows_affected() }),
+    ))
+}
+
 #[derive(Deserialize)]
 pub struct DeleteAccountRequest {
     confirm_email: String,
@@ -551,7 +567,8 @@ pub async fn change_password(
     }
     // Cap και τα δύο: το current περνά από argon2 verify, το new από argon2 hash
     // — over-length σε οποιοδήποτε = ακριβό crypto (DoS).
-    if body.new_password.len() > MAX_PASSWORD_LEN || body.current_password.len() > MAX_PASSWORD_LEN {
+    if body.new_password.len() > MAX_PASSWORD_LEN || body.current_password.len() > MAX_PASSWORD_LEN
+    {
         return Err(AppError::bad_request(
             "weak_password",
             format!("Ο κωδικός δεν μπορεί να ξεπερνά τους {MAX_PASSWORD_LEN} χαρακτήρες."),

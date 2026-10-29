@@ -3,15 +3,19 @@
 //! ΓΙΑΤΙ ξεχωριστό module αντί για sync_rows: ένα friendship συνδέει ΔΥΟ
 //! account_ids· ο `sync.rs` απορρίπτει κάθε row με `user_id != auth.account_id`.
 //! Άρα το social graph ΔΕΝ μπορεί ΠΟΤΕ να περάσει από το per-account LWW mirror.
-//! Όλα εδώ, πίσω από `AuthUser` + sync_governor rate-limit, με **SQL-enforced
-//! privacy**: leaderboard/profile views φιλτράρουν `share_profile`/friendship στο
-//! SQL, ποτέ client-side. Ο server είναι authoritative για level/tier/altitude
-//! (τα υπολογίζει από το XP) ώστε ο client να μην μπορεί να τα φουσκώσει.
+//! Τα κοινωνικά endpoints είναι πίσω από `AuthUser` + sync_governor rate-limit,
+//! με **SQL-enforced privacy**: leaderboard/profile views φιλτράρουν
+//! `share_profile`/friendship στο SQL, ποτέ client-side. Εξαίρεση το
+//! `/public/user/{username}`: είναι σκόπιμα logged-out ώστε ένα invite link να
+//! ανοίγει για φίλο που δεν έχει ακόμα λογαριασμό — δείχνει ΜΟΝΟ προφίλ με
+//! `share_profile=1`. Ο server είναι authoritative για level/tier/altitude (τα
+//! υπολογίζει από το XP) ώστε ο client να μην μπορεί να τα φουσκώσει.
 
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use sqlx::AssertSqlSafe;
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
@@ -70,7 +74,10 @@ fn normalize_username(raw: &str) -> Option<String> {
     if u.len() < 3 || u.len() > 20 {
         return None;
     }
-    if !u.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_') {
+    if !u
+        .bytes()
+        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+    {
         return None;
     }
     Some(u)
@@ -121,10 +128,11 @@ pub async fn me(
     .fetch_one(&state.pool)
     .await?;
 
-    let has_stats: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM profile_stats WHERE account_id = ?")
-        .bind(&user.account_id)
-        .fetch_one(&state.pool)
-        .await?;
+    let has_stats: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM profile_stats WHERE account_id = ?")
+            .bind(&user.account_id)
+            .fetch_one(&state.pool)
+            .await?;
 
     Ok(Json(MyProfile {
         username: row.0,
@@ -167,13 +175,12 @@ pub async fn update_profile(
                 )
             })?;
             // Uniqueness check (partial unique index το εγγυάται· εδώ για καθαρό 409).
-            let taken: Option<String> = sqlx::query_scalar(
-                "SELECT id FROM accounts WHERE username = ? AND id != ?",
-            )
-            .bind(&username)
-            .bind(&user.account_id)
-            .fetch_optional(&state.pool)
-            .await?;
+            let taken: Option<String> =
+                sqlx::query_scalar("SELECT id FROM accounts WHERE username = ? AND id != ?")
+                    .bind(&username)
+                    .bind(&user.account_id)
+                    .fetch_optional(&state.pool)
+                    .await?;
             if taken.is_some() {
                 return Err(AppError::conflict(
                     "username_taken",
@@ -222,6 +229,10 @@ pub struct PublishStatsRequest {
     longest_streak_days: i64,
     #[serde(default)]
     badges: Vec<String>,
+    /// XP από δραστηριότητα τελευταίων 7 ημερών (client-computed, clamped).
+    /// None = παλιός client· δεν μπαίνει στο weekly board μέχρι να στείλει τιμή.
+    #[serde(default)]
+    week_xp: Option<i64>,
 }
 
 pub async fn publish_stats(
@@ -235,6 +246,11 @@ pub async fn publish_stats(
     let (tier, altitude_m) = tier_for_level(level);
     let streak_days = body.streak_days.clamp(0, 100_000);
     let longest_streak_days = body.longest_streak_days.clamp(streak_days, 100_000);
+    let ts = now_iso();
+    // Το weekly είναι υποσύνολο του συνολικού XP — ένας client δεν μπορεί να
+    // δηλώσει περισσότερο weekly από ό,τι total.
+    let week_xp = body.week_xp.map(|w| w.clamp(0, xp));
+    let week_xp_at = week_xp.as_ref().map(|_| ts.clone());
     // Φίλτραρε badges σε γνωστά ids, μοναδικά, ταξινομημένα (ντετερμινιστικό JSON).
     let mut badges: Vec<&str> = KNOWN_BADGES
         .iter()
@@ -244,15 +260,15 @@ pub async fn publish_stats(
     badges.sort_unstable();
     badges.dedup();
     let badges_json = serde_json::to_string(&badges).unwrap_or_else(|_| "[]".to_string());
-    let ts = now_iso();
 
     sqlx::query(
         "INSERT INTO profile_stats
-             (account_id, level, xp, tier, altitude_m, badges, streak_days, longest_streak_days, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+             (account_id, level, xp, tier, altitude_m, badges, streak_days, longest_streak_days, updated_at, week_xp_at, week_xp)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?11, ?10)
          ON CONFLICT(account_id) DO UPDATE SET
              level = ?2, xp = ?3, tier = ?4, altitude_m = ?5, badges = ?6,
-             streak_days = ?7, longest_streak_days = ?8, updated_at = ?9",
+             streak_days = ?7, longest_streak_days = ?8, updated_at = ?9,
+             week_xp = ?10, week_xp_at = ?11",
     )
     .bind(&user.account_id)
     .bind(level)
@@ -263,11 +279,14 @@ pub async fn publish_stats(
     .bind(streak_days)
     .bind(longest_streak_days)
     .bind(&ts)
+    .bind(week_xp.unwrap_or(0))
+    .bind(&week_xp_at)
     .execute(&state.pool)
     .await?;
 
     Ok(Json(serde_json::json!({
-        "level": level, "xp": xp, "tier": tier, "altitude_m": altitude_m
+        "level": level, "xp": xp, "tier": tier, "altitude_m": altitude_m,
+        "week_xp": week_xp.unwrap_or(0)
     })))
 }
 
@@ -465,6 +484,9 @@ pub async fn remove_friend(
 pub struct LeaderboardQuery {
     #[serde(default)]
     scope: String,
+    /// "all" (default) ή "week" — τελευταίες 7 ημέρες.
+    #[serde(default)]
+    period: String,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -477,6 +499,7 @@ pub struct LeaderboardRow {
     altitude_m: i64,
     streak_days: i64,
     badges: String,
+    week_xp: i64,
     is_self: bool,
 }
 
@@ -487,26 +510,39 @@ pub async fn leaderboard(
 ) -> Result<impl IntoResponse, AppError> {
     // ΠΑΝΤΑ μέσα ο ίδιος (βλέπει τη θέση του) + οι επιλέξιμοι άλλοι. Η privacy
     // επιβάλλεται στο SQL: global → μόνο share_profile=1· friends → accepted edge.
-    let rows = if q.scope == "global" {
-        sqlx::query_as::<_, LeaderboardRow>(
+    let week = q.period == "week";
+    let cutoff = crate::util::iso_days_ago(7);
+    let order = if week {
+        "ORDER BY ps.week_xp DESC, ps.xp DESC, a.username"
+    } else {
+        "ORDER BY ps.xp DESC, a.username"
+    };
+    let period_filter = if week {
+        "AND (ps.week_xp_at >= ?2 OR a.id = ?1)"
+    } else {
+        ""
+    };
+
+    let sql = if q.scope == "global" {
+        format!(
             "SELECT a.username AS username, a.display_name AS display_name,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
-                    ps.badges AS badges, (a.id = ?1) AS is_self
+                    ps.badges AS badges, COALESCE(ps.week_xp, 0) AS week_xp,
+                    (a.id = ?1) AS is_self
              FROM profile_stats ps JOIN accounts a ON a.id = ps.account_id
              WHERE a.disabled = 0 AND (a.share_profile = 1 OR a.id = ?1)
-             ORDER BY ps.xp DESC, a.username
-             LIMIT 100",
+             {period_filter}
+             {order}
+             LIMIT 100"
         )
-        .bind(&user.account_id)
-        .fetch_all(&state.pool)
-        .await?
     } else {
-        sqlx::query_as::<_, LeaderboardRow>(
+        format!(
             "SELECT a.username AS username, a.display_name AS display_name,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
-                    ps.badges AS badges, (a.id = ?1) AS is_self
+                    ps.badges AS badges, COALESCE(ps.week_xp, 0) AS week_xp,
+                    (a.id = ?1) AS is_self
              FROM profile_stats ps JOIN accounts a ON a.id = ps.account_id
              WHERE a.disabled = 0 AND (
                  a.id = ?1 OR a.id IN (
@@ -515,13 +551,90 @@ pub async fn leaderboard(
                      WHERE status = 'accepted' AND (requester_id = ?1 OR addressee_id = ?1)
                  )
              )
-             ORDER BY ps.xp DESC, a.username
-             LIMIT 100",
+             {period_filter}
+             {order}
+             LIMIT 100"
         )
-        .bind(&user.account_id)
-        .fetch_all(&state.pool)
-        .await?
     };
+
+    let mut query = sqlx::query_as::<_, LeaderboardRow>(AssertSqlSafe(sql)).bind(&user.account_id);
+    if week {
+        query = query.bind(&cutoff);
+    }
+    let rows = query.fetch_all(&state.pool).await?;
+
+    Ok(Json(rows))
+}
+
+// ── GET /api/social/search?q= — δημόσια ανακάλυψη ορειβατών ───────────────────
+//
+// Μόνο ό,τι είναι ήδη δημόσιο (share_profile=1), ποτέ email/raw data. Το query
+// είναι substring του username ή του display_name· το exact username έρχεται
+// πρώτο ώστε το «add by handle» να μη θάβεται κάτω από display-name matches.
+// Λιγότερο από 2 chars → κενό (όχι σφάλμα), για να μη γίνεται enumeration με
+// ένα γράμμα και για να μην ταλαιπωρείται το UI όσο πληκτρολογεί.
+
+#[derive(Deserialize)]
+pub struct SearchQuery {
+    #[serde(default)]
+    q: String,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct SearchResult {
+    username: String,
+    display_name: Option<String>,
+    level: i64,
+    xp: i64,
+    tier: String,
+    altitude_m: i64,
+    streak_days: i64,
+    badges: String,
+    /// "friend" | "in" | "out" | null — ώστε το search να μη δείχνει «Add» σε
+    /// κάποιον που είναι ήδη φίλος ή έχει εκκρεμές αίτημα.
+    friendship: Option<String>,
+}
+
+pub async fn search(
+    State(state): State<AppState>,
+    user: AuthUser,
+    axum::extract::Query(q): axum::extract::Query<SearchQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let query = q.q.trim().to_lowercase();
+    if query.chars().count() < 2 {
+        return Ok(Json(Vec::<SearchResult>::new()));
+    }
+    // Όριο για να μη γίνεται wildcard-scan σε τεράστιο string.
+    let query: String = query.chars().take(40).collect();
+
+    let rows = sqlx::query_as::<_, SearchResult>(
+        "SELECT a.username AS username, a.display_name AS display_name,
+                COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
+                COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
+                COALESCE(ps.streak_days, 0) AS streak_days, COALESCE(ps.badges, '[]') AS badges,
+                CASE
+                    WHEN EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'accepted'
+                        AND ((f.requester_id = ?1 AND f.addressee_id = a.id)
+                          OR (f.addressee_id = ?1 AND f.requester_id = a.id))) THEN 'friend'
+                    WHEN EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'pending'
+                        AND f.requester_id = a.id AND f.addressee_id = ?1) THEN 'in'
+                    WHEN EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'pending'
+                        AND f.requester_id = ?1 AND f.addressee_id = a.id) THEN 'out'
+                    ELSE NULL
+                END AS friendship
+         FROM accounts a LEFT JOIN profile_stats ps ON ps.account_id = a.id
+         WHERE a.username IS NOT NULL AND a.disabled = 0 AND a.share_profile = 1
+           AND a.id != ?1
+           AND (instr(a.username, ?2) > 0 OR instr(lower(COALESCE(a.display_name, '')), ?2) > 0)
+         ORDER BY CASE WHEN a.username = ?3 THEN 0 ELSE 1 END,
+                  COALESCE(ps.xp, 0) DESC, a.username
+         LIMIT 8",
+    )
+    .bind(&user.account_id)
+    .bind(&query)
+    .bind(&query)
+    .fetch_all(&state.pool)
+    .await?;
 
     Ok(Json(rows))
 }
@@ -539,6 +652,40 @@ pub struct PublicProfile {
     badges: String,
     streak_days: i64,
     longest_streak_days: i64,
+    /// Μόνο για logged-in προβολή: το id για accept/remove και η σχέση μας.
+    /// Το anonymous endpoint τα γυρνά null — καμία εσωτερική ταυτότητα έξω.
+    account_id: Option<String>,
+    friendship: Option<String>,
+}
+
+/// Logged-out προβολή δημόσιου προφίλ — το τέλος του invite link.
+///
+/// Χωρίς `AuthUser` (άρα χωρίς friends exception): μόνο `share_profile=1` είναι
+/// ορατό. Το route έχει το ίδιο social rate-limit· το uniform 404 κρύβει αν το
+/// username δεν υπάρχει ή είναι ιδιωτικό.
+pub async fn public_profile_anonymous(
+    State(state): State<AppState>,
+    Path(username): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let username = normalize_username(&username).ok_or_else(AppError::not_found)?;
+
+    let row = sqlx::query_as::<_, PublicProfile>(
+        "SELECT a.username AS username, a.display_name AS display_name,
+                COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
+                COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
+                COALESCE(ps.badges, '[]') AS badges,
+                COALESCE(ps.streak_days, 0) AS streak_days,
+                COALESCE(ps.longest_streak_days, 0) AS longest_streak_days,
+                NULL AS account_id, NULL AS friendship
+         FROM accounts a LEFT JOIN profile_stats ps ON ps.account_id = a.id
+         WHERE a.username = ?1 AND a.disabled = 0 AND a.share_profile = 1",
+    )
+    .bind(&username)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or_else(AppError::not_found)?;
+
+    Ok(Json(row))
 }
 
 pub async fn public_profile(
@@ -556,7 +703,19 @@ pub async fn public_profile(
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
                 COALESCE(ps.badges, '[]') AS badges,
                 COALESCE(ps.streak_days, 0) AS streak_days,
-                COALESCE(ps.longest_streak_days, 0) AS longest_streak_days
+                COALESCE(ps.longest_streak_days, 0) AS longest_streak_days,
+                a.id AS account_id,
+                CASE
+                    WHEN a.id = ?1 THEN 'self'
+                    WHEN EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'accepted'
+                        AND ((f.requester_id = ?1 AND f.addressee_id = a.id)
+                          OR (f.addressee_id = ?1 AND f.requester_id = a.id))) THEN 'friend'
+                    WHEN EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'pending'
+                        AND f.requester_id = a.id AND f.addressee_id = ?1) THEN 'in'
+                    WHEN EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'pending'
+                        AND f.requester_id = ?1 AND f.addressee_id = a.id) THEN 'out'
+                    ELSE NULL
+                END AS friendship
          FROM accounts a LEFT JOIN profile_stats ps ON ps.account_id = a.id
          WHERE a.username = ?2 AND a.disabled = 0 AND (
              a.share_profile = 1 OR a.id = ?1 OR a.id IN (

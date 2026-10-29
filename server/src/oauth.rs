@@ -84,7 +84,10 @@ pub async fn google_callback(
         return Err(AppError::bad_request("invalid_state", "Λείπει το state."));
     };
     let Some(cookie_state) = state_cookie_value(&headers) else {
-        return Err(AppError::bad_request("invalid_state", "Λείπει το OAuth cookie."));
+        return Err(AppError::bad_request(
+            "invalid_state",
+            "Λείπει το OAuth cookie.",
+        ));
     };
     if !constant_time_eq(cookie_state.as_bytes(), state_token.as_bytes()) {
         return Err(AppError::bad_request(
@@ -147,9 +150,7 @@ fn state_cookie(state_token: &str) -> String {
 }
 
 fn clear_state_cookie() -> String {
-    format!(
-        "{STATE_COOKIE}=; Path={STATE_COOKIE_PATH}; Max-Age=0; HttpOnly; Secure; SameSite=Lax"
-    )
+    format!("{STATE_COOKIE}=; Path={STATE_COOKIE_PATH}; Max-Age=0; HttpOnly; Secure; SameSite=Lax")
 }
 
 fn state_cookie_value(headers: &HeaderMap) -> Option<&str> {

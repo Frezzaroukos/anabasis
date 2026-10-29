@@ -236,7 +236,11 @@ pub async fn push(
                 Some(existing_payload) => {
                     let existing_updated_at = serde_json::from_str::<Value>(existing_payload)
                         .ok()
-                        .and_then(|v| v.get("updated_at").and_then(Value::as_str).map(str::to_owned))
+                        .and_then(|v| {
+                            v.get("updated_at")
+                                .and_then(Value::as_str)
+                                .map(str::to_owned)
+                        })
                         .unwrap_or_default();
                     incoming_updated_at.as_str() > existing_updated_at.as_str()
                 }

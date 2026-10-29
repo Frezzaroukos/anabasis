@@ -121,22 +121,23 @@ pub async fn consume(
 
     // Atomic single-use & expiry check: DELETE only succeeds if token exists AND not expired.
     // Two concurrent attempts to consume the same token cannot both succeed.
-    let row: Option<String> =
-        sqlx::query_scalar("DELETE FROM login_tokens WHERE token_hash = ? AND expires_at > ? RETURNING email")
-            .bind(&token_hash)
-            .bind(now_iso())
-            .fetch_optional(&state.pool)
-            .await?;
+    let row: Option<String> = sqlx::query_scalar(
+        "DELETE FROM login_tokens WHERE token_hash = ? AND expires_at > ? RETURNING email",
+    )
+    .bind(&token_hash)
+    .bind(now_iso())
+    .fetch_optional(&state.pool)
+    .await?;
 
     let Some(email) = row else {
         // Distinguish between expired and missing/already-used by checking if record exists at all
         let maybe_expired: Option<String> = sqlx::query_scalar(
             "SELECT email FROM login_tokens WHERE token_hash = ? AND expires_at <= ?",
         )
-            .bind(&token_hash)
-            .bind(now_iso())
-            .fetch_optional(&state.pool)
-            .await?;
+        .bind(&token_hash)
+        .bind(now_iso())
+        .fetch_optional(&state.pool)
+        .await?;
 
         if maybe_expired.is_some() {
             return Err(AppError::bad_request(
@@ -152,7 +153,9 @@ pub async fn consume(
     };
 
     let account = find_or_create_account(&state, &email, "email").await?;
-    let user_agent = headers.get(header::USER_AGENT).and_then(|v| v.to_str().ok());
+    let user_agent = headers
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok());
     let resp = issue_auth_response(&state, &account.id, user_agent).await?;
     Ok(Json(resp))
 }
@@ -162,11 +165,7 @@ async fn send_login_email(cfg: &EmailConfig, to: &str, token: &str) -> Result<()
     // Το token μπαίνει στο URL fragment (#magic=…), ΟΧΙ στο query — τα
     // fragments δεν φεύγουν ποτέ στον server/proxy, οπότε δεν καταγράφονται
     // σε access logs (ίδια υγιεινή με το OAuth #oauth=… redirect).
-    let link = format!(
-        "{}/#magic={}",
-        cfg.public_url.trim_end_matches('/'),
-        token
-    );
+    let link = format!("{}/#magic={}", cfg.public_url.trim_end_matches('/'), token);
 
     let from: Mailbox = cfg
         .from

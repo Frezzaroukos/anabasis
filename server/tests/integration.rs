@@ -191,11 +191,12 @@ async fn delete_account_requires_email_and_removes_all_owned_server_data() {
         .fetch_one(&state.pool)
         .await
         .unwrap();
-    let graveyard: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM gc_graveyard WHERE account_id = ?")
-        .bind(&account_id)
-        .fetch_one(&state.pool)
-        .await
-        .unwrap();
+    let graveyard: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM gc_graveyard WHERE account_id = ?")
+            .bind(&account_id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap();
     assert_eq!((accounts, rows, sessions, graveyard), (0, 0, 0, 0));
 
     let (status, _) = call(&app, "GET", "/api/me", Some(&token), None).await;
@@ -317,13 +318,7 @@ async fn auth_rate_limit_ignores_cf_header_when_trust_is_disabled() {
     let app = router(state);
 
     for i in 0..10 {
-        let status = call_ip(
-            &app,
-            "POST",
-            "/api/auth/login",
-            &format!("198.51.100.{i}"),
-        )
-        .await;
+        let status = call_ip(&app, "POST", "/api/auth/login", &format!("198.51.100.{i}")).await;
         assert_ne!(
             status,
             StatusCode::TOO_MANY_REQUESTS,
@@ -587,7 +582,10 @@ async fn push_stale_updated_at_does_not_clobber_newer_row() {
         "updated_at": "2026-08-30T10:05:00.000Z", "deleted_at": null,
     });
     let (status, _) = call(
-        &app, "POST", "/api/sync/push", Some(&token),
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [ { "tbl": "goals", "rows": [ newer ] } ] })),
     )
     .await;
@@ -599,11 +597,18 @@ async fn push_stale_updated_at_does_not_clobber_newer_row() {
         "updated_at": "2026-08-30T10:00:00.000Z", "deleted_at": null,
     });
     let (status, _) = call(
-        &app, "POST", "/api/sync/push", Some(&token),
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [ { "tbl": "goals", "rows": [ stale ] } ] })),
     )
     .await;
-    assert_eq!(status, StatusCode::OK, "stale push γίνεται δεκτό — απλώς δεν κλέβει");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "stale push γίνεται δεκτό — απλώς δεν κλέβει"
+    );
 
     let stored_payload: String = sqlx::query_scalar(
         "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'goal-lww'",
@@ -613,7 +618,10 @@ async fn push_stale_updated_at_does_not_clobber_newer_row() {
     .await
     .unwrap();
     let stored: Value = serde_json::from_str(&stored_payload).unwrap();
-    assert_eq!(stored["title"], "from device B", "η νεότερη αλλαγή ΔΕΝ διαγράφεται από stale push");
+    assert_eq!(
+        stored["title"], "from device B",
+        "η νεότερη αλλαγή ΔΕΝ διαγράφεται από stale push"
+    );
 }
 
 /// Ισοπαλία στο updated_at → κρατάμε ό,τι υπάρχει ήδη (deterministic, ίδιο
@@ -625,16 +633,24 @@ async fn push_identical_updated_at_keeps_existing() {
     let (token, user_id) = signed_in_user(&app).await;
 
     let same_ts = "2026-08-30T10:00:00.000Z";
-    let first = json!({ "id": "goal-tie", "user_id": user_id, "title": "first", "updated_at": same_ts });
+    let first =
+        json!({ "id": "goal-tie", "user_id": user_id, "title": "first", "updated_at": same_ts });
     call(
-        &app, "POST", "/api/sync/push", Some(&token),
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [ { "tbl": "goals", "rows": [ first ] } ] })),
     )
     .await;
 
-    let second = json!({ "id": "goal-tie", "user_id": user_id, "title": "second", "updated_at": same_ts });
+    let second =
+        json!({ "id": "goal-tie", "user_id": user_id, "title": "second", "updated_at": same_ts });
     call(
-        &app, "POST", "/api/sync/push", Some(&token),
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [ { "tbl": "goals", "rows": [ second ] } ] })),
     )
     .await;
@@ -662,7 +678,10 @@ async fn push_cursor_reflects_current_seq_even_when_every_row_loses() {
         "updated_at": "2026-08-30T10:05:00.000Z",
     });
     let (_, body) = call(
-        &app, "POST", "/api/sync/push", Some(&token),
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [ { "tbl": "goals", "rows": [ newer ] } ] })),
     )
     .await;
@@ -674,7 +693,10 @@ async fn push_cursor_reflects_current_seq_even_when_every_row_loses() {
         "updated_at": "2026-08-30T10:00:00.000Z",
     });
     let (status, body) = call(
-        &app, "POST", "/api/sync/push", Some(&token),
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [ { "tbl": "goals", "rows": [ stale ] } ] })),
     )
     .await;
@@ -831,6 +853,43 @@ async fn change_password_invalidates_other_sessions_only() {
     );
 }
 
+#[tokio::test]
+async fn logout_others_keeps_current_session_only() {
+    let (app, state, _dir) = test_app(None).await;
+    let (_, signup_body) = signup(&app, "devices@example.com", "correcthorsebattery").await;
+    let token_a = signup_body["token"].as_str().unwrap().to_string();
+    let account_id = signup_body["account"]["id"].as_str().unwrap().to_string();
+    let (_, login_body) = login(&app, "devices@example.com", "correcthorsebattery").await;
+    let token_b = login_body["token"].as_str().unwrap().to_string();
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/logout_others",
+        Some(&token_b),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["revoked"], 1);
+
+    let (status, _) = call(&app, "GET", "/api/me", Some(&token_b), None).await;
+    assert_eq!(status, StatusCode::OK, "η τρέχουσα συσκευή μένει μέσα");
+    let (status, _) = call(&app, "GET", "/api/me", Some(&token_a), None).await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "οι άλλες συσκευές βγαίνουν"
+    );
+
+    let sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE account_id = ?")
+        .bind(&account_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!(sessions, 1);
+}
+
 /* ─────────── claim_admin (κωδικός προαγωγής σε admin) ─────────── */
 
 #[tokio::test]
@@ -925,7 +984,9 @@ async fn epoch_present_and_stable_across_restarts() {
     let s1 = build_state(db_path.clone(), None, None, None, None)
         .await
         .expect("s1");
-    let s2 = build_state(db_path, None, None, None, None).await.expect("s2");
+    let s2 = build_state(db_path, None, None, None, None)
+        .await
+        .expect("s2");
     // Ίδιο αρχείο βάσης = ίδιο epoch· νέο αρχείο θα έδινε νέο.
     assert_eq!(s1.epoch, s2.epoch);
     assert!(!s1.epoch.is_empty());
@@ -982,11 +1043,7 @@ async fn start_google_oauth(app: &Router) -> (String, String, String) {
     (state_token, cookie, set_cookie)
 }
 
-async fn call_with_cookie(
-    app: &Router,
-    uri: &str,
-    cookie: Option<&str>,
-) -> (StatusCode, Value) {
+async fn call_with_cookie(app: &Router, uri: &str, cookie: Option<&str>) -> (StatusCode, Value) {
     let mut builder = Request::builder()
         .method("GET")
         .uri(uri)
@@ -1183,7 +1240,10 @@ async fn google_oauth_callback_requires_matching_state_cookie() {
         .fetch_one(&state.pool)
         .await
         .unwrap();
-    assert_eq!(stored, 1, "mismatched cookie δεν πρέπει να καταναλώνει state");
+    assert_eq!(
+        stored, 1,
+        "mismatched cookie δεν πρέπει να καταναλώνει state"
+    );
 
     let (status, body) = call_with_cookie(
         &app,
@@ -1219,13 +1279,39 @@ async fn publish_stats(app: &Router, token: &str, xp: i64) -> (StatusCode, Value
     .await
 }
 
+async fn publish_weekly_stats(
+    app: &Router,
+    token: &str,
+    xp: i64,
+    week_xp: i64,
+) -> (StatusCode, Value) {
+    call(
+        app,
+        "POST",
+        "/api/social/stats",
+        Some(token),
+        Some(json!({
+            "xp": xp,
+            "week_xp": week_xp,
+            "streak_days": 3,
+            "longest_streak_days": 5,
+            "badges": ["first-ascent"]
+        })),
+    )
+    .await
+}
+
 #[tokio::test]
 async fn social_username_set_validate_and_uniqueness() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // Έγκυρο username.
     let (status, body) = set_username(&app, &a, "Alpinist_1").await;
@@ -1247,15 +1333,25 @@ async fn social_username_set_validate_and_uniqueness() {
 async fn social_friend_request_accept_and_list() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     set_username(&app, &a, "aaa").await;
     set_username(&app, &b, "bbb").await;
 
     // A → B request.
-    let (status, body) = call(&app, "POST", "/api/social/requests", Some(&a),
-        Some(json!({ "username": "bbb" }))).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&a),
+        Some(json!({ "username": "bbb" })),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["status"], "pending");
 
@@ -1268,8 +1364,14 @@ async fn social_friend_request_accept_and_list() {
     let a_id = body[0]["account_id"].as_str().unwrap().to_string();
 
     // B accepts.
-    let (status, _) = call(&app, "POST", &format!("/api/social/requests/{a_id}/accept"),
-        Some(&b), None).await;
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/social/requests/{a_id}/accept"),
+        Some(&b),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     // Both now list each other as friend.
@@ -1278,22 +1380,46 @@ async fn social_friend_request_accept_and_list() {
     assert_eq!(fa[0]["username"], "bbb");
     let (_, fb) = call(&app, "GET", "/api/social/friends", Some(&b), None).await;
     assert_eq!(fb[0]["username"], "aaa");
+
+    // Το προφίλ ξέρει τη σχέση: accepted φίλος βλέπει «friend» ακόμα κι αν το
+    // προφίλ είναι private (friends exception), και παίρνει account_id για CTA.
+    let (status, body) = call(&app, "GET", "/api/social/user/bbb", Some(&a), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["friendship"], "friend");
+    assert!(body["account_id"].as_str().is_some());
 }
 
 #[tokio::test]
 async fn social_mutual_pending_auto_accepts() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     set_username(&app, &a, "aaa").await;
     set_username(&app, &b, "bbb").await;
 
-    call(&app, "POST", "/api/social/requests", Some(&a), Some(json!({ "username": "bbb" }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&a),
+        Some(json!({ "username": "bbb" })),
+    )
+    .await;
     // B requests A back → πρέπει να γίνει auto-accept.
-    let (status, body) = call(&app, "POST", "/api/social/requests", Some(&b),
-        Some(json!({ "username": "aaa" }))).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&b),
+        Some(json!({ "username": "aaa" })),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["status"], "accepted");
 
@@ -1305,16 +1431,30 @@ async fn social_mutual_pending_auto_accepts() {
 async fn social_unknown_username_uniform_not_found() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
 
-    let (status, _) = call(&app, "POST", "/api/social/requests", Some(&a),
-        Some(json!({ "username": "ghost_user" }))).await;
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&a),
+        Some(json!({ "username": "ghost_user" })),
+    )
+    .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 
     // Self-add → επίσης uniform not-found.
     set_username(&app, &a, "aaa").await;
-    let (status, _) = call(&app, "POST", "/api/social/requests", Some(&a),
-        Some(json!({ "username": "aaa" }))).await;
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&a),
+        Some(json!({ "username": "aaa" })),
+    )
+    .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
@@ -1322,7 +1462,9 @@ async fn social_unknown_username_uniform_not_found() {
 async fn social_stats_server_authoritative_and_clamped() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // xp=10000 → level = floor(sqrt(10000/100))+1 = floor(10)+1 = 11, tier alpine.
     let (status, body) = publish_stats(&app, &a, 10_000).await;
@@ -1335,17 +1477,28 @@ async fn social_stats_server_authoritative_and_clamped() {
     let (_, body) = publish_stats(&app, &a, -5).await;
     assert_eq!(body["xp"], 0);
     assert_eq!(body["level"], 1);
+
+    // Weekly > total → clamp στο total (το weekly είναι υποσύνολο).
+    let (_, body) = publish_weekly_stats(&app, &a, 100, 500).await;
+    assert_eq!(body["xp"], 100);
+    assert_eq!(body["week_xp"], 100);
 }
 
 #[tokio::test]
 async fn social_leaderboard_privacy_global_vs_friends() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     let c = signup(&app, "c@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     set_username(&app, &a, "aaa").await;
     set_username(&app, &b, "bbb").await;
     set_username(&app, &c, "ccc").await;
@@ -1354,31 +1507,246 @@ async fn social_leaderboard_privacy_global_vs_friends() {
     publish_stats(&app, &c, 300).await;
 
     // B κάνει το προφίλ του δημόσιο· C μένει ιδιωτικό.
-    call(&app, "POST", "/api/social/profile", Some(&b), Some(json!({ "share_profile": true }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&b),
+        Some(json!({ "share_profile": true })),
+    )
+    .await;
 
     // Global από τον A: βλέπει self (A) + B (shared)· ΟΧΙ C (ιδιωτικό).
-    let (status, body) = call(&app, "GET", "/api/social/leaderboard?scope=global", Some(&a), None).await;
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/social/leaderboard?scope=global",
+        Some(&a),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    let names: Vec<String> = body.as_array().unwrap().iter()
-        .map(|r| r["username"].as_str().unwrap_or("").to_string()).collect();
+    let names: Vec<String> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["username"].as_str().unwrap_or("").to_string())
+        .collect();
     assert!(names.contains(&"aaa".to_string()));
     assert!(names.contains(&"bbb".to_string()));
-    assert!(!names.contains(&"ccc".to_string()), "ιδιωτικό προφίλ ΔΕΝ φαίνεται global");
+    assert!(
+        !names.contains(&"ccc".to_string()),
+        "ιδιωτικό προφίλ ΔΕΝ φαίνεται global"
+    );
 
     // Friends scope χωρίς φίλους: μόνο ο εαυτός.
-    let (_, body) = call(&app, "GET", "/api/social/leaderboard?scope=friends", Some(&a), None).await;
+    let (_, body) = call(
+        &app,
+        "GET",
+        "/api/social/leaderboard?scope=friends",
+        Some(&a),
+        None,
+    )
+    .await;
     assert_eq!(body.as_array().unwrap().len(), 1);
     assert_eq!(body[0]["username"], "aaa");
     assert_eq!(body[0]["is_self"], true);
 }
 
 #[tokio::test]
+async fn social_weekly_leaderboard_orders_by_last_7_days() {
+    let (app, state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let c = signup(&app, "c@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+    set_username(&app, &c, "ccc").await;
+    publish_weekly_stats(&app, &a, 10_000, 50).await;
+    publish_weekly_stats(&app, &b, 5_000, 900).await;
+    // Παλιός client χωρίς week_xp → δεν μπαίνει στο weekly.
+    publish_stats(&app, &c, 500).await;
+    // B δημόσιο ώστε να φαίνεται στο global board του A.
+    call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&b),
+        Some(json!({ "share_profile": true })),
+    )
+    .await;
+    call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&c),
+        Some(json!({ "share_profile": true })),
+    )
+    .await;
+
+    // All-time: το μεγάλο συνολικό xp κερδίζει.
+    let (_, body) = call(
+        &app,
+        "GET",
+        "/api/social/leaderboard?scope=global",
+        Some(&a),
+        None,
+    )
+    .await;
+    assert_eq!(body[0]["username"], "aaa");
+
+    // Weekly: μετράει μόνο το week_xp, όχι το συνολικό.
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/social/leaderboard?scope=global&period=week",
+        Some(&a),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body[0]["username"], "bbb");
+    assert_eq!(body[0]["week_xp"], 900);
+    assert_eq!(body[1]["username"], "aaa");
+    assert_eq!(body[1]["week_xp"], 50);
+
+    // Ανενεργό προφίλ (week_xp_at παλιό) φεύγει από το weekly board· ο εαυτός
+    // μένει ώστε να βλέπει πάντα τη θέση του.
+    sqlx::query(
+        "UPDATE profile_stats SET week_xp_at = '2020-01-01T00:00:00Z'
+         WHERE account_id = (SELECT id FROM accounts WHERE username = 'bbb')",
+    )
+    .execute(&state.pool)
+    .await
+    .unwrap();
+    let (_, body) = call(
+        &app,
+        "GET",
+        "/api/social/leaderboard?scope=global&period=week",
+        Some(&a),
+        None,
+    )
+    .await;
+    let names: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["username"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, vec!["aaa"]);
+}
+
+#[tokio::test]
+async fn social_search_only_public_profiles_and_excludes_self() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let c = signup(&app, "c@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    set_username(&app, &a, "alpinist").await;
+    set_username(&app, &b, "alpine_friend").await;
+    set_username(&app, &c, "hidden_climber").await;
+    publish_stats(&app, &b, 400).await;
+    call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&a),
+        Some(json!({ "share_profile": true })),
+    )
+    .await;
+    call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&b),
+        Some(json!({ "share_profile": true, "display_name": "Alpine Guide" })),
+    )
+    .await;
+
+    // Το private C δεν βγαίνει ποτέ, ο εαυτός A δεν βγαίνει, ο public B βγαίνει.
+    let (status, body) = call(&app, "GET", "/api/social/search?q=alp", Some(&a), None).await;
+    assert_eq!(status, StatusCode::OK);
+    let names: Vec<&str> = body
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["username"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, vec!["alpine_friend"]);
+    assert_eq!(body[0]["display_name"], "Alpine Guide");
+    assert_eq!(body[0]["level"], 3);
+    assert_eq!(body[0]["friendship"], serde_json::Value::Null);
+    assert!(body[0].get("email").is_none());
+
+    // Μετά από αίτημα, το search λέει «out» στον sender και «in» στον receiver.
+    call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&a),
+        Some(json!({ "username": "alpine_friend" })),
+    )
+    .await;
+    let (_, body) = call(&app, "GET", "/api/social/search?q=alp", Some(&a), None).await;
+    assert_eq!(body[0]["friendship"], "out");
+    let (_, body) = call(&app, "GET", "/api/social/search?q=alp", Some(&b), None).await;
+    assert_eq!(body[0]["username"], "alpinist");
+    assert_eq!(body[0]["friendship"], "in");
+
+    // Exact handle πρώτο, ακόμα κι αν άλλος έχει μεγαλύτερο xp.
+    let (_, body) = call(
+        &app,
+        "GET",
+        "/api/social/search?q=alpine_friend",
+        Some(&a),
+        None,
+    )
+    .await;
+    assert_eq!(body[0]["username"], "alpine_friend");
+
+    // Λιγότερο από 2 chars → κενό, χωρίς σφάλμα.
+    let (status, body) = call(&app, "GET", "/api/social/search?q=a", Some(&a), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_array().unwrap().len(), 0);
+
+    // Display name match, case-insensitive.
+    let (_, body) = call(&app, "GET", "/api/social/search?q=GUIDE", Some(&a), None).await;
+    assert_eq!(body[0]["username"], "alpine_friend");
+
+    // Χωρίς token → 401.
+    let (status, _) = call(&app, "GET", "/api/social/search?q=alp", None, None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn social_public_profile_respects_privacy() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     set_username(&app, &a, "aaa").await;
     set_username(&app, &b, "bbb").await;
     publish_stats(&app, &b, 400).await;
@@ -1387,13 +1755,31 @@ async fn social_public_profile_respects_privacy() {
     let (status, _) = call(&app, "GET", "/api/social/user/bbb", Some(&a), None).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 
+    // Logged-out: το invite link δεν πρέπει να δείχνει ιδιωτικό προφίλ.
+    let (status, _) = call(&app, "GET", "/api/social/public/user/bbb", None, None).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
     // B γίνεται δημόσιο → ορατό.
-    call(&app, "POST", "/api/social/profile", Some(&b), Some(json!({ "share_profile": true }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&b),
+        Some(json!({ "share_profile": true })),
+    )
+    .await;
     let (status, body) = call(&app, "GET", "/api/social/user/bbb", Some(&a), None).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["username"], "bbb");
     assert_eq!(body["level"], 3); // xp=400 → floor(sqrt(4))+1 = 3
-    // Καμία διαρροή raw δεδομένων / email.
+                                  // Καμία διαρροή raw δεδομένων / email.
+    assert!(body.get("email").is_none());
+
+    // Logged-out + shared → το ίδιο aggregate, χωρίς token.
+    let (status, body) = call(&app, "GET", "/api/social/public/user/bbb", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["username"], "bbb");
+    assert_eq!(body["level"], 3);
     assert!(body.get("email").is_none());
 }
 
@@ -1401,19 +1787,44 @@ async fn social_public_profile_respects_privacy() {
 async fn social_remove_friend_clears_edge() {
     let (app, _state, _dir) = test_app(None).await;
     let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
-        .as_str().unwrap().to_string();
+        .as_str()
+        .unwrap()
+        .to_string();
     set_username(&app, &a, "aaa").await;
     set_username(&app, &b, "bbb").await;
-    call(&app, "POST", "/api/social/requests", Some(&a), Some(json!({ "username": "bbb" }))).await;
-    call(&app, "POST", "/api/social/requests", Some(&b), Some(json!({ "username": "aaa" }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&a),
+        Some(json!({ "username": "bbb" })),
+    )
+    .await;
+    call(
+        &app,
+        "POST",
+        "/api/social/requests",
+        Some(&b),
+        Some(json!({ "username": "aaa" })),
+    )
+    .await;
 
     // A's /me id για το remove.
     let (_, reqs) = call(&app, "GET", "/api/social/friends", Some(&a), None).await;
     let b_id = reqs[0]["account_id"].as_str().unwrap().to_string();
 
-    let (status, _) = call(&app, "POST", &format!("/api/social/friends/{b_id}/remove"), Some(&a), None).await;
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/social/friends/{b_id}/remove"),
+        Some(&a),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let (_, fa) = call(&app, "GET", "/api/social/friends", Some(&a), None).await;
@@ -1577,7 +1988,11 @@ async fn sync_accepts_program_days_alongside_their_exercises() {
         ]})),
     )
     .await;
-    assert_eq!(status, StatusCode::OK, "τα program_days πρέπει να γίνονται δεκτά");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "τα program_days πρέπει να γίνονται δεκτά"
+    );
 
     let (status, body) = call(
         &app,
@@ -1597,7 +2012,10 @@ async fn sync_accepts_program_days_alongside_their_exercises() {
     assert_eq!(days["rows"][0]["name"], "Upper");
 
     // Και η άσκηση δείχνει στη μέρα που όντως ταξίδεψε μαζί της.
-    let exercises = changes.iter().find(|c| c["tbl"] == "program_exercises").unwrap();
+    let exercises = changes
+        .iter()
+        .find(|c| c["tbl"] == "program_exercises")
+        .unwrap();
     assert_eq!(exercises["rows"][0]["program_day_id"], "day-1");
 }
 
@@ -1705,7 +2123,13 @@ async fn magic_providers_reports_enabled_when_configured() {
 #[tokio::test]
 async fn magic_consume_happy_path_creates_account_and_is_single_use() {
     let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
-    insert_login_token(&state, "raw-token-123", "newbie@example.com", "2999-01-01T00:00:00Z").await;
+    insert_login_token(
+        &state,
+        "raw-token-123",
+        "newbie@example.com",
+        "2999-01-01T00:00:00Z",
+    )
+    .await;
 
     let (status, body) = call(
         &app,
@@ -1716,7 +2140,10 @@ async fn magic_consume_happy_path_creates_account_and_is_single_use() {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body["token"].as_str().is_some(), "consume επιστρέφει session token");
+    assert!(
+        body["token"].as_str().is_some(),
+        "consume επιστρέφει session token"
+    );
     assert_eq!(body["account"]["email"], "newbie@example.com");
     assert_eq!(body["account"]["role"], "user");
     let session_token = body["token"].as_str().unwrap().to_string();
@@ -1742,7 +2169,13 @@ async fn magic_consume_happy_path_creates_account_and_is_single_use() {
 #[tokio::test]
 async fn magic_consume_rejects_expired_token() {
     let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
-    insert_login_token(&state, "old-token", "late@example.com", "2000-01-01T00:00:00Z").await;
+    insert_login_token(
+        &state,
+        "old-token",
+        "late@example.com",
+        "2000-01-01T00:00:00Z",
+    )
+    .await;
 
     let (status, body) = call(
         &app,
@@ -1786,12 +2219,11 @@ async fn magic_request_throttle_is_silent_and_sends_no_new_token() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["ok"], true);
 
-    let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM login_tokens WHERE email = ?")
-            .bind(email)
-            .fetch_one(&state.pool)
-            .await
-            .unwrap();
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM login_tokens WHERE email = ?")
+        .bind(email)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
     assert_eq!(count, 1, "throttled request δεν δημιουργεί δεύτερο token");
 }
 
@@ -1827,20 +2259,42 @@ async fn tombstone_stays_deleted_against_stale_resurrect() {
 
     // create @ 10:00
     let create = json!({ "id": "r1", "user_id": user_id, "title": "live", "updated_at": "2026-08-30T10:00:00.000Z", "deleted_at": null });
-    call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "goals", "rows": [create] }] }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [create] }] })),
+    )
+    .await;
 
     // delete @ 10:10 (νεότερο) — tombstone
     let delete = json!({ "id": "r1", "user_id": user_id, "title": "live", "updated_at": "2026-08-30T10:10:00.000Z", "deleted_at": "2026-08-30T10:10:00.000Z" });
-    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "goals", "rows": [delete] }] }))).await;
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [delete] }] })),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     // stale resurrect @ 10:05 (< 10:10) — LWW loser, δεν πρέπει να αναστήσει.
     let resurrect = json!({ "id": "r1", "user_id": user_id, "title": "back", "updated_at": "2026-08-30T10:05:00.000Z", "deleted_at": null });
-    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "goals", "rows": [resurrect] }] }))).await;
-    assert_eq!(status, StatusCode::OK, "stale resurrect γίνεται δεκτό — απλώς χάνει");
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [resurrect] }] })),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "stale resurrect γίνεται δεκτό — απλώς χάνει"
+    );
 
     let (deleted, payload): (i64, String) = sqlx::query_as(
         "SELECT deleted, payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'r1'",
@@ -1863,12 +2317,24 @@ async fn tombstone_resurrects_when_newer_edit_arrives() {
     let (token, user_id) = signed_in_user(&app).await;
 
     let delete = json!({ "id": "r2", "user_id": user_id, "updated_at": "2026-08-30T10:10:00.000Z", "deleted_at": "2026-08-30T10:10:00.000Z" });
-    call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "goals", "rows": [delete] }] }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [delete] }] })),
+    )
+    .await;
 
     let revive = json!({ "id": "r2", "user_id": user_id, "title": "revived", "updated_at": "2026-08-30T10:20:00.000Z", "deleted_at": null });
-    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "goals", "rows": [revive] }] }))).await;
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "goals", "rows": [revive] }] })),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     let deleted: i64 = sqlx::query_scalar(
@@ -1906,7 +2372,10 @@ async fn same_row_twice_in_one_push_resolves_by_lww_within_batch() {
     .await
     .unwrap();
     let stored: Value = serde_json::from_str(&payload).unwrap();
-    assert_eq!(stored["title"], "new", "το νεότερο κέρδισε παρότι ήρθε πρώτο");
+    assert_eq!(
+        stored["title"], "new",
+        "το νεότερο κέρδισε παρότι ήρθε πρώτο"
+    );
 }
 
 /// Πλήρες cross-device round-trip για programs: update (LWW) + soft-delete
@@ -1917,26 +2386,74 @@ async fn program_day_update_then_soft_delete_round_trips() {
     let (token, user_id) = signed_in_user(&app).await;
 
     let v1 = json!({ "id": "d1", "user_id": &user_id, "program_id": "p1", "name": "Upper", "position": 0, "updated_at": "2026-01-01T00:00:00.000Z" });
-    call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [v1] }] }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [v1] }] })),
+    )
+    .await;
 
     // update @ νεότερο → όνομα αλλάζει
     let v2 = json!({ "id": "d1", "user_id": &user_id, "program_id": "p1", "name": "Lower", "position": 0, "updated_at": "2026-01-02T00:00:00.000Z" });
-    call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [v2] }] }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [v2] }] })),
+    )
+    .await;
 
-    let (_, body) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": 0 }))).await;
-    let days = body["changes"].as_array().unwrap().iter().find(|c| c["tbl"] == "program_days").unwrap();
-    assert_eq!(days["rows"][0]["name"], "Lower", "device B κατεβάζει την ενημερωμένη μέρα");
+    let (_, body) = call(
+        &app,
+        "POST",
+        "/api/sync/pull",
+        Some(&token),
+        Some(json!({ "cursor": 0 })),
+    )
+    .await;
+    let days = body["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["tbl"] == "program_days")
+        .unwrap();
+    assert_eq!(
+        days["rows"][0]["name"], "Lower",
+        "device B κατεβάζει την ενημερωμένη μέρα"
+    );
 
     // soft-delete → tombstone ταξιδεύει
     let del = json!({ "id": "d1", "user_id": &user_id, "program_id": "p1", "name": "Lower", "position": 0, "updated_at": "2026-01-03T00:00:00.000Z", "deleted_at": "2026-01-03T00:00:00.000Z" });
-    call(&app, "POST", "/api/sync/push", Some(&token),
-        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [del] }] }))).await;
+    call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "program_days", "rows": [del] }] })),
+    )
+    .await;
 
-    let (_, body) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": 0 }))).await;
-    let days = body["changes"].as_array().unwrap().iter().find(|c| c["tbl"] == "program_days").unwrap();
-    assert!(!days["rows"][0]["deleted_at"].is_null(), "η διαγραφή της μέρας ταξιδεύει cross-device");
+    let (_, body) = call(
+        &app,
+        "POST",
+        "/api/sync/pull",
+        Some(&token),
+        Some(json!({ "cursor": 0 })),
+    )
+    .await;
+    let days = body["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["tbl"] == "program_days")
+        .unwrap();
+    assert!(
+        !days["rows"][0]["deleted_at"].is_null(),
+        "η διαγραφή της μέρας ταξιδεύει cross-device"
+    );
 }
 
 /* ═══════════════ Per-account row quota (abusive-growth guard) ═══════════════ */
@@ -1958,28 +2475,39 @@ async fn push_rejects_new_rows_beyond_account_quota() {
     let (token, user_id) = signed_in_user(&app).await;
 
     // 2 νέα rows → φτάνουμε ΑΚΡΙΒΩΣ στο cap.
-    let (status, _) = call(&app, "POST", "/api/sync/push", Some(&token),
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [{ "tbl": "goals", "rows": [
             { "id": "g1", "user_id": &user_id, "updated_at": "2026-01-01T00:00:00Z" },
             { "id": "g2", "user_id": &user_id, "updated_at": "2026-01-01T00:00:00Z" },
-        ] }] }))).await;
+        ] }] })),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
 
     // 3ο ΝΕΟ row → quota_exceeded (507), τίποτα δεν γράφεται (rollback).
-    let (status, body) = call(&app, "POST", "/api/sync/push", Some(&token),
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
         Some(json!({ "changes": [{ "tbl": "goals", "rows": [
             { "id": "g3", "user_id": &user_id, "updated_at": "2026-01-01T00:00:00Z" },
-        ] }] }))).await;
+        ] }] })),
+    )
+    .await;
     assert_eq!(status, StatusCode::INSUFFICIENT_STORAGE);
     assert_eq!(body["error"], "quota_exceeded");
 
-    let g3_present: Option<i64> = sqlx::query_scalar(
-        "SELECT 1 FROM sync_rows WHERE account_id = ? AND row_id = 'g3'",
-    )
-    .bind(&user_id)
-    .fetch_optional(&state.pool)
-    .await
-    .unwrap();
+    let g3_present: Option<i64> =
+        sqlx::query_scalar("SELECT 1 FROM sync_rows WHERE account_id = ? AND row_id = 'g3'")
+            .bind(&user_id)
+            .fetch_optional(&state.pool)
+            .await
+            .unwrap();
     assert!(g3_present.is_none(), "το απορριφθέν row δεν γράφτηκε");
 
     // Στο cap, UPDATE υπαρκτού row (δεν αυξάνει πλήθος) → επιτρέπεται.
@@ -2029,19 +2557,32 @@ async fn admin_gc_prunes_old_tombstones_keeps_recent_and_live() {
         .unwrap();
     }
 
-    let (status, body) = call(&app, "POST", "/api/admin/gc?horizon_days=90", Some(&admin_token), None).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/admin/gc?horizon_days=90",
+        Some(&admin_token),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["pruned"].as_u64().unwrap(), 1, "μόνο το παλιό tombstone κόβεται");
+    assert_eq!(
+        body["pruned"].as_u64().unwrap(),
+        1,
+        "μόνο το παλιό tombstone κόβεται"
+    );
     assert_eq!(body["horizon_days"].as_i64().unwrap(), 90);
 
-    let remaining: Vec<String> = sqlx::query_scalar(
-        "SELECT row_id FROM sync_rows WHERE account_id = ? ORDER BY row_id",
-    )
-    .bind(&admin_id)
-    .fetch_all(&state.pool)
-    .await
-    .unwrap();
-    assert_eq!(remaining, vec!["r-live".to_string(), "r-recent".to_string()]);
+    let remaining: Vec<String> =
+        sqlx::query_scalar("SELECT row_id FROM sync_rows WHERE account_id = ? ORDER BY row_id")
+            .bind(&admin_id)
+            .fetch_all(&state.pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        remaining,
+        vec!["r-live".to_string(), "r-recent".to_string()]
+    );
 }
 
 #[tokio::test]
@@ -2051,9 +2592,20 @@ async fn admin_gc_clamps_horizon_to_safe_minimum() {
     let admin_token = body["token"].as_str().unwrap().to_string();
 
     // Ζητάμε επικίνδυνα μικρό horizon (0) → clamp στο ελάχιστο ασφαλές (7).
-    let (status, body) = call(&app, "POST", "/api/admin/gc?horizon_days=0", Some(&admin_token), None).await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/admin/gc?horizon_days=0",
+        Some(&admin_token),
+        None,
+    )
+    .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["horizon_days"].as_i64().unwrap(), 7, "horizon clamped στο ελάχιστο");
+    assert_eq!(
+        body["horizon_days"].as_i64().unwrap(),
+        7,
+        "horizon clamped στο ελάχιστο"
+    );
 }
 
 #[tokio::test]
@@ -2139,7 +2691,10 @@ async fn pull_below_gc_floor_demands_reset() {
         json!({ "id": "g-keep", "user_id": user_id, "title": "keep", "updated_at": "2026-03-01T00:00:00Z", "deleted_at": null }),
     )
     .await;
-    assert!(c1 < c2 && c2 <= c3, "seq πρέπει να προχωρά ({c1} < {c2} <= {c3})");
+    assert!(
+        c1 < c2 && c2 <= c3,
+        "seq πρέπει να προχωρά ({c1} < {c2} <= {c3})"
+    );
 
     // GC με horizon 0 → κόβει το tombstone και ανεβάζει το gc_floor στο c2.
     let pruned = anabasis_api::sync::prune_tombstones(&state.pool, 0)
@@ -2154,14 +2709,44 @@ async fn pull_below_gc_floor_demands_reset() {
     assert_eq!(gc_floor, c2, "gc_floor = ο seq του κομμένου tombstone");
 
     // Συσκευή πίσω από το floor (cursor c1) → reset_required.
-    let (_, behind) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": c1 }))).await;
-    assert_eq!(behind["reset_required"], true, "πίσω από το gc_floor → reset");
+    let (_, behind) = call(
+        &app,
+        "POST",
+        "/api/sync/pull",
+        Some(&token),
+        Some(json!({ "cursor": c1 })),
+    )
+    .await;
+    assert_eq!(
+        behind["reset_required"], true,
+        "πίσω από το gc_floor → reset"
+    );
 
     // Φρέσκο pull (cursor 0) και ενημερωμένη συσκευή (cursor c3) → κανένα reset.
-    let (_, fresh) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": 0 }))).await;
-    assert_eq!(fresh["reset_required"], false, "cursor 0 κατεβάζει όλο το ζωντανό σύνολο");
-    let (_, caught_up) = call(&app, "POST", "/api/sync/pull", Some(&token), Some(json!({ "cursor": c3 }))).await;
-    assert_eq!(caught_up["reset_required"], false, "ενημερωμένη συσκευή δεν χρειάζεται reset");
+    let (_, fresh) = call(
+        &app,
+        "POST",
+        "/api/sync/pull",
+        Some(&token),
+        Some(json!({ "cursor": 0 })),
+    )
+    .await;
+    assert_eq!(
+        fresh["reset_required"], false,
+        "cursor 0 κατεβάζει όλο το ζωντανό σύνολο"
+    );
+    let (_, caught_up) = call(
+        &app,
+        "POST",
+        "/api/sync/pull",
+        Some(&token),
+        Some(json!({ "cursor": c3 })),
+    )
+    .await;
+    assert_eq!(
+        caught_up["reset_required"], false,
+        "ενημερωμένη συσκευή δεν χρειάζεται reset"
+    );
 }
 
 /// Grok QA5 probe (γύρος 3): ο client σπρώχνει ΠΡΙΝ τραβήξει (sync/index.ts),
@@ -2211,38 +2796,68 @@ async fn push_below_gc_floor_rejected_no_resurrection() {
         .await["cursor"].as_i64().unwrap();
 
     // GC horizon 0 → κόβει το tombstone του g-del και ανεβάζει το gc_floor.
-    anabasis_api::sync::prune_tombstones(&state.pool, 0).await.unwrap();
+    anabasis_api::sync::prune_tombstones(&state.pool, 0)
+        .await
+        .unwrap();
     let gc_floor: i64 = sqlx::query_scalar("SELECT gc_floor FROM accounts WHERE id = ?")
         .bind(&user_id)
         .fetch_one(&state.pool)
         .await
         .unwrap();
-    assert!(gc_floor > c1, "gc_floor πάνω από τον cursor c1 της πίσω συσκευής");
-    assert!(goal_payload(&state, &user_id, "g-del").await.is_none(), "το g-del κόπηκε στο GC");
+    assert!(
+        gc_floor > c1,
+        "gc_floor πάνω από τον cursor c1 της πίσω συσκευής"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-del").await.is_none(),
+        "το g-del κόπηκε στο GC"
+    );
 
     let rows_before = row_count(&state, &user_id).await;
 
     // Συσκευή ΠΙΣΩ από το floor (cursor c1) προσπαθεί να αναστήσει το g-del ως live.
     let stale = push(&app, &token, json!({ "cursor": c1, "changes": [ { "tbl": "goals", "rows": [
         { "id": "g-del", "user_id": user_id, "title": "resurrected!", "updated_at": "2026-04-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
-    assert_eq!(stale["reset_required"], true, "push κάτω από gc_floor → reset_required");
+    assert_eq!(
+        stale["reset_required"], true,
+        "push κάτω από gc_floor → reset_required"
+    );
 
     // ΤΙΠΟΤΑ δεν γράφτηκε — το GC-αρισμένο g-del ΔΕΝ αναστήθηκε.
-    assert_eq!(row_count(&state, &user_id).await, rows_before, "stale push δεν έγραψε κανένα row");
-    assert!(goal_payload(&state, &user_id, "g-del").await.is_none(), "το g-del δεν ανασταίνεται");
+    assert_eq!(
+        row_count(&state, &user_id).await,
+        rows_before,
+        "stale push δεν έγραψε κανένα row"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-del").await.is_none(),
+        "το g-del δεν ανασταίνεται"
+    );
 
     // Γνήσιες αλλαγές ΔΕΝ χάνονται: ίδια συσκευή με φρέσκο cursor (πάνω από το floor).
     let ok = push(&app, &token, json!({ "cursor": c3, "changes": [ { "tbl": "goals", "rows": [
         { "id": "g-new", "user_id": user_id, "title": "genuine", "updated_at": "2026-05-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
-    assert_eq!(ok["reset_required"], false, "ενημερωμένη συσκευή γράφει κανονικά");
-    assert!(goal_payload(&state, &user_id, "g-new").await.is_some(), "γνήσιο νέο row γράφτηκε");
+    assert_eq!(
+        ok["reset_required"], false,
+        "ενημερωμένη συσκευή γράφει κανονικά"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-new").await.is_some(),
+        "γνήσιο νέο row γράφτηκε"
+    );
 
     // Παλιός client (χωρίς πεδίο cursor): ΓΝΗΣΙΟ νέο row (id που δεν ζει στο
     // graveyard) περνά κανονικά — ο legacy client πρέπει να μπορεί να δημιουργεί.
     let legacy = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
         { "id": "g-legacy", "user_id": user_id, "title": "legacy", "updated_at": "2026-06-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
-    assert_eq!(legacy["reset_required"], false, "legacy: γνήσιο νέο id περνά");
-    assert!(goal_payload(&state, &user_id, "g-legacy").await.is_some(), "legacy νέο row γράφτηκε");
+    assert_eq!(
+        legacy["reset_required"], false,
+        "legacy: γνήσιο νέο id περνά"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-legacy").await.is_some(),
+        "legacy νέο row γράφτηκε"
+    );
 
     // Codex QA6 bypass: ο ΙΔΙΟΣ legacy client (χωρίς cursor — όπως το live bundle)
     // προσπαθεί να αναστήσει το GC-αρισμένο g-del. Ο A6 gc_floor guard ΔΕΝ τον
@@ -2251,9 +2866,19 @@ async fn push_below_gc_floor_rejected_no_resurrection() {
     let rows_pre_legacy = row_count(&state, &user_id).await;
     let legacy_ghost = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
         { "id": "g-del", "user_id": user_id, "title": "legacy resurrection!", "updated_at": "2026-07-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
-    assert_eq!(legacy_ghost["reset_required"], true, "legacy resurrection graveyard id → reset_required");
-    assert_eq!(row_count(&state, &user_id).await, rows_pre_legacy, "legacy resurrection δεν έγραψε row");
-    assert!(goal_payload(&state, &user_id, "g-del").await.is_none(), "g-del δεν ανασταίνεται από legacy client");
+    assert_eq!(
+        legacy_ghost["reset_required"], true,
+        "legacy resurrection graveyard id → reset_required"
+    );
+    assert_eq!(
+        row_count(&state, &user_id).await,
+        rows_pre_legacy,
+        "legacy resurrection δεν έγραψε row"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-del").await.is_none(),
+        "g-del δεν ανασταίνεται από legacy client"
+    );
 }
 
 /// Codex QA6 (γύρος 4): το live bundle (/assets/index-p6EiHEk-.js) καλεί
@@ -2291,14 +2916,25 @@ async fn legacy_push_without_cursor_cannot_resurrect_gc_graveyard_row() {
     assert!(c1 > 0);
 
     // GC κόβει το tombstone και γράφει το g-ghost στο gc_graveyard.
-    anabasis_api::sync::prune_tombstones(&state.pool, 0).await.unwrap();
-    assert!(goal_payload(&state, &user_id, "g-ghost").await.is_none(), "το g-ghost κόπηκε στο GC");
+    anabasis_api::sync::prune_tombstones(&state.pool, 0)
+        .await
+        .unwrap();
+    assert!(
+        goal_payload(&state, &user_id, "g-ghost").await.is_none(),
+        "το g-ghost κόπηκε στο GC"
+    );
 
     // Το cached live bundle ξανασπρώχνει το τοπικά-edited ghost ΧΩΡΙΣ cursor.
     let resurrect = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
         { "id": "g-ghost", "user_id": user_id, "title": "back from the dead", "updated_at": "2026-03-01T00:00:00Z", "deleted_at": null } ] } ] })).await;
-    assert_eq!(resurrect["reset_required"], true, "graveyard id χωρίς cursor → reset_required");
-    assert!(goal_payload(&state, &user_id, "g-ghost").await.is_none(), "ο server ΔΕΝ ανάστησε το g-ghost ανεξάρτητα από cursor");
+    assert_eq!(
+        resurrect["reset_required"], true,
+        "graveyard id χωρίς cursor → reset_required"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-ghost").await.is_none(),
+        "ο server ΔΕΝ ανάστησε το g-ghost ανεξάρτητα από cursor"
+    );
 
     // Το ίδιο batch με ΓΝΗΣΙΟ νέο row + graveyard id: το γνήσιο row δεν χάνεται
     // (δεν κάνουμε whole-push reject — ο legacy client αγνοεί το reset_required
@@ -2306,9 +2942,18 @@ async fn legacy_push_without_cursor_cannot_resurrect_gc_graveyard_row() {
     let mixed = push(&app, &token, json!({ "changes": [ { "tbl": "goals", "rows": [
         { "id": "g-ghost", "user_id": user_id, "title": "ghost again", "updated_at": "2026-04-01T00:00:00Z", "deleted_at": null },
         { "id": "g-fresh", "user_id": user_id, "title": "genuine", "updated_at": "2026-04-02T00:00:00Z", "deleted_at": null } ] } ] })).await;
-    assert_eq!(mixed["reset_required"], true, "μικτό batch με graveyard id → reset_required");
-    assert!(goal_payload(&state, &user_id, "g-ghost").await.is_none(), "ghost στο μικτό batch κόπηκε");
-    assert!(goal_payload(&state, &user_id, "g-fresh").await.is_some(), "γνήσιο row στο ίδιο batch ΔΕΝ χάθηκε");
+    assert_eq!(
+        mixed["reset_required"], true,
+        "μικτό batch με graveyard id → reset_required"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-ghost").await.is_none(),
+        "ghost στο μικτό batch κόπηκε"
+    );
+    assert!(
+        goal_payload(&state, &user_id, "g-fresh").await.is_some(),
+        "γνήσιο row στο ίδιο batch ΔΕΝ χάθηκε"
+    );
 }
 
 /// Codex audit §3: το LWW συγκρίνει client `updated_at`. Μια συσκευή με μπροστά
@@ -2347,7 +2992,10 @@ async fn future_dated_push_is_clamped_so_later_edit_still_wins() {
     .fetch_one(&state.pool)
     .await
     .unwrap();
-    assert!(!payload.contains("2999"), "το μελλοντικό updated_at κόπηκε (clamp): {payload}");
+    assert!(
+        !payload.contains("2999"),
+        "το μελλοντικό updated_at κόπηκε (clamp): {payload}"
+    );
 
     // Μεταγενέστερη, πραγματική αλλαγή με ΜΙΚΡΟΤΕΡΟ raw timestamp από το 2999.
     // Χωρίς clamp θα έχανε ως «stale»· με clamp κερδίζει.
@@ -2365,5 +3013,8 @@ async fn future_dated_push_is_clamped_so_later_edit_still_wins() {
     .fetch_one(&state.pool)
     .await
     .unwrap();
-    assert_eq!(title, "correct later", "η μεταγενέστερη αλλαγή κέρδισε παρά το μικρότερο raw timestamp");
+    assert_eq!(
+        title, "correct later",
+        "η μεταγενέστερη αλλαγή κέρδισε παρά το μικρότερο raw timestamp"
+    );
 }
