@@ -10,7 +10,7 @@
  * να είναι φρέσκο. Ο server ξαναϋπολογίζει level/tier — εδώ στέλνουμε μόνο ό,τι
  * είναι client-authoritative.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api/client';
 import type { SocialMe, FriendRow, LeaderboardRow } from '@/lib/api/types';
 import {
@@ -26,6 +26,7 @@ import {
 } from '@/lib/gamification';
 
 export type LeaderboardScope = 'friends' | 'global';
+export type LeaderboardPeriod = 'all' | 'week';
 
 export interface SocialState {
   loading: boolean;
@@ -36,6 +37,7 @@ export interface SocialState {
   requests: FriendRow[];
   leaderboard: LeaderboardRow[];
   scope: LeaderboardScope;
+  period: LeaderboardPeriod;
 }
 
 /** Πόσα earned badges — parse του JSON string με ασφάλεια (offline/corrupt → 0). */
@@ -49,9 +51,10 @@ export function badgeCount(badgesJson: string): number {
 }
 
 /** Το snapshot που είναι client-authoritative (ο server clamp-άρει/παράγει level). */
-export function statsBodyFromInput(data: GamificationInput) {
+export function statsBodyFromInput(data: GamificationInput & { weekXp?: number }) {
   return {
     xp: totalXp(data),
+    week_xp: data.weekXp ?? 0,
     streak_days: data.streakDays,
     longest_streak_days: data.longestStreakDays,
     badges: badgeStates(data)
@@ -62,6 +65,7 @@ export function statsBodyFromInput(data: GamificationInput) {
 
 export interface SocialActions {
   setScope: (scope: LeaderboardScope) => void;
+  setPeriod: (period: LeaderboardPeriod) => void;
   reload: () => Promise<void>;
   addFriend: (username: string) => Promise<{ ok: boolean; error?: string }>;
   accept: (id: string) => Promise<void>;
@@ -79,8 +83,10 @@ export interface SocialActions {
  */
 export function useSocial(
   enabled: boolean,
-  input: GamificationInput | null,
+  input: (GamificationInput & { weekXp?: number }) | null,
 ): [SocialState, SocialActions] {
+  const scopeRef = useRef<LeaderboardScope>('friends');
+  const periodRef = useRef<LeaderboardPeriod>('all');
   const [state, setState] = useState<SocialState>({
     loading: enabled,
     offline: false,
@@ -89,17 +95,18 @@ export function useSocial(
     requests: [],
     leaderboard: [],
     scope: 'friends',
+    period: 'all',
   });
 
   const loadAll = useCallback(
-    async (scope: LeaderboardScope) => {
+    async (scope: LeaderboardScope, period: LeaderboardPeriod) => {
       if (!enabled) return;
       try {
         const [me, friends, requests, leaderboard] = await Promise.all([
           api.socialMe(),
           api.socialFriends(),
           api.socialRequests(),
-          api.socialLeaderboard(scope),
+          api.socialLeaderboard(scope, period),
         ]);
         setState((s) => ({
           ...s,
@@ -110,16 +117,20 @@ export function useSocial(
           requests,
           leaderboard,
           scope,
+          period,
         }));
         // Best-effort cache για offline reads (δεν μπλοκάρει το UI).
         void writeFriendsCache(friends, requests);
-        void writeLeaderboardCache(scope, leaderboard);
+        void writeLeaderboardCache(`${scope}:${period}`, leaderboard);
       } catch (e) {
         // ApiError = server απάντησε (π.χ. 401)· network reject = offline.
         const offline = !(e instanceof ApiError);
         if (offline) {
           // Δείξε last-known από cache αντί για κενό.
-          const [cached, board] = await Promise.all([readFriendsCache(), readLeaderboardCache(scope)]);
+          const [cached, board] = await Promise.all([
+            readFriendsCache(),
+            readLeaderboardCache(`${scope}:${period}`),
+          ]);
           setState((s) => ({
             ...s,
             loading: false,
@@ -128,6 +139,7 @@ export function useSocial(
             requests: cached.requests,
             leaderboard: board,
             scope,
+            period,
           }));
         } else {
           setState((s) => ({ ...s, loading: false, offline: false }));
@@ -152,37 +164,50 @@ export function useSocial(
           /* offline / not-critical — το load από κάτω θα δείξει την κατάσταση */
         }
       }
-      if (!cancelled) await loadAll('friends');
+      if (!cancelled) await loadAll(scopeRef.current, periodRef.current);
     })();
     return () => {
       cancelled = true;
     };
     // input αλλάζει reference κάθε live-query· κλειδώνουμε στο ουσιαστικό xp.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, input ? totalXp(input) : 0]);
+  }, [enabled, input ? totalXp(input) : 0, input?.weekXp ?? 0]);
 
   const setScope = useCallback(
     (scope: LeaderboardScope) => {
+      scopeRef.current = scope;
       setState((s) => ({ ...s, scope }));
-      void loadAll(scope);
+      void loadAll(scope, periodRef.current);
     },
     [loadAll],
   );
 
-  const reload = useCallback(() => loadAll(state.scope), [loadAll, state.scope]);
+  const setPeriod = useCallback(
+    (period: LeaderboardPeriod) => {
+      periodRef.current = period;
+      setState((s) => ({ ...s, period }));
+      void loadAll(scopeRef.current, period);
+    },
+    [loadAll],
+  );
+
+  const reload = useCallback(
+    () => loadAll(state.scope, state.period),
+    [loadAll, state.scope, state.period],
+  );
 
   const addFriend = useCallback(
     async (username: string) => {
       try {
         await api.socialSendRequest(username.trim());
-        await loadAll(state.scope);
+        await loadAll(state.scope, state.period);
         return { ok: true };
       } catch (e) {
         const code = e instanceof ApiError ? e.code : 'offline';
         return { ok: false, error: code };
       }
     },
-    [loadAll, state.scope],
+    [loadAll, state.scope, state.period],
   );
 
   const accept = useCallback(
@@ -194,9 +219,9 @@ export function useSocial(
       } catch {
         /* offline / server error — best-effort */
       }
-      await loadAll(state.scope);
+      await loadAll(state.scope, state.period);
     },
-    [loadAll, state.scope],
+    [loadAll, state.scope, state.period],
   );
 
   const remove = useCallback(
@@ -206,9 +231,9 @@ export function useSocial(
       } catch {
         /* offline / server error — best-effort */
       }
-      await loadAll(state.scope);
+      await loadAll(state.scope, state.period);
     },
-    [loadAll, state.scope],
+    [loadAll, state.scope, state.period],
   );
 
   const updateProfile = useCallback(
@@ -225,5 +250,5 @@ export function useSocial(
     [],
   );
 
-  return [state, { setScope, reload, addFriend, accept, remove, updateProfile }];
+  return [state, { setScope, setPeriod, reload, addFriend, accept, remove, updateProfile }];
 }

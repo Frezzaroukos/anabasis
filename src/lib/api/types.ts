@@ -122,6 +122,23 @@ export interface SocialMe {
   has_stats: boolean;
 }
 
+/** Κατάσταση σχέσης όπως τη βλέπει ο τρέχων χρήστης. */
+export type FriendshipState = 'self' | 'friend' | 'in' | 'out' | null;
+
+/** Μία δημόσια πρόταση από το search (aggregate stats μόνο). */
+export interface SocialSearchResult {
+  username: string;
+  display_name: string | null;
+  level: number;
+  xp: number;
+  tier: string;
+  altitude_m: number;
+  streak_days: number;
+  /** JSON array από earned badge ids */
+  badges: string;
+  friendship: FriendshipState;
+}
+
 /** Ένας φίλος ή εκκρεμές αίτημα (aggregate stats μόνο). */
 export interface FriendRow {
   account_id: string;
@@ -150,6 +167,8 @@ export interface LeaderboardRow {
   streak_days: number;
   /** JSON array από earned badge ids */
   badges: string;
+  /** XP τελευταίων 7 ημερών (ο server το επιστρέφει πάντα· optional για mocks). */
+  week_xp?: number;
   is_self: boolean;
 }
 
@@ -165,6 +184,9 @@ export interface PublicProfile {
   badges: string;
   streak_days: number;
   longest_streak_days: number;
+  /** Μόνο στο logged-in endpoint· null στο δημόσιο/anonymous. */
+  account_id?: string | null;
+  friendship?: FriendshipState;
 }
 
 /** Το snapshot που δημοσιεύει ο client (server ξαναϋπολογίζει level/tier). */

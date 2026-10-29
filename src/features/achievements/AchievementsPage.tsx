@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Lock } from 'lucide-react';
+import { ArrowRight, Lock, Users } from 'lucide-react';
 import { getGamificationInput } from '@/lib/db/queries';
 import { useCountUp } from '@/hooks/useCountUp';
 import { Logo } from '@/components/Logo';
@@ -11,7 +12,6 @@ import {
   hasActivity,
   type GamificationInput,
 } from '@/lib/gamification';
-import { FriendsSection } from './FriendsSection';
 
 const RING_R = 52;
 const RING_CIRC = 2 * Math.PI * RING_R;
@@ -30,7 +30,7 @@ export function AchievementsPage() {
       <div className="space-y-6">
         <Header t={t} />
         <div className="h-56 animate-pulse rounded-xl bg-card" />
-        <FriendsSection />
+        <CommunityLink />
       </div>
     );
   }
@@ -43,7 +43,7 @@ export function AchievementsPage() {
           <Logo className="mx-auto h-12 w-12 text-muted-foreground" />
           <p className="mt-4 text-sm text-muted-foreground">{t('gami.emptyHint')}</p>
         </section>
-        <FriendsSection />
+        <CommunityLink />
       </div>
     );
   }
@@ -54,7 +54,7 @@ export function AchievementsPage() {
       <XpHero data={data} />
       <Badges data={data} />
       <Breakdown data={data} />
-      <FriendsSection />
+      <CommunityLink />
     </div>
   );
 }
@@ -65,6 +65,27 @@ function Header({ t }: { t: ReturnType<typeof useTranslation>['t'] }) {
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t('gami.title')}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{t('gami.subtitle')}</p>
     </header>
+  );
+}
+
+function CommunityLink() {
+  const { t } = useTranslation();
+  return (
+    <Link
+      to="/community"
+      className="group flex items-center justify-between gap-4 rounded-xl bg-card p-4 transition-colors hover:bg-card/80"
+    >
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-gold/10 text-gold">
+          <Users className="h-5 w-5" />
+        </span>
+        <div>
+          <p className="text-sm font-medium">{t('community.title')}</p>
+          <p className="text-xs text-muted-foreground">{t('community.short')}</p>
+        </div>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+    </Link>
   );
 }
 

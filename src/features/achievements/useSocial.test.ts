@@ -23,6 +23,11 @@ describe('statsBodyFromInput', () => {
     expect(body).not.toHaveProperty('tier');
   });
 
+  it('στέλνει week_xp όταν υπάρχει, αλλιώς 0', () => {
+    expect(statsBodyFromInput(base).week_xp).toBe(0);
+    expect(statsBodyFromInput({ ...base, weekXp: 123 }).week_xp).toBe(123);
+  });
+
   it('περιλαμβάνει μόνο earned badge ids', () => {
     const body = statsBodyFromInput(base);
     // 12 workouts → first-ascent + ten-sessions· 9-day streak → week-streak·

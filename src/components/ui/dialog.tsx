@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from './button';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useBackToClose } from '@/hooks/useBackToClose';
@@ -39,7 +40,7 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-6" role="dialog" aria-modal="true">
       <button
         type="button"
@@ -71,6 +72,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

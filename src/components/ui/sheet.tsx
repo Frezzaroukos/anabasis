@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useBackToClose } from '@/hooks/useBackToClose';
@@ -38,7 +39,7 @@ export function BottomSheet({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col" role="dialog" aria-modal="true">
       <button
         type="button"
@@ -69,6 +70,7 @@ export function BottomSheet({
         )}
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

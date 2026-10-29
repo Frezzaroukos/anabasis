@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ import {
   deleteAccount,
   login,
   logout,
+  logoutOtherDevices,
   requestMagicLink,
   signup,
   UnsyncedChangesError,
@@ -48,6 +49,46 @@ function Field({
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       {children}
     </label>
+  );
+}
+
+function PasswordInput({
+  label,
+  value,
+  onChange,
+  autoComplete,
+  minLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  minLength?: number;
+}) {
+  const { t } = useTranslation();
+  const [visible, setVisible] = useState(false);
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <Input
+          type={visible ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          required
+          minLength={minLength}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="pr-10"
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={t(visible ? 'account.hidePassword' : 'account.showPassword')}
+          className="absolute right-1 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+        >
+          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+    </Field>
   );
 }
 
@@ -103,6 +144,7 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const providers = useAuthProviders();
@@ -136,12 +178,17 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
       setErrorKey('account.errorPasswordTooShort');
       return;
     }
+    if (mode === 'signup' && password !== confirmPassword) {
+      setErrorKey('account.errorPasswordMismatch');
+      return;
+    }
 
     setBusy(true);
     try {
       if (mode === 'signup') await signup(email.trim(), password);
       else await login(email.trim(), password);
       setPassword('');
+      setConfirmPassword('');
     } catch (err) {
       setErrorKey(errorKeyFor(err));
     } finally {
@@ -163,6 +210,7 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
             type="button"
             onClick={() => {
               setMode(m);
+              setConfirmPassword('');
               setErrorKey(null);
             }}
             className={`flex-1 rounded-md px-3 py-1.5 text-sm transition-colors tap:flex tap:min-h-11 tap:items-center tap:justify-center ${
@@ -197,19 +245,25 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
             onChange={(e) => setEmail(e.target.value)}
           />
         </Field>
-        <Field label={t('account.password')}>
-          <Input
-            type="password"
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            required
-            // Το ≥8 ισχύει μόνο στο signup (server contract) — ένας υπάρχων
-            // λογαριασμός δεν πρέπει να μπλοκάρεται στο login από HTML5
-            // validation επειδή δοκιμάζει (σωστά ή λάθος) κάτι πιο κοντό.
-            minLength={mode === 'signup' ? 8 : undefined}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+        <PasswordInput
+          label={t('account.password')}
+          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+          // Το ≥8 ισχύει μόνο στο signup (server contract) — ένας υπάρχων
+          // λογαριασμός δεν πρέπει να μπλοκάρεται στο login από HTML5
+          // validation επειδή δοκιμάζει (σωστά ή λάθος) κάτι πιο κοντό.
+          minLength={mode === 'signup' ? 8 : undefined}
+          value={password}
+          onChange={setPassword}
+        />
+        {mode === 'signup' && (
+          <PasswordInput
+            label={t('account.confirmPassword')}
+            autoComplete="new-password"
+            minLength={8}
+            value={confirmPassword}
+            onChange={setConfirmPassword}
           />
-        </Field>
+        )}
 
         {errorKey && (
           <p className="text-xs text-destructive" role="alert">
@@ -221,6 +275,17 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
           {busy ? t('common.loading') : t(mode === 'login' ? 'account.login' : 'account.signup')}
         </Button>
       </form>
+
+      {mode === 'login' && providers.magic && !magicSent && (
+        <button
+          type="button"
+          onClick={() => void onMagicLink()}
+          disabled={magicBusy}
+          className="mt-3 inline-flex min-h-11 items-center text-sm text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
+        >
+          {t('account.forgotPassword')}
+        </button>
+      )}
 
       {providers.magic &&
         (magicSent ? (
@@ -270,9 +335,12 @@ function SignedInPanel({
   const [adminStatusKey, setAdminStatusKey] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [changeBusy, setChangeBusy] = useState(false);
   const [changeStatusKey, setChangeStatusKey] = useState<string | null>(null);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutOthersBusy, setLogoutOthersBusy] = useState(false);
+  const [logoutOthersStatusKey, setLogoutOthersStatusKey] = useState<string | null>(null);
   // >0 = υπάρχουν ασυγχρόνιστες αλλαγές· δείχνουμε «logout ούτως ή άλλως;».
   const [unsyncedPending, setUnsyncedPending] = useState(0);
   const [showDelete, setShowDelete] = useState(false);
@@ -287,12 +355,17 @@ function SignedInPanel({
       setChangeStatusKey('account.errorPasswordTooShort');
       return;
     }
+    if (newPassword !== confirmNewPassword) {
+      setChangeStatusKey('account.errorPasswordMismatch');
+      return;
+    }
     setChangeBusy(true);
     setChangeStatusKey(null);
     try {
       await changePassword(currentPassword, newPassword);
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmNewPassword('');
       setShowChangePassword(false);
       setChangeStatusKey('account.passwordChanged');
     } catch (err) {
@@ -347,6 +420,22 @@ function SignedInPanel({
     } catch {
       setDeleteErrorKey('account.deleteError');
       setDeleteBusy(false);
+    }
+  };
+
+  const onLogoutOthers = async () => {
+    if (logoutOthersBusy) return;
+    setLogoutOthersBusy(true);
+    setLogoutOthersStatusKey(null);
+    try {
+      const revoked = await logoutOtherDevices();
+      setLogoutOthersStatusKey(
+        revoked > 0 ? 'account.logoutOthersDone' : 'account.logoutOthersNone',
+      );
+    } catch {
+      setLogoutOthersStatusKey('account.logoutOthersError');
+    } finally {
+      setLogoutOthersBusy(false);
     }
   };
 
@@ -443,25 +532,26 @@ function SignedInPanel({
 
         {showChangePassword && (
           <form onSubmit={(e) => void onChangePassword(e)} className="mt-3 space-y-3">
-            <Field label={t('account.currentPassword')}>
-              <Input
-                type="password"
-                autoComplete="current-password"
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </Field>
-            <Field label={t('account.newPassword')}>
-              <Input
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </Field>
+            <PasswordInput
+              label={t('account.currentPassword')}
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={setCurrentPassword}
+            />
+            <PasswordInput
+              label={t('account.newPassword')}
+              autoComplete="new-password"
+              minLength={8}
+              value={newPassword}
+              onChange={setNewPassword}
+            />
+            <PasswordInput
+              label={t('account.confirmPassword')}
+              autoComplete="new-password"
+              minLength={8}
+              value={confirmNewPassword}
+              onChange={setConfirmNewPassword}
+            />
             <Button type="submit" size="sm" disabled={changeBusy}>
               {changeBusy ? t('common.loading') : t('common.save')}
             </Button>
@@ -475,10 +565,25 @@ function SignedInPanel({
         )}
       </div>
 
-      <div className="mt-3 border-t border-border/60 pt-3">
-        <Button size="sm" variant="ghost" disabled={logoutBusy} onClick={() => void onLogout()}>
-          {t('account.logout')}
-        </Button>
+      <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="ghost" disabled={logoutBusy} onClick={() => void onLogout()}>
+            {t('account.logout')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={logoutOthersBusy}
+            onClick={() => void onLogoutOthers()}
+          >
+            {logoutOthersBusy ? t('common.loading') : t('account.logoutOthers')}
+          </Button>
+        </div>
+        {logoutOthersStatusKey && (
+          <p className="text-xs text-muted-foreground" role="status">
+            {t(logoutOthersStatusKey)}
+          </p>
+        )}
         {unsyncedPending > 0 && (
           <div className="mt-2 rounded-md bg-destructive/10 p-2 text-xs" role="alert">
             <p className="text-destructive">

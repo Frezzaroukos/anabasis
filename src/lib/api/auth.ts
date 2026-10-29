@@ -161,6 +161,12 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await api.changePassword(currentPassword, newPassword);
 }
 
+/** Ακυρώνει όλες τις άλλες συσκευές· επιστρέφει πόσες sessions έκλεισαν. */
+export async function logoutOtherDevices(): Promise<number> {
+  const { revoked } = await api.logoutOthers();
+  return revoked;
+}
+
 /** Ζητά magic-link στο email του χρήστη. Ο server επιστρέφει πάντα ok (no
  * enumeration)· το component δείχνει «τσέκαρε το email σου» ό,τι κι αν ισχύει. */
 export async function requestMagicLink(email: string): Promise<void> {

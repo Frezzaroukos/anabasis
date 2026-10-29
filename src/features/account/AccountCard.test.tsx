@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
@@ -49,6 +49,39 @@ function renderCard() {
 function googleButton() {
   return screen.queryByRole('button', { name: /google/i });
 }
+
+describe('AccountCard — signup guardrails', () => {
+  it('δεν υποβάλλει signup όταν το confirm password δεν ταιριάζει', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ google: false, magic: false })));
+    renderCard();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sign up' })[0]!);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'correcthorsebattery' },
+    });
+    fireEvent.change(screen.getByLabelText('Confirm password'), {
+      target: { value: 'different-password' },
+    });
+    fireEvent.submit(document.querySelector('form')!);
+
+    expect(await screen.findByText("Passwords don't match.")).toBeTruthy();
+    const signupCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.find(([url]) =>
+      String(url).includes('/auth/signup'),
+    );
+    expect(signupCall).toBeUndefined();
+  });
+
+  it('δείχνει forgot-password link μόνο όταν ο server έχει magic-link', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ google: false, magic: true })));
+    renderCard();
+    expect(
+      await screen.findByRole('button', {
+        name: 'Forgot password? Email me a sign-in link',
+      }),
+    ).toBeTruthy();
+  });
+});
 
 describe('AccountCard — signed-out Google button gating', () => {
   it('κρυμμένο όσο εκκρεμεί η απάντηση του /api/auth/oauth/providers', () => {

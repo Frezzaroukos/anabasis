@@ -701,14 +701,17 @@ export async function getGamificationInput(): Promise<{
   masteredSkills: number;
   streakDays: number;
   longestStreakDays: number;
+  /** XP από events των τελευταίων 7 ημερών — για το weekly leaderboard. */
+  weekXp: number;
 }> {
   const uid = getCurrentUserId();
-  const [workouts, prs, insights, skillStats, progress] = await Promise.all([
+  const [workouts, prs, insights, skillStats, progress, completions] = await Promise.all([
     listCompletedWorkouts(),
     db.personal_records.where('user_id').equals(uid).toArray(),
     getTrainingInsights(30),
     getSkillStepStats(),
     getAllSkillProgress(),
+    db.user_skill_step_completions.where('user_id').equals(uid).toArray(),
   ]);
   // Τα sets ανήκουν μέσω workout_id (δεν έχουν δικό τους user_id index) —
   // παίρνουμε μόνο όσα ανήκουν σε ΔΙΚΕΣ σου ολοκληρωμένες προπονήσεις.
@@ -717,6 +720,30 @@ export async function getGamificationInput(): Promise<{
   const totalSets = sets.filter((s) => s.deleted_at == null && !s.is_warmup).length;
   const masteredSteps = [...skillStats.values()].reduce((sum, s) => sum + s.done, 0);
   const masteredSkills = [...progress.values()].filter((p) => p.status === 'mastered').length;
+
+  // Rolling 7-day window (σήμερα + 6 προηγούμενες ημέρες), τοπικά μεσάνυχτα.
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+  const inWeek = (iso: string) => new Date(iso) >= weekStart;
+  const weekWorkoutIds = new Set(
+    workouts.filter((w) => inWeek(w.started_at)).map((w) => w.id),
+  );
+  const weekSets = sets.filter(
+    (s) => weekWorkoutIds.has(s.workout_id) && s.deleted_at == null && !s.is_warmup,
+  ).length;
+  const weekPrs = prs.filter((p) => inWeek(p.achieved_at)).length;
+  // Ένα βήμα μπορεί να ξανακατακτηθεί μετά από reset· μετρά μία φορά/εβδομάδα.
+  const weekStepIds = new Set(
+    completions.filter((c) => inWeek(c.achieved_at)).map((c) => c.skill_step_id),
+  );
+  const totalXpValue =
+    workouts.length * 100 + totalSets * 5 + prs.length * 50 + masteredSteps * 40;
+  const weekXp = Math.min(
+    weekWorkoutIds.size * 100 + weekSets * 5 + weekPrs * 50 + weekStepIds.size * 40,
+    totalXpValue,
+  );
+
   return {
     completedWorkouts: workouts.length,
     totalSets,
@@ -725,6 +752,7 @@ export async function getGamificationInput(): Promise<{
     masteredSkills,
     streakDays: insights.streakDays,
     longestStreakDays: insights.longestStreakDays,
+    weekXp,
   };
 }
 

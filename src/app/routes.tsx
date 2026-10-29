@@ -39,6 +39,7 @@ const WorkoutDetailPage = lazyPage(() => import('@/features/history/WorkoutDetai
 const BrandingPage = lazyPage(() => import('@/features/branding/BrandingPage'), 'BrandingPage');
 const AdminPage = lazyPage(() => import('@/features/admin/AdminPage'), 'AdminPage');
 const AchievementsPage = lazyPage(() => import('@/features/achievements/AchievementsPage'), 'AchievementsPage');
+const CommunityPage = lazyPage(() => import('@/features/community/CommunityPage'), 'CommunityPage');
 const PublicProfilePage = lazyPage(() => import('@/features/achievements/PublicProfilePage'), 'PublicProfilePage');
 const LegalPage = lazyPage(() => import('@/features/legal/LegalPage'), 'LegalPage');
 const HelpPage = lazyPage(() => import('@/features/support/HelpPage'), 'HelpPage');
@@ -68,6 +69,7 @@ export const router = createBrowserRouter(
       { path: 'workout/active', element: <ActiveWorkoutRoute /> },
       { path: 'admin', element: <AdminPage /> },
       { path: 'achievements', element: <AchievementsPage /> },
+      { path: 'community', element: <CommunityPage /> },
       { path: 'u/:username', element: <PublicProfilePage /> },
       { path: 'programs', element: <ProgramsPage /> },
       { path: 'exercises', element: <ExercisesPage /> },

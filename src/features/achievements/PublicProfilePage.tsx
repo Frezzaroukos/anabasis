@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Flame, Award, Lock } from 'lucide-react';
+import { Flame, Award, Lock, UserPlus, Check, Send, X } from 'lucide-react';
 import { api, ApiError } from '@/lib/api/client';
 import { useAuth } from '@/lib/api/auth';
-import type { PublicProfile } from '@/lib/api/types';
+import type { FriendshipState, PublicProfile } from '@/lib/api/types';
 import { levelProgress, BADGES } from '@/lib/gamification';
 import { Logo } from '@/components/Logo';
+import { Button } from '@/components/ui/button';
 
 const RING_R = 52;
 const RING_CIRC = 2 * Math.PI * RING_R;
@@ -29,11 +30,14 @@ export function PublicProfilePage() {
   const [state, setState] = useState<State>({ kind: 'loading' });
 
   useEffect(() => {
-    if (!auth) return; // logged-out: δείχνουμε sign-in prompt παρακάτω
     let cancelled = false;
     setState({ kind: 'loading' });
-    api
-      .socialPublicProfile(username)
+    // Logged-in: friends μπορούν να δουν και ιδιωτικό προφίλ. Logged-out:
+    // μόνο το public endpoint, δηλαδή μόνο ό,τι έχει share_profile=1.
+    const request = auth
+      ? api.socialPublicProfile(username)
+      : api.socialPublicProfilePublic(username);
+    request
       .then((profile) => {
         if (!cancelled) setState({ kind: 'ok', profile });
       })
@@ -48,15 +52,14 @@ export function PublicProfilePage() {
 
   return (
     <div className="animate-rise-in space-y-6">
-      <Link to="/achievements" className="text-xs text-muted-foreground hover:text-foreground">
-        ← {t('gami.title')}
+      <Link
+        to={auth ? '/achievements' : '/'}
+        className="text-xs text-muted-foreground hover:text-foreground"
+      >
+        ← {auth ? t('gami.title') : t('nav.home')}
       </Link>
 
-      {!auth ? (
-        <Shell>
-          <p className="text-sm text-muted-foreground">{t('social.signInPrompt')}</p>
-        </Shell>
-      ) : state.kind === 'loading' ? (
+      {state.kind === 'loading' ? (
         <Shell>
           <div className="mx-auto h-40 w-40 animate-pulse rounded-full bg-muted/40" />
         </Shell>
@@ -69,9 +72,159 @@ export function PublicProfilePage() {
           <p className="text-sm text-muted-foreground">{t('social.profile.notFound')}</p>
         </Shell>
       ) : (
-        <ProfileView profile={state.profile} />
+        <>
+          <ProfileView profile={state.profile} />
+          {auth ? (
+            <ProfileActions
+              profile={state.profile}
+              onChange={(friendship) =>
+                setState((current) =>
+                  current.kind === 'ok'
+                    ? { ...current, profile: { ...current.profile, friendship } }
+                    : current,
+                )
+              }
+            />
+          ) : (
+            <JoinCta />
+          )}
+        </>
       )}
     </div>
+  );
+}
+
+function ProfileActions({
+  profile,
+  onChange,
+}: {
+  profile: PublicProfile;
+  onChange: (friendship: FriendshipState) => void;
+}) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const friendship = profile.friendship ?? null;
+  const username = profile.username;
+  const accountId = profile.account_id;
+
+  const run = async (
+    action: () => Promise<FriendshipState | void>,
+    fallback: FriendshipState,
+  ) => {
+    if (busy) return;
+    setBusy(true);
+    setError(false);
+    try {
+      const next = await action();
+      onChange(next ?? fallback);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (friendship === 'self') {
+    return (
+      <div className="flex justify-center">
+        <Button asChild variant="outline">
+          <Link to="/community">{t('social.profile.manageProfile')}</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (friendship === 'friend') {
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Check className="h-4 w-4 text-[hsl(var(--gold))]" />
+          {t('social.profile.friends')}
+        </span>
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/community">{t('social.profile.manageProfile')}</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (friendship === 'out') {
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Send className="h-4 w-4" />
+          {t('social.profile.requestSent')}
+        </span>
+        {accountId && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => void run(() => api.socialRemove(accountId), null)}
+          >
+            <X className="h-4 w-4" />
+            {t('social.profile.cancelRequest')}
+          </Button>
+        )}
+        {error && <p className="text-xs text-destructive">{t('social.profile.actionError')}</p>}
+      </div>
+    );
+  }
+
+  if (friendship === 'in') {
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button
+          disabled={busy || !accountId}
+          onClick={() => accountId && void run(() => api.socialAccept(accountId), 'friend')}
+        >
+          <Check className="h-4 w-4" />
+          {t('social.profile.acceptRequest')}
+        </Button>
+        <Button
+          variant="ghost"
+          disabled={busy || !accountId}
+          onClick={() => accountId && void run(() => api.socialRemove(accountId), null)}
+        >
+          <X className="h-4 w-4" />
+          {t('social.profile.declineRequest')}
+        </Button>
+        {error && <p className="text-xs text-destructive">{t('social.profile.actionError')}</p>}
+      </div>
+    );
+  }
+
+  if (!username) return null;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <Button
+        disabled={busy}
+        onClick={() =>
+          void run(async () => {
+            const res = await api.socialSendRequest(username);
+            return res.status === 'accepted' ? 'friend' : 'out';
+          }, 'out')
+        }
+      >
+        <UserPlus className="h-4 w-4" />
+        {t('social.profile.addFriend')}
+      </Button>
+      {error && <p className="text-xs text-destructive">{t('social.profile.actionError')}</p>}
+    </div>
+  );
+}
+
+function JoinCta() {
+  const { t } = useTranslation();
+  return (
+    <section className="rounded-xl border border-[hsl(var(--gold)/0.25)] bg-card p-6 text-center">
+      <p className="font-display text-lg font-semibold">{t('social.profile.publicCtaTitle')}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{t('social.profile.publicCtaBody')}</p>
+      <Button asChild className="mt-4">
+        <Link to="/settings/account">{t('social.profile.publicCtaButton')}</Link>
+      </Button>
+    </section>
   );
 }
 

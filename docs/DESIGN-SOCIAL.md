@@ -42,7 +42,16 @@ workouts/sets/PRs/body/goals.
 - `profile_stats` (aggregate snapshot), published ΜΟΝΟ αν `share_profile OR ≥1
   accepted friend` (fully-private solo user γράφει τίποτα).
 - Endpoints: friend request/accept/decline/unfriend· `GET /user/{username}`·
-  leaderboard (friends scope + global). Wire στο `app.rs` κάτω από sync_governor.
+  leaderboard (friends scope + global, `period=all|week`)· `GET /search?q=`
+  (μόνο `share_profile=1`, εκτός εαυτού, max 8, friendship state)· `GET
+  /public/user/{username}` για logged-out invite links. Το logged-in profile
+  γυρνά `account_id` + `friendship` (`friend|in|out|null`)· το anonymous τα
+  γυρνά null. Wire στο `app.rs` κάτω από sync_governor (60 req/min).
+- **Weekly board (0008_week_xp.sql):** ο client στέλνει `week_xp` = XP από
+  workouts/sets/PRs/skill steps των τελευταίων 7 ημερών· ο server το clamp-άρει
+  και κρατά `week_xp_at`. Το `period=week` ταξινομεί μόνο φρέσκες μετρήσεις
+  (ανενεργά προφίλ φεύγουν· ο εαυτός μένει με 0). Είναι ακόμα client-reported —
+  ίδιο trust model με το συνολικό XP, όχι server-authoritative anti-cheat.
 
 ## Privacy (SQL-enforced, ΟΧΙ client)
 - Leaderboard + profile view: `WHERE share_profile=1` + accepted-friend check **στο

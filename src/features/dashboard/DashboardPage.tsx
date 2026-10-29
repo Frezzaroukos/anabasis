@@ -33,6 +33,7 @@ import { WeekStrip } from './components/WeekStrip';
 import { mondayOf } from './components/weekMath';
 import { NextMovesCard } from '@/features/coach/NextMovesCard';
 import { DeloadCard } from '@/features/coach/DeloadCard';
+import { CommunityCard } from '@/features/community/CommunityCard';
 
 /** Πόσες πλήρεις μέρες πέρασαν από ένα ISO timestamp μέχρι σήμερα (τοπικά). */
 function daysSince(iso: string): number {
@@ -68,6 +69,7 @@ const HERO_UNIT_KEY: Record<HeroTier, string> = {
 const CARD_COMPONENTS: Record<DashboardCardKey, React.ComponentType> = {
   skillLadder: SkillLadderCard,
   cta: StartWorkoutCta,
+  community: CommunityCard,
   recentActivity: RecentActivityCard,
   altitude: AltitudeCard,
   goals: GoalsCard,

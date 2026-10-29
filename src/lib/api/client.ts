@@ -26,6 +26,7 @@ import type {
   OAuthProviders,
   SocialMe,
   FriendRow,
+  SocialSearchResult,
   LeaderboardRow,
   PublicProfile,
   PublishStatsBody,
@@ -218,6 +219,13 @@ export const api = {
     });
   },
 
+  logoutOthers(): Promise<{ revoked: number }> {
+    return request<{ revoked: number }>('/auth/logout_others', {
+      method: 'POST',
+      body: {},
+    });
+  },
+
   async claimAdmin(code: string): Promise<void> {
     await request('/auth/claim_admin', { method: 'POST', body: { code } });
     // Ο ρόλος άλλαξε server-side — ενημέρωσε το cached account ώστε το UI
@@ -310,6 +318,10 @@ export const api = {
     return request<FriendRow[]>('/social/requests');
   },
 
+  socialSearch(query: string): Promise<SocialSearchResult[]> {
+    return request<SocialSearchResult[]>(`/social/search?q=${encodeURIComponent(query)}`);
+  },
+
   socialSendRequest(username: string): Promise<{ status: string }> {
     return request('/social/requests', { method: 'POST', body: { username } });
   },
@@ -322,11 +334,19 @@ export const api = {
     return request(`/social/friends/${id}/remove`, { method: 'POST', body: {} });
   },
 
-  socialLeaderboard(scope: 'friends' | 'global'): Promise<LeaderboardRow[]> {
-    return request<LeaderboardRow[]>(`/social/leaderboard?scope=${scope}`);
+  socialLeaderboard(
+    scope: 'friends' | 'global',
+    period: 'all' | 'week' = 'all',
+  ): Promise<LeaderboardRow[]> {
+    return request<LeaderboardRow[]>(`/social/leaderboard?scope=${scope}&period=${period}`);
   },
 
   socialPublicProfile(username: string): Promise<PublicProfile> {
     return request<PublicProfile>(`/social/user/${encodeURIComponent(username)}`);
+  },
+
+  /** Logged-out άνοιγμα invite link — μόνο ό,τι έχει `share_profile=1`. */
+  socialPublicProfilePublic(username: string): Promise<PublicProfile> {
+    return request<PublicProfile>(`/social/public/user/${encodeURIComponent(username)}`);
   },
 };

@@ -1,8 +1,21 @@
 # Anabasis — STATUS
 
-**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-26
+**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-28
 
 ## Τώρα
+- **28/10 God-level λογαριασμοί + social (OpenCode):**
+  - **Έγινε:** `GET /api/social/search` (min 2 chars, μόνο δημόσια/ενεργά, εκτός εαυτού, friendship state) + `POST /api/auth/logout_others`· `PublicProfile` με `account_id`/`friendship` (null στο anonymous)· ProfileCard με edit username/display_name, counters, share/invite· AddFriend με debounced search-as-you-type· Connections tabs Friends/Incoming/Sent με accept/decline/cancel/remove· PublicProfile actions (add/accept/decline/cancel/manage)· AccountCard confirm-password + show/hide + forgot-password magic link + logout-others· i18n EN/EL· tests 517 frontend + 13/70 cargo, tsc/eslint PASS· release build + restart τοπικού API (health 200)· device-check `/community` & `/settings/account` 10/10 (μόνο tiny-text/429 warnings).
+  - **Deploy 18:42:** `build:staged && deploy:promote` → `releases/20261028-184249-914292488`· live `/community` 200 + νέο `index-DFja7fmj.js`· `/api/social/search` & `/api/auth/logout_others` 401 χωρίς auth· live device-check `/community` 10/10.
+  - **Μένει:** server-authoritative XP/anti-cheat· visual review signed-in profile edit με πραγματικό username.
+  - **Θέλει εσένα:** τίποτα· rollback `npm run deploy:rollback` αν δεις πρόβλημα.
+- **26/10 Κοινότητα ως κύριος προορισμός (OpenCode):**
+  - **Έγινε:** νέα σελίδα `/community` με header + FriendsSection, primary tab «Κοινότητα» (οι Ασκήσεις μετακινήθηκαν στο «Περισσότερα»), CommunityLink στο τέλος του «Η ανάβασή σου»· κάρτα «Η παρέα σου» στην Αρχική (top-3 + CTA, sign-in CTA για επισκέπτες)· invite link με runtime origin (σωστό και μετά από migration domain) + QR sheet (`qrcode.react`, decoded σε `/u/<username>`)· portal σε `document.body` για BottomSheet/ConfirmDialog (σωστό z-index/stacking κάτω από το page transition)· leaderboard podium top-3 + initials avatars + εβδομαδιαίος πίνακας (`period=week`, client-computed rolling 7d `week_xp`, server clamp (0..total) + `week_xp_at` freshness), διόρθωση toggle «Show on global board» (knob έξω από το track) + private hint αντί για invite όταν το προφίλ είναι ιδιωτικό· logged-out invite link `/api/social/public/user/:username` (SQL `share_profile=1`, uniform 404) με CTA «Start your ascent»· i18n EN/EL + nav test· migration `0008_week_xp` εφαρμόστηκε στο τοπικό API (restart, health 200)· 513/513 frontend, 68/68 cargo, tsc/eslint/build PASS, device-check 10/10 + mocked signed-in 10 viewports χωρίς overflow/console errors· screenshots `/tmp/opencode/review/community-*`, `public-profile-mobile.png`.
+  - **Μένει:** server-authoritative XP/anti-cheat, visual review της signed-in Κοινότητας με πραγματικό λογαριασμό.
+  - **Θέλει εσένα:** visual review της Κοινότητας στο review window 51· «ναι» για deploy.
+- **26/10 premium landing + onboarding (OpenCode):**
+  - **Έγινε:** νέο `public/landing.html` (Carbon/gold topo, skill ladder, 8 ladders/500+ tests/0 εγγραφές, EN/EL toggle) + premium 4-step onboarding (topo/warm gold accents, rung/altitude panel, step counter, body scroll lock). 508/508 tests, eslint, tsc, production build σε `/tmp/anabasis-verify`, landing + app device-check 10/10 (μόνο tiny-text warnings), 0 overflow/errors· screenshots `/tmp/opencode/premium-shots/anabasis-*v3*`, `anabasis-onboarding-v2-*`.
+  - **Μένει:** τελικό visual review από Aggelos· μετά deploy/push με την καθιερωμένη staged ροή.
+  - **Θέλει εσένα:** «ναι» για deploy του landing/onboarding· καμία live αλλαγή δεν έγινε.
 - **26/10 P2/P3 hardening (OpenCode):**
   - **Έγινε:** OAuth state binding σε HttpOnly/Secure/SameSite=Lax cookie (login CSRF fix), login πάντα Argon2 verify πριν από disabled/locked (state/timing enumeration fix), constant-time admin-code compare, `CF-Connecting-IP` trust μόνο σε loopback ή με ρητό `ANABASIS_TRUST_CF_IP=1`. Tests: 508 frontend + 67 integration + 13 unit, `cargo build --release` PASS, clippy lib/tests PASS.
   - **Deploy 16:07:** commit/push `5b178e9`· DB snapshot `~/.local/share/anabasis-server/snapshots/anabasis-pre-hardening-20261026-1608.db`· `anabasis-api` active (PID 165917, :8121)· live `/api/health` OK· `/api/auth/oauth/google/start` 302 + state cookie· mismatched state/cookie -> 400 `invalid_state`.

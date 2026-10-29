@@ -11,6 +11,7 @@ import {
   Sparkles,
   Target,
   User,
+  Users,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -32,8 +33,8 @@ export interface NavItem {
 export const PRIMARY_NAV: NavItem[] = [
   { to: '/', labelKey: 'nav.home', Icon: Home, end: true },
   { to: '/calendar', labelKey: 'nav.calendar', Icon: CalendarDays },
+  { to: '/community', labelKey: 'nav.community', Icon: Users },
   { to: '/programs', labelKey: 'nav.programs', Icon: ClipboardList },
-  { to: '/exercises', labelKey: 'exercises.title', Icon: ListChecks },
 ];
 
 /**
@@ -46,6 +47,7 @@ export const SECONDARY_NAV: NavItem[] = [
   { to: '/goals', labelKey: 'goals.title', Icon: Target },
   { to: '/progress', labelKey: 'progress.title', Icon: LineChart },
   { to: '/history', labelKey: 'history.title', Icon: Activity },
+  { to: '/exercises', labelKey: 'exercises.title', Icon: ListChecks },
   { to: '/skills', labelKey: 'nav.skills', Icon: Sparkles },
   { to: '/achievements', labelKey: 'gami.title', Icon: Mountain },
   { to: '/body', labelKey: 'body.title', Icon: Scale },
