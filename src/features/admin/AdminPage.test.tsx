@@ -33,6 +33,7 @@ const STATS: AdminStats = {
   active_accounts: 2,
   disabled_accounts: 0,
   admins: 1,
+  pro_accounts: 0,
   sessions: 3,
   rows: 1200,
   db_size_bytes: 5 * 1024 * 1024,
@@ -49,6 +50,11 @@ const USERS: AdminUser[] = [
     last_sync_at: '2026-02-01T10:00:00Z',
     row_count: 900,
     sessions: 2,
+    auth_provider: 'password',
+    password_set: true,
+    plan: 'free',
+    plan_expires_at: null,
+    plan_active: false,
   },
   {
     id: 'u-2',
@@ -59,6 +65,11 @@ const USERS: AdminUser[] = [
     last_sync_at: null,
     row_count: 300,
     sessions: 1,
+    auth_provider: 'google',
+    password_set: false,
+    plan: 'free',
+    plan_expires_at: null,
+    plan_active: false,
   },
 ];
 

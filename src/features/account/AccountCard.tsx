@@ -12,13 +12,15 @@ import {
   login,
   logout,
   logoutOtherDevices,
+  refreshAccount,
   requestMagicLink,
+  setPassword as setAccountPassword,
   signup,
   UnsyncedChangesError,
   useAuth,
 } from '@/lib/api/auth';
 import { api, googleStart } from '@/lib/api/client';
-import type { OAuthProviders } from '@/lib/api/types';
+import type { Account, AuthSession, BillingConfig, OAuthProviders } from '@/lib/api/types';
 import { syncNow, useSyncStatus } from '@/lib/sync';
 
 /** Server error code → i18n key (server/API-CONTRACT.md). Άγνωστος κωδικός
@@ -103,13 +105,7 @@ export function AccountCard({ showTitle = true }: { showTitle?: boolean } = {}) 
   // Μέσα στη σελίδα /settings/account ο τίτλος τον κουβαλά η επικεφαλίδα της
   // σελίδας — δύο φορές «Λογαριασμός» δεν προσθέτει τίποτα.
   if (!auth || !auth.account) return <SignedOutForm showTitle={showTitle} />;
-  return (
-    <SignedInPanel
-      accountEmail={auth.account.email}
-      role={auth.account.role}
-      title={showTitle ? t('account.title') : null}
-    />
-  );
+  return <SignedInPanel account={auth.account} title={showTitle ? t('account.title') : null} />;
 }
 
 /**
@@ -317,17 +313,139 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
   );
 }
 
-function SignedInPanel({
-  accountEmail,
-  role,
-  title,
-}: {
-  accountEmail: string;
-  role: 'user' | 'admin';
-  title: string | null;
-}) {
+function deviceLabel(userAgent: string | null, unknown: string): string {
+  if (!userAgent) return unknown;
+  if (userAgent.includes('curl/') || userAgent.toLowerCase().includes('python-urllib')) return 'CLI';
+  const browser = userAgent.includes('Edg/')
+    ? 'Edge'
+    : userAgent.includes('Firefox')
+      ? 'Firefox'
+      : userAgent.includes('Chrome')
+        ? 'Chrome'
+        : userAgent.includes('Safari')
+          ? 'Safari'
+          : null;
+  const os = userAgent.includes('Android')
+    ? 'Android'
+    : userAgent.includes('iPhone') || userAgent.includes('iPad')
+      ? 'iOS'
+      : userAgent.includes('Windows')
+        ? 'Windows'
+        : userAgent.includes('Mac OS')
+          ? 'macOS'
+          : userAgent.includes('Linux')
+            ? 'Linux'
+            : null;
+  return [browser, os].filter(Boolean).join(' · ') || unknown;
+}
+
+/**
+ * Ενεργές συσκευές από `GET /api/auth/sessions`. Δείχνει μόνο metadata —
+ * ποτέ token/hash. Η τρέχουσα συσκευή δεν έχει κουμπί ανάκλησης (γι' αυτήν
+ * υπάρχει το κανονικό «Αποσύνδεση»).
+ */
+function SessionsPanel({ refreshKey }: { refreshKey: number }) {
+  const { t, i18n } = useTranslation();
+  const [sessions, setSessions] = useState<AuthSession[] | null>(null);
+  const [error, setError] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(false);
+    setSessions(null);
+    api
+      .sessions()
+      .then((rows) => {
+        if (!cancelled) setSessions(rows);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setSessions([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  const onRevoke = async (id: string) => {
+    if (busyId) return;
+    setBusyId(id);
+    try {
+      await api.revokeSession(id);
+      setSessions((rows) => rows?.filter((s) => s.id !== id) ?? rows);
+    } catch {
+      setError(true);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="mt-3 border-t border-border/60 pt-3">
+      <p className="text-sm">{t('account.sessions')}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{t('account.sessionsHint')}</p>
+
+      {sessions === null && !error && (
+        <p className="mt-2 text-xs text-muted-foreground" role="status">
+          {t('common.loading')}
+        </p>
+      )}
+      {error && (
+        <p className="mt-2 text-xs text-destructive" role="alert">
+          {t('account.sessionsError')}
+        </p>
+      )}
+      {sessions?.length === 0 && !error && (
+        <p className="mt-2 text-xs text-muted-foreground">{t('account.noSessions')}</p>
+      )}
+      {sessions && sessions.length > 0 && (
+        <ul className="mt-2 divide-y divide-border/60 rounded-md bg-elevated">
+          {sessions.map((session) => (
+            <li key={session.id} className="flex items-center justify-between gap-3 px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm">
+                  {session.current
+                    ? t('account.thisDevice')
+                    : deviceLabel(session.user_agent, t('account.unknownDevice'))}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {t('account.lastUsed', {
+                    date: new Date(session.last_used_at ?? session.created_at).toLocaleString(
+                      i18n.resolvedLanguage,
+                    ),
+                  })}
+                </p>
+              </div>
+              {!session.current && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busyId === session.id}
+                  onClick={() => void onRevoke(session.id)}
+                >
+                  {busyId === session.id ? t('common.loading') : t('account.revokeSession')}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function SignedInPanel({ account, title }: { account: Account; title: string | null }) {
   const { t, i18n } = useTranslation();
   const sync = useSyncStatus();
+  const accountEmail = account.email;
+  const role = account.role;
+  // Παλιά cached auth (πριν το migration) δεν έχει τα πεδία: θεωρούμε ότι
+  // έχει κωδικό, ώστε να μη σπάσει το change-password flow.
+  const passwordSet = account.password_set !== false;
+  const planActive = account.plan_active === true;
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showAdminCode, setShowAdminCode] = useState(false);
   const [adminCode, setAdminCode] = useState('');
@@ -341,12 +459,66 @@ function SignedInPanel({
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutOthersBusy, setLogoutOthersBusy] = useState(false);
   const [logoutOthersStatusKey, setLogoutOthersStatusKey] = useState<string | null>(null);
+  const [sessionsVersion, setSessionsVersion] = useState(0);
+  const [billing, setBilling] = useState<BillingConfig | null>(null);
+  const [upgradeBusy, setUpgradeBusy] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [billingNotice, setBillingNotice] = useState<string | null>(null);
   // >0 = υπάρχουν ασυγχρόνιστες αλλαγές· δείχνουμε «logout ούτως ή άλλως;».
   const [unsyncedPending, setUnsyncedPending] = useState(0);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (planActive) return;
+    let cancelled = false;
+    api
+      .billingConfig()
+      .then((cfg) => {
+        if (!cancelled) setBilling(cfg);
+      })
+      .catch(() => {
+        // Billing is optional; a failed config call must not break settings.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [planActive]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('billing');
+    if (!result) return;
+    if (result === 'success') {
+      setBillingNotice(t('account.billingSuccess'));
+      void refreshAccount().catch(() => {});
+    } else if (result === 'cancel') {
+      setBillingNotice(t('account.billingCancel'));
+    }
+    params.delete('billing');
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + (query ? `?${query}` : '') + window.location.hash,
+    );
+  }, [t]);
+
+  const onUpgrade = async () => {
+    if (upgradeBusy) return;
+    setUpgradeBusy(true);
+    setUpgradeError(null);
+    try {
+      const { url } = await api.billingCheckout();
+      window.location.assign(url);
+    } catch {
+      setUpgradeError(t('account.upgradeError'));
+    } finally {
+      setUpgradeBusy(false);
+    }
+  };
 
   const onChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -362,12 +534,13 @@ function SignedInPanel({
     setChangeBusy(true);
     setChangeStatusKey(null);
     try {
-      await changePassword(currentPassword, newPassword);
+      if (passwordSet) await changePassword(currentPassword, newPassword);
+      else await setAccountPassword(newPassword);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
       setShowChangePassword(false);
-      setChangeStatusKey('account.passwordChanged');
+      setChangeStatusKey(passwordSet ? 'account.passwordChanged' : 'account.passwordSetDone');
     } catch (err) {
       setChangeStatusKey(errorKeyFor(err));
     } finally {
@@ -429,6 +602,7 @@ function SignedInPanel({
     setLogoutOthersStatusKey(null);
     try {
       const revoked = await logoutOtherDevices();
+      setSessionsVersion((v) => v + 1);
       setLogoutOthersStatusKey(
         revoked > 0 ? 'account.logoutOthersDone' : 'account.logoutOthersNone',
       );
@@ -451,15 +625,57 @@ function SignedInPanel({
             {title}
           </p>
         )}
-        {role === 'admin' && (
-          <span className="ml-auto flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
-            <ShieldCheck className="h-3 w-3" aria-hidden />
-            {t('account.roleAdmin')}
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          {planActive && (
+            <span className="rounded-full bg-achievement/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-achievement">
+              {t('account.planProBadge')}
+            </span>
+          )}
+          {role === 'admin' && (
+            <span className="flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
+              <ShieldCheck className="h-3 w-3" aria-hidden />
+              {t('account.roleAdmin')}
+            </span>
+          )}
+        </div>
       </div>
 
       <p className="mt-2 font-mono text-sm text-muted-foreground">{accountEmail}</p>
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-elevated px-3 py-2 text-sm">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('account.plan')}</p>
+          <p className="mt-0.5">
+            {planActive
+              ? t('account.planProActive', {
+                  date: account.plan_expires_at
+                    ? new Date(account.plan_expires_at).toLocaleDateString(i18n.resolvedLanguage)
+                    : t('account.planNoExpiry'),
+                })
+              : t('account.planFree')}
+          </p>
+        </div>
+        {!planActive &&
+          (billing?.enabled ? (
+            <Button size="sm" disabled={upgradeBusy} onClick={() => void onUpgrade()}>
+              {upgradeBusy
+                ? t('common.loading')
+                : (billing.price_label ?? t('account.upgrade'))}
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">{t('account.planComingSoon')}</span>
+          ))}
+      </div>
+      {billingNotice && (
+        <p className="mt-2 text-xs text-muted-foreground" role="status">
+          {billingNotice}
+        </p>
+      )}
+      {upgradeError && (
+        <p className="mt-2 text-xs text-destructive" role="alert">
+          {upgradeError}
+        </p>
+      )}
 
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3 text-sm">
         <div>
@@ -527,17 +743,23 @@ function SignedInPanel({
           onClick={() => setShowChangePassword((v) => !v)}
           className="text-sm text-muted-foreground underline-offset-2 hover:underline"
         >
-          {t('account.changePassword')}
+          {passwordSet ? t('account.changePassword') : t('account.setPassword')}
         </button>
+
+        {!passwordSet && (
+          <p className="mt-2 text-xs text-muted-foreground">{t('account.setPasswordHint')}</p>
+        )}
 
         {showChangePassword && (
           <form onSubmit={(e) => void onChangePassword(e)} className="mt-3 space-y-3">
-            <PasswordInput
-              label={t('account.currentPassword')}
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={setCurrentPassword}
-            />
+            {passwordSet && (
+              <PasswordInput
+                label={t('account.currentPassword')}
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={setCurrentPassword}
+              />
+            )}
             <PasswordInput
               label={t('account.newPassword')}
               autoComplete="new-password"
@@ -584,6 +806,7 @@ function SignedInPanel({
             {t(logoutOthersStatusKey)}
           </p>
         )}
+        <SessionsPanel refreshKey={sessionsVersion} />
         {unsyncedPending > 0 && (
           <div className="mt-2 rounded-md bg-destructive/10 p-2 text-xs" role="alert">
             <p className="text-destructive">

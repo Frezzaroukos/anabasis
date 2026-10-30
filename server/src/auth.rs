@@ -1,5 +1,5 @@
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use axum::extract::{FromRequestParts, State};
+use axum::extract::{FromRequestParts, Path, State};
 use axum::http::header;
 use axum::http::request::Parts;
 use axum::response::IntoResponse;
@@ -69,11 +69,14 @@ pub(crate) async fn create_session(
     let token_hash = sha256_hex(&token);
     let created_at = now_iso();
     let expires_at = iso_in(SESSION_LIFETIME);
+    let session_id = Uuid::new_v4().to_string();
 
     sqlx::query(
-        "INSERT INTO sessions (token_hash, account_id, created_at, expires_at, last_used_at, user_agent)
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sessions
+         (session_id, token_hash, account_id, created_at, expires_at, last_used_at, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
+    .bind(&session_id)
     .bind(&token_hash)
     .bind(account_id)
     .bind(&created_at)
@@ -169,12 +172,26 @@ pub(crate) async fn issue_auth_response(
     user_agent: Option<&str>,
 ) -> Result<AuthResponse, AppError> {
     let token = create_session(&state.pool, account_id, user_agent).await?;
-    let (id, email, role, created_at) = sqlx::query_as::<_, (String, String, String, String)>(
-        "SELECT id, email, role, created_at FROM accounts WHERE id = ?",
-    )
-    .bind(account_id)
-    .fetch_one(&state.pool)
-    .await?;
+    let (id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at) =
+        sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                String,
+                Option<String>,
+                bool,
+                String,
+                Option<String>,
+            ),
+        >(
+            "SELECT id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at
+             FROM accounts WHERE id = ?",
+        )
+        .bind(account_id)
+        .fetch_one(&state.pool)
+        .await?;
 
     Ok(AuthResponse {
         token,
@@ -183,6 +200,11 @@ pub(crate) async fn issue_auth_response(
             email,
             role,
             created_at,
+            auth_provider,
+            password_set,
+            plan: plan.clone(),
+            plan_expires_at: plan_expires_at.clone(),
+            plan_active: plan_is_active(&plan, plan_expires_at.as_deref()),
         },
     })
 }
@@ -196,6 +218,22 @@ struct AccountRow {
     disabled: bool,
     locked_until: Option<String>,
     created_at: String,
+    auth_provider: Option<String>,
+    password_set: bool,
+    plan: String,
+    plan_expires_at: Option<String>,
+}
+
+/// `pro` counts only while it is not expired. `free` is always inactive, and a
+/// missing expiry means an explicit lifetime grant (admin-only).
+pub(crate) fn plan_is_active(plan: &str, expires_at: Option<&str>) -> bool {
+    if plan != "pro" {
+        return false;
+    }
+    expires_at
+        .and_then(parse_iso)
+        .map(|until| until > now())
+        .unwrap_or(true)
 }
 
 #[derive(Serialize)]
@@ -204,6 +242,11 @@ pub struct AccountPublic {
     email: String,
     role: String,
     created_at: String,
+    auth_provider: Option<String>,
+    password_set: bool,
+    plan: String,
+    plan_expires_at: Option<String>,
+    plan_active: bool,
 }
 
 #[derive(Serialize)]
@@ -287,7 +330,9 @@ pub async fn signup(
     let created_at = now_iso();
 
     let insert = sqlx::query(
-        "INSERT INTO accounts (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO accounts
+         (id, email, password_hash, role, created_at, auth_provider, password_set)
+         VALUES (?, ?, ?, ?, ?, 'password', 1)",
     )
     .bind(&id)
     .bind(&email)
@@ -319,6 +364,11 @@ pub async fn signup(
             email,
             role: role.to_string(),
             created_at,
+            auth_provider: Some("password".into()),
+            password_set: true,
+            plan: "free".into(),
+            plan_expires_at: None,
+            plan_active: false,
         },
     }))
 }
@@ -345,7 +395,8 @@ pub async fn login(
     }
 
     let account = sqlx::query_as::<_, AccountRow>(
-        "SELECT id, email, password_hash, role, disabled, locked_until, created_at
+        "SELECT id, email, password_hash, role, disabled, locked_until, created_at,
+                auth_provider, password_set, plan, plan_expires_at
          FROM accounts WHERE email = ?",
     )
     .bind(&email)
@@ -428,6 +479,11 @@ pub async fn login(
             email: account.email,
             role: account.role,
             created_at: account.created_at,
+            auth_provider: account.auth_provider,
+            password_set: account.password_set,
+            plan: account.plan.clone(),
+            plan_expires_at: account.plan_expires_at.clone(),
+            plan_active: plan_is_active(&account.plan, account.plan_expires_at.as_deref()),
         },
     }))
 }
@@ -531,6 +587,11 @@ pub struct MeResponse {
     role: String,
     created_at: String,
     last_sync_at: Option<String>,
+    auth_provider: Option<String>,
+    password_set: bool,
+    plan: String,
+    plan_expires_at: Option<String>,
+    plan_active: bool,
 }
 
 pub async fn me(
@@ -538,9 +599,15 @@ pub async fn me(
     auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let row = sqlx::query_as::<_, MeResponse>(
-        "SELECT id, email, role, created_at, last_sync_at FROM accounts WHERE id = ?",
+        "SELECT id, email, role, created_at, last_sync_at, auth_provider, password_set,
+                plan, plan_expires_at,
+                CASE WHEN plan = 'pro'
+                      AND (plan_expires_at IS NULL OR plan_expires_at > ?2)
+                     THEN 1 ELSE 0 END AS plan_active
+         FROM accounts WHERE id = ?1",
     )
     .bind(&auth.account_id)
+    .bind(now_iso())
     .fetch_optional(&state.pool)
     .await?
     .ok_or_else(AppError::unauthorized)?;
@@ -575,18 +642,24 @@ pub async fn change_password(
         ));
     }
 
-    let current_hash: String =
-        sqlx::query_scalar("SELECT password_hash FROM accounts WHERE id = ?")
+    let (current_hash, password_set): (String, bool) =
+        sqlx::query_as("SELECT password_hash, password_set FROM accounts WHERE id = ?")
             .bind(&auth.account_id)
             .fetch_one(&state.pool)
             .await?;
 
+    if !password_set {
+        return Err(AppError::bad_request(
+            "password_not_set",
+            "Ο λογαριασμός δεν έχει κωδικό ακόμα — όρισε έναν πρώτα.",
+        ));
+    }
     if !verify_password(&body.current_password, &current_hash) {
         return Err(AppError::bad_credentials());
     }
 
     let new_hash = hash_password(&body.new_password)?;
-    sqlx::query("UPDATE accounts SET password_hash = ? WHERE id = ?")
+    sqlx::query("UPDATE accounts SET password_hash = ?, password_set = 1 WHERE id = ?")
         .bind(&new_hash)
         .bind(&auth.account_id)
         .execute(&state.pool)
@@ -596,6 +669,121 @@ pub async fn change_password(
     sqlx::query("DELETE FROM sessions WHERE account_id = ? AND token_hash != ?")
         .bind(&auth.account_id)
         .bind(&auth.token_hash)
+        .execute(&state.pool)
+        .await?;
+
+    Ok(Json(serde_json::json!({})))
+}
+
+#[derive(Deserialize)]
+pub struct SetPasswordRequest {
+    new_password: String,
+}
+
+/// Passwordless accounts (Google / magic-link) can add a password once they are
+/// already authenticated. Accounts that already have a password must use
+/// `change_password` with the current one.
+pub async fn set_password(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    AppJson(body): AppJson<SetPasswordRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    if body.new_password.len() < MIN_PASSWORD_LEN {
+        return Err(AppError::bad_request(
+            "weak_password",
+            format!("Ο κωδικός χρειάζεται τουλάχιστον {MIN_PASSWORD_LEN} χαρακτήρες."),
+        ));
+    }
+    if body.new_password.len() > MAX_PASSWORD_LEN {
+        return Err(AppError::bad_request(
+            "weak_password",
+            format!("Ο κωδικός δεν μπορεί να ξεπερνά τους {MAX_PASSWORD_LEN} χαρακτήρες."),
+        ));
+    }
+
+    let password_set: bool = sqlx::query_scalar("SELECT password_set FROM accounts WHERE id = ?")
+        .bind(&auth.account_id)
+        .fetch_one(&state.pool)
+        .await?;
+    if password_set {
+        return Err(AppError::bad_request(
+            "password_already_set",
+            "Ο λογαριασμός έχει ήδη κωδικό — άλλαξέ τον από τις ρυθμίσεις.",
+        ));
+    }
+
+    let new_hash = hash_password(&body.new_password)?;
+    sqlx::query("UPDATE accounts SET password_hash = ?, password_set = 1 WHERE id = ?")
+        .bind(&new_hash)
+        .bind(&auth.account_id)
+        .execute(&state.pool)
+        .await?;
+
+    // A new credential invalidates every other device, same as a password change.
+    sqlx::query("DELETE FROM sessions WHERE account_id = ? AND token_hash != ?")
+        .bind(&auth.account_id)
+        .bind(&auth.token_hash)
+        .execute(&state.pool)
+        .await?;
+
+    Ok(Json(serde_json::json!({})))
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct SessionInfo {
+    id: String,
+    created_at: String,
+    last_used_at: Option<String>,
+    expires_at: String,
+    user_agent: Option<String>,
+    current: bool,
+}
+
+pub async fn sessions(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<impl IntoResponse, AppError> {
+    let rows = sqlx::query_as::<_, SessionInfo>(
+        "SELECT session_id AS id, created_at, last_used_at, expires_at, user_agent,
+                (token_hash = ?2) AS current
+         FROM sessions
+         WHERE account_id = ?1 AND expires_at > ?3
+         ORDER BY current DESC, last_used_at DESC",
+    )
+    .bind(&auth.account_id)
+    .bind(&auth.token_hash)
+    .bind(now_iso())
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(rows))
+}
+
+pub async fn revoke_session(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let target: Option<String> = sqlx::query_scalar(
+        "SELECT token_hash FROM sessions WHERE session_id = ? AND account_id = ?",
+    )
+    .bind(&id)
+    .bind(&auth.account_id)
+    .fetch_optional(&state.pool)
+    .await?;
+    let Some(target) = target else {
+        return Err(AppError::not_found());
+    };
+    if target == auth.token_hash {
+        return Err(AppError::bad_request(
+            "current_session",
+            "Χρησιμοποίησε «Αποσύνδεση» για την τρέχουσα συσκευή.",
+        ));
+    }
+
+    sqlx::query("DELETE FROM sessions WHERE session_id = ? AND account_id = ?")
+        .bind(&id)
+        .bind(&auth.account_id)
         .execute(&state.pool)
         .await?;
 

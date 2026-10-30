@@ -16,6 +16,7 @@ import {
   setPendingOAuthToken,
   completeOAuthLogin,
   clearPendingOAuthToken,
+  updateStoredAccount,
   type StoredAuth,
 } from './client';
 import { createProfile, deleteProfile, migrateProfileUserId } from '../db/queries';
@@ -81,6 +82,24 @@ async function bindLocalProfileAndResync(
   const localId = getCurrentUserId();
   await migrateProfileUserId(localId, accountId);
   await fullResync(order);
+}
+
+/**
+ * Repair a cached cloud session whose local profile binding was lost (e.g.
+ * storage cleared while `anabasis.auth` survived). Only acts when the active
+ * profile key is absent, so an explicitly chosen local profile is untouched.
+ */
+export async function repairMissingProfileBinding(): Promise<void> {
+  const auth = readStoredAuth();
+  if (!auth?.account) return;
+  let stored: string | null = null;
+  try {
+    stored = globalThis.localStorage?.getItem('anabasis.activeProfile') ?? null;
+  } catch {
+    return;
+  }
+  if (stored) return;
+  await bindLocalProfileAndResync(auth.account.id, 'pull-first');
 }
 
 export async function login(email: string, password: string): Promise<Account> {
@@ -161,6 +180,29 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await api.changePassword(currentPassword, newPassword);
 }
 
+/** Passwordless account (Google/magic-link) adds its first password. */
+export async function setPassword(newPassword: string): Promise<void> {
+  await api.setPassword(newPassword);
+}
+
+/** Re-read `/api/me` and update the cached account (plan/role changes). */
+export async function refreshAccount(): Promise<Account> {
+  const me = await api.me();
+  const account: Account = {
+    id: me.id,
+    email: me.email,
+    role: me.role,
+    created_at: me.created_at,
+    auth_provider: me.auth_provider,
+    password_set: me.password_set,
+    plan: me.plan,
+    plan_expires_at: me.plan_expires_at,
+    plan_active: me.plan_active,
+  };
+  updateStoredAccount(account);
+  return account;
+}
+
 /** Ακυρώνει όλες τις άλλες συσκευές· επιστρέφει πόσες sessions έκλεισαν. */
 export async function logoutOtherDevices(): Promise<number> {
   const { revoked } = await api.logoutOthers();
@@ -227,7 +269,17 @@ export async function initOAuthFragment(): Promise<void> {
   setPendingOAuthToken(token);
   try {
     const me = await api.me();
-    const account: Account = { id: me.id, email: me.email, role: me.role, created_at: me.created_at };
+    const account: Account = {
+      id: me.id,
+      email: me.email,
+      role: me.role,
+      created_at: me.created_at,
+      auth_provider: me.auth_provider,
+      password_set: me.password_set,
+      plan: me.plan,
+      plan_expires_at: me.plan_expires_at,
+      plan_active: me.plan_active,
+    };
     completeOAuthLogin(token, account);
     // pull-first — ίδια λογική με το κανονικό login (server API-CONTRACT.md).
     await bindLocalProfileAndResync(account.id, 'pull-first');

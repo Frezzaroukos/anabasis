@@ -12,6 +12,11 @@ export interface Account {
   email: string;
   role: AccountRole;
   created_at: string;
+  auth_provider: string | null;
+  password_set: boolean;
+  plan: 'free' | 'pro';
+  plan_expires_at: string | null;
+  plan_active: boolean;
 }
 
 export interface AuthResponse {
@@ -25,6 +30,27 @@ export interface Me {
   role: AccountRole;
   created_at: string;
   last_sync_at: string | null;
+  auth_provider: string | null;
+  password_set: boolean;
+  plan: 'free' | 'pro';
+  plan_expires_at: string | null;
+  plan_active: boolean;
+}
+
+export interface BillingConfig {
+  enabled: boolean;
+  price_label: string | null;
+  days: number;
+}
+
+/** GET /api/auth/sessions — μία ενεργή συσκευή, χωρίς token/hash. */
+export interface AuthSession {
+  id: string;
+  created_at: string;
+  last_used_at: string | null;
+  expires_at: string;
+  user_agent: string | null;
+  current: boolean;
 }
 
 /** Μία γραμμή sync — ελεύθερο JSON, ο server δεν καταλαβαίνει το schema. */
@@ -75,6 +101,11 @@ export interface AdminUser {
   row_count: number;
   /** Ενεργά (μη ληγμένα) sessions — πόσες συσκευές είναι συνδεδεμένες τώρα. */
   sessions: number;
+  auth_provider: string | null;
+  password_set: boolean;
+  plan: 'free' | 'pro';
+  plan_expires_at: string | null;
+  plan_active: boolean;
 }
 
 export interface AdminStats {
@@ -82,6 +113,7 @@ export interface AdminStats {
   active_accounts: number;
   disabled_accounts: number;
   admins: number;
+  pro_accounts: number;
   sessions: number;
   rows: number;
   /** `null` όταν ο server δεν μπορεί να διαβάσει το αρχείο — ΟΧΙ ψεύτικο 0. */

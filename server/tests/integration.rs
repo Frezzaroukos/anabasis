@@ -1,8 +1,11 @@
 use anabasis_api::app::{build_state, router, AppState, EmailConfig, GoogleOAuthConfig};
+use anabasis_api::billing::BillingConfig;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
+use hmac::{Hmac, KeyInit, Mac};
 use serde_json::{json, Value};
+use sha2::Sha256;
 use tower::ServiceExt;
 
 async fn test_app(admin_email: Option<&str>) -> (Router, AppState, tempfile::TempDir) {
@@ -34,6 +37,24 @@ async fn test_app_with_oauth(
     )
     .await
     .expect("build_state");
+    let app = router(state.clone());
+    (app, state, dir)
+}
+
+async fn test_app_with_billing() -> (Router, AppState, tempfile::TempDir) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("anabasis-billing-test.db");
+    let mut state = build_state(db_path, None, None, None, None)
+        .await
+        .expect("build_state");
+    state.billing = Some(BillingConfig {
+        secret_key: "sk_test".into(),
+        price_id: "price_test".into(),
+        webhook_secret: "whsec_test".into(),
+        public_url: "https://anabasis.test".into(),
+        price_label: Some("€7 / 60 days".into()),
+        days: 60,
+    });
     let app = router(state.clone());
     (app, state, dir)
 }
@@ -3016,5 +3037,278 @@ async fn future_dated_push_is_clamped_so_later_edit_still_wins() {
     assert_eq!(
         title, "correct later",
         "η μεταγενέστερη αλλαγή κέρδισε παρά το μικρότερο raw timestamp"
+    );
+}
+
+/// Passwordless accounts (Google/magic-link) add a password exactly once, then
+/// must use the normal change-password flow with the current password.
+#[tokio::test]
+async fn passwordless_account_can_set_password_once_then_change_it() {
+    let (app, state, _dir) = test_app(None).await;
+    let (_, body) = signup(&app, "social@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let account_id = body["account"]["id"].as_str().unwrap().to_string();
+    assert_eq!(body["account"]["password_set"], true);
+
+    sqlx::query("UPDATE accounts SET auth_provider = 'google', password_set = 0 WHERE id = ?")
+        .bind(&account_id)
+        .execute(&state.pool)
+        .await
+        .unwrap();
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/auth/set_password",
+        Some(&token),
+        Some(json!({ "new_password": "newcorrecthorse" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/set_password",
+        Some(&token),
+        Some(json!({ "new_password": "anothercorrecthorse" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "password_already_set");
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/auth/change_password",
+        Some(&token),
+        Some(json!({
+            "current_password": "newcorrecthorse",
+            "new_password": "changedcorrecthorse"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, _) = login(&app, "social@example.com", "changedcorrecthorse").await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+/// Sessions expose a public id (never the token hash), list the current device,
+/// and allow revoking another device without revoking the current one.
+#[tokio::test]
+async fn sessions_list_and_revoke_another_device() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (_, first) = signup(&app, "devices@example.com", "correcthorsebattery").await;
+    let first_token = first["token"].as_str().unwrap().to_string();
+    let (_, second) = login(&app, "devices@example.com", "correcthorsebattery").await;
+    let second_token = second["token"].as_str().unwrap().to_string();
+
+    let (status, rows) = call(&app, "GET", "/api/auth/sessions", Some(&first_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    let rows = rows.as_array().unwrap();
+    assert_eq!(rows.len(), 2, "δύο ενεργές συσκευές");
+    assert!(rows.iter().any(|s| s["current"] == true));
+    assert!(rows.iter().all(|s| s.get("token_hash").is_none()));
+
+    let other = rows.iter().find(|s| s["current"] == false).unwrap();
+    let other_id = other["id"].as_str().unwrap().to_string();
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/auth/sessions/{other_id}/revoke"),
+        Some(&first_token),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, _) = call(&app, "GET", "/api/me", Some(&second_token), None).await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "η άλλη συσκευή αποσυνδέθηκε"
+    );
+
+    let (status, rows) = call(&app, "GET", "/api/auth/sessions", Some(&first_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(rows.as_array().unwrap().len(), 1);
+
+    let current_id = rows[0]["id"].as_str().unwrap().to_string();
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/auth/sessions/{current_id}/revoke"),
+        Some(&first_token),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "current_session");
+}
+
+/// Admin can grant/revoke Pro manually; `/api/me` reflects the active state and
+/// an expired/missing plan is treated as free by the server.
+#[tokio::test]
+async fn admin_grants_and_revokes_pro_plan() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+    let (_, admin) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = admin["token"].as_str().unwrap().to_string();
+    let (_, user) = signup(&app, "pro@example.com", "correcthorsebattery").await;
+    let user_token = user["token"].as_str().unwrap().to_string();
+    let user_id = user["account"]["id"].as_str().unwrap().to_string();
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{user_id}/plan"),
+        Some(&admin_token),
+        Some(json!({ "plan": "pro", "days": 60 })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["plan"], "pro");
+    assert_eq!(body["plan_active"], true);
+    let first_expiry = body["plan_expires_at"].as_str().unwrap().to_string();
+
+    // A second grant extends from the active expiry, not from now.
+    let (status, extended) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{user_id}/plan"),
+        Some(&admin_token),
+        Some(json!({ "plan": "pro", "days": 30 })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        extended["plan_expires_at"].as_str().unwrap() > first_expiry.as_str(),
+        "second grant must extend the active plan"
+    );
+
+    let (status, me) = call(&app, "GET", "/api/me", Some(&user_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(me["plan"], "pro");
+    assert_eq!(me["plan_active"], true);
+    assert!(me["plan_expires_at"].is_string());
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{user_id}/plan"),
+        Some(&admin_token),
+        Some(json!({ "plan": "free" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["plan_active"], false);
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{user_id}/plan"),
+        Some(&admin_token),
+        Some(json!({ "plan": "enterprise" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn billing_checkout_is_dormant_without_config() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (_, body) = signup(&app, "billing-off@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+
+    let (status, config) = call(&app, "GET", "/api/billing/config", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(config["enabled"], false);
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/billing/checkout",
+        Some(&token),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(body["error"], "billing_not_configured");
+}
+
+#[tokio::test]
+async fn stripe_webhook_grants_pro_once_for_the_same_event() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let (_, body) = signup(&app, "stripe@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let account_id = body["account"]["id"].as_str().unwrap().to_string();
+
+    let payload = serde_json::to_vec(&json!({
+        "id": "evt_test_1",
+        "type": "checkout.session.completed",
+        "data": { "object": {
+            "id": "cs_test_1",
+            "client_reference_id": account_id,
+            "payment_status": "paid",
+            "amount_total": 700,
+            "currency": "eur",
+            "metadata": { "days": "60" }
+        }}
+    }))
+    .unwrap();
+
+    fn sign(secret: &str, timestamp: i64, body: &[u8]) -> String {
+        let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+        mac.update(format!("{timestamp}.").as_bytes());
+        mac.update(body);
+        mac.finalize()
+            .into_bytes()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
+    }
+
+    async fn post_webhook(
+        app: &Router,
+        timestamp: i64,
+        signature: &str,
+        body: &[u8],
+    ) -> StatusCode {
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/billing/webhook")
+            .header("cf-connecting-ip", "203.0.113.7")
+            .header("content-type", "application/json")
+            .header("stripe-signature", format!("t={timestamp},v1={signature}"))
+            .body(Body::from(body.to_vec()))
+            .unwrap();
+        app.clone().oneshot(req).await.unwrap().status()
+    }
+
+    let timestamp = anabasis_api::util::now().unix_timestamp();
+    let signature = sign("whsec_test", timestamp, &payload);
+    assert_eq!(
+        post_webhook(&app, timestamp, &signature, &payload).await,
+        StatusCode::OK
+    );
+
+    let (status, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(me["plan"], "pro");
+    assert_eq!(me["plan_active"], true);
+    let first_expiry = me["plan_expires_at"].as_str().unwrap().to_string();
+
+    // Retry the same Stripe event: idempotent, expiry must not move.
+    assert_eq!(
+        post_webhook(&app, timestamp, &signature, &payload).await,
+        StatusCode::OK
+    );
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(me["plan_expires_at"], first_expiry);
+
+    // Wrong signature is rejected.
+    assert_eq!(
+        post_webhook(&app, timestamp, "deadbeef", &payload).await,
+        StatusCode::BAD_REQUEST
     );
 }

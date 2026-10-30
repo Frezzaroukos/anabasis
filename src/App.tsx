@@ -3,7 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '@/app/routes';
 import { bootstrapDB } from '@/lib/db';
 import { initAutoSync } from '@/lib/sync';
-import { initMagicLink, initOAuthFragment } from '@/lib/api/auth';
+import { initMagicLink, initOAuthFragment, repairMissingProfileBinding } from '@/lib/api/auth';
 import { AppBootContext } from '@/app/BootContext';
 
 export default function App() {
@@ -21,6 +21,13 @@ export default function App() {
         await initOAuthFragment();
         // Magic-link (/auth/magic?token=…) — ίδιο σκεπτικό: ΠΡΙΝ το auto-sync.
         await initMagicLink();
+        // Cached session without its profile binding (storage was partially
+        // cleared) — bind before auto-sync, otherwise push sends local-user rows.
+        try {
+          await repairMissingProfileBinding();
+        } catch (err) {
+          console.warn('[auth] profile repair failed', err);
+        }
         // Boot-trigger του auto-sync — no-op αν δεν υπάρχει συνδεδεμένος
         // λογαριασμός (βλ. src/lib/sync). ΠΡΕΠΕΙ να τρέξει μετά το bootstrap,
         // αλλιώς τα Dexie hooks θα έπιαναν και τα seed-writes του boot. Το

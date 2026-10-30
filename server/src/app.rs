@@ -15,7 +15,7 @@ use tower_governor::{GovernorError, GovernorLayer};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-use crate::{admin, auth, magic, oauth, social, sync};
+use crate::{admin, auth, billing, magic, oauth, social, sync};
 
 /// "Sign in with Google" — παρών μόνο όταν έχουν οριστεί ΚΑΙ τα δύο env vars
 /// (ANABASIS_GOOGLE_CLIENT_ID/SECRET, βλ. main.rs)· `AppState.google_oauth ==
@@ -120,6 +120,8 @@ pub struct AppState {
     /// Ανώτατο πλήθος αποθηκευμένων sync_rows ανά λογαριασμό (abusive-growth
     /// φρένο· βλ. sync::push). Override μέσω ANABASIS_MAX_ROWS_PER_ACCOUNT.
     pub max_rows_per_account: i64,
+    /// Stripe checkout· None ⇒ πληρωμές δορμάν (503 στο checkout).
+    pub billing: Option<billing::BillingConfig>,
 }
 
 /// Default όριο rows/λογαριασμό — γενναιόδωρο (ο βαρύτερος πραγματικός χρήστης
@@ -167,6 +169,7 @@ pub async fn build_state(
             .and_then(|v| v.trim().parse::<i64>().ok())
             .filter(|n| *n > 0)
             .unwrap_or(DEFAULT_MAX_ROWS_PER_ACCOUNT),
+        billing: billing::BillingConfig::resolve(|key| std::env::var(key).ok()),
     })
 }
 
@@ -236,6 +239,9 @@ pub fn router(state: AppState) -> Router {
         .route("/logout_others", post(auth::logout_others))
         .route("/delete_account", post(auth::delete_account))
         .route("/change_password", post(auth::change_password))
+        .route("/set_password", post(auth::set_password))
+        .route("/sessions", get(auth::sessions))
+        .route("/sessions/{id}/revoke", post(auth::revoke_session))
         .route("/claim_admin", post(auth::claim_admin))
         .route("/oauth/providers", get(oauth::providers))
         .route("/oauth/google/start", get(oauth::google_start))
@@ -280,10 +286,16 @@ pub fn router(state: AppState) -> Router {
         )
         .layer(GovernorLayer::new(social_governor));
 
+    let billing_routes = Router::new()
+        .route("/config", get(billing::config))
+        .route("/checkout", post(billing::checkout))
+        .route("/webhook", post(billing::stripe_webhook));
+
     let admin_routes = Router::new()
         .route("/users", get(admin::list_users))
         .route("/users/{id}/disable", post(admin::disable_user))
         .route("/users/{id}/reset_password", post(admin::reset_password))
+        .route("/users/{id}/plan", post(admin::set_plan))
         .route("/users/{id}/rows", get(admin::user_rows))
         .route("/stats", get(admin::stats))
         .route("/gc", post(admin::gc));
@@ -307,6 +319,7 @@ pub fn router(state: AppState) -> Router {
         .nest("/api/auth", auth_routes)
         .nest("/api/sync", sync_routes)
         .nest("/api/social", social_routes)
+        .nest("/api/billing", billing_routes)
         .nest("/api/admin", admin_routes)
         .layer(TraceLayer::new_for_http())
         .layer(cors)

@@ -28,6 +28,8 @@ time = { version = "0.3", features = ["formatting", "parsing"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sha2 = "0.11"
+# Stripe webhook signature verification (HMAC-SHA256, digest 0.11 — same as sha2).
+hmac = "0.13"
 base64 = "0.23"
 # rustls αντί για system OpenSSL — μηδενικό extra σύστημα-dependency στο deploy
 # (systemd unit + Docker), μόνο για το Google token/userinfo exchange.

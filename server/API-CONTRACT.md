@@ -37,9 +37,15 @@ accounts(
   last_seq INTEGER NOT NULL DEFAULT 0,  -- per-account sync counter
   gc_floor INTEGER NOT NULL DEFAULT 0,  -- max seq με GC-αρισμένο tombstone (0006)
   created_at TEXT NOT NULL,
-  last_sync_at TEXT
+  last_sync_at TEXT,
+  auth_provider TEXT,        -- 'password' | 'google' | 'magic' (0003)
+  password_set INTEGER NOT NULL DEFAULT 0, -- 0 = random unusable hash (0009)
+  plan TEXT NOT NULL DEFAULT 'free',       -- 'free' | 'pro' (0010)
+  plan_expires_at TEXT,      -- NULL για free· ISO expiry για pro
+  plan_source TEXT           -- 'admin' | 'stripe'
 )
 sessions(
+  session_id TEXT UNIQUE,    -- public id για list/revoke (0009)
   token_hash TEXT PK,        -- sha256(token), hex
   account_id TEXT NOT NULL REFERENCES accounts(id),
   created_at TEXT NOT NULL,
@@ -58,6 +64,17 @@ sync_rows(
   PRIMARY KEY (account_id, tbl, row_id)
 )
 CREATE INDEX idx_sync_rows_seq ON sync_rows(account_id, seq);
+
+billing_events(              -- migration 0011· Stripe webhook idempotency
+  event_id TEXT PK,          -- Stripe event id
+  account_id TEXT NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'stripe',
+  session_id TEXT,
+  amount_total INTEGER,
+  currency TEXT,
+  days INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+)
 
 gc_graveyard(                -- migration 0007· anti-resurrection ίχνος
   account_id TEXT NOT NULL,  -- ιδιοκτήτης (ίδιο με sync_rows.account_id)
@@ -99,7 +116,7 @@ programs, program_exercises, activities, goals.
 ### POST /api/auth/signup
 Body: `{ email, password }`. Password ≥ 8 chars. Αν το email == env
 `ANABASIS_ADMIN_EMAIL` → role 'admin'. Απάντηση 200:
-`{ token, account: { id, email, role, created_at } }` (auto-login).
+`{ token, account: { id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at, plan_active } }` (auto-login).
 409 `email_taken`. 429 από rate limiter.
 
 ### POST /api/auth/login
@@ -119,10 +136,26 @@ links σε μία transaction (GDPR: δεν μένει καμία γραμμή).
 400 `confirmation_mismatch`.
 
 ### GET /api/me  (auth)
-200 `{ id, email, role, created_at, last_sync_at }`.
+200 `{ id, email, role, created_at, last_sync_at, auth_provider, password_set, plan, plan_expires_at, plan_active }`.
+`plan_active` είναι server-computed: `pro` μόνο όσο δεν έχει λήξει.
 
 ### POST /api/auth/change_password  (auth)
 Body: `{ current_password, new_password }`. Ακυρώνει όλα τα ΑΛΛΑ sessions.
+400 `password_not_set` αν ο λογαριασμός είναι passwordless — χρησιμοποίησε
+`/set_password` πρώτα.
+
+### POST /api/auth/set_password  (auth)
+Body: `{ new_password }`. Μόνο για passwordless (Google/magic-link) λογαριασμούς.
+200 `{}`· 400 `password_already_set` αν υπάρχει ήδη κωδικός (τότε θέλει
+`change_password` με τον τρέχοντα). Ακυρώνει τα άλλα sessions.
+
+### GET /api/auth/sessions  (auth)
+200 `[ { id, created_at, last_used_at, expires_at, user_agent, current } ]` —
+μόνο ενεργά sessions, χωρίς token/hash. Το `current` δείχνει αυτό του bearer.
+
+### POST /api/auth/sessions/:id/revoke  (auth)
+Σβήνει ένα άλλο session του ίδιου account. 200 `{}`· 404 αν δεν ανήκει στον
+χρήστη· 400 `current_session` για το τρέχον (χρησιμοποίησε `/logout`).
 
 ### POST /api/auth/logout_others  (auth)
 Σβήνει όλα τα sessions του account **εκτός** από αυτό του token. 200
@@ -171,11 +204,28 @@ Tombstones (deleted=1) επιστρέφονται κανονικά — ο client
 payload (που ήδη κουβαλά deleted_at).
 
 ### Admin (auth + role=admin, αλλιώς 403)
-- GET  /api/admin/users → `[ { id, email, role, disabled, created_at, last_sync_at, row_count } ]`
+- GET  /api/admin/users → `[ { id, email, role, disabled, created_at, last_sync_at, row_count, sessions, auth_provider, password_set, plan, plan_expires_at, plan_active } ]`
 - POST /api/admin/users/:id/disable  body `{ disabled: bool }` — disable σκοτώνει και τα sessions του.
   400 `self_disable` (δεν απενεργοποιείς τον εαυτό σου) / `last_admin` (δεν αδειάζει ποτέ η λίστα admins) — μόνο στο `disabled: true`.
 - POST /api/admin/users/:id/reset_password body `{}` → 200 `{ temp_password }` (τυχαίο, ο χρήστης το αλλάζει μετά)
-- GET  /api/admin/stats → `{ accounts, rows, db_size_bytes, uptime_seconds }`
+- POST /api/admin/users/:id/plan body `{ plan: "free"|"pro", days?: 1..3650 }` → 200
+  `{ plan, plan_expires_at, plan_active }`. Χειροκίνητη παροχή/ανάκληση Pro
+  (δώρα/support)· το `pro` επεκτείνεται από την τρέχουσα λήξη αν είναι ενεργή.
+- GET  /api/admin/stats → `{ accounts, active_accounts, disabled_accounts, admins, pro_accounts, sessions, rows, db_size_bytes, uptime_seconds }`
+
+### Billing  (Stripe one-time checkout)
+Dormant χωρίς `ANABASIS_STRIPE_SECRET_KEY` + `ANABASIS_STRIPE_PRICE_ID` +
+`ANABASIS_STRIPE_WEBHOOK_SECRET`. Καμία χρέωση δεν γίνεται χωρίς αυτά.
+Προαιρετικά: `ANABASIS_PUBLIC_URL` (default `https://anabasis.axonos.dev`),
+`ANABASIS_STRIPE_PRICE_LABEL` (label στο UI) και `ANABASIS_STRIPE_DAYS`
+(default 60, clamp 1..3650).
+- GET  /api/billing/config → `{ enabled, price_label, days }` (public, no secrets).
+- POST /api/billing/checkout (auth) → `{ url }` Stripe Checkout· 503
+  `billing_not_configured` όταν λείπει config.
+- POST /api/billing/webhook — Stripe signature over RAW body. Στο
+  `checkout.session.completed` με `payment_status=paid` δίνει `pro` για
+  `metadata.days` (default 60)· idempotent στο Stripe event id. Λάθος υπογραφή
+  → 400 `invalid_signature`.
 
 ### GET /api/health
 200 `{ ok: true, version }` — χωρίς auth, για monitoring.

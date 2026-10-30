@@ -21,6 +21,8 @@ import type {
   SyncPushResponse,
   AdminUser,
   AdminStats,
+  AuthSession,
+  BillingConfig,
   AdminTableBreakdown,
   HealthResponse,
   OAuthProviders,
@@ -89,6 +91,12 @@ export function setPendingOAuthToken(token: string): void {
   } catch {
     /* private mode */
   }
+}
+
+/** Refresh the cached account after `/api/me` (plan/role/password changes). */
+export function updateStoredAccount(account: Account): void {
+  const auth = readStoredAuth();
+  if (auth) writeStoredAuth({ ...auth, account });
 }
 
 /** Ολοκληρώνει το OAuth-fragment flow: πλήρες StoredAuth + κανονικό
@@ -219,6 +227,24 @@ export const api = {
     });
   },
 
+  setPassword(newPassword: string): Promise<void> {
+    return request('/auth/set_password', {
+      method: 'POST',
+      body: { new_password: newPassword },
+    });
+  },
+
+  sessions(): Promise<AuthSession[]> {
+    return request<AuthSession[]>('/auth/sessions');
+  },
+
+  revokeSession(id: string): Promise<void> {
+    return request(`/auth/sessions/${encodeURIComponent(id)}/revoke`, {
+      method: 'POST',
+      body: {},
+    });
+  },
+
   logoutOthers(): Promise<{ revoked: number }> {
     return request<{ revoked: number }>('/auth/logout_others', {
       method: 'POST',
@@ -254,6 +280,17 @@ export const api = {
     return request(`/admin/users/${id}/reset_password`, { method: 'POST', body: {} });
   },
 
+  adminSetPlan(
+    id: string,
+    plan: 'free' | 'pro',
+    days?: number,
+  ): Promise<{ plan: 'free' | 'pro'; plan_expires_at: string | null; plan_active: boolean }> {
+    return request(`/admin/users/${id}/plan`, {
+      method: 'POST',
+      body: { plan, ...(days == null ? {} : { days }) },
+    });
+  },
+
   /** Ανάλυση των sync_rows ενός λογαριασμού ανά πίνακα — lazy, μόνο όταν ο
    * admin ανοίξει τη λεπτομέρεια του χρήστη. */
   adminUserRows(id: string): Promise<AdminTableBreakdown[]> {
@@ -262,6 +299,14 @@ export const api = {
 
   adminStats(): Promise<AdminStats> {
     return request<AdminStats>('/admin/stats');
+  },
+
+  billingConfig(): Promise<BillingConfig> {
+    return request<BillingConfig>('/billing/config');
+  },
+
+  billingCheckout(): Promise<{ url: string }> {
+    return request<{ url: string }>('/billing/checkout', { method: 'POST', body: {} });
   },
 
   health(): Promise<HealthResponse> {

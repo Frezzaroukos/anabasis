@@ -28,51 +28,50 @@
 }
 
 /*
- * Χρωματικό σύστημα Anabasis v3 — «Carbon».
+ * Χρωματικό σύστημα Anabasis v4 — «Daylight».
  *
- * Σχεδόν μονόχρωμο: γραφίτης + λευκό, και ΜΟΝΟ το χρυσό των ρεκόρ ως χρώμα.
- * Η φιλοσοφία του Strong στα άκρα — τίποτα δεν ανταγωνίζεται τους αριθμούς·
- * όταν όλα είναι γραφίτης, το ένα χρυσό ρεκόρ φωνάζει. Ουδέτερα γκρι με
- * ελάχιστη ψυχρή χροιά (επιλεγμένα, όχι pure). Βάθος = φωτεινότητα
- * (background → card → elevated), όχι borders.
+ * Λευκό + γκρι βάση, βιολετί δράση, πορτοκαλί επίτευγμα. Καθαρό, premium,
+ * ήρεμο: το λευκό κάνει τους αριθμούς να διαβάζονται, το βιολετί δείχνει
+ * «πάτα εδώ», το πορτοκαλί γιορτάζει μόνο τα ρεκόρ. Το γκρι κρατά βάθος
+ * (background → card → elevated) χωρίς βαριά borders.
  *
  * Δύο χρώματα με ξεχωριστές δουλειές — ποτέ εναλλάξιμα:
- *  --primary (mono: λευκό/μαύρο) = δράση & πρόοδος (κουμπιά, ενεργά, ring)
- *  --gold                        = ΕΠΙΤΕΥΓΜΑ (PR, mastery, κορυφή του σήματος)
- * Ο χρήστης αλλάζει το accent σε χρώμα ή custom (lib/theme.ts, default mono)·
- * το χρυσό ΔΕΝ αλλάζει, και η γραφίτης βάση μένει σταθερή όποιο accent κι αν διαλέξει.
+ *  --primary (violet) = δράση & πρόοδος (κουμπιά, ενεργά, ring)
+ *  --gold (orange)    = ΕΠΙΤΕΥΓΜΑ (PR, mastery, κορυφή του σήματος)
+ * Ο χρήστης αλλάζει το accent (lib/theme.ts, default Aurora/violet)· το
+ * πορτοκαλί των ρεκόρ μένει σταθερό, όποιο accent κι αν διαλέξει.
  */
 @layer base {
   :root {
-    --background: 60 8% 96%;
-    --foreground: 240 6% 10%;
+    --background: 0 0% 99%;
+    --foreground: 240 7% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 6% 10%;
-    --elevated: 50 8% 93%;
+    --card-foreground: 240 7% 12%;
+    --elevated: 240 8% 96%;
 
-    /* mono default — γραφίτης-μαύρο σε φωτεινό φόντο */
-    --primary: 240 8% 12%;
+    /* violet default — καθαρή δράση πάνω σε λευκό */
+    --primary: 264 85% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 48 8% 93%;
-    --secondary-foreground: 240 6% 11%;
+    --secondary: 264 18% 95%;
+    --secondary-foreground: 264 30% 18%;
 
-    --muted: 48 8% 93%;
-    --muted-foreground: 240 4% 42%;
+    --muted: 240 6% 94%;
+    --muted-foreground: 240 5% 42%;
 
-    --accent: 45 8% 90%;
-    --accent-foreground: 240 6% 11%;
+    --accent: 264 22% 94%;
+    --accent-foreground: 264 30% 18%;
 
     --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 45 7% 88%;
-    --input: 45 7% 88%;
-    --ring: 240 8% 12%;
+    --border: 240 6% 90%;
+    --input: 240 6% 88%;
+    --ring: 264 85% 58%;
 
-    /* Χρυσό επίτευξης — PR badges, mastery. Το ΜΟΝΟ χρώμα του Carbon. */
-    --gold: 42 88% 44%;
+    /* Πορτοκαλί επίτευξης — PR badges, mastery. */
+    --gold: 24 92% 52%;
 
     --cat-push: 14 80% 50%;
     --cat-pull: 217 80% 52%;
@@ -85,9 +84,9 @@
 
   .dark {
     /*
-     * «Carbon» — #101013 βάση / #1C1C21 κάρτες / #26262C elevated. Καθαρός
-     * γραφίτης, ελάχιστα ψυχρός. Το near-white primary + το χρυσό PR είναι τα
-     * μόνα φωτεινά σημεία — μέγιστη σοβαρότητα, οι αριθμοί κυριαρχούν.
+     * «Night» — #101013 βάση / #1C1C21 κάρτες / #26262C elevated. Καθαρός
+     * γραφίτης, ελάχιστα βιολετί. Το violet primary + το πορτοκαλί PR είναι
+     * τα μόνα φωτεινά σημεία — μέγιστη σοβαρότητα, οι αριθμοί κυριαρχούν.
      */
     --background: 240 12% 7%;
     --foreground: 240 10% 95%;
@@ -96,27 +95,27 @@
     --card-foreground: 240 10% 95%;
     --elevated: 240 8% 16%;
 
-    /* mono default — near-white #E8E8EC· λάμπει χωρίς χρώμα */
-    --primary: 240 9% 92%;
-    --primary-foreground: 240 8% 9%;
+    /* violet default — φωτεινό, καθαρό, χωρίς να «καίει» */
+    --primary: 264 100% 70%;
+    --primary-foreground: 258 40% 8%;
 
     --secondary: 240 8% 16%;
     --secondary-foreground: 240 10% 95%;
 
     --muted: 240 8% 16%;
-    --muted-foreground: 240 6% 62%;
+    --muted-foreground: 240 6% 64%;
 
-    --accent: 240 8% 20%;
-    --accent-foreground: 240 10% 95%;
+    --accent: 264 18% 20%;
+    --accent-foreground: 264 20% 95%;
 
     --destructive: 0 70% 58%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 8% 18%;
+    --border: 240 8% 19%;
     --input: 240 8% 20%;
-    --ring: 240 9% 92%;
+    --ring: 264 100% 70%;
 
-    --gold: 42 92% 56%;
+    --gold: 24 95% 60%;
 
     --cat-push: 14 85% 60%;
     --cat-pull: 217 85% 64%;

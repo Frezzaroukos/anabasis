@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -10,10 +10,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <!-- Ταιριάζει με το app background (Altitude Violet bg-base) ώστε το status bar να μη «κόβει» στο iOS/Android -->
-    <meta name="theme-color" content="#101013" />
+    <!-- Ταιριάζει με το app background (Daylight) ώστε το status bar να μη «κόβει» στο iOS/Android -->
+    <meta name="theme-color" content="#FCFCFD" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Anabasis" />
     <meta
       name="description"
@@ -40,16 +40,25 @@
       αυτό το #root είναι κενό μέχρι να κατέβει+τρέξει το JS — το first paint
       περίμενε το bundle (FCP/LCP ~5-6s σε mobile throttle). Αυτό το ελάχιστο,
       inline-styled skeleton βάφεται ΑΜΕΣΩΣ από το HTML (καμία εξωτερική εξάρτηση),
-      κι ο React το αντικαθιστά στο πρώτο render. Dark bg = καθόλου white flash.
+      κι ο React το αντικαθιστά στο πρώτο render. Το θέμα εφαρμόζεται πριν το
+      paint ώστε να μην αναβοσβήνει το λευκό σε dark χρήστες.
     -->
+    <script>
+      try {
+        var t = localStorage.getItem('anabasis.theme') || 'light';
+        var dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+      } catch (_) {}
+    </script>
     <style>
-      html { background: #101013; }
+      html { background: #FCFCFD; }
       #app-skeleton {
         position: fixed; inset: 0; display: flex; flex-direction: column;
         align-items: center; justify-content: center; gap: 1.25rem;
-        background: #101013; color: #e8e8ec;
+        background: #FCFCFD; color: #1d1d20;
         font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       }
+      html.dark, html.dark #app-skeleton { background: #101013; color: #e8e8ec; }
       #app-skeleton svg { width: 64px; height: 64px; }
       #app-skeleton .wm {
         font-size: 1.35rem; font-weight: 600; letter-spacing: 0.08em;
@@ -57,9 +66,10 @@
       }
       #app-skeleton .spin {
         width: 22px; height: 22px; border-radius: 9999px;
-        border: 2px solid #2b2b31; border-top-color: #8a7cff;
+        border: 2px solid #e6e6ec; border-top-color: #7c4dff;
         animation: app-skel-spin 0.8s linear infinite;
       }
+      html.dark #app-skeleton .spin { border-color: #2b2b31; border-top-color: #b39dff; }
       @keyframes app-skel-spin { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { #app-skeleton .spin { animation: none; } }
     </style>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Crown, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/api/auth';
 import {
   api,
@@ -48,6 +48,7 @@ export function AdminPage() {
   const [confirmToggle, setConfirmToggle] = useState<AdminUser | null>(null);
   const [confirmReset, setConfirmReset] = useState<AdminUser | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<{ id: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
@@ -111,6 +112,20 @@ export function AdminPage() {
     } finally {
       setBusyId(null);
       setConfirmReset(null);
+    }
+  };
+
+  const onSetPlan = async (user: AdminUser, plan: 'free' | 'pro') => {
+    if (busyPlanId) return;
+    setBusyPlanId(user.id);
+    setActionErrorKey(null);
+    try {
+      await api.adminSetPlan(user.id, plan, plan === 'pro' ? 60 : undefined);
+      await load();
+    } catch {
+      setActionErrorKey('admin.planError');
+    } finally {
+      setBusyPlanId(null);
     }
   };
 
@@ -237,6 +252,7 @@ export function AdminPage() {
                 user={u}
                 isSelf={u.id === account.id}
                 busy={busyId === u.id}
+                planBusy={busyPlanId === u.id}
                 locale={i18n.resolvedLanguage}
                 tempPassword={tempPassword?.id === u.id ? tempPassword.password : null}
                 copied={copied}
@@ -244,6 +260,7 @@ export function AdminPage() {
                 onDismissPassword={() => setTempPassword(null)}
                 onToggle={() => setConfirmToggle(u)}
                 onReset={() => setConfirmReset(u)}
+                onPlan={(plan) => void onSetPlan(u, plan)}
               />
             ))}
         </section>
@@ -290,7 +307,7 @@ function StatsPanel({ state, stats }: { state: LoadState; stats: AdminStats | nu
   if (state === 'loading' && !stats) {
     return (
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {Array.from({ length: 6 }, (_, i) => (
+        {Array.from({ length: 7 }, (_, i) => (
           <div key={i} className="h-[4.75rem] animate-pulse rounded-xl bg-card" />
         ))}
       </section>
@@ -309,6 +326,7 @@ function StatsPanel({ state, stats }: { state: LoadState; stats: AdminStats | nu
         })}
       />
       <StatTile label={t('admin.statAdmins')} value={num(stats.admins)} />
+      <StatTile label={t('admin.statPro')} value={num(stats.pro_accounts)} />
       <StatTile label={t('admin.statSessions')} value={num(stats.sessions)} />
       <StatTile label={t('admin.statRows')} value={num(stats.rows)} />
       {/* db_size_bytes είναι nullable: ο server γυρνά null όταν δεν διαβάζεται
@@ -354,6 +372,7 @@ function UserCard({
   user,
   isSelf,
   busy,
+  planBusy,
   locale,
   tempPassword,
   copied,
@@ -361,10 +380,12 @@ function UserCard({
   onDismissPassword,
   onToggle,
   onReset,
+  onPlan,
 }: {
   user: AdminUser;
   isSelf: boolean;
   busy: boolean;
+  planBusy: boolean;
   locale: string | undefined;
   tempPassword: string | null;
   copied: boolean;
@@ -372,6 +393,7 @@ function UserCard({
   onDismissPassword: () => void;
   onToggle: () => void;
   onReset: () => void;
+  onPlan: (plan: 'free' | 'pro') => void;
 }) {
   const { t } = useTranslation();
   const [showRows, setShowRows] = useState(false);
@@ -388,6 +410,12 @@ function UserCard({
           <span className="flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-primary">
             <ShieldCheck className="h-3 w-3" aria-hidden />
             {t('admin.roleAdmin')}
+          </span>
+        )}
+        {user.plan_active && (
+          <span className="flex items-center gap-1 rounded-full bg-achievement/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-achievement">
+            <Crown className="h-3 w-3" aria-hidden />
+            {t('admin.planPro')}
           </span>
         )}
         {isSelf && (
@@ -414,6 +442,22 @@ function UserCard({
         />
         <Field label={t('admin.colRows')} value={user.row_count.toLocaleString(locale)} />
         <Field label={t('admin.colSessions')} value={String(user.sessions)} />
+        <Field
+          label={t('admin.colProvider')}
+          value={user.auth_provider ?? t('admin.providerPassword')}
+        />
+        <Field
+          label={t('admin.colPlan')}
+          value={
+            user.plan_active
+              ? t('admin.planProUntil', {
+                  date: user.plan_expires_at
+                    ? new Date(user.plan_expires_at).toLocaleDateString(locale)
+                    : t('admin.planNoExpiry'),
+                })
+              : t('admin.planFree')
+          }
+        />
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -426,6 +470,18 @@ function UserCard({
         )}
         <Button variant="ghost" disabled={busy} onClick={onReset}>
           {t('admin.resetPassword')}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={busy || planBusy}
+          onClick={() => onPlan(user.plan_active ? 'free' : 'pro')}
+        >
+          <Crown className="h-4 w-4" aria-hidden />
+          {planBusy
+            ? t('common.loading')
+            : user.plan_active
+              ? t('admin.revokePro')
+              : t('admin.grantPro')}
         </Button>
         <Button
           variant="ghost"

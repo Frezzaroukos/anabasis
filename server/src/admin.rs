@@ -5,12 +5,13 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use time::Duration as TimeDuration;
 
 use crate::app::AppState;
 use crate::auth::AdminUser;
 use crate::error::AppError;
 use crate::json::AppJson;
-use crate::util::now;
+use crate::util::{format_iso, now, parse_iso};
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct AdminUserRow {
@@ -23,6 +24,11 @@ pub struct AdminUserRow {
     row_count: i64,
     /// Ενεργά (μη ληγμένα) sessions = πόσες συσκευές είναι συνδεδεμένες τώρα.
     sessions: i64,
+    auth_provider: Option<String>,
+    password_set: bool,
+    plan: String,
+    plan_expires_at: Option<String>,
+    plan_active: bool,
 }
 
 pub async fn list_users(
@@ -37,7 +43,11 @@ pub async fn list_users(
         "SELECT a.id, a.email, a.role, a.disabled, a.created_at, a.last_sync_at,
                 (SELECT COUNT(*) FROM sync_rows sr WHERE sr.account_id = a.id) AS row_count,
                 (SELECT COUNT(*) FROM sessions s
-                  WHERE s.account_id = a.id AND s.expires_at > ?) AS sessions
+                  WHERE s.account_id = a.id AND s.expires_at > ?1) AS sessions,
+                a.auth_provider, a.password_set, a.plan, a.plan_expires_at,
+                CASE WHEN a.plan = 'pro'
+                      AND (a.plan_expires_at IS NULL OR a.plan_expires_at > ?1)
+                     THEN 1 ELSE 0 END AS plan_active
          FROM accounts a ORDER BY a.created_at",
     )
     .bind(crate::util::now_iso())
@@ -199,12 +209,86 @@ pub async fn reset_password(
     Ok(Json(serde_json::json!({ "temp_password": temp_password })))
 }
 
+#[derive(Deserialize)]
+pub struct PlanRequest {
+    plan: String,
+    /// Μόνο για `pro`: πόσες μέρες ισχύει. Default 60, clamp 1..=3650.
+    days: Option<i64>,
+}
+
+/// POST /api/admin/users/{id}/plan — χειροκίνητη παροχή/ανάκληση Pro.
+/// Χρήσιμο για δώρα, δοκιμές και support πριν μπει αυτόματο billing.
+pub async fn set_plan(
+    State(state): State<AppState>,
+    _admin: AdminUser,
+    Path(id): Path<String>,
+    AppJson(body): AppJson<PlanRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let exists: Option<i64> = sqlx::query_scalar("SELECT 1 FROM accounts WHERE id = ?")
+        .bind(&id)
+        .fetch_optional(&state.pool)
+        .await?;
+    if exists.is_none() {
+        return Err(AppError::not_found());
+    }
+
+    match body.plan.as_str() {
+        "free" => {
+            sqlx::query(
+                "UPDATE accounts SET plan = 'free', plan_expires_at = NULL, plan_source = 'admin' WHERE id = ?",
+            )
+            .bind(&id)
+            .execute(&state.pool)
+            .await?;
+        }
+        "pro" => {
+            let days = body.days.unwrap_or(60).clamp(1, 3650);
+            let current: Option<String> =
+                sqlx::query_scalar("SELECT plan_expires_at FROM accounts WHERE id = ?")
+                    .bind(&id)
+                    .fetch_one(&state.pool)
+                    .await?;
+            let base = current
+                .as_deref()
+                .and_then(parse_iso)
+                .filter(|until| *until > now())
+                .unwrap_or_else(now);
+            let expires_at = format_iso(base + TimeDuration::days(days));
+            sqlx::query(
+                "UPDATE accounts SET plan = 'pro', plan_expires_at = ?, plan_source = 'admin' WHERE id = ?",
+            )
+            .bind(&expires_at)
+            .bind(&id)
+            .execute(&state.pool)
+            .await?;
+        }
+        _ => {
+            return Err(AppError::bad_request(
+                "invalid_plan",
+                "Το plan πρέπει να είναι 'free' ή 'pro'.",
+            ));
+        }
+    }
+
+    let (plan, plan_expires_at): (String, Option<String>) =
+        sqlx::query_as("SELECT plan, plan_expires_at FROM accounts WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&state.pool)
+            .await?;
+    Ok(Json(serde_json::json!({
+        "plan": plan,
+        "plan_expires_at": plan_expires_at,
+        "plan_active": crate::auth::plan_is_active(&plan, plan_expires_at.as_deref()),
+    })))
+}
+
 #[derive(Serialize)]
 pub struct StatsResponse {
     accounts: i64,
     active_accounts: i64,
     disabled_accounts: i64,
     admins: i64,
+    pro_accounts: i64,
     /// Ενεργά sessions συνολικά — «πόσες συσκευές είναι συνδεδεμένες τώρα».
     sessions: i64,
     rows: i64,
@@ -289,6 +373,13 @@ pub async fn stats(
         .bind(crate::util::now_iso())
         .fetch_one(&state.pool)
         .await?;
+    let pro_accounts: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM accounts
+         WHERE plan = 'pro' AND (plan_expires_at IS NULL OR plan_expires_at > ?)",
+    )
+    .bind(crate::util::now_iso())
+    .fetch_one(&state.pool)
+    .await?;
     let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_rows")
         .fetch_one(&state.pool)
         .await?;
@@ -299,6 +390,7 @@ pub async fn stats(
         active_accounts: accounts - disabled_accounts,
         disabled_accounts,
         admins,
+        pro_accounts,
         sessions,
         rows,
         db_size_bytes: measure_db_size(&state.db_path),

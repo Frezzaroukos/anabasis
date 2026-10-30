@@ -41,6 +41,11 @@ const user = (over: Partial<AdminUser>): AdminUser => ({
   last_sync_at: null,
   row_count: 0,
   sessions: 0,
+  auth_provider: null,
+  password_set: true,
+  plan: 'free',
+  plan_expires_at: null,
+  plan_active: false,
   ...over,
 });
 

@@ -7,9 +7,11 @@ import {
   initMagicLink,
   initOAuthFragment,
   logout,
+  repairMissingProfileBinding,
   UnsyncedChangesError,
 } from './auth';
-import { readStoredAuth } from './client';
+import { completeOAuthLogin, readStoredAuth } from './client';
+import { queries } from '../db';
 
 /**
  * initOAuthFragment() — OAuth-redirect fragment (server oauth/google/callback
@@ -25,6 +27,11 @@ const ME_RESPONSE = {
   role: 'user' as const,
   created_at: '2026-01-01T00:00:00.000Z',
   last_sync_at: null,
+  auth_provider: 'google',
+  password_set: false,
+  plan: 'free' as const,
+  plan_expires_at: null,
+  plan_active: false,
 };
 
 interface FetchCall {
@@ -90,6 +97,59 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   window.location.hash = '';
+});
+
+describe('repairMissingProfileBinding', () => {
+  it('binds a cached account when the activeProfile key was lost', async () => {
+    const accountId = 'account-repair-missing-profile';
+    const profile = await queries.createProfile('repair');
+    setCurrentUserId(profile.id);
+    completeOAuthLogin('tok-repair', {
+      id: accountId,
+      email: 'repair@example.com',
+      role: 'user',
+      created_at: '2026-01-01T00:00:00.000Z',
+      auth_provider: 'google',
+      password_set: false,
+      plan: 'free',
+      plan_expires_at: null,
+      plan_active: false,
+    });
+    localStorage.removeItem('anabasis.activeProfile');
+    stubFetch({});
+
+    await repairMissingProfileBinding();
+
+    expect(getCurrentUserId()).toBe(accountId);
+    expect(localStorage.getItem('anabasis.activeProfile')).toBe(accountId);
+    expect(await db.users.get(accountId)).toBeTruthy();
+    expect(await db.users.get(profile.id)).toBeUndefined();
+
+    await queries.deleteProfile(accountId);
+    setCurrentUserId(DEFAULT_USER_ID);
+    await bootstrapDB();
+  });
+
+  it('does not override an explicitly selected local profile', async () => {
+    const accountId = 'account-repair-explicit';
+    setCurrentUserId('explicit-local-profile');
+    completeOAuthLogin('tok-explicit', {
+      id: accountId,
+      email: 'explicit@example.com',
+      role: 'user',
+      created_at: '2026-01-01T00:00:00.000Z',
+      auth_provider: 'google',
+      password_set: false,
+      plan: 'free',
+      plan_expires_at: null,
+      plan_active: false,
+    });
+    stubFetch({});
+
+    await repairMissingProfileBinding();
+
+    expect(getCurrentUserId()).toBe('explicit-local-profile');
+  });
 });
 
 describe('initOAuthFragment', () => {
