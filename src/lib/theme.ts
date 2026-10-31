@@ -145,24 +145,22 @@ export function applyAccent(accentKey: string): void {
 }
 
 /**
- * Δυναμικό favicon: το σήμα «Summit seal» (δακτύλιος + οροσειρά) βαμμένο στο
- * accent του χρήστη, πάνω σε γραφίτη πλακίδιο — ώστε το tab icon να ταιριάζει με
- * το accent που διάλεξε (per-device). Ο κλάδος-χρώμα κλαμπάρεται σε φωτεινότητα
- * ≥58% ώστε να διαβάζεται πάντα πάνω στο σκούρο πλακίδιο (ακόμα κι όταν το accent
- * είναι σκούρο, π.χ. mono σε light theme). Καθαρό SVG data URI — μηδέν assets.
+ * Δυναμικό favicon: το simplified «Ascent A» (σταθερό dark A + διαδρομή στο
+ * accent του χρήστη) πάνω σε φωτεινό πλακίδιο. Το A μένει σταθερό για
+ * αναγνωρισιμότητα· η διαδρομή κλαμπάρεται σε φωτεινότητα 42–64% ώστε να
+ * διαβάζεται πάνω στο λευκό πλακίδιο. Καθαρό SVG data URI — μηδέν assets.
  */
 export function updateFavicon(h: number, s: number, l: number): void {
   if (typeof document === 'undefined') return;
   const hue = Number.isFinite(h) ? h : 240;
   const sat = Number.isFinite(s) ? s : 8;
-  // Χαμηλός κορεσμός (mono) → κράτα το πιο ανοιχτό ώστε να μη «χαθεί» σε γκρι.
-  const light = Math.min(94, Math.max(sat < 20 ? 88 : 62, Number.isFinite(l) ? l : 90));
-  const mark = `hsl(${hue},${sat}%,${light}%)`;
+  const light = Math.min(64, Math.max(42, Number.isFinite(l) ? l : 58));
+  const route = `hsl(${hue},${sat}%,${light}%)`;
   const svg =
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>` +
-    `<rect width='64' height='64' rx='13' fill='#16161A'/>` +
-    `<circle cx='32' cy='32' r='24' fill='none' stroke='${mark}' stroke-width='4.5'/>` +
-    `<path d='M15 43 L25 27 L31 35 L39 21 L49 43 Z' fill='${mark}'/>` +
+    `<rect width='64' height='64' rx='14.5' fill='#FCFCFD'/>` +
+    `<path fill='#1C1C21' d='M5 59 L29 5 H35 L59 59 H47 L32 27 L17 59 Z'/>` +
+    `<path fill='${route}' d='M10 59 C 17 47 24 37 31 27 C 34 22 37 17 39 12 L 43 15 C 39 24 35 32 30 41 C 26 48 22 54 19 59 Z'/>` +
     `</svg>`;
   const href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
 

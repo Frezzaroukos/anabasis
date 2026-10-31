@@ -51,7 +51,7 @@ export function BrandingPage() {
           </div>
           <div className="flex flex-col items-center gap-2">
             {/* Πραγματικό αρχείο — αυτό ακριβώς σερβίρεται ως PWA/app icon */}
-            <img src="/app-icon.svg" alt="Anabasis app icon" className="h-16 w-16 rounded-2xl" />
+            <img src="/app-icon.svg?v=2" alt="Anabasis app icon" className="h-16 w-16 rounded-2xl" />
             <span className="text-xs text-muted-foreground">app icon (πραγματικό αρχείο)</span>
           </div>
           <div className="flex flex-col items-center gap-2">
