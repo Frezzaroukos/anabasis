@@ -24,7 +24,14 @@ export default defineConfig({
       // Ο κώδικας εγγραφής του service worker δεν χρειάζεται να μπλοκάρει το
       // πρώτο paint — defer ώστε το FCP/LCP να μη χρεώνονται ~300ms.
       injectRegister: 'script-defer',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'og.png', 'robots.txt'],
+      includeAssets: [
+        'favicon.svg',
+        'favicon-16.png',
+        'favicon-32.png',
+        'apple-touch-icon.png',
+        'og.png',
+        'robots.txt',
+      ],
       manifest: {
         name: 'Anabasis — weighted calisthenics & skill progression',
         short_name: 'Anabasis',

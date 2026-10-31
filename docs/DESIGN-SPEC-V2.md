@@ -53,7 +53,7 @@ Light mode: βάση `#FCFBFA`/`#F7F6F5`, accent σκουρότερο ~12% (`#8A
   - micro: κάθε commit σετ → 300ms burst από το ίδιο το στοιχείο (το υπάρχον
     set-commit keyframe αναβαθμίζεται με accent glow).
   - macro: PR / ολοκλήρωση skill-σκαλιού → το υπάρχον PR celebration γίνεται
-    «ανέβασμα σκαλιού»: το mark (rung-peak) γεμίζει rung-rung + particles
+    «κορυφή»: το mark (Ascent A) φωτίζει τη violet διαδρομή + particles
     (hand-rolled canvas, όχι βιβλιοθήκη).
 - `prefers-reduced-motion`: όλα πίσω σε απλά fades (υπάρχει ήδη pattern).
 
@@ -66,10 +66,12 @@ Light mode: βάση `#FCFBFA`/`#F7F6F5`, accent σκουρότερο ~12% (`#8A
 
 ## Logo
 
-`branding/logo-v2/mark.svg` (gradient) + `mark-mono.svg` (currentColor):
-4 rungs σε σιλουέτα κορυφής (σκάλα↔βουνό). Αντικαθιστά public/logo.svg,
-favicon, PWA icons, OG, Tauri icons — μέσω `scripts/gen-brand-assets.mjs`
-(προσαρμογή στο νέο mark + palette) και `npx tauri icon`.
+`branding/logo-v2/mark.svg` (δύο paths: dark A + violet route) +
+`mark-mono.svg` (currentColor): «Ascent A» — το γράμμα A ως ανάβαση, με τη
+violet διαδρομή να ανεβαίνει από τη βάση στην κορυφή. Το `Logo.tsx` διαβάζει
+το ίδιο mark (`?raw`)· τα public/logo, favicon, PWA icons, OG και Tauri icons
+παράγονται από `scripts/gen-brand-assets.mjs`. Στα 16px χρησιμοποιείται
+simplified favicon A για καθαρή ανάγνωση.
 
 ## Πληροφοριακή αρχιτεκτονική (redesign, όχι refactor λογικής)
 

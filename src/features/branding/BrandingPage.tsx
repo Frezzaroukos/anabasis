@@ -9,7 +9,7 @@ import { ACCENTS } from '@/lib/theme';
  * Ο σύνδεσμος αφαιρέθηκε από τις Ρυθμίσεις: το λογότυπο κλείδωσε, και ένας
  * χρήστης που ανοίγει «Ρυθμίσεις» δεν έχει λόγο να δει υποψήφια logos.
  * Η διαδρομή /branding μένει για να μπορούμε να συγκρίνουμε αν ξαναγγίξουμε
- * το σήμα. V2: το ενεργό σήμα είναι το «rung-peak» (docs/DESIGN-SPEC-V2.md).
+ * το σήμα. V5: το ενεργό σήμα είναι το «Ascent A» (branding/logo-v2/mark.svg).
  */
 
 const PALETTE = [
@@ -29,13 +29,13 @@ export function BrandingPage() {
         </Link>
         <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Logo & Brand</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Altitude Violet — το ενεργό σήμα («rung-peak») + η παλέτα. Ιστορικές εκδοχές
+          Altitude Violet — το ενεργό σήμα («Ascent A») + η παλέτα. Ιστορικές εκδοχές
           παρακάτω, μόνο για σύγκριση.
         </p>
       </header>
 
       <section className="rounded-xl bg-card p-6">
-        <p className="mb-4 text-sm font-medium">Rung-peak — ενεργό σήμα</p>
+        <p className="mb-4 text-sm font-medium">Ascent A — ενεργό σήμα</p>
         <div className="flex flex-wrap items-center gap-8">
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-16 w-16 text-primary" />
@@ -52,7 +52,7 @@ export function BrandingPage() {
           <div className="flex flex-col items-center gap-2">
             {/* Πραγματικό αρχείο — αυτό ακριβώς σερβίρεται ως PWA/app icon */}
             <img src="/app-icon.svg" alt="Anabasis app icon" className="h-16 w-16 rounded-2xl" />
-            <span className="text-xs text-muted-foreground">app icon (bg-base)</span>
+            <span className="text-xs text-muted-foreground">app icon (πραγματικό αρχείο)</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-6 w-6 text-primary" />
@@ -91,7 +91,10 @@ export function BrandingPage() {
       </section>
 
       <section className="space-y-3">
-        <p className="text-sm font-medium text-muted-foreground">Ιστορικές εκδοχές (σύγκριση)</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          Ιστορικές εκδοχές (σύγκριση) — τα μωβ τετράγωνα είναι παλιά πλαίσια
+          προεπισκόπησης, όχι το τρέχον app icon.
+        </p>
         {LOGO_VARIANTS.map(({ key, label, Comp }) => (
           <div key={key} className="rounded-xl bg-card p-5">
             <div className="mb-4 flex items-center justify-between">
@@ -105,7 +108,7 @@ export function BrandingPage() {
               <Comp className="h-10 w-10 text-foreground" />
               {/* Μικρό (24px — bottom nav test) */}
               <Comp className="h-6 w-6 text-primary" />
-              {/* Σε rounded container (app icon) */}
+              {/* Παλιό πλαίσιο προεπισκόπησης — όχι το τρέχον app icon */}
               <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
                 <Comp className="h-10 w-10 text-primary-foreground" />
               </span>

@@ -1,11 +1,19 @@
 # Anabasis — STATUS
 
-**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-30
+**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-31
 
 ## Τώρα
+- **31/10 Ascent A icon + brand assets (OpenCode):**
+  - **Έγινε:** επιλογή `MAPd1.jpg` (bold A + violet route) αντί `LEtqz.jpg` (πολύ λεπτό στα 16px)· vectorized σε `branding/logo-v2/mark.svg` + `mark-mono.svg`· νέα palette dark `#1C1C21`, violet `#8239EF`, light violet `#B88CFF`, bg `#FCFCFD`, gold `#F56E14`· `scripts/gen-brand-assets.mjs` διαβάζει πλέον το mark και παράγει 6 SVG + 8 PNG (logo, logo-white, favicon, app-icon, app-icon-maskable, og + favicon 16/32/48, pwa 192/512, maskable, apple-touch)· simplified `favicon.svg` για 16px· `index.html` PNG favicon links + `vite.config.ts` includeAssets· `Logo.tsx` raw import, currentColor A + violet route, summit gold dot, gradient· BrandingPage/LogoVariants labels «Ascent A» και clarified ότι τα μωβ τετράγωνα είναι ιστορικά preview πλαίσια, όχι το τρέχον app icon· **519 frontend tests, typecheck, lint, build:staged PASS**· local screenshots `/tmp/opencode/icon-review/app-header-new-logo.png`, `branding-new-logo.png`, `branding-labels-fixed.png`, `favicon-sheet-final.png`.
+  - **Μένει:** commit/push/deploy του batch· live/staging έλεγχος favicon 16/32 + logo 24px + PWA install μετά το deploy· `public/landing.html` ακόμη παλιό dark palette.
+  - **Θέλει εσένα:** «ναι» για commit/push/deploy του Ascent A batch· visual review των screenshots· απόφαση για την τιμή `€7 / 60 days`.
+- **31/10 Pricing/prospects/feature research (OpenCode):**
+  - **Έγινε:** research doc `~/code/axonos/docs/research/ANABASIS-PRICING-2026-10-31.md` με πηγές/ημερομηνίες· βρέθηκε ότι το Pro **δεν κλειδώνει κανένα feature** (μόνο badge/plan)· το `€7 / 60 days` = **€42.58/yr** effective, πάνω από trackers χωρίς content (Hevy ~€21.47, Strong ~€26.84) και σχεδόν στο Calistree ~€40.27 (1.800+ exercises με video)· comparables Madbarz €53.70/yr, Thenx €80.55–107.40/yr, TMA €140.53/yr, Calisthenics Family €119.99/yr· RevenueCat 2026 median download→paid 2.9% D35, trial→paid 37.7%, median annual $39.94· EU: dynamic subscription = digital service, 14-day withdrawal δεν αποκλείεται (CJEU C-234/25)· Stripe checkout `mode=payment` χωρίς terms/consent.
+  - **Μένει:** απόφαση τιμής/refund policy και υλοποίηση πραγματικού Pro value (advanced analytics + coach + unlimited programs/goals/custom trackers)· μετά landing reskin.
+  - **Θέλει εσένα:** επιλογή A) €2.99/mo + €24.99/yr + €59.99 lifetime (προτεινόμενο), B) €29.99/yr, C) κρατάμε €42.58/yr· 14-day refund ή no-refunds με terms/consent· ναι/όχι στο pause του live €7/60d μέχρι να μπει value.
 - **29–30/10 Daylight + account security + Pro billing (OpenCode):**
   - **Έγινε:** Daylight theme ως default (light/violet, dark preserved, `index.html` status bar default)· migrations `0009_account_security` + `0010_plans` + `0011_billing` εφαρμόστηκαν τοπικά· `POST /api/auth/set_password`, `GET /api/auth/sessions`, `POST /api/auth/sessions/:id/revoke` (public session ids, current-first, no token hashes)· admin plan grant/revoke + `pro_accounts` stats + provider/plan fields· AccountCard plan/session UI + AdminPage controls + i18n EN/EL· Stripe one-time checkout/webhook backend (idempotent `billing_events`, 5-min replay window)· **Stripe live ενεργό**: προϊόν/τιμή `Anabasis Pro` `€7 / 60 days` (one-time EUR), webhook endpoint `https://anabasis.axonos.dev/api/billing/webhook`, live checkout session δημιουργήθηκε+έληξε, signed webhook test σε localhost έδωσε Pro και επανήλθε σε free, `/api/billing/config` → `enabled:true`· repair για cached auth χωρίς `anabasis.activeProfile` (ήταν η αιτία του `wrong_user` sync error) + regression test· tests **15 unit + 75 integration + 519 frontend**, tsc/eslint/`build:staged`/clippy lib+tests PASS· signed-in 10/10 viewport check (account/admin, 375→1440, 0 overflow/alerts)· local API rebuilt/restarted (health 200), sync «up to date», admin Grant/Revoke Pro + extension verified· screenshots `/tmp/opencode/review/account-final-light.png`, `/tmp/opencode/review/account-billing-live.png`, `admin-plan-light.png`, `admin-plan-actions-light.png`· **Deploy 30/10 02:15**: commit `0ab1e94` pushed (prepush PASS), release `20261030-021530-042149290`, live health 200, billing config enabled, live account δείχνει `€7 / 60 days` μετά από SW refresh· icon prompts `~/Desktop/anabasis-icon-prompt.md`.
-  - **Μένει:** πραγματική live πληρωμή/refund end-to-end (δεν χρεώθηκε κάρτα)· store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)· landing/OG/icons ακόμη παλιό dark palette· Google login end-to-end.
+  - **Μένει:** πραγματική live πληρωμή/refund end-to-end (δεν χρεώθηκε κάρτα)· store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)· `public/landing.html` ακόμη παλιό dark palette (OG/icons έγιναν Ascent A στις 31/10)· Google login end-to-end.
   - **Θέλει εσένα:** visual review του light account/admin· απόφαση για την τιμή `€7 / 60 days` (αλλάζει εύκολα)· πραγματική δοκιμαστική αγορά/refund αν θέλεις· αν θες καλύτερο icon, στείλε το prompt από το desktop σε Grok/Gemini/Manus. Rollback `npm run deploy:rollback`.
 - **28/10 God-level λογαριασμοί + social (OpenCode):**
   - **Έγινε:** `GET /api/social/search` (min 2 chars, μόνο δημόσια/ενεργά, εκτός εαυτού, friendship state) + `POST /api/auth/logout_others`· `PublicProfile` με `account_id`/`friendship` (null στο anonymous)· ProfileCard με edit username/display_name, counters, share/invite· AddFriend με debounced search-as-you-type· Connections tabs Friends/Incoming/Sent με accept/decline/cancel/remove· PublicProfile actions (add/accept/decline/cancel/manage)· AccountCard confirm-password + show/hide + forgot-password magic link + logout-others· i18n EN/EL· tests 517 frontend + 13/70 cargo, tsc/eslint PASS· release build + restart τοπικού API (health 200)· device-check `/community` & `/settings/account` 10/10 (μόνο tiny-text/429 warnings).
@@ -44,12 +52,15 @@
 - Tests: 486 frontend (vitest) + server cargo · audit: docs/LAUNCH-READINESS-2026-10-09.md
 
 ## Επόμενα 3
-1. Landing ως αρχική για νέους επισκέπτες (σήμερα η αρχική είναι η app) — απόφαση Aggelos
-2. Πρώτοι χρήστες: posts έτοιμα στο audit §3.6 (r/bodyweightfitness κλπ) — αποστολή μόνο από Aggelos
-3. Always-on hosting (σήμερα: το PC με linger) — fly.io δωρεάν ή VPS ~4€ — απόφαση Aggelos
+1. Deploy Ascent A batch + reskin `public/landing.html` στη νέα light/violet ταυτότητα — θέλει «ναι» Aggelos
+2. Pricing/prospects/feature roadmap: research έτοιμο (`~/code/axonos/docs/research/ANABASIS-PRICING-2026-10-31.md`) — απόφαση τιμής/refund + Pro gating μετά
+3. Store readiness: Apple/Google accounts, native wrapper, IAP, Apple Sign In — απόφαση Aggelos
 
 ## Περιμένουν Aggelos
-- Οι αποφάσεις 1 και 3 παραπάνω
+- «Ναι» για commit/push/deploy του Ascent A batch
+- Απόφαση για τιμή Pro, refund policy και Pro gating
+- Store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)
+- Πραγματική δοκιμαστική αγορά αν θέλει end-to-end (χωρίς refund)
 
 ## Κανόνες
 - Deploy: `npm run build:staged && npm run deploy:promote` (rollback: `npm run deploy:rollback`). **ΟΧΙ `npm run build`**: το `dist` είναι symlink στο live release και θα το ξαναγράψει επί τόπου. API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)

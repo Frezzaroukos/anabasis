@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 /**
- * Παράγει ΟΛΑ τα brand assets από μία πηγή γεωμετρίας (ίδια με το
- * src/components/Logo.tsx / branding/logo-v2/mark.svg). Τρέξε μετά από
- * αλλαγή στο σήμα:
+ * Παράγει ΟΛΑ τα brand assets από το `branding/logo-v2/mark.svg`.
+ * Τρέξε μετά από αλλαγή στο σήμα:
  *
  *   node scripts/gen-brand-assets.mjs
  *
  * Θέλει `rsvg-convert` (librsvg). Γράφει σε public/.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,63 +16,55 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PUB = resolve(ROOT, 'public');
 mkdirSync(PUB, { recursive: true });
 
-// ── Πηγή αλήθειας: ίδια γεωμετρία με branding/logo-v2/mark.svg ────────────
-// «Rung-peak»: 4 σκαλοπάτια στοιβαγμένα σε σιλουέτα κορυφής (viewBox 64).
-const RUNGS = [
-  { x: 28, y: 9, w: 8 },
-  { x: 21, y: 22, w: 22 },
-  { x: 14, y: 35, w: 36 },
-  { x: 7, y: 48, w: 50 },
-];
-const RUNG_H = 7;
-const RUNG_RX = 3.5;
+// ── Πηγή αλήθειας: το ίδιο mark με branding/logo-v2/mark.svg ───────────────
+// «Ascent A»: bold A + violet route. Τα δύο paths διαβάζονται από το SVG.
+const markSource = readFileSync(resolve(ROOT, 'branding/logo-v2/mark.svg'), 'utf8');
+const MARK_PATHS = [...markSource.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+if (MARK_PATHS.length !== 2) {
+  throw new Error(`Expected 2 paths in branding/logo-v2/mark.svg, found ${MARK_PATHS.length}`);
+}
 
-// ── Altitude Violet palette (docs/DESIGN-SPEC-V2.md) ───────────────────────
-const VIOLET_A = '#7C3AED'; // gradient stop 0 — σκοτεινότερο
-const VIOLET_B = '#B88CFF'; // gradient stop 1 — accent-glow
-const WHITE = '#F3F1F8'; // text-primary — το σήμα στο app icon
-const GOLD = '#FBBF24'; // achievement — μόνο για summit
-const BG = '#0C0A14'; // bg-base — near-black με μωβ χροιά
+// ── Daylight palette (docs/DESIGN-SPEC-V2.md + globals.css) ────────────────
+const DARK = '#1C1C21'; // foreground
+const VIOLET = '#8239EF'; // primary
+const VIOLET_LIGHT = '#B88CFF'; // accent glow
+const WHITE = '#F3F1F8';
+const GOLD = '#F56E14'; // achievement
+const BG = '#FCFCFD'; // app icon background
+const MUTED = '#5E5A66';
 
-/** Το σήμα (4 rungs) σε δεδομένο viewBox 64, χρώμα ή gradient url(#id). */
-const mark = (fill, { summit = false, gradientId } = {}) => {
-  const color = gradientId ? `url(#${gradientId})` : fill;
-  const bars = RUNGS.map((r, i) => {
-    const c = summit && i === 0 ? GOLD : color;
-    return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${RUNG_H}" rx="${RUNG_RX}" fill="${c}"/>`;
-  });
-  return `<g>${bars.join('')}</g>`;
+/** Το σήμα σε viewBox 64, με τα δύο paths του πηγαίου SVG. */
+const mark = (darkFill, { purpleFill = VIOLET, gradientId } = {}) => {
+  const dark = gradientId ? `url(#${gradientId})` : darkFill;
+  return `<g transform="translate(0,64) scale(0.00962406,-0.00962406)">
+    <path fill="${dark}" d="${MARK_PATHS[0]}"/>
+    <path fill="${purpleFill}" d="${MARK_PATHS[1]}"/>
+  </g>`;
 };
-
-const gradientDefs = (id) => `<defs>
-  <linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0">
-    <stop offset="0" stop-color="${VIOLET_A}"/>
-    <stop offset="1" stop-color="${VIOLET_B}"/>
-  </linearGradient>
-</defs>`;
 
 const svg = (body, w = 64, h = 64, vb = '0 0 64 64') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}">${body}</svg>\n`;
 
-/**
- * Το σήμα μέσα σε rounded-square. Λευκό σήμα σε near-black βάση — ένα app
- * icon δεν αλλάζει χρώμα με το accent του χρήστη.
- */
-const inSquare = (scale, radius, { color = WHITE, summit = false } = {}) => `
-  <rect width="64" height="64" rx="${radius}" fill="${BG}"/>
-  <g transform="translate(32,32) scale(${scale}) translate(-32,-32)">${mark(color, { summit })}</g>`;
+const inSquare = (scale, radius, { bg = BG } = {}) => `
+  <rect width="64" height="64" rx="${radius}" fill="${bg}"/>
+  <g transform="translate(32,32) scale(${scale}) translate(-32,-32)">${mark(DARK)}</g>`;
+
+// Στα 16px η λεπτομέρεια του πλήρους σήματος χάνεται· το favicon κρατά
+// το ίδιο A + violet route αλλά με πιο χοντρές φόρμες.
+const faviconMark = `
+  <path fill="${DARK}" d="M5 59 L29 5 H35 L59 59 H47 L32 27 L17 59 Z"/>
+  <path fill="${VIOLET}" d="M10 59 C 17 47 24 37 31 27 C 34 22 37 17 39 12 L 43 15 C 39 24 35 32 30 41 C 26 48 22 54 19 59 Z"/>`;
 
 const files = {
-  // Το «γυμνό» σήμα, gradient — για inline χρήση/έγγραφα
-  'logo.svg': svg(`${gradientDefs('anabasis-logo')}${mark(null, { gradientId: 'anabasis-logo' })}`),
-  'logo-white.svg': svg(mark(WHITE)),
-  // Favicon: οι 4 μπάρες διαβάζονται καθαρά ακόμα και στα 16px του tab
-  'favicon.svg': svg(`${gradientDefs('anabasis-favicon')}${mark(null, { gradientId: 'anabasis-favicon' })}`),
-  // App icon (PWA/Apple): container + λευκό σήμα σε near-black βάση
-  'app-icon.svg': svg(inSquare(0.72, 14.5), 64, 64),
-  // Maskable: μικρότερο σήμα ώστε να μένει μέσα στο 80% safe-zone circle
-  // του Android (βλ. https://web.dev/maskable-icon/) κατά το circular crop
-  'app-icon-maskable.svg': svg(inSquare(0.6, 0), 64, 64),
+  // Το «γυμνό» σήμα, για inline χρήση/έγγραφα
+  'logo.svg': svg(mark(DARK)),
+  'logo-white.svg': svg(mark(WHITE, { purpleFill: VIOLET_LIGHT })),
+  // Favicon: simplified A για καθαρή ανάγνωση στα 16px του tab
+  'favicon.svg': svg(`<rect width="64" height="64" rx="14.5" fill="${BG}"/>${faviconMark}`),
+  // App icon (PWA/Apple): container + πλήρες χρώμα σε φωτεινή βάση
+  'app-icon.svg': svg(inSquare(0.74, 14.5)),
+  // Maskable: μικρότερο σήμα ώστε να μένει μέσα στο 80% safe-zone
+  'app-icon-maskable.svg': svg(inSquare(0.58, 0)),
 };
 
 for (const [name, content] of Object.entries(files)) {
@@ -81,20 +72,18 @@ for (const [name, content] of Object.entries(files)) {
 }
 
 // ── OG / social preview 1200×630 ──────────────────────────────────────────
-// Near-black βάση, το σήμα σε gradient + «Anabasis» σε Fira Sans Condensed.
 const og = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <rect width="1200" height="630" fill="${BG}"/>
-  ${gradientDefs('anabasis-og')}
-  <g opacity="0.05" transform="translate(760,20) scale(11)">${mark(null, { gradientId: 'anabasis-og' })}</g>
-  <g transform="translate(120,167) scale(4.7)">${mark(null, { gradientId: 'anabasis-og' })}</g>
-  <text x="470" y="292" fill="${WHITE}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
-        font-size="76" font-weight="600" letter-spacing="6">ANABASIS</text>
-  <text x="474" y="348" fill="${VIOLET_B}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
-        font-size="26" font-weight="500" letter-spacing="6">RISE. PROGRESS. BECOME.</text>
-  <rect x="474" y="386" width="88" height="4" rx="2" fill="${GOLD}"/>
-  <text x="474" y="440" fill="#A8A2BC" font-family="Manrope, Inter, system-ui, sans-serif"
+  <circle cx="985" cy="118" r="330" fill="${VIOLET}" opacity="0.055"/>
+  <g transform="translate(120,135) scale(4.6)">${mark(DARK)}</g>
+  <text x="480" y="278" fill="${DARK}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
+        font-size="82" font-weight="600" letter-spacing="7">ANABASIS</text>
+  <text x="484" y="336" fill="${VIOLET}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
+        font-size="25" font-weight="600" letter-spacing="6">RISE. PROGRESS. BECOME.</text>
+  <rect x="484" y="374" width="88" height="4" rx="2" fill="${GOLD}"/>
+  <text x="484" y="430" fill="${MUTED}" font-family="Manrope, Inter, system-ui, sans-serif"
         font-size="27">Weighted calisthenics &amp; skill progression · offline-first</text>
-  <text x="474" y="484" fill="#6B6480" font-family="Manrope, Inter, system-ui, sans-serif"
+  <text x="484" y="476" fill="#8A8592" font-family="Manrope, Inter, system-ui, sans-serif"
         font-size="24" letter-spacing="1">anabasis.axonos.dev</text>
 </svg>\n`;
 writeFileSync(resolve(PUB, 'og.svg'), og);
@@ -105,6 +94,9 @@ const raster = [
   ['app-icon.svg', 'pwa-512x512.png', 512, 512],
   ['app-icon.svg', 'apple-touch-icon.png', 180, 180],
   ['app-icon-maskable.svg', 'pwa-maskable-512.png', 512, 512],
+  ['favicon.svg', 'favicon-16.png', 16, 16],
+  ['favicon.svg', 'favicon-32.png', 32, 32],
+  ['favicon.svg', 'favicon-48.png', 48, 48],
   ['og.svg', 'og.png', 1200, 630],
 ];
 

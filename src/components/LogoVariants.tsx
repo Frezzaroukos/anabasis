@@ -6,7 +6,7 @@ import { Logo } from './Logo';
  * ώστε μια μελλοντική αλλαγή να γίνεται με μάτια, όχι από μνήμη.
  */
 
-/** V4 — ΤΟ ΕΝΕΡΓΟ: «Rung-peak» — 4 σκαλοπάτια σε σιλουέτα κορυφής. */
+/** V5 — ΤΟ ΕΝΕΡΓΟ: «Ascent A» — bold A + violet διαδρομή. */
 export function LogoRungPeak({ className }: { className?: string }) {
   return <Logo className={className} />;
 }
@@ -143,9 +143,9 @@ export function LogoAlpha({ className }: { className?: string }) {
 }
 
 export const LOGO_VARIANTS = [
-  { key: 'rung-peak', label: 'Rung-peak (ενεργό)', Comp: LogoRungPeak },
-  { key: 'rung-peak-summit', label: 'Rung-peak — summit (gold)', Comp: LogoRungPeakSummit },
-  { key: 'rung-peak-gradient', label: 'Rung-peak — Altitude Violet gradient', Comp: LogoRungPeakGradient },
+  { key: 'rung-peak', label: 'Ascent A (ενεργό)', Comp: LogoRungPeak },
+  { key: 'rung-peak-summit', label: 'Ascent A — summit (gold)', Comp: LogoRungPeakSummit },
+  { key: 'rung-peak-gradient', label: 'Ascent A — Altitude Violet gradient', Comp: LogoRungPeakGradient },
   { key: 'alpha-ladder', label: 'v3 — Άλφα-σκάλα (ιστορικό)', Comp: LogoAlphaLadder },
   { key: 'alpha-ladder-sm', label: 'v3 — Άλφα-σκάλα μικρό (ιστορικό)', Comp: LogoAlphaLadderSmall },
   { key: 'ascent', label: 'v2 — Ascent', Comp: LogoAscent },

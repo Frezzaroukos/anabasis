@@ -1,19 +1,19 @@
 import { useId } from 'react';
+import markSvg from '../../branding/logo-v2/mark.svg?raw';
 import { cn } from '@/lib/utils';
 
 /**
- * Το σήμα του Anabasis v3 — «Summit seal»: οροσειρά μέσα σε κυκλική σφραγίδα.
- * Αίσθηση ορειβατικού συλλόγου / badge — σοβαρό, διαχρονικό, ταιριάζει με το
- * Carbon. Ο δακτύλιος «περικλείει» την ανάβαση· η ψηλότερη κορυφή είναι το
- * σημείο-στόχος. Δουλεύει σε 16px favicon: δακτύλιος + 2 κορυφές διαβάζονται.
+ * Το σήμα του Anabasis v5 — «Ascent A»: το γράμμα A ως ανάβαση, με μια
+ * violet διαδρομή που ανεβαίνει από τη βάση στην κορυφή.
  *
- * Χρώμα: `currentColor` by default — το σήμα ακολουθεί το accent του χρήστη
- * (Ρυθμίσεις → Accent). `summit` βάζει χρυσό «σημαιάκι» στην κορυφή
- * (= PR/achievement). `gradient` δίνει brand-fixed accent gradient για
- * splash/branding όπου δεν πρέπει να αλλάζει με το accent.
+ * Η γεωμετρία ζει στο `branding/logo-v2/mark.svg` (ίδια πηγή με τα app
+ * icons/favicon). Το `currentColor` κρατά το A προσαρμοστικό στο accent του
+ * χρήστη· η διαδρομή μένει brand violet. `summit` βάζει χρυσή κουκκίδα στην
+ * κορυφή (= PR/achievement). `gradient` δίνει signature violet gradient στη
+ * διαδρομή για splash/branding.
  */
-const MOUNTAINS = 'M15 43 L25 27 L31 35 L39 21 L49 43 Z';
-const SUMMIT = { x: 39, y: 21 } as const;
+const MARK_PATHS = [...markSvg.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+const [DARK_PATH, PURPLE_PATH] = MARK_PATHS;
 
 export function Logo({
   className,
@@ -21,29 +21,29 @@ export function Logo({
   gradient = false,
 }: {
   className?: string;
-  /** Χρυσό σημαιάκι στην κορυφή (= PR/achievement). */
+  /** Χρυσή κουκκίδα στην κορυφή (= PR/achievement). */
   summit?: boolean;
-  /** Signature accent gradient αντί για currentColor — brand-fixed χρήση. */
+  /** Signature violet gradient στη διαδρομή — brand-fixed χρήση. */
   gradient?: boolean;
 }) {
   const gradientId = useId();
-  const paint = gradient ? `url(#${gradientId})` : 'currentColor';
+  const routePaint = gradient ? `url(#${gradientId})` : 'hsl(var(--primary))';
 
   return (
     <svg viewBox="0 0 64 64" className={cn('h-6 w-6', className)} role="img" aria-label="Anabasis">
       {gradient ? (
         <defs>
           <linearGradient id={gradientId} x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#5EE6D9" />
-            <stop offset="1" stopColor="#9D5CFF" />
+            <stop offset="0" stopColor="#8239EF" />
+            <stop offset="1" stopColor="#B88CFF" />
           </linearGradient>
         </defs>
       ) : null}
-      {/* Δακτύλιος-σφραγίδα */}
-      <circle cx="32" cy="32" r="26" fill="none" stroke={paint} strokeWidth="4.5" />
-      {/* Οροσειρά */}
-      <path d={MOUNTAINS} fill={paint} />
-      {summit ? <circle cx={SUMMIT.x} cy={SUMMIT.y} r="4" fill="hsl(var(--gold))" /> : null}
+      <g transform="translate(0,64) scale(0.00962406,-0.00962406)">
+        <path d={DARK_PATH} fill="currentColor" />
+        <path d={PURPLE_PATH} fill={routePaint} />
+      </g>
+      {summit ? <circle cx="32" cy="5" r="3.5" fill="hsl(var(--gold))" /> : null}
     </svg>
   );
 }
