@@ -5,8 +5,12 @@
 ## Τώρα
 - **31/10 Ascent A icon + brand assets (OpenCode):**
   - **Έγινε:** επιλογή `MAPd1.jpg` (bold A + violet route) αντί `LEtqz.jpg` (πολύ λεπτό στα 16px)· vectorized σε `branding/logo-v2/mark.svg` + `mark-mono.svg`· νέα palette dark `#1C1C21`, violet `#8239EF`, light violet `#B88CFF`, bg `#FCFCFD`, gold `#F56E14`· `scripts/gen-brand-assets.mjs` διαβάζει πλέον το mark και παράγει 6 SVG + 8 PNG (logo, logo-white, favicon, app-icon, app-icon-maskable, og + favicon 16/32/48, pwa 192/512, maskable, apple-touch)· simplified `favicon.svg` για 16px· `index.html` PNG favicon links + `vite.config.ts` includeAssets· `Logo.tsx` raw import, currentColor A + violet route, summit gold dot, gradient· BrandingPage/LogoVariants labels «Ascent A» και clarified ότι τα μωβ τετράγωνα είναι ιστορικά preview πλαίσια, όχι το τρέχον app icon· **519 frontend tests, typecheck, lint, build:staged PASS**· local screenshots `/tmp/opencode/icon-review/app-header-new-logo.png`, `branding-new-logo.png`, `branding-labels-fixed.png`, `favicon-sheet-final.png`.
-  - **Μένει:** commit/push/deploy του batch· live/staging έλεγχος favicon 16/32 + logo 24px + PWA install μετά το deploy· `public/landing.html` ακόμη παλιό dark palette.
-  - **Θέλει εσένα:** «ναι» για commit/push/deploy του Ascent A batch· visual review των screenshots· απόφαση για την τιμή `€7 / 60 days`.
+  - **Μένει:** live visual review (favicon 16/32, logo 24px, PWA install)· `public/landing.html` ακόμη παλιό dark palette.
+  - **Θέλει εσένα:** visual review των screenshots/live· απόφαση για την τιμή `€7 / 60 days`.
+- **31/10 13:26 Ascent A deploy + cache/dynamic favicon fix (OpenCode):**
+  - **Έγινε:** commits `9043655` + `da9fe58`, push `main`, prepush-gate PASS· release `20261031-132631-944284712`· live assets με `?v=2` (favicon 343B, app-icon 1976B, pwa-192 8516B, og 59178B) επειδή το Cloudflare κρατούσε τα παλιά immutable· dynamic favicon `theme.ts` ευθυγραμμίστηκε με Ascent A· 519 tests/typecheck/lint/build:staged PASS· live device-check 20/20 (warnings: CSP inline script, tiny text).
+  - **Μένει:** `public/landing.html` reskin, Google login end-to-end, Pro gating/price decision, store readiness.
+  - **Θέλει εσένα:** απάντηση στην τιμή (€10–15 lifetime / ≤€3/mo) και pause του €7/60d· απόφαση refund/terms (no refunds ως έχει = EU risk).
 - **31/10 Pricing/prospects/feature research (OpenCode):**
   - **Έγινε:** research doc `~/code/axonos/docs/research/ANABASIS-PRICING-2026-10-31.md` με πηγές/ημερομηνίες· βρέθηκε ότι το Pro **δεν κλειδώνει κανένα feature** (μόνο badge/plan)· το `€7 / 60 days` = **€42.58/yr** effective, πάνω από trackers χωρίς content (Hevy ~€21.47, Strong ~€26.84) και σχεδόν στο Calistree ~€40.27 (1.800+ exercises με video)· comparables Madbarz €53.70/yr, Thenx €80.55–107.40/yr, TMA €140.53/yr, Calisthenics Family €119.99/yr· RevenueCat 2026 median download→paid 2.9% D35, trial→paid 37.7%, median annual $39.94· EU: dynamic subscription = digital service, 14-day withdrawal δεν αποκλείεται (CJEU C-234/25)· Stripe checkout `mode=payment` χωρίς terms/consent.
   - **Μένει:** απόφαση τιμής/refund policy και υλοποίηση πραγματικού Pro value (advanced analytics + coach + unlimited programs/goals/custom trackers)· μετά landing reskin.
@@ -46,19 +50,19 @@
     - Πες ένα «ναι» για push.
 - **16/10 19:11 LIVE 16d3adf** (frontend releases/20261016-191129…): γρηγορότερη πρώτη εμφάνιση — το shell δεν περιμένει το DB bootstrap· LCP / 3201→2552, /calendar 2901→2552, /settings 3057→2552 (5 εναλλάξ μετρήσεις, επιβεβαίωση Grok QA9), διάμεσος score ≥95 · ομάδα: Codex (A9), cross-review Grok (QA9) · rollback: `npm run deploy:rollback` · μένει: σύντομο κενό κείμενο ~200ms στο /history και /calendar πριν τα δεδομένα (προϋπάρχον, HistoryPage.tsx:37)
 - **16/10 LIVE c947478** (frontend releases/20261016-025232…, API migrations 0006 gc_floor + 0007 gc_graveyard): export ανά profile, logout με flush + προειδοποίηση για unsynced, πλήρης διαγραφή profile/λογαριασμού (και graveyard — GDPR), import με version/preview, destructive reset χωρίς ghosts, server-side graveyard (καμία ανάσταση ούτε από παλιούς clients), atomic promote/rollback · vitest 507, cargo 12+64, device-check live 80/80 · ομάδα: Claude (A2–A8), cross-review Grok (QA4/QA5) + Codex (QA6–QA8) · rollback frontend: `npm run deploy:rollback` · rollback API (μονόδρομα migrations): stop anabasis-api → επαναφορά `~/.local/state/backups/anabasis-db-20261016-predeploy.db` + `~/.local/state/backups/anabasis-api.prev-20261016` → start · ⏳ git push στο GitHub (public) θέλει «ναι» Aggelos
-- LIVE https://anabasis.axonos.dev (frontend `dist/` από serve.py :8120, API anabasis-api :8121) · main f25907f (GitHub `github` remote, public)
+- LIVE https://anabasis.axonos.dev (frontend `dist/` από serve.py :8120, API anabasis-api :8121) · main da9fe58 · release 20261031-132631-944284712 (GitHub `github` remote, public)
 - Launch P0 έγιναν: Privacy/Terms/Safety + safety ack, landing `/landing.html` EN/EL, SMTP ενεργό (drop-in anabasis-api.service.d/email.conf), quota + tombstone GC
 - Πιστοποίηση συσκευών 10 profiles: live 20/20 χωρίς warnings (`device-check https://anabasis.axonos.dev /,/landing.html`) · docs/DEVICE-CERTIFICATION-2026-10-10.md
 - Tests: 486 frontend (vitest) + server cargo · audit: docs/LAUNCH-READINESS-2026-10-09.md
 
 ## Επόμενα 3
-1. Deploy Ascent A batch + reskin `public/landing.html` στη νέα light/violet ταυτότητα — θέλει «ναι» Aggelos
+1. Reskin `public/landing.html` στη νέα light/violet ταυτότητα (το Ascent A batch είναι live)
 2. Pricing/prospects/feature roadmap: research έτοιμο (`~/code/axonos/docs/research/ANABASIS-PRICING-2026-10-31.md`) — απόφαση τιμής/refund + Pro gating μετά
 3. Store readiness: Apple/Google accounts, native wrapper, IAP, Apple Sign In — απόφαση Aggelos
 
 ## Περιμένουν Aggelos
-- «Ναι» για commit/push/deploy του Ascent A batch
-- Απόφαση για τιμή Pro, refund policy και Pro gating
+- Απόφαση για τιμή Pro (€10–15 lifetime / ≤€3/mo), pause του €7/60d και refund/terms
+- Pro gating (advanced analytics + coach + unlimited programs/goals/custom trackers)
 - Store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)
 - Πραγματική δοκιμαστική αγορά αν θέλει end-to-end (χωρίς refund)
 
