@@ -12,6 +12,7 @@ import {
   ListChecks,
   MessageSquare,
   Palette,
+  Receipt,
   ShieldCheck,
   Sparkle,
   Sparkles,
@@ -121,6 +122,7 @@ export function SettingsPage() {
         <SettingsRow to="/legal/safety" Icon={HeartPulse} label={t('legal.safety.title')} />
         <SettingsRow to="/legal/privacy" Icon={ShieldCheck} label={t('legal.privacy.title')} />
         <SettingsRow to="/legal/terms" Icon={FileText} label={t('legal.terms.title')} />
+        <SettingsRow to="/legal/refund" Icon={Receipt} label={t('legal.refund.title')} />
       </SettingsGroup>
 
       <p className="text-center text-xs text-muted-foreground">

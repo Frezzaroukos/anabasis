@@ -20,6 +20,7 @@ import { PROGRAM_TEMPLATES } from '@/lib/programTemplates';
 import { db } from '@/lib/db';
 import type { ActivityKind, ProgramDay } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
+import { useIsPro } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { ActivityChip } from '@/components/ActivityChip';
@@ -32,6 +33,7 @@ import { ActivityChip } from '@/components/ActivityChip';
 export function ProgramsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isPro = useIsPro();
 
   const programs = useLiveQuery(() => listPrograms(), [], []);
   // Οι δραστηριότητες του ΧΡΗΣΤΗ (καμία σταθερή λίστα) — ίδια πηγή με τον
@@ -70,9 +72,10 @@ export function ProgramsPage() {
   const [renameDraft, setRenameDraft] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const canCreate = isPro || programs.length < 3;
 
   const onPickTemplate = async (templateId: string) => {
-    if (busy) return;
+    if (busy || !canCreate) return;
     const tpl = PROGRAM_TEMPLATES.find((x) => x.id === templateId);
     if (!tpl) return;
     setBusy(true);
@@ -90,7 +93,7 @@ export function ProgramsPage() {
 
   const onCreate = async () => {
     const trimmed = name.trim();
-    if (!trimmed || busy) return;
+    if (!trimmed || busy || !canCreate) return;
     setBusy(true);
     try {
       const p = await createProgram(trimmed, kind);
@@ -105,7 +108,7 @@ export function ProgramsPage() {
 
   const onFromLastWorkout = async () => {
     const trimmed = name.trim() || t('programs.lastWorkoutCopyName');
-    if (busy) return;
+    if (busy || !canCreate) return;
     setBusy(true);
     setError(null);
     try {
@@ -137,6 +140,7 @@ export function ProgramsPage() {
 
   // Fork: «Upper A» → «Upper A (2)», μετά ανοίγει τον editor για μετονομασία/αλλαγές.
   const onDuplicate = async (programId: string) => {
+    if (!canCreate) return;
     const copy = await duplicateProgram(programId);
     if (copy) navigate(`/programs/${copy.id}`);
   };
@@ -163,17 +167,38 @@ export function ProgramsPage() {
         </div>
         {!creating && (
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setTemplatesOpen((v) => !v)}>
+            <Button
+              variant="outline"
+              className="flex-1 sm:flex-none"
+              disabled={!canCreate}
+              onClick={() => setTemplatesOpen((v) => !v)}
+            >
               <LayoutTemplate className="h-4 w-4" />
               {t('programs.fromTemplate')}
             </Button>
-            <Button className="flex-1 sm:flex-none" onClick={() => setCreating(true)}>
+            <Button
+              className="flex-1 sm:flex-none"
+              disabled={!canCreate}
+              onClick={() => setCreating(true)}
+            >
               <Plus className="h-4 w-4" />
               {t('programs.newProgram')}
             </Button>
           </div>
         )}
       </header>
+
+      {!isPro && programs.length >= 3 && (
+        <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">{t('programs.freeLimit')}</p>
+          <Link
+            to="/settings/account"
+            className="shrink-0 text-sm font-semibold text-primary hover:underline"
+          >
+            {t('account.upgrade')}
+          </Link>
+        </div>
+      )}
 
       {templatesOpen && (
         <section className="animate-rise-in space-y-2 rounded-xl bg-elevated p-4">
@@ -190,7 +215,7 @@ export function ProgramsPage() {
                   <li key={p.id}>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !canCreate}
                       onClick={() => {
                         setTemplatesOpen(false);
                         void onDuplicate(p.id);
@@ -221,7 +246,7 @@ export function ProgramsPage() {
               <li key={tpl.id}>
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || !canCreate}
                   onClick={() => void onPickTemplate(tpl.id)}
                   className="w-full rounded-lg bg-card px-4 py-3 text-left ring-offset-background transition-all duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                 >
@@ -259,12 +284,12 @@ export function ProgramsPage() {
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button disabled={!name.trim() || busy} onClick={() => void onCreate()}>
+            <Button disabled={!name.trim() || busy || !canCreate} onClick={() => void onCreate()}>
               {t('common.save')}
             </Button>
             <Button
               variant="outline"
-              disabled={busy}
+              disabled={busy || !canCreate}
               onClick={() => void onFromLastWorkout()}
             >
               <History className="h-4 w-4" />
@@ -292,7 +317,7 @@ export function ProgramsPage() {
             <p className="text-sm font-medium">{t('programs.empty')}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t('programs.emptyHint')}</p>
           </div>
-          <Button variant="outline" className="mt-1" onClick={() => setCreating(true)}>
+          <Button variant="outline" className="mt-1" disabled={!canCreate} onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" />
             {t('programs.newProgram')}
           </Button>
@@ -359,9 +384,10 @@ export function ProgramsPage() {
                     </button>
                     <button
                       type="button"
+                      disabled={!canCreate}
                       onClick={() => void onDuplicate(p.id)}
                       aria-label={t('programs.duplicate')}
-                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Copy className="h-4 w-4" />
                     </button>

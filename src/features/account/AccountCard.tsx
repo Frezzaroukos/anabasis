@@ -20,7 +20,13 @@ import {
   useAuth,
 } from '@/lib/api/auth';
 import { api, googleStart } from '@/lib/api/client';
-import type { Account, AuthSession, BillingConfig, OAuthProviders } from '@/lib/api/types';
+import type {
+  Account,
+  AuthSession,
+  BillingConfig,
+  BillingPlanId,
+  OAuthProviders,
+} from '@/lib/api/types';
 import { syncNow, useSyncStatus } from '@/lib/sync';
 
 /** Server error code → i18n key (server/API-CONTRACT.md). Άγνωστος κωδικός
@@ -506,12 +512,12 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
     );
   }, [t]);
 
-  const onUpgrade = async () => {
+  const onUpgrade = async (plan: BillingPlanId) => {
     if (upgradeBusy) return;
     setUpgradeBusy(true);
     setUpgradeError(null);
     try {
-      const { url } = await api.billingCheckout();
+      const { url } = await api.billingCheckout(plan);
       window.location.assign(url);
     } catch {
       setUpgradeError(t('account.upgradeError'));
@@ -642,29 +648,71 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
 
       <p className="mt-2 font-mono text-sm text-muted-foreground">{accountEmail}</p>
 
-      <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-elevated px-3 py-2 text-sm">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('account.plan')}</p>
-          <p className="mt-0.5">
-            {planActive
-              ? t('account.planProActive', {
-                  date: account.plan_expires_at
-                    ? new Date(account.plan_expires_at).toLocaleDateString(i18n.resolvedLanguage)
-                    : t('account.planNoExpiry'),
-                })
-              : t('account.planFree')}
-          </p>
-        </div>
-        {!planActive &&
-          (billing?.enabled ? (
-            <Button size="sm" disabled={upgradeBusy} onClick={() => void onUpgrade()}>
-              {upgradeBusy
-                ? t('common.loading')
-                : (billing.price_label ?? t('account.upgrade'))}
-            </Button>
-          ) : (
+      <div className="mt-3 rounded-md bg-elevated px-3 py-2 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('account.plan')}</p>
+            <p className="mt-0.5">
+              {planActive
+                ? account.plan_expires_at
+                  ? t('account.planProActive', {
+                      date: new Date(account.plan_expires_at).toLocaleDateString(
+                        i18n.resolvedLanguage,
+                      ),
+                    })
+                  : t('account.planProLifetime')
+                : t('account.planFree')}
+            </p>
+          </div>
+          {!planActive && !billing?.enabled && (
             <span className="text-xs text-muted-foreground">{t('account.planComingSoon')}</span>
-          ))}
+          )}
+        </div>
+
+        {!planActive && billing?.enabled && (
+          <div className="mt-3 space-y-2">
+            {billing.plans.map((plan) => (
+              <div
+                key={plan.id}
+                className="flex flex-col gap-2 rounded-md border border-border/60 bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-1.5 text-sm font-semibold">
+                    {t(`account.plans.${plan.id}`)}
+                    {plan.id === 'founding' && plan.remaining != null && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                        {t('account.plans.remaining', { count: plan.remaining })}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {t(`account.plans.${plan.id}Desc`)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center justify-between gap-3 sm:flex-col sm:items-end">
+                  <span className="font-mono text-sm tabular-nums">{plan.price_label}</span>
+                  <Button
+                    size="sm"
+                    disabled={upgradeBusy || !plan.available}
+                    onClick={() => void onUpgrade(plan.id)}
+                  >
+                    {upgradeBusy
+                      ? t('common.loading')
+                      : plan.available
+                        ? t('account.plans.choose')
+                        : t('account.plans.soldOut')}
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {t('account.plans.refund')}{' '}
+              <Link to="/legal/refund" className="underline underline-offset-2 hover:text-foreground">
+                {t('account.plans.refundLink')}
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
       {billingNotice && (
         <p className="mt-2 text-xs text-muted-foreground" role="status">

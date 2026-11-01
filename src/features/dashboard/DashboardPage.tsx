@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { User } from 'lucide-react';
+import { Sparkles, User } from 'lucide-react';
 import {
   getCalendar,
   getCurrentProfile,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/db/queries';
 import { DEFAULT_USER_ID } from '@/lib/db/session';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { useAuth, useIsPro } from '@/lib/api/auth';
 import { useCountUp } from '@/hooks/useCountUp';
 import { Wordmark } from '@/components/Logo';
 import { cn } from '@/lib/utils';
@@ -85,6 +86,8 @@ const CARD_COMPONENTS: Record<DashboardCardKey, React.ComponentType> = {
 export function DashboardPage() {
   const { t } = useTranslation();
   const settings = useAppSettings();
+  const auth = useAuth();
+  const isPro = useIsPro();
 
   const insights = useLiveQuery(() => getTrainingInsights(30), [], null);
   const streakDays = insights?.streakDays ?? 0;
@@ -201,6 +204,28 @@ export function DashboardPage() {
         </div>
         <WeekStrip />
       </header>
+
+      {auth && !isPro && (
+        <Link
+          to="/settings/account"
+          className="group flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 transition-colors hover:bg-primary/10 md:col-span-2"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Sparkles className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">
+              {t('dashboard.proUpsellTitle')}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {t('dashboard.proUpsellDesc')}
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-primary group-hover:underline">
+            {t('dashboard.proUpsellCta')}
+          </span>
+        </Link>
+      )}
 
       {/* Coach mode panels (NextMoves + Deload) — visible only when coach_enabled */}
       <div className="md:col-span-2">

@@ -67,6 +67,12 @@ export function useAuth(): StoredAuth | null {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
+/** Reactive Pro flag — `plan_active` counts only while the paid plan is valid. */
+export function useIsPro(): boolean {
+  const auth = useAuth();
+  return auth?.account?.plan_active === true;
+}
+
 export function isLoggedIn(): boolean {
   return readStoredAuth() != null;
 }

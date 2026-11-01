@@ -65,7 +65,7 @@ sync_rows(
 )
 CREATE INDEX idx_sync_rows_seq ON sync_rows(account_id, seq);
 
-billing_events(              -- migration 0011· Stripe webhook idempotency
+billing_events(              -- migrations 0011 + 0012· Stripe webhook idempotency
   event_id TEXT PK,          -- Stripe event id
   account_id TEXT NOT NULL,
   provider TEXT NOT NULL DEFAULT 'stripe',
@@ -73,7 +73,19 @@ billing_events(              -- migration 0011· Stripe webhook idempotency
   amount_total INTEGER,
   currency TEXT,
   days INTEGER NOT NULL,
+  plan TEXT,                 -- 'monthly' | 'founding' | 'standard' | 'legacy' | 'refund' (0012)
+  kind TEXT,                 -- 'subscription' | 'lifetime' | 'refund' (0012)
+  subscription_id TEXT,      -- Stripe sub id για renewals (0012)
+  payment_intent TEXT,       -- για refund lookup (0012)
   created_at TEXT NOT NULL
+)
+billing_subscriptions(       -- migration 0012· Stripe subscription → account
+  subscription_id TEXT PK,
+  account_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  current_period_end TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 )
 
 gc_graveyard(                -- migration 0007· anti-resurrection ίχνος
@@ -213,19 +225,35 @@ payload (που ήδη κουβαλά deleted_at).
   (δώρα/support)· το `pro` επεκτείνεται από την τρέχουσα λήξη αν είναι ενεργή.
 - GET  /api/admin/stats → `{ accounts, active_accounts, disabled_accounts, admins, pro_accounts, sessions, rows, db_size_bytes, uptime_seconds }`
 
-### Billing  (Stripe one-time checkout)
-Dormant χωρίς `ANABASIS_STRIPE_SECRET_KEY` + `ANABASIS_STRIPE_PRICE_ID` +
-`ANABASIS_STRIPE_WEBHOOK_SECRET`. Καμία χρέωση δεν γίνεται χωρίς αυτά.
+### Billing  (Stripe monthly + lifetime)
+Dormant χωρίς `ANABASIS_STRIPE_SECRET_KEY` + `ANABASIS_STRIPE_WEBHOOK_SECRET`
+και τουλάχιστον ένα price. Καμία χρέωση δεν γίνεται χωρίς αυτά.
+Price env (ένα ή περισσότερα):
+- `ANABASIS_STRIPE_PRICE_MONTHLY` — €2.99/month subscription (fallback:
+  `ANABASIS_STRIPE_PRICE_ID`, legacy 60-day one-time).
+- `ANABASIS_STRIPE_PRICE_FOUNDING` — €14.99 lifetime, πρώτοι 250.
+- `ANABASIS_STRIPE_PRICE_STANDARD` — €29.99 lifetime.
 Προαιρετικά: `ANABASIS_PUBLIC_URL` (default `https://anabasis.axonos.dev`),
-`ANABASIS_STRIPE_PRICE_LABEL` (label στο UI) και `ANABASIS_STRIPE_DAYS`
-(default 60, clamp 1..3650).
-- GET  /api/billing/config → `{ enabled, price_label, days }` (public, no secrets).
-- POST /api/billing/checkout (auth) → `{ url }` Stripe Checkout· 503
-  `billing_not_configured` όταν λείπει config.
-- POST /api/billing/webhook — Stripe signature over RAW body. Στο
-  `checkout.session.completed` με `payment_status=paid` δίνει `pro` για
-  `metadata.days` (default 60)· idempotent στο Stripe event id. Λάθος υπογραφή
-  → 400 `invalid_signature`.
+`ANABASIS_STRIPE_LABEL_*`, `ANABASIS_STRIPE_AMOUNT_*`,
+`ANABASIS_STRIPE_FOUNDING_LIMIT` (default 250), legacy
+`ANABASIS_STRIPE_PRICE_LABEL` / `ANABASIS_STRIPE_DAYS` (default 60).
+- GET  /api/billing/config → public, no secrets:
+  `{ enabled, price_label, days, plans: [{ id, kind, price_label, amount,
+  currency, days, available, remaining }] }`. `remaining` υπάρχει μόνο στο
+  founding· `available=false` όταν εξαντλήθηκε.
+- POST /api/billing/checkout (auth) body `{ plan?: "monthly"|"founding"|"standard" }`
+  (default `monthly`) → `{ url }` Stripe Checkout. 503
+  `billing_not_configured`, 400 `unknown_plan`, 409 `already_pro` ή
+  `founding_sold_out`.
+- POST /api/billing/webhook — Stripe signature over RAW body. Idempotent στο
+  Stripe event id. Χειρίζεται:
+  - `checkout.session.completed` — subscription ή lifetime grant.
+  - `invoice.paid` — monthly renewal, επεκτείνει τη λήξη.
+  - `customer.subscription.updated/deleted` — ενημερώνει το
+    `billing_subscriptions` status/period.
+  - `charge.refunded` — πλήρες refund revoke Pro μόνο αν το refunded
+    `payment_intent` είναι η τελευταία αγορά· ένα παλιό refund δεν κόβει
+    νεότερη αγορά. Λάθος υπογραφή → 400 `invalid_signature`.
 
 ### GET /api/health
 200 `{ ok: true, version }` — χωρίς auth, για monitoring.

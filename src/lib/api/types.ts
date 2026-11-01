@@ -37,10 +37,24 @@ export interface Me {
   plan_active: boolean;
 }
 
+export type BillingPlanId = 'monthly' | 'founding' | 'standard';
+
+export interface BillingPlan {
+  id: BillingPlanId;
+  kind: 'subscription' | 'lifetime';
+  price_label: string;
+  amount: number;
+  currency: string;
+  days: number | null;
+  available: boolean;
+  remaining: number | null;
+}
+
 export interface BillingConfig {
   enabled: boolean;
   price_label: string | null;
   days: number;
+  plans: BillingPlan[];
 }
 
 /** GET /api/auth/sessions — μία ενεργή συσκευή, χωρίς token/hash. */

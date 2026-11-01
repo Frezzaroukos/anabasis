@@ -49,11 +49,37 @@ async fn test_app_with_billing() -> (Router, AppState, tempfile::TempDir) {
         .expect("build_state");
     state.billing = Some(BillingConfig {
         secret_key: "sk_test".into(),
-        price_id: "price_test".into(),
         webhook_secret: "whsec_test".into(),
         public_url: "https://anabasis.test".into(),
+        plans: vec![
+            anabasis_api::billing::PlanConfig {
+                id: "monthly".into(),
+                price_id: "price_monthly".into(),
+                kind: anabasis_api::billing::PlanKind::Subscription,
+                amount: 299,
+                price_label: "€2.99 / month".into(),
+                days: Some(31),
+            },
+            anabasis_api::billing::PlanConfig {
+                id: "founding".into(),
+                price_id: "price_founding".into(),
+                kind: anabasis_api::billing::PlanKind::Lifetime,
+                amount: 1499,
+                price_label: "€14.99 once".into(),
+                days: None,
+            },
+            anabasis_api::billing::PlanConfig {
+                id: "standard".into(),
+                price_id: "price_standard".into(),
+                kind: anabasis_api::billing::PlanKind::Lifetime,
+                amount: 2999,
+                price_label: "€29.99 once".into(),
+                days: None,
+            },
+        ],
+        legacy_days: 60,
+        founding_limit: 250,
         price_label: Some("€7 / 60 days".into()),
-        days: 60,
     });
     let app = router(state.clone());
     (app, state, dir)
@@ -101,6 +127,34 @@ async fn call_ip(app: &Router, method: &str, uri: &str, ip: &str) -> StatusCode 
         .header("cf-connecting-ip", ip)
         .header("content-type", "application/json")
         .body(Body::empty())
+        .unwrap();
+    app.clone().oneshot(req).await.unwrap().status()
+}
+
+fn sign_stripe(secret: &str, timestamp: i64, body: &[u8]) -> String {
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(format!("{timestamp}.").as_bytes());
+    mac.update(body);
+    mac.finalize()
+        .into_bytes()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+async fn post_stripe_webhook(
+    app: &Router,
+    timestamp: i64,
+    signature: &str,
+    body: &[u8],
+) -> StatusCode {
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/billing/webhook")
+        .header("cf-connecting-ip", "203.0.113.7")
+        .header("content-type", "application/json")
+        .header("stripe-signature", format!("t={timestamp},v1={signature}"))
+        .body(Body::from(body.to_vec()))
         .unwrap();
     app.clone().oneshot(req).await.unwrap().status()
 }
@@ -3212,6 +3266,140 @@ async fn admin_grants_and_revokes_pro_plan() {
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn billing_config_lists_three_plans_and_founding_remaining() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let (status, config) = call(&app, "GET", "/api/billing/config", None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(config["enabled"], true);
+    let plans = config["plans"].as_array().expect("plans");
+    assert_eq!(plans.len(), 3);
+    assert_eq!(plans[0]["id"], "monthly");
+    assert_eq!(plans[0]["kind"], "subscription");
+    assert_eq!(plans[0]["amount"], 299);
+    assert_eq!(plans[0]["available"], true);
+    assert_eq!(plans[1]["id"], "founding");
+    assert_eq!(plans[1]["kind"], "lifetime");
+    assert_eq!(plans[1]["amount"], 1499);
+    assert_eq!(plans[1]["remaining"], 250);
+    assert_eq!(plans[2]["id"], "standard");
+    assert_eq!(plans[2]["amount"], 2999);
+    assert_eq!(config["price_label"], "€7 / 60 days");
+}
+
+#[tokio::test]
+async fn stripe_lifetime_refund_revokes_only_the_latest_payment() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let (_, body) = signup(&app, "lifetime@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let account_id = body["account"]["id"].as_str().unwrap().to_string();
+    let timestamp = anabasis_api::util::now().unix_timestamp();
+
+    let founding = serde_json::to_vec(&json!({
+        "id": "evt_founding_1",
+        "type": "checkout.session.completed",
+        "data": { "object": {
+            "id": "cs_founding_1",
+            "client_reference_id": account_id,
+            "mode": "payment",
+            "payment_status": "paid",
+            "amount_total": 1499,
+            "currency": "eur",
+            "payment_intent": "pi_founding_1",
+            "metadata": { "account_id": account_id, "plan": "founding" }
+        }}
+    }))
+    .unwrap();
+    let signature = sign_stripe("whsec_test", timestamp, &founding);
+    assert_eq!(
+        post_stripe_webhook(&app, timestamp, &signature, &founding).await,
+        StatusCode::OK
+    );
+
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(me["plan"], "pro");
+    assert_eq!(me["plan_active"], true);
+    assert!(me["plan_expires_at"].is_null());
+
+    let (_, config) = call(&app, "GET", "/api/billing/config", None, None).await;
+    assert_eq!(config["plans"][1]["remaining"], 249);
+
+    let standard = serde_json::to_vec(&json!({
+        "id": "evt_standard_1",
+        "type": "checkout.session.completed",
+        "data": { "object": {
+            "id": "cs_standard_1",
+            "client_reference_id": account_id,
+            "mode": "payment",
+            "payment_status": "paid",
+            "amount_total": 2999,
+            "currency": "eur",
+            "payment_intent": "pi_standard_1",
+            "metadata": { "account_id": account_id, "plan": "standard" }
+        }}
+    }))
+    .unwrap();
+    let signature = sign_stripe("whsec_test", timestamp, &standard);
+    assert_eq!(
+        post_stripe_webhook(&app, timestamp, &signature, &standard).await,
+        StatusCode::OK
+    );
+
+    let old_refund = serde_json::to_vec(&json!({
+        "id": "evt_refund_old",
+        "type": "charge.refunded",
+        "data": { "object": {
+            "id": "ch_old",
+            "amount": 1499,
+            "amount_refunded": 1499,
+            "refunded": true,
+            "currency": "eur",
+            "payment_intent": "pi_founding_1"
+        }}
+    }))
+    .unwrap();
+    let signature = sign_stripe("whsec_test", timestamp, &old_refund);
+    assert_eq!(
+        post_stripe_webhook(&app, timestamp, &signature, &old_refund).await,
+        StatusCode::OK
+    );
+
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(
+        me["plan_active"], true,
+        "old refund must not revoke a newer purchase"
+    );
+
+    let (_, config) = call(&app, "GET", "/api/billing/config", None, None).await;
+    assert_eq!(
+        config["plans"][1]["remaining"], 250,
+        "refund frees the founding slot"
+    );
+
+    let latest_refund = serde_json::to_vec(&json!({
+        "id": "evt_refund_latest",
+        "type": "charge.refunded",
+        "data": { "object": {
+            "id": "ch_latest",
+            "amount": 2999,
+            "amount_refunded": 2999,
+            "refunded": true,
+            "currency": "eur",
+            "payment_intent": "pi_standard_1"
+        }}
+    }))
+    .unwrap();
+    let signature = sign_stripe("whsec_test", timestamp, &latest_refund);
+    assert_eq!(
+        post_stripe_webhook(&app, timestamp, &signature, &latest_refund).await,
+        StatusCode::OK
+    );
+
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(me["plan"], "free");
+    assert_eq!(me["plan_active"], false);
 }
 
 #[tokio::test]

@@ -161,7 +161,8 @@
     "dayCount": "{{count}} day",
     "dayCount_other": "{{count}} days",
     "moveDayLeft": "Move day earlier",
-    "moveDayRight": "Move day later"
+    "moveDayRight": "Move day later",
+    "freeLimit": "Free includes up to 3 programs. Pro removes the limit."
   },
   "history": {
     "title": "History",
@@ -335,7 +336,8 @@
         "consider": "Consider a deload week.",
         "volumeWarning": "Volume +{{percent}}% & high RPE (avg {{rpe}})",
         "consecutiveDays": "{{days}} consecutive training days"
-      }
+      },
+      "proOnly": "Coach mode is part of Pro. Upgrade to turn it on."
     }
   },
   "common": {
@@ -485,7 +487,10 @@
       "weekUnit": "days this week",
       "lastSessionUnit": "days since last session"
     },
-    "recentActivity": "Recent"
+    "recentActivity": "Recent",
+    "proUpsellTitle": "Unlock Coach mode",
+    "proUpsellDesc": "Progression suggestions, deload detection and advanced insights.",
+    "proUpsellCta": "See Pro"
   },
   "setType": {
     "normal": "Normal",
@@ -746,7 +751,8 @@
     "noDeadline": "rolling window",
     "viewProgress": "View progress",
     "viewSkill": "View skill ladder",
-    "achieved": "Achieved"
+    "achieved": "Achieved",
+    "freeLimit": "Free includes up to 3 goals. Pro removes the limit."
   },
   "account": {
     "title": "Account & Sync",
@@ -780,6 +786,20 @@
     "planProActive": "Pro · active until {{date}}",
     "planProBadge": "Pro",
     "planNoExpiry": "no expiry",
+    "planProLifetime": "Pro · lifetime",
+    "plans": {
+      "monthly": "Monthly",
+      "monthlyDesc": "Coach mode, advanced insights and unlimited programs. Cancel anytime.",
+      "founding": "Founding lifetime",
+      "foundingDesc": "One payment. Pro forever. First 250 members.",
+      "standard": "Lifetime",
+      "standardDesc": "One payment. Pro forever.",
+      "remaining": "{{count}} left",
+      "choose": "Choose",
+      "soldOut": "Sold out",
+      "refund": "14-day withdrawal right.",
+      "refundLink": "Refund policy"
+    },
     "planComingSoon": "Upgrade coming soon",
     "upgrade": "Upgrade to Pro",
     "upgradeError": "Couldn't start checkout. Try again.",
@@ -1203,30 +1223,77 @@
   },
   "legal": {
     "back": "Back to About",
-    "updated": "Last updated: 9 October 2026",
+    "updated": "Last updated: 1 November 2026",
     "privacy": {
       "title": "Privacy Policy",
       "intro": "Anabasis is local-first. Your training data stays in your browser and is never sent anywhere unless you choose to create a cloud account for sync. There are no ads, no analytics and no third-party trackers.",
       "sections": [
-        { "h": "What stays on your device", "p": "All your workouts, exercises, goals and body metrics are stored in your browser (IndexedDB). They work fully offline and never leave your device unless you enable cloud sync. Clearing your browser's site data deletes them — export a backup first." },
-        { "h": "If you create a cloud account", "p": "A cloud account stores your account email and your private sync rows on the Anabasis server so you can sync across devices. The server may keep short-lived technical logs (such as IP address and request metadata) to operate securely and rate-limit abuse. This data is used only to run the sync service — never sold or shared." },
-        { "h": "No ads, no analytics, no trackers", "p": "Anabasis runs no advertising, no analytics and no third-party tracking scripts, and sets no advertising cookies. We cannot see how you use the app." },
-        { "h": "Social sharing is opt-in", "p": "Friends, ranking and the leaderboard are off by default. If you opt in, only aggregate figures (such as level and totals) are shared with friends — never your raw training data." },
-        { "h": "Your rights", "p": "You can export all your data at any time from Settings → Data & backups. You can permanently delete your cloud account and its server-side rows from Settings → Account. Local data is removed by clearing the app's site data." },
-        { "h": "Contact", "p": "Questions about this policy can be raised on the project repository: github.com/Frezzaroukos/anabasis. Anabasis is a personal, non-commercial project by Aggelos Frezzaroukos." }
+        {
+          "h": "What stays on your device",
+          "p": "All your workouts, exercises, goals and body metrics are stored in your browser (IndexedDB). They work fully offline and never leave your device unless you enable cloud sync. Clearing your browser's site data deletes them — export a backup first."
+        },
+        {
+          "h": "If you create a cloud account",
+          "p": "A cloud account stores your account email and your private sync rows on the Anabasis server so you can sync across devices. The server may keep short-lived technical logs (such as IP address and request metadata) to operate securely and rate-limit abuse. This data is used only to run the sync service — never sold or shared."
+        },
+        {
+          "h": "No ads, no analytics, no trackers",
+          "p": "Anabasis runs no advertising, no analytics and no third-party tracking scripts, and sets no advertising cookies. We cannot see how you use the app."
+        },
+        {
+          "h": "Social sharing is opt-in",
+          "p": "Friends, ranking and the leaderboard are off by default. If you opt in, only aggregate figures (such as level and totals) are shared with friends — never your raw training data."
+        },
+        {
+          "h": "Your rights",
+          "p": "You can export all your data at any time from Settings → Data & backups. You can permanently delete your cloud account and its server-side rows from Settings → Account. Local data is removed by clearing the app's site data."
+        },
+        {
+          "h": "Contact",
+          "p": "Questions about this policy can be raised on the project repository: github.com/Frezzaroukos/anabasis. Anabasis is a personal, non-commercial project by Aggelos Frezzaroukos."
+        }
       ]
     },
     "terms": {
       "title": "Terms of Service",
-      "intro": "By using Anabasis you accept these terms. Anabasis is a free, open-source training log provided as-is by an individual, not a company.",
+      "intro": "By using Anabasis you accept these terms. The core app is free and open-source; Anabasis Pro is an optional paid upgrade provided as-is by an individual, not a company.",
       "sections": [
-        { "h": "What Anabasis is", "p": "A free, offline-first log for weighted calisthenics and skill progression. The app itself is yours to use; cloud sync is an optional, best-effort convenience." },
-        { "h": "No warranty", "p": "Anabasis is provided \"as is\", without warranty of any kind. Cloud sync is self-hosted and best-effort — it may be slow, unavailable or interrupted. Keep your own backups (export is always available). To the maximum extent permitted by law, the author is not liable for any loss or damage arising from use of the app or service." },
-        { "h": "Not professional advice", "p": "Anabasis does not provide medical, health or coaching advice. See the Safety notice. You are responsible for your own training decisions." },
-        { "h": "Acceptable use", "p": "Do not attempt to disrupt the service, access other users' data, or abuse the sync server (for example by automated bulk writes). Accounts that do so may be removed." },
-        { "h": "Your account", "p": "You are responsible for keeping your account credentials safe. You can delete your account at any time from Settings → Account." },
-        { "h": "Changes", "p": "These terms may be updated as the app evolves. Continued use after a change means you accept the updated terms." },
-        { "h": "Governing law", "p": "As a personal, non-commercial project based in Greece, these terms are governed by Greek law where applicable." }
+        {
+          "h": "What Anabasis is",
+          "p": "A free, offline-first log for weighted calisthenics and skill progression. The core app is yours to use; cloud sync and Anabasis Pro are optional, best-effort conveniences."
+        },
+        {
+          "h": "No warranty",
+          "p": "Anabasis is provided \"as is\", without warranty of any kind. Cloud sync is self-hosted and best-effort — it may be slow, unavailable or interrupted. Keep your own backups (export is always available). To the maximum extent permitted by law, the author is not liable for any loss or damage arising from use of the app or service."
+        },
+        {
+          "h": "Not professional advice",
+          "p": "Anabasis does not provide medical, health or coaching advice. See the Safety notice. You are responsible for your own training decisions."
+        },
+        {
+          "h": "Acceptable use",
+          "p": "Do not attempt to disrupt the service, access other users' data, or abuse the sync server (for example by automated bulk writes). Accounts that do so may be removed."
+        },
+        {
+          "h": "Your account",
+          "p": "You are responsible for keeping your account credentials safe. You can delete your account at any time from Settings → Account."
+        },
+        {
+          "h": "Paid plans",
+          "p": "Anabasis Pro is billed in EUR through Stripe. The monthly plan renews automatically until cancelled; lifetime plans are one-time payments. The price and billing period are shown at checkout before you pay."
+        },
+        {
+          "h": "14-day withdrawal right",
+          "p": "EU consumers may withdraw from a Pro purchase within 14 days of payment and receive a full refund. See the Refund & withdrawal page for how to request it. After 14 days, payments are non-refundable except where required by law."
+        },
+        {
+          "h": "Changes",
+          "p": "These terms may be updated as the app evolves. Continued use after a change means you accept the updated terms."
+        },
+        {
+          "h": "Governing law",
+          "p": "As a personal, non-commercial project based in Greece, these terms are governed by Greek law where applicable."
+        }
       ]
     },
     "safety": {
@@ -1238,11 +1305,48 @@
       "accept": "I understand and accept",
       "acked": "Safety notice acknowledged",
       "sections": [
-        { "h": "Not medical advice", "p": "Anabasis logs and structures training. It does not diagnose, treat or replace a doctor or coach. If you have a health condition, an injury, are pregnant, or feel pain or dizziness, consult a qualified professional before training." },
-        { "h": "Warm up and progress gradually", "p": "Weighted calisthenics loads your joints, tendons and connective tissue, which adapt slower than muscle. Warm up properly, add weight in small steps, and master each progression before moving to the next." },
-        { "h": "Use safe form and equipment", "p": "Check your bar, rings, belt and anchors before loading them. Keep good form, and avoid training to failure on risky movements without a safe setup." },
-        { "h": "Listen to your body", "p": "Sharp pain, joint pain or dizziness means stop. Rest and recover — progress comes from consistency over time, not from a single hard session." },
-        { "h": "You train at your own risk", "p": "By using Anabasis you accept that you are responsible for your own training decisions and their outcomes." }
+        {
+          "h": "Not medical advice",
+          "p": "Anabasis logs and structures training. It does not diagnose, treat or replace a doctor or coach. If you have a health condition, an injury, are pregnant, or feel pain or dizziness, consult a qualified professional before training."
+        },
+        {
+          "h": "Warm up and progress gradually",
+          "p": "Weighted calisthenics loads your joints, tendons and connective tissue, which adapt slower than muscle. Warm up properly, add weight in small steps, and master each progression before moving to the next."
+        },
+        {
+          "h": "Use safe form and equipment",
+          "p": "Check your bar, rings, belt and anchors before loading them. Keep good form, and avoid training to failure on risky movements without a safe setup."
+        },
+        {
+          "h": "Listen to your body",
+          "p": "Sharp pain, joint pain or dizziness means stop. Rest and recover — progress comes from consistency over time, not from a single hard session."
+        },
+        {
+          "h": "You train at your own risk",
+          "p": "By using Anabasis you accept that you are responsible for your own training decisions and their outcomes."
+        }
+      ]
+    },
+    "refund": {
+      "title": "Refund & withdrawal",
+      "intro": "If you buy Anabasis Pro, you have a 14-day right of withdrawal from the day of purchase. We refund the full amount to the original payment method.",
+      "sections": [
+        {
+          "h": "14-day withdrawal right",
+          "p": "EU consumers can withdraw from a digital purchase within 14 days without giving a reason. To exercise it, email contact@axonos.dev from the address used for the purchase within 14 days, with the account email and approximate purchase date. We will confirm and process the refund to the original payment method."
+        },
+        {
+          "h": "After 14 days",
+          "p": "After the 14-day window, payments are non-refundable except where required by law or where the service was not delivered. Monthly subscriptions can be cancelled at any time; cancellation stops future renewals and Pro stays active until the end of the paid period."
+        },
+        {
+          "h": "How refunds are processed",
+          "p": "Approved refunds are issued through Stripe to the original payment method. Bank processing can take 5–10 business days. A full refund ends the associated Pro access; lifetime purchases are revoked on full refund."
+        },
+        {
+          "h": "Contact",
+          "p": "Email contact@axonos.dev with the subject “Refund”. Include the account email and Stripe receipt if you have it. We never ask for card numbers or passwords."
+        }
       ]
     }
   }

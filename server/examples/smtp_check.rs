@@ -8,6 +8,7 @@
 //! It will actually send ONLY when BOTH are true:
 //!   * env `ANABASIS_SMTP_TEST_SEND=1`, and
 //!   * the recipient is exactly `aggelosf2016@gmail.com` (hardcoded allowlist).
+//!
 //! Any other recipient is refused, so this tool can never email third parties.
 //!
 //! Usage (operator, with the env loaded from the secrets files):

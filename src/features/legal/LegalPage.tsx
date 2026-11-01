@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { hasSafetyAck, setSafetyAck } from '@/lib/safety';
 
 /** Τα νομικά/ασφάλειας έγγραφα που εκθέτουμε ως σελίδες. */
-const DOCS = ['privacy', 'terms', 'safety'] as const;
+const DOCS = ['privacy', 'terms', 'refund', 'safety'] as const;
 type Doc = (typeof DOCS)[number];
 
 interface Section {
@@ -16,7 +16,7 @@ interface Section {
 }
 
 /**
- * ΕΝΑ route (`/legal/:doc`) για Privacy / Terms / Safety. Το περιεχόμενο ζει
+ * ΕΝΑ route (`/legal/:doc`) για Privacy / Terms / Refund / Safety. Το περιεχόμενο ζει
  * στο i18n (`legal.<doc>`, EN/EL) ώστε να είναι μεταφρασμένο και να μη
  * σκορπιστεί σε markup. Το Safety έχει επιπλέον κουμπί αποδοχής που σφραγίζει
  * το ack τοπικά — ίδιο bit με το onboarding, ώστε το banner να σωπάσει.

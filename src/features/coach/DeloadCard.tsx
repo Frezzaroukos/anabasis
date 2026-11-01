@@ -8,13 +8,15 @@
 import { useTranslation } from 'react-i18next';
 import { BatteryLow } from 'lucide-react';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { useIsPro } from '@/lib/api/auth';
 import { useCoachData } from './useCoachData';
 import { formatDeloadReason } from './format';
 
 export function DeloadCard() {
   const { t } = useTranslation();
   const settings = useAppSettings();
-  const enabled = !!settings?.coach_enabled;
+  const isPro = useIsPro();
+  const enabled = !!settings?.coach_enabled && isPro;
 
   // Hook ΠΑΝΤΑ (rules-of-hooks)· δεν τρέχει queries όταν off.
   const { deloadRisk, loading } = useCoachData(enabled);

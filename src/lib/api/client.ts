@@ -23,6 +23,7 @@ import type {
   AdminStats,
   AuthSession,
   BillingConfig,
+  BillingPlanId,
   AdminTableBreakdown,
   HealthResponse,
   OAuthProviders,
@@ -305,8 +306,11 @@ export const api = {
     return request<BillingConfig>('/billing/config');
   },
 
-  billingCheckout(): Promise<{ url: string }> {
-    return request<{ url: string }>('/billing/checkout', { method: 'POST', body: {} });
+  billingCheckout(plan?: BillingPlanId): Promise<{ url: string }> {
+    return request<{ url: string }>('/billing/checkout', {
+      method: 'POST',
+      body: plan ? { plan } : {},
+    });
   },
 
   health(): Promise<HealthResponse> {

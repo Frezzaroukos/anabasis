@@ -8,6 +8,7 @@
 import { useTranslation } from 'react-i18next';
 import { Compass } from 'lucide-react';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { useIsPro } from '@/lib/api/auth';
 import { formatWeight } from '@/lib/units';
 import { useCoachData } from './useCoachData';
 import { formatMove } from './format';
@@ -17,7 +18,8 @@ export function NextMovesCard() {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
-  const enabled = !!settings?.coach_enabled;
+  const isPro = useIsPro();
+  const enabled = !!settings?.coach_enabled && isPro;
 
   // Hook ΠΑΝΤΑ (rules-of-hooks)· ο ίδιος ο hook δεν τρέχει queries όταν off.
   const { moves, loading } = useCoachData(enabled);

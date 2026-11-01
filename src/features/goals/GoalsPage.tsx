@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { Plus, Target, ChevronDown } from 'lucide-react';
@@ -8,6 +9,7 @@ import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
 import { listTrackers } from '@/lib/db/trackers';
 import type { Goal } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
+import { useIsPro } from '@/lib/api/auth';
 import { cn } from '@/lib/utils';
 import { GoalFormSheet } from './components/GoalFormSheet';
 import { GoalRow } from './components/GoalRow';
@@ -24,6 +26,7 @@ const VIRTUALIZE_THRESHOLD = 50;
  */
 export function GoalsPage() {
   const { t } = useTranslation();
+  const isPro = useIsPro();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [showIntro, setShowIntro] = useState(false);
@@ -33,6 +36,7 @@ export function GoalsPage() {
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(true), [], []);
   const trackers = useLiveQuery(() => listTrackers(true), [], []);
+  const atLimit = !isPro && progress.length >= 3;
   const virtualized = progress.length > VIRTUALIZE_THRESHOLD;
   const virtualListRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -83,6 +87,7 @@ export function GoalsPage() {
   };
 
   const openCreate = () => {
+    if (atLimit) return;
     setEditing(null);
     setFormOpen(true);
   };
@@ -99,6 +104,18 @@ export function GoalsPage() {
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('goals.intro')}</p>
       </header>
+
+      {atLimit && (
+        <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">{t('goals.freeLimit')}</p>
+          <Link
+            to="/settings/account"
+            className="shrink-0 text-sm font-semibold text-primary hover:underline"
+          >
+            {t('account.upgrade')}
+          </Link>
+        </div>
+      )}
 
       {progress.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-card p-8 text-center">
@@ -183,7 +200,7 @@ export function GoalsPage() {
         </>
       )}
 
-      <Button variant="outline" className="w-full" onClick={openCreate}>
+      <Button variant="outline" className="w-full" disabled={atLimit} onClick={openCreate}>
         <Plus className="h-4 w-4" />
         {t('goals.new')}
       </Button>
