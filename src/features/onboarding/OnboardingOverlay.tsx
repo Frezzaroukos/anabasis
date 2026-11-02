@@ -113,6 +113,7 @@ export function OnboardingOverlay() {
   ] as const;
 
   const current = slides[slide]!;
+  const iconAnim = direction === 'forward' ? 'animate-onboard-spin-forward' : 'animate-onboard-spin-back';
   const step = String(slide + 1).padStart(2, '0');
   const next = () => {
     if (isLast) finish();
@@ -183,7 +184,7 @@ export function OnboardingOverlay() {
         <div className="grid w-full items-center gap-8 sm:grid-cols-[1.15fr_0.85fr] sm:gap-14">
           <div key={slide} className={direction === 'forward' ? 'animate-slide-in-forward' : 'animate-slide-in-back'}>
             <div className="mb-5 flex items-center gap-3 sm:hidden">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-gold/25 bg-card/70">
+              <div className={cn('flex h-14 w-14 items-center justify-center rounded-full border border-gold/25 bg-card/70', iconAnim)}>
                 {current.icon}
               </div>
               <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold/90">
@@ -257,7 +258,8 @@ export function OnboardingOverlay() {
               <div
                 key={`${slide}-icon`}
                 className={cn(
-                  'relative flex h-28 w-28 animate-rise-in items-center justify-center rounded-full border border-gold/25 bg-background/70 shadow-glow',
+                  'relative flex h-28 w-28 items-center justify-center rounded-full border border-gold/25 bg-background/70 shadow-glow',
+                  iconAnim,
                   current.mark && 'ring-1 ring-gold/15',
                 )}
               >

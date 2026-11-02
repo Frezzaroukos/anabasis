@@ -164,6 +164,7 @@ export interface OAuthProviders {
 export interface SocialMe {
   username: string | null;
   display_name: string | null;
+  avatar_url?: string | null;
   share_profile: boolean;
   friends_count: number;
   incoming_count: number;
@@ -178,6 +179,7 @@ export type FriendshipState = 'self' | 'friend' | 'in' | 'out' | null;
 export interface SocialSearchResult {
   username: string;
   display_name: string | null;
+  avatar_url?: string | null;
   level: number;
   xp: number;
   tier: string;
@@ -193,6 +195,7 @@ export interface FriendRow {
   account_id: string;
   username: string | null;
   display_name: string | null;
+  avatar_url?: string | null;
   status: 'accepted' | 'pending';
   /** 'friend' | 'in' (εισερχόμενο) | 'out' (εξερχόμενο) */
   direction: 'friend' | 'in' | 'out';
@@ -209,6 +212,7 @@ export interface FriendRow {
 export interface LeaderboardRow {
   username: string | null;
   display_name: string | null;
+  avatar_url?: string | null;
   level: number;
   xp: number;
   tier: string;
@@ -225,6 +229,7 @@ export interface LeaderboardRow {
 export interface PublicProfile {
   username: string | null;
   display_name: string | null;
+  avatar_url?: string | null;
   level: number;
   xp: number;
   tier: string;

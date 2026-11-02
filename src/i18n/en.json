@@ -697,12 +697,12 @@
     "skip": "Skip",
     "start": "Start",
     "slide1": {
-      "title": "The map of your ascent",
-      "desc": "Every skill and PR is a step higher. Anabasis shows where you are and what comes next."
+      "title": "Train the basics. Climb the skills.",
+      "desc": "Weighted pull-ups, dips and squats — plus front lever, planche and muscle-up progressions. One log for both."
     },
     "slide2": {
-      "title": "Not just another gym app",
-      "desc": "Track weighted basics AND skill progressions — front lever, planche, muscle-up. No other app does both well."
+      "title": "One ladder, two worlds",
+      "desc": "Weighted basics and skill progressions share the same log, history and progress charts."
     },
     "slide3": {
       "title": "Yours, offline, private",
@@ -1118,8 +1118,13 @@
       "err": {
         "username_taken": "That username is taken.",
         "invalid_username": "3–20 characters: lowercase letters, numbers, underscore.",
-        "generic": "Couldn't save. Try again."
-      }
+        "generic": "Couldn't save. Try again.",
+        "invalid_avatar": "Use an image up to 5 MB."
+      },
+      "avatarLabel": "Profile photo",
+      "avatarChange": "Change photo",
+      "avatarRemove": "Remove",
+      "avatarHint": "Square crop, resized automatically. Use an image you have rights to — no nudity, hate or harassment."
     },
     "add": {
       "title": "Add a friend",

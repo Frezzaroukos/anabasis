@@ -73,6 +73,7 @@ export interface SocialActions {
   updateProfile: (patch: {
     username?: string;
     display_name?: string;
+    avatar_url?: string | null;
     share_profile?: boolean;
   }) => Promise<{ ok: boolean; error?: string }>;
 }
@@ -237,7 +238,12 @@ export function useSocial(
   );
 
   const updateProfile = useCallback(
-    async (patch: { username?: string; display_name?: string; share_profile?: boolean }) => {
+    async (patch: {
+      username?: string;
+      display_name?: string;
+      avatar_url?: string | null;
+      share_profile?: boolean;
+    }) => {
       try {
         const me = await api.socialUpdateProfile(patch);
         setState((s) => ({ ...s, me }));

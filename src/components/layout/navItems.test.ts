@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { PRIMARY_NAV, SECONDARY_NAV } from './navItems';
 
 describe('navItems', () => {
-  it('βάζει την Κοινότητα στα κύρια tabs και τις Ασκήσεις στο «Περισσότερα»', () => {
+  it('βάζει Home, Calendar, Goals, Programs στα κύρια tabs και τα υπόλοιπα στο «Περισσότερα»', () => {
     const primary = PRIMARY_NAV.map((item) => item.to);
     const secondary = SECONDARY_NAV.map((item) => item.to);
 
-    expect(primary).toContain('/community');
-    expect(primary).not.toContain('/exercises');
+    expect(primary).toEqual(['/', '/calendar', '/goals', '/programs']);
+    expect(secondary).toContain('/progress');
+    expect(secondary).toContain('/community');
     expect(secondary).toContain('/exercises');
   });
 

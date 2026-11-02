@@ -274,6 +274,13 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
             </span>
           </div>
         </div>
+        {profile.avatar_url && (
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="mt-4 h-20 w-20 rounded-full object-cover ring-1 ring-border"
+          />
+        )}
         <p className="mt-4 truncate font-display text-lg font-semibold">{name}</p>
         <p className="text-xs text-muted-foreground tabular-nums">
           {t(`gami.tier.${profile.tier}`)}

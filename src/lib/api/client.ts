@@ -354,6 +354,7 @@ export const api = {
   socialUpdateProfile(body: {
     username?: string;
     display_name?: string;
+    avatar_url?: string | null;
     share_profile?: boolean;
   }): Promise<SocialMe> {
     return request<SocialMe>('/social/profile', { method: 'POST', body });

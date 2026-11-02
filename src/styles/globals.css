@@ -317,6 +317,21 @@
     animation: slide-in-back 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  @keyframes onboard-spin-forward {
+    from { transform: rotate(-160deg) scale(0.72); opacity: 0; }
+    to { transform: rotate(0deg) scale(1); opacity: 1; }
+  }
+  @keyframes onboard-spin-back {
+    from { transform: rotate(160deg) scale(0.72); opacity: 0; }
+    to { transform: rotate(0deg) scale(1); opacity: 1; }
+  }
+  .animate-onboard-spin-forward {
+    animation: onboard-spin-forward 360ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  }
+  .animate-onboard-spin-back {
+    animation: onboard-spin-back 360ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  }
+
   /* Έμφαση αριθμού όταν αλλάζει τιμή — opt-in, το στοιχείο (π.χ. δίπλα σε
      useCountUp) την παίρνει μόνο τη στιγμή της αλλαγής, όχι μόνιμα. */
   @keyframes glow-pulse {
@@ -386,7 +401,9 @@
       animation: summit-flash 500ms ease-out;
     }
     .animate-slide-in-forward,
-    .animate-slide-in-back {
+    .animate-slide-in-back,
+    .animate-onboard-spin-forward,
+    .animate-onboard-spin-back {
       animation: none;
     }
   }

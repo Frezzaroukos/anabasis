@@ -25,7 +25,7 @@ export interface NavItem {
 /**
  * Οι προορισμοί της εφαρμογής, μία φορά.
  *
- * Δύο διαφορετικά nav τα διαβάζουν: το bottom bar στο κινητό (5 + «Περισσότερα»,
+ * Δύο διαφορετικά nav τα διαβάζουν: το bottom bar στο κινητό (4 + «Περισσότερα»,
  * γιατί δεν χωρούν άλλα) και η πλαϊνή στήλη σε tablet/desktop (όλα μαζί, γιατί
  * εκεί υπάρχει χώρος και το «Περισσότερα» θα ήταν περιττό κλικ).
  * Χωρίς κοινή πηγή, μια νέα σελίδα θα εμφανιζόταν στο ένα και όχι στο άλλο.
@@ -33,7 +33,7 @@ export interface NavItem {
 export const PRIMARY_NAV: NavItem[] = [
   { to: '/', labelKey: 'nav.home', Icon: Home, end: true },
   { to: '/calendar', labelKey: 'nav.calendar', Icon: CalendarDays },
-  { to: '/community', labelKey: 'nav.community', Icon: Users },
+  { to: '/goals', labelKey: 'goals.title', Icon: Target },
   { to: '/programs', labelKey: 'nav.programs', Icon: ClipboardList },
 ];
 
@@ -44,9 +44,9 @@ export const PRIMARY_NAV: NavItem[] = [
  * στις Ρυθμίσεις → Δεδομένα, όχι δίπλα σε καθημερινούς προορισμούς.
  */
 export const SECONDARY_NAV: NavItem[] = [
-  { to: '/goals', labelKey: 'goals.title', Icon: Target },
   { to: '/progress', labelKey: 'progress.title', Icon: TrendingUp },
   { to: '/history', labelKey: 'history.title', Icon: Activity },
+  { to: '/community', labelKey: 'nav.community', Icon: Users },
   { to: '/exercises', labelKey: 'exercises.title', Icon: Dumbbell },
   { to: '/skills', labelKey: 'nav.skills', Icon: Layers },
   { to: '/achievements', labelKey: 'gami.title', Icon: Mountain },

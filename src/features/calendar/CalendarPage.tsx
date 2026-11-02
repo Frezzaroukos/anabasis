@@ -285,6 +285,11 @@ export function CalendarPage() {
     setSelected(today);
   };
 
+  const goToMonth = (month: number) => {
+    setMonthDirection(month >= cursor.month ? 'next' : 'prev');
+    setCursor({ year: cursor.year, month });
+  };
+
   const day = selected ? cal.get(selected) : undefined;
 
   // Σύνοψη ορατού μήνα — δίνει νόημα σε άδεια/γεμάτη σελίδα χωρίς να ανοίξεις μέρα.
@@ -362,6 +367,33 @@ export function CalendarPage() {
             ) : (
               <span className="rounded-full bg-card/80 px-2 py-1">{t('calendar.monthEmpty')}</span>
             )}
+          </div>
+          <div
+            className="mt-3 flex gap-1 overflow-x-auto pb-1"
+            aria-label={t('calendar.title')}
+          >
+            {Array.from({ length: 12 }, (_, month) => {
+              const label = new Date(cursor.year, month, 1).toLocaleDateString(
+                i18n.resolvedLanguage,
+                { month: 'short' },
+              );
+              return (
+                <button
+                  key={month}
+                  type="button"
+                  onClick={() => goToMonth(month)}
+                  aria-pressed={cursor.month === month}
+                  className={cn(
+                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    cursor.month === month
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card/80 text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
         {/*

@@ -89,6 +89,7 @@ fn normalize_username(raw: &str) -> Option<String> {
 pub struct MyProfile {
     username: Option<String>,
     display_name: Option<String>,
+    avatar_url: Option<String>,
     share_profile: bool,
     friends_count: i64,
     incoming_count: i64,
@@ -100,8 +101,8 @@ pub async fn me(
     State(state): State<AppState>,
     user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let row: (Option<String>, Option<String>, bool) =
-        sqlx::query_as("SELECT username, display_name, share_profile FROM accounts WHERE id = ?")
+    let row: (Option<String>, Option<String>, Option<String>, bool) =
+        sqlx::query_as("SELECT username, display_name, avatar_url, share_profile FROM accounts WHERE id = ?")
             .bind(&user.account_id)
             .fetch_one(&state.pool)
             .await?;
@@ -137,7 +138,8 @@ pub async fn me(
     Ok(Json(MyProfile {
         username: row.0,
         display_name: row.1,
-        share_profile: row.2,
+        avatar_url: row.2,
+        share_profile: row.3,
         friends_count,
         incoming_count,
         outgoing_count,
@@ -152,6 +154,7 @@ pub struct UpdateProfileRequest {
     /// null = μην αλλάξεις· "" = καθάρισε το username (γίνεται NULL).
     username: Option<String>,
     display_name: Option<String>,
+    avatar_url: Option<String>,
     share_profile: Option<bool>,
 }
 
@@ -203,6 +206,24 @@ pub async fn update_profile(
             Some(trimmed.chars().take(40).collect())
         };
         sqlx::query("UPDATE accounts SET display_name = ? WHERE id = ?")
+            .bind(&value)
+            .bind(&user.account_id)
+            .execute(&state.pool)
+            .await?;
+    }
+
+    if let Some(ref raw) = body.avatar_url {
+        let value: Option<String> = if raw.trim().is_empty() {
+            None
+        } else if raw.starts_with("data:image/") && raw.len() <= 120_000 {
+            Some(raw.to_string())
+        } else {
+            return Err(AppError::bad_request(
+                "invalid_avatar",
+                "Η εικόνα προφίλ πρέπει να είναι αρχείο εικόνας έως 120KB.",
+            ));
+        };
+        sqlx::query("UPDATE accounts SET avatar_url = ? WHERE id = ?")
             .bind(&value)
             .bind(&user.account_id)
             .execute(&state.pool)
@@ -297,6 +318,7 @@ pub struct FriendRow {
     account_id: String,
     username: Option<String>,
     display_name: Option<String>,
+    avatar_url: Option<String>,
     status: String,
     /// "in" = εισερχόμενο αίτημα προς εμένα· "out" = δικό μου προς άλλον·
     /// "friend" = αποδεκτή φιλία.
@@ -316,7 +338,7 @@ pub async fn friends(
     user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = sqlx::query_as::<_, FriendRow>(
-        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name,
+        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
                 'accepted' AS status, 'friend' AS direction,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
@@ -340,7 +362,7 @@ pub async fn requests(
     user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = sqlx::query_as::<_, FriendRow>(
-        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name,
+        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
                 'pending' AS status,
                 CASE WHEN f.addressee_id = ?1 THEN 'in' ELSE 'out' END AS direction,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
@@ -493,6 +515,7 @@ pub struct LeaderboardQuery {
 pub struct LeaderboardRow {
     username: Option<String>,
     display_name: Option<String>,
+    avatar_url: Option<String>,
     level: i64,
     xp: i64,
     tier: String,
@@ -525,7 +548,7 @@ pub async fn leaderboard(
 
     let sql = if q.scope == "global" {
         format!(
-            "SELECT a.username AS username, a.display_name AS display_name,
+            "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
                     ps.badges AS badges, COALESCE(ps.week_xp, 0) AS week_xp,
@@ -538,7 +561,7 @@ pub async fn leaderboard(
         )
     } else {
         format!(
-            "SELECT a.username AS username, a.display_name AS display_name,
+            "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
                     ps.badges AS badges, COALESCE(ps.week_xp, 0) AS week_xp,
@@ -584,6 +607,7 @@ pub struct SearchQuery {
 pub struct SearchResult {
     username: String,
     display_name: Option<String>,
+    avatar_url: Option<String>,
     level: i64,
     xp: i64,
     tier: String,
@@ -608,7 +632,7 @@ pub async fn search(
     let query: String = query.chars().take(40).collect();
 
     let rows = sqlx::query_as::<_, SearchResult>(
-        "SELECT a.username AS username, a.display_name AS display_name,
+        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
                 COALESCE(ps.streak_days, 0) AS streak_days, COALESCE(ps.badges, '[]') AS badges,
@@ -645,6 +669,7 @@ pub async fn search(
 pub struct PublicProfile {
     username: Option<String>,
     display_name: Option<String>,
+    avatar_url: Option<String>,
     level: i64,
     xp: i64,
     tier: String,
@@ -670,7 +695,7 @@ pub async fn public_profile_anonymous(
     let username = normalize_username(&username).ok_or_else(AppError::not_found)?;
 
     let row = sqlx::query_as::<_, PublicProfile>(
-        "SELECT a.username AS username, a.display_name AS display_name,
+        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
                 COALESCE(ps.badges, '[]') AS badges,
@@ -698,7 +723,7 @@ pub async fn public_profile(
     // Privacy στο SQL: ορατό μόνο αν share_profile=1 Ή είναι accepted φίλος μου.
     // Uniform not-found αλλιώς (καμία διαφορά «δεν υπάρχει» vs «ιδιωτικό»).
     let row = sqlx::query_as::<_, PublicProfile>(
-        "SELECT a.username AS username, a.display_name AS display_name,
+        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
                 COALESCE(ps.badges, '[]') AS badges,

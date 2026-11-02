@@ -13,7 +13,6 @@ import {
   X,
   Users,
   Globe,
-  Mountain,
   Flame,
   Award,
   Share2,
@@ -96,6 +95,46 @@ export function FriendsSection({ showHeading = true }: { showHeading?: boolean }
   );
 }
 
+function readAvatarFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('not_image'));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      reject(new Error('too_large'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read_failed'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode_failed'));
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('canvas_failed'));
+          return;
+        }
+        const scale = Math.max(size / img.width, size / img.height);
+        const dw = img.width * scale;
+        const dh = img.height * scale;
+        ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+        let data = canvas.toDataURL('image/webp', 0.82);
+        if (!data.startsWith('data:image/webp')) data = canvas.toDataURL('image/jpeg', 0.82);
+        if (data.length > 120_000) data = canvas.toDataURL('image/jpeg', 0.62);
+        resolve(data);
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ── Προφίλ (username + display name + share) ───────────────────────────────────
 
 function ProfileCard({
@@ -113,6 +152,7 @@ function ProfileCard({
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(me?.username ?? '');
   const [displayName, setDisplayName] = useState(me?.display_name ?? '');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(me?.avatar_url ?? null);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -120,7 +160,8 @@ function ProfileCard({
     if (editing) return;
     setUsername(me?.username ?? '');
     setDisplayName(me?.display_name ?? '');
-  }, [editing, me?.username, me?.display_name]);
+    setAvatarUrl(me?.avatar_url ?? null);
+  }, [editing, me?.avatar_url, me?.username, me?.display_name]);
 
   if (!me) return null;
 
@@ -130,9 +171,10 @@ function ProfileCard({
       setMsg(t('social.profile.err.invalid_username'));
       return;
     }
-    const patch: { username?: string; display_name?: string } = {};
+    const patch: { username?: string; display_name?: string; avatar_url?: string } = {};
     if (handle && handle !== me.username) patch.username = handle;
     if (displayName.trim() !== (me.display_name ?? '')) patch.display_name = displayName.trim();
+    if ((avatarUrl ?? '') !== (me.avatar_url ?? '')) patch.avatar_url = avatarUrl ?? '';
     if (Object.keys(patch).length === 0) {
       setEditing(false);
       return;
@@ -160,7 +202,7 @@ function ProfileCard({
       {me.username ? (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <Avatar name={me.display_name || `@${me.username}`} self size="lg" />
+            <Avatar name={me.display_name || `@${me.username}`} image={me.avatar_url} self size="lg" />
             <div className="min-w-0 flex-1">
               <p className="truncate font-display text-sm font-semibold">
                 {me.display_name || `@${me.username}`}
@@ -212,6 +254,42 @@ function ProfileCard({
                   maxLength={40}
                 />
               </FieldRow>
+              <FieldRow label={t('social.profile.avatarLabel')}>
+                <div className="flex items-center gap-3">
+                  <Avatar name={displayName || username || '?'} image={avatarUrl} size="lg" />
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-input px-3 text-xs font-medium hover:bg-accent">
+                      {t('social.profile.avatarChange')}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!file) return;
+                          setMsg(null);
+                          void readAvatarFile(file)
+                            .then(setAvatarUrl)
+                            .catch(() => setMsg(t('social.profile.err.invalid_avatar')));
+                        }}
+                      />
+                    </label>
+                    {avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatarUrl(null)}
+                        className="h-9 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        {t('social.profile.avatarRemove')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {t('social.profile.avatarHint')}
+                </p>
+              </FieldRow>
               <p className="text-[11px] text-muted-foreground">{t('social.profile.usernameHint')}</p>
               <div className="flex justify-end gap-2">
                 <Button
@@ -221,6 +299,7 @@ function ProfileCard({
                     setEditing(false);
                     setUsername(me.username ?? '');
                     setDisplayName(me.display_name ?? '');
+                    setAvatarUrl(me.avatar_url ?? null);
                     setMsg(null);
                   }}
                 >
@@ -267,6 +346,31 @@ function ProfileCard({
               placeholder={t('social.profile.displayNamePlaceholder')}
               maxLength={40}
             />
+          </FieldRow>
+          <FieldRow label={t('social.profile.avatarLabel')}>
+            <div className="flex items-center gap-3">
+              <Avatar name={displayName || username || '?'} image={avatarUrl} size="lg" />
+              <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-input px-3 text-xs font-medium hover:bg-accent">
+                {t('social.profile.avatarChange')}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    setMsg(null);
+                    void readAvatarFile(file)
+                      .then(setAvatarUrl)
+                      .catch(() => setMsg(t('social.profile.err.invalid_avatar')));
+                  }}
+                />
+              </label>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              {t('social.profile.avatarHint')}
+            </p>
           </FieldRow>
           <div className="flex justify-end">
             <Button onClick={() => void save()} disabled={saving || username.trim().length < 3}>
@@ -530,7 +634,7 @@ function AddFriend({
               key={row.username}
               className="flex items-center gap-2 rounded-lg bg-elevated px-2 py-2"
             >
-              <Avatar name={row.display_name || `@${row.username}`} />
+              <Avatar name={row.display_name || `@${row.username}`} image={row.avatar_url} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
                   {row.display_name || `@${row.username}`}
@@ -796,7 +900,7 @@ function Leaderboard({
                   <span className="w-6 text-center font-mono text-sm tabular-nums text-muted-foreground">
                     {i + 4}
                   </span>
-                  <Avatar name={leaderboardName(r, t('social.anon'))} self={r.is_self} />
+                  <Avatar name={leaderboardName(r, t('social.anon'))} image={r.avatar_url} self={r.is_self} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       <LeaderboardName row={r} />
@@ -844,6 +948,7 @@ function PodiumEntry({
     <div className="flex min-w-0 flex-col items-center">
       <Avatar
         name={leaderboardName(row, t('social.anon'))}
+        image={row.avatar_url}
         self={row.is_self}
         highlight={rank === 1}
         size="lg"
@@ -892,11 +997,13 @@ function leaderboardName(
 
 function Avatar({
   name,
+  image,
   self = false,
   highlight = false,
   size = 'sm',
 }: {
   name: string;
+  image?: string | null;
   self?: boolean;
   highlight?: boolean;
   size?: 'sm' | 'lg';
@@ -914,6 +1021,18 @@ function Avatar({
     : self
       ? 'bg-elevated text-foreground ring-1 ring-[hsl(var(--gold)/0.45)]'
       : 'bg-elevated text-muted-foreground';
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt=""
+        aria-hidden="true"
+        className={`shrink-0 rounded-full object-cover ${dims} ${
+          highlight ? 'ring-2 ring-[hsl(var(--gold)/0.6)]' : self ? 'ring-1 ring-[hsl(var(--gold)/0.45)]' : ''
+        }`}
+      />
+    );
+  }
   return (
     <span
       aria-hidden="true"
@@ -951,7 +1070,7 @@ function NameCell({ row }: { row: FriendRow }) {
   const { t } = useTranslation();
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <Mountain className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <Avatar name={row.display_name || row.username || t('social.anon')} image={row.avatar_url} />
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">
           {row.username ? (
