@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download, Trophy } from 'lucide-react';
@@ -20,7 +20,9 @@ import {
 } from '@/components/charts/ExerciseProgressChart';
 import type { ChartRangeKey } from '@/components/charts/timeRange';
 import { CategoryBadge } from '@/components/CategoryBadge';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { ActivityProgress } from './ActivityProgress';
+import { ProgressHistoryTabs } from '@/features/history/components/ProgressHistoryTabs';
 
 const PROGRESS_METRICS: ChartMetric[] = ['topWeight', 'e1rm', 'volume'];
 
@@ -30,7 +32,7 @@ const PROGRESS_METRICS: ChartMetric[] = ['topWeight', 'e1rm', 'volume'];
  * όγκος δείχνει φόρτο. Είναι διαφορετικές ερωτήσεις, όχι διαφορετικά styles.
  */
 export function ProgressPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
   const [params, setParams] = useSearchParams();
@@ -91,17 +93,13 @@ export function ProgressPage() {
   return (
     <div className="space-y-6">
       <header>
-        <Link
-          to="/history"
-          className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground tap:min-h-11"
-        >
-          ← {t('history.title')}
-        </Link>
-        <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
           {t('progress.title')}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('progress.hint')}</p>
       </header>
+
+      <ProgressHistoryTabs />
 
       {!exerciseId ? (
         <section className="space-y-3">
@@ -124,14 +122,18 @@ export function ProgressPage() {
                       {/* Trophy (χρυσό) = έχει PR· διακριτική κουκκίδα = έχει
                           προπονηθεί· αλλιώς κενό — καθαρό εικονίδιο αντί για
                           ανάμεικτα Unicode σύμβολα. */}
-                      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden>
-                        {s?.hasPR ? (
-                          <Trophy className="h-3.5 w-3.5 text-gold" />
-                        ) : s?.lastTrainedAt ? (
-                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
-                        ) : null}
+                      <CategoryIcon category={e.category} />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{e.name}</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          {s?.lastTrainedAt
+                            ? t('progress.lastTrained', {
+                                date: new Date(s.lastTrainedAt).toLocaleDateString(i18n.resolvedLanguage),
+                              })
+                            : t('progress.never')}
+                        </span>
                       </span>
-                      <span className="truncate text-sm font-medium">{e.name}</span>
+                      {s?.hasPR && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />}
                     </span>
                     <CategoryBadge category={e.category} />
                   </button>

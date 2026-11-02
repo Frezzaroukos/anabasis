@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, ArrowRight, Dumbbell, Wifi } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, ArrowRight, Dumbbell, UserPlus, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo, Wordmark } from '@/components/Logo';
 import { cn } from '@/lib/utils';
@@ -31,8 +32,10 @@ function hasOnboarded(): boolean {
  */
 export function OnboardingOverlay() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(hasOnboarded);
   const [slide, setSlide] = useState(0);
+  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   useFocusTrap(containerRef, !dismissed);
@@ -69,8 +72,14 @@ export function OnboardingOverlay() {
     if (touchStartX == null) return;
     const endX = e.changedTouches[0]?.clientX ?? touchStartX;
     const dx = endX - touchStartX;
-    if (dx <= -SWIPE_THRESHOLD_PX && slide < SLIDE_COUNT - 1) setSlide((s) => s + 1);
-    if (dx >= SWIPE_THRESHOLD_PX && slide > 0) setSlide((s) => s - 1);
+    if (dx <= -SWIPE_THRESHOLD_PX && slide < SLIDE_COUNT - 1) {
+      setDirection('forward');
+      setSlide((s) => s + 1);
+    }
+    if (dx >= SWIPE_THRESHOLD_PX && slide > 0) {
+      setDirection('back');
+      setSlide((s) => s - 1);
+    }
     setTouchStartX(null);
   };
 
@@ -107,7 +116,22 @@ export function OnboardingOverlay() {
   const step = String(slide + 1).padStart(2, '0');
   const next = () => {
     if (isLast) finish();
-    else setSlide((s) => s + 1);
+    else {
+      setDirection('forward');
+      setSlide((s) => s + 1);
+    }
+  };
+
+  const prev = () => {
+    if (slide === 0) return;
+    setDirection('back');
+    setSlide((s) => s - 1);
+  };
+
+  const goToStep = (index: number) => {
+    if (index === slide) return;
+    setDirection(index > slide ? 'forward' : 'back');
+    setSlide(index);
   };
 
   return (
@@ -157,7 +181,7 @@ export function OnboardingOverlay() {
 
       <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-6xl flex-1 items-center overflow-y-auto overscroll-contain px-5 py-6 sm:px-10 sm:py-10">
         <div className="grid w-full items-center gap-8 sm:grid-cols-[1.15fr_0.85fr] sm:gap-14">
-          <div key={slide} className="animate-rise-in">
+          <div key={slide} className={direction === 'forward' ? 'animate-slide-in-forward' : 'animate-slide-in-back'}>
             <div className="mb-5 flex items-center gap-3 sm:hidden">
               <div className="flex h-14 w-14 items-center justify-center rounded-full border border-gold/25 bg-card/70">
                 {current.icon}
@@ -175,11 +199,36 @@ export function OnboardingOverlay() {
             <p className="mt-5 max-w-md text-sm leading-6 text-muted-foreground sm:mt-6 sm:text-base sm:leading-7">
               {current.desc}
             </p>
-            <div className="mt-8 flex items-center gap-4 sm:mt-10">
-              <Button size="lg" className="w-full sm:w-auto" onClick={next}>
-                {isLast ? t('onboarding.start') : t('onboarding.next')}
-                <ArrowRight className="h-5 w-5" />
-              </Button>
+            <div className="mt-8 flex flex-wrap items-center gap-3 sm:mt-10">
+              {slide > 0 && (
+                <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={prev}>
+                  <ArrowLeft className="h-5 w-5" />
+                  {t('nav.back')}
+                </Button>
+              )}
+              {isLast ? (
+                <>
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    onClick={() => {
+                      finish();
+                      navigate('/settings/account');
+                    }}
+                  >
+                    <UserPlus className="h-5 w-5" />
+                    {t('onboarding.createAccount')}
+                  </Button>
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={finish}>
+                    {t('onboarding.start')}
+                  </Button>
+                </>
+              ) : (
+                <Button size="lg" className="group w-full sm:w-auto" onClick={next}>
+                  {t('onboarding.next')}
+                  <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -206,8 +255,9 @@ export function OnboardingOverlay() {
               <div className="absolute h-48 w-48 rounded-full border border-border/60" />
               <div className="absolute h-64 w-64 rounded-full border border-border/35" />
               <div
+                key={`${slide}-icon`}
                 className={cn(
-                  'relative flex h-28 w-28 items-center justify-center rounded-full border border-gold/25 bg-background/70 shadow-glow',
+                  'relative flex h-28 w-28 animate-rise-in items-center justify-center rounded-full border border-gold/25 bg-background/70 shadow-glow',
                   current.mark && 'ring-1 ring-gold/15',
                 )}
               >
@@ -245,15 +295,23 @@ export function OnboardingOverlay() {
 
       <footer className="relative z-10 border-t border-border/60 bg-background/35">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-10 sm:py-6">
-          <div className="flex items-center gap-2" aria-hidden="true">
+          <div className="flex items-center gap-2">
             {slides.map((s, i) => (
-              <span
+              <button
                 key={s.title}
+                type="button"
+                onClick={() => goToStep(i)}
+                aria-label={`${t('onboarding.title')} ${i + 1}`}
+                aria-current={i === slide ? 'step' : undefined}
                 className={cn(
-                  'h-1 rounded-full transition-all duration-300',
-                  i === slide ? 'w-10 bg-gold' : 'w-5 bg-muted',
+                  'flex h-8 w-8 items-center justify-center rounded-full border font-mono text-[10px] tabular-nums transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  i === slide
+                    ? 'border-gold bg-gold/10 text-gold'
+                    : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground',
                 )}
-              />
+              >
+                {String(i + 1).padStart(2, '0')}
+              </button>
             ))}
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">

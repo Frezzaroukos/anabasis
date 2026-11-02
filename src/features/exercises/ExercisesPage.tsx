@@ -18,6 +18,8 @@ import { BUILTIN_SKILL_CATEGORIES } from '@/lib/db/types';
 import { getCurrentUserId } from '@/lib/db/session';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingState } from '@/components/ui/loading-state';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { Input } from '@/components/ui/input';
 import { SkillCreateForm } from '@/features/skills/components/SkillCreateForm';
 import { SkillRow } from '@/features/skills/components/SkillRow';
@@ -40,7 +42,8 @@ export function ExercisesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const allExercises = useLiveQuery(() => listAllExercises(), [], []);
+  const allExercisesQuery = useLiveQuery(() => listAllExercises());
+  const allExercises = useMemo(() => allExercisesQuery ?? [], [allExercisesQuery]);
   const exerciseCategories = useLiveQuery(() => listExerciseCategories(), [], []);
   const summaries = useLiveQuery(
     () => getExerciseSummaries(),
@@ -60,6 +63,7 @@ export function ExercisesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | undefined>(undefined);
   const [creatingSkill, setCreatingSkill] = useState(false);
+  const [savedExerciseId, setSavedExerciseId] = useState<string | null>(null);
 
   const currentUserId = getCurrentUserId();
   const q = query.trim().toLowerCase();
@@ -105,6 +109,10 @@ export function ExercisesPage() {
     allExercises.filter((e) => !e.is_archived).length + skills.filter((s) => !s.is_archived).length;
   const masteredCount = [...skillProgress.values()].filter((p) => p.status === 'mastered').length;
 
+  if (allExercisesQuery === undefined) {
+    return <LoadingState label={t('common.loading')} />;
+  }
+
   const openCreate = () => {
     setEditingExercise(undefined);
     setFormOpen(true);
@@ -117,7 +125,7 @@ export function ExercisesPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-baseline justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t('exercises.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -224,6 +232,7 @@ export function ExercisesPage() {
                       key={`exercise-${item.exercise.id}`}
                       exercise={item.exercise}
                       summary={summaries.get(item.exercise.id)}
+                      highlighted={savedExerciseId === item.exercise.id}
                       onOpen={() => navigate(`/exercises/${item.exercise.id}`)}
                       onEdit={() => openEdit(item.exercise)}
                     />
@@ -240,6 +249,11 @@ export function ExercisesPage() {
         onClose={() => setFormOpen(false)}
         exercise={editingExercise}
         categorySuggestions={exerciseCategories}
+        onSaved={(ex) => {
+          setQuery('');
+          setFilter('all');
+          setSavedExerciseId(ex.id);
+        }}
       />
     </div>
   );
@@ -248,6 +262,7 @@ export function ExercisesPage() {
 interface ExerciseRowProps {
   exercise: Exercise;
   summary: { lastTrainedAt: string | null; hasPR: boolean } | undefined;
+  highlighted?: boolean;
   onOpen: () => void;
   onEdit: () => void;
 }
@@ -256,21 +271,22 @@ interface ExerciseRowProps {
  * Η γραμμή πλέον ανοίγει την πρόοδο (chart) στο tap — η επεξεργασία μετακόμισε
  * σε ξεχωριστό pencil, ίδιο μοτίβο με το skill archive-icon δίπλα στο row link.
  */
-function ExerciseRow({ exercise, summary, onOpen, onEdit }: ExerciseRowProps) {
+function ExerciseRow({ exercise, summary, highlighted, onOpen, onEdit }: ExerciseRowProps) {
   const { t } = useTranslation();
 
   return (
-    <li className={cn('flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated', exercise.is_archived && 'opacity-60')}>
+    <li className={cn('flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated', exercise.is_archived && 'opacity-60', highlighted && 'bg-primary/5')}>
       <button
         type="button"
         onClick={onOpen}
         className="min-w-0 flex-1 rounded-sm text-left ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <p className="flex items-center gap-2 text-sm font-medium">
+          <CategoryIcon category={exercise.category} />
+          {exercise.name}
           {summary?.hasPR && (
             <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />
           )}
-          {exercise.name}
           {exercise.user_id === null ? (
             <span className="rounded bg-muted px-1.5 py-0.5 text-xs uppercase text-muted-foreground">
               {t('exercises.builtin')}

@@ -23,6 +23,7 @@ import {
   getProgramWithExercises,
   listActivities,
   listProgramDays,
+  renameProgram,
   renameProgramDay,
   reorderProgramDays,
   setProgramTarget,
@@ -41,6 +42,7 @@ import { ExercisePickerSheet } from './components/ExercisePickerSheet';
 import { ProgramExerciseRow } from './components/ProgramExerciseRow';
 import { flattenGroupOrder, groupProgramExercises, type ProgramGroup } from './utils';
 import { cn } from '@/lib/utils';
+import { LoadingState } from '@/components/ui/loading-state';
 
 /**
  * Ο editor ενός προγράμματος — «πρότυπο», όχι προπόνηση. Δουλεύει πάνω σε
@@ -71,12 +73,18 @@ export function ProgramDetailPage() {
   const days = useLiveQuery(() => listProgramDays(programId), [programId], []);
   const activities = useLiveQuery(() => listActivities(true), [], []);
 
+  useEffect(() => {
+    if (data?.program.name) setNameDraft(data.program.name);
+  }, [data?.program.name]);
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [starting, setStarting] = useState(false);
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [addingDay, setAddingDay] = useState(false);
   const [newDayName, setNewDayName] = useState('');
   const [dayBusy, setDayBusy] = useState(false);
+  const [renamingName, setRenamingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
   const [renamingDayId, setRenamingDayId] = useState<string | null>(null);
   const [renameDayDraft, setRenameDayDraft] = useState('');
   const [deleteDayId, setDeleteDayId] = useState<string | null>(null);
@@ -100,7 +108,7 @@ export function ProgramDetailPage() {
   );
 
   if (!data) {
-    return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>;
+    return <LoadingState label={t('common.loading')} />;
   }
 
   const { program } = data;
@@ -253,11 +261,55 @@ export function ProgramDetailPage() {
     <div className="space-y-6">
       {/* Χωρίς δικό του «← Programs»: το NavBar δίνει back (parentRoute /programs/:id). */}
       <header className="space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h1 className="min-w-0 truncate font-display text-2xl font-semibold tracking-tight">{program.name}</h1>
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {activities.find((a) => a.key === program.activity_kind)?.label ?? program.activity_kind}
-          </span>
+        <div className="flex items-center justify-between gap-3">
+          {renamingName ? (
+            <div className="flex min-w-0 flex-1 gap-2">
+              <Input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void renameProgram(program.id, nameDraft.trim()).then(() => setRenamingName(false));
+                  if (e.key === 'Escape') setRenamingName(false);
+                }}
+                aria-label={t('programs.namePlaceholder')}
+              />
+              <Button
+                size="sm"
+                disabled={!nameDraft.trim()}
+                onClick={() => {
+                  void renameProgram(program.id, nameDraft.trim()).then(() => setRenamingName(false));
+                }}
+              >
+                {t('common.save')}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setRenamingName(false)}>
+                {t('common.cancel')}
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="min-w-0 truncate font-display text-2xl font-semibold tracking-tight">
+                  {program.name}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNameDraft(program.name);
+                    setRenamingName(true);
+                  }}
+                  aria-label={t('programs.renameProgram')}
+                  className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </div>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {activities.find((a) => a.key === program.activity_kind)?.label ?? program.activity_kind}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Στόχος συχνότητας/εβδομάδα — habit nudge για casual, adherence για serious */}

@@ -7,6 +7,6 @@ import type { Exercise } from '@/lib/db/types';
  * οι δικές σου ασκήσεις διέρρεαν σε κάθε άλλο προφίλ της συσκευής.
  * Το listExercises() κάνει το σωστό φιλτράρισμα (seeded + δικές σου).
  */
-export function useExercises(): Exercise[] {
-  return useLiveQuery(() => listExercises(), []) ?? [];
+export function useExercises(): Exercise[] | undefined {
+  return useLiveQuery(() => listExercises(), []);
 }

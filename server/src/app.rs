@@ -289,6 +289,7 @@ pub fn router(state: AppState) -> Router {
     let billing_routes = Router::new()
         .route("/config", get(billing::config))
         .route("/checkout", post(billing::checkout))
+        .route("/portal", post(billing::portal))
         .route("/webhook", post(billing::stripe_webhook));
 
     let admin_routes = Router::new()

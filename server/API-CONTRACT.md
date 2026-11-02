@@ -128,7 +128,7 @@ programs, program_exercises, activities, goals.
 ### POST /api/auth/signup
 Body: `{ email, password }`. Password ≥ 8 chars. Αν το email == env
 `ANABASIS_ADMIN_EMAIL` → role 'admin'. Απάντηση 200:
-`{ token, account: { id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at, plan_active } }` (auto-login).
+`{ token, account: { id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at, plan_source, plan_active } }` (auto-login).
 409 `email_taken`. 429 από rate limiter.
 
 ### POST /api/auth/login
@@ -148,8 +148,10 @@ links σε μία transaction (GDPR: δεν μένει καμία γραμμή).
 400 `confirmation_mismatch`.
 
 ### GET /api/me  (auth)
-200 `{ id, email, role, created_at, last_sync_at, auth_provider, password_set, plan, plan_expires_at, plan_active }`.
+200 `{ id, email, role, created_at, last_sync_at, auth_provider, password_set, plan, plan_expires_at, plan_source, plan_active }`.
 `plan_active` είναι server-computed: `pro` μόνο όσο δεν έχει λήξει.
+`plan_source` είναι `stripe` | `admin` | `refund` | `null` — χρήσιμο για να
+ξέρει το UI αν υπάρχει διαχείριση χρέωσης.
 
 ### POST /api/auth/change_password  (auth)
 Body: `{ current_password, new_password }`. Ακυρώνει όλα τα ΑΛΛΑ sessions.
@@ -244,7 +246,13 @@ Price env (ένα ή περισσότερα):
 - POST /api/billing/checkout (auth) body `{ plan?: "monthly"|"founding"|"standard" }`
   (default `monthly`) → `{ url }` Stripe Checkout. 503
   `billing_not_configured`, 400 `unknown_plan`, 409 `already_pro` ή
-  `founding_sold_out`.
+  `founding_sold_out`. Lifetime checkout δημιουργεί Stripe customer + invoice
+  (απόδειξη/τιμολόγιο) και ακυρώνει τυχόν ενεργή μηνιαία συνδρομή στο τέλος
+  της πληρωμένης περιόδου.
+- POST /api/billing/portal (auth) → `{ url }` Stripe Billing Portal. 503
+  `billing_not_configured`, 409 `no_billing_account` όταν δεν υπάρχει
+  συνδρομή Stripe. Το portal επιτρέπει αλλαγή κάρτας, τιμολόγια και ακύρωση
+  στο τέλος της περιόδου.
 - POST /api/billing/webhook — Stripe signature over RAW body. Idempotent στο
   Stripe event id. Χειρίζεται:
   - `checkout.session.completed` — subscription ή lifetime grant.

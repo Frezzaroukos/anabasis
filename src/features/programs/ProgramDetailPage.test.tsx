@@ -207,6 +207,7 @@ describe('ProgramDetailPage — μέρες (v12)', () => {
     fireEvent.click(screen.getByLabelText('Day 1: Upper'));
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Upper' })).toBeTruthy());
     await waitFor(() => expect(screen.getByText(SEED_EXERCISES[2]!.name)).toBeTruthy());
-    expect(screen.queryByText(SEED_EXERCISES[3]!.name)).toBeNull();
+    // Το picker κλείνει με σύντομο exit animation — περίμενε να φύγει από το DOM.
+    await waitFor(() => expect(screen.queryByText(SEED_EXERCISES[3]!.name)).toBeNull());
   });
 });

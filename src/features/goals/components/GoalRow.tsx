@@ -74,7 +74,7 @@ export function GoalRow({
       <GoalRing ratio={p.ratio} completed={completed} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <p className={cn('min-w-0 flex-1 truncate text-sm font-medium', completed && 'text-gold')}>
+          <p className={cn('line-clamp-2 min-w-0 flex-1 text-sm font-medium', completed && 'text-gold')}>
             {p.goal.label ??
               goalTitle(t, p.goal, {
                 activity: activityLabel(p.goal.activity_key),
@@ -82,6 +82,11 @@ export function GoalRow({
                 skill: skillName(p.goal.skill_id),
                 custom: trackerName(p.goal.custom_tracker_id),
               })}
+          </p>
+        </div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+          <p className="font-mono text-xs tabular-nums text-muted-foreground">
+            {displayCurrent} / {p.target} {p.unit}
           </p>
           {completed && (
             <span
@@ -94,11 +99,6 @@ export function GoalRow({
               {t('goals.achieved')}
             </span>
           )}
-        </div>
-        <div className="mt-0.5 flex items-center gap-2">
-          <p className="font-mono text-xs tabular-nums text-muted-foreground">
-            {displayCurrent} / {p.target} {p.unit}
-          </p>
           {/* Custom μετρητής: το progress το ανεβάζεις εσύ, χειροκίνητα. */}
           {p.goal.metric === 'custom' && p.goal.custom_tracker_id && (
             <span className="flex items-center gap-1">

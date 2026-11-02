@@ -23,6 +23,7 @@ import {
 import type { ChartRangeKey } from '@/components/charts/timeRange';
 import { ExerciseFormSheet } from './components/ExerciseFormSheet';
 import { CategoryBadge } from '@/components/CategoryBadge';
+import { LoadingState } from '@/components/ui/loading-state';
 
 const DETAIL_METRICS: ChartMetric[] = ['reps', 'topWeight', 'e1rm', 'volume'];
 
@@ -71,7 +72,7 @@ export function ExerciseDetailPage() {
   };
 
   if (!exercise) {
-    return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>;
+    return <LoadingState label={t('common.loading')} />;
   }
 
   return (

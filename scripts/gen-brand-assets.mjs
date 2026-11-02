@@ -49,18 +49,13 @@ const inSquare = (scale, radius, { bg = BG } = {}) => `
   <rect width="64" height="64" rx="${radius}" fill="${bg}"/>
   <g transform="translate(32,32) scale(${scale}) translate(-32,-32)">${mark(DARK)}</g>`;
 
-// Στα 16px η λεπτομέρεια του πλήρους σήματος χάνεται· το favicon κρατά
-// το ίδιο A + violet route αλλά με πιο χοντρές φόρμες.
-const faviconMark = `
-  <path fill="${DARK}" d="M5 59 L29 5 H35 L59 59 H47 L32 27 L17 59 Z"/>
-  <path fill="${VIOLET}" d="M10 59 C 17 47 24 37 31 27 C 34 22 37 17 39 12 L 43 15 C 39 24 35 32 30 41 C 26 48 22 54 19 59 Z"/>`;
-
 const files = {
   // Το «γυμνό» σήμα, για inline χρήση/έγγραφα
   'logo.svg': svg(mark(DARK)),
   'logo-white.svg': svg(mark(WHITE, { purpleFill: VIOLET_LIGHT })),
-  // Favicon: simplified A για καθαρή ανάγνωση στα 16px του tab
-  'favicon.svg': svg(`<rect width="64" height="64" rx="14.5" fill="${BG}"/>${faviconMark}`),
+  // Favicon: το πλήρες «Ascent A» γεμίζει το πλακίδιο ώστε να διαβάζεται
+  // ακόμα και στα 16px του tab — ίδιο σήμα με app icon και landing.
+  'favicon.svg': svg(inSquare(1, 14.5)),
   // App icon (PWA/Apple): container + πλήρες χρώμα σε φωτεινή βάση
   'app-icon.svg': svg(inSquare(0.74, 14.5)),
   // Maskable: μικρότερο σήμα ώστε να μένει μέσα στο 80% safe-zone
@@ -79,7 +74,7 @@ const og = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width
   <text x="480" y="278" fill="${DARK}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
         font-size="82" font-weight="600" letter-spacing="7">ANABASIS</text>
   <text x="484" y="336" fill="${VIOLET}" font-family="'Fira Sans Condensed', Inter, system-ui, sans-serif"
-        font-size="25" font-weight="600" letter-spacing="6">RISE. PROGRESS. BECOME.</text>
+        font-size="25" font-weight="600" letter-spacing="6">EVERY SKILL IS A LADDER.</text>
   <rect x="484" y="374" width="88" height="4" rx="2" fill="${GOLD}"/>
   <text x="484" y="430" fill="${MUTED}" font-family="Manrope, Inter, system-ui, sans-serif"
         font-size="27">Weighted calisthenics &amp; skill progression · offline-first</text>

@@ -3,6 +3,7 @@ import { db } from './index';
 import { SEED_EXERCISES } from './seeds';
 import {
   addSet,
+  getBodyweightLoads,
   getExerciseProgress,
   getLatestBodyweight,
   saveBodyMetric,
@@ -54,6 +55,12 @@ describe('bodyweight → total-load linkage', () => {
     expect(progress).toHaveLength(1);
     expect(progress[0]!.topWeight).toBe(92);
     expect(progress[0]!.e1rm).not.toBeNull(); // υπολογίζεται πλέον (πριν ήταν null)
+  });
+
+  it('getBodyweightLoads επιστρέφει το τελευταίο συνολικό φορτίο BW + added', async () => {
+    const pullup = SEED_EXERCISES.find((e) => e.is_bodyweight)!;
+    const loads = await getBodyweightLoads(20);
+    expect(loads.find((l) => l.exerciseId === pullup.id)?.loadKg).toBe(92);
   });
 
   it('καθαρό σετ σωματικού βάρους (χωρίς πρόσθετο) μετρά ως φορτίο το σωματικό βάρος', async () => {

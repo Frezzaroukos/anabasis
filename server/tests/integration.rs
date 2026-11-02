@@ -3320,6 +3320,7 @@ async fn stripe_lifetime_refund_revokes_only_the_latest_payment() {
 
     let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
     assert_eq!(me["plan"], "pro");
+    assert_eq!(me["plan_source"], "stripe");
     assert_eq!(me["plan_active"], true);
     assert!(me["plan_expires_at"].is_null());
 
@@ -3399,7 +3400,30 @@ async fn stripe_lifetime_refund_revokes_only_the_latest_payment() {
 
     let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
     assert_eq!(me["plan"], "free");
+    assert_eq!(me["plan_source"], "refund");
     assert_eq!(me["plan_active"], false);
+}
+
+#[tokio::test]
+async fn billing_portal_requires_a_stripe_subscription() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let (_, body) = signup(&app, "portal@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+
+    let (status, body) = call(&app, "POST", "/api/billing/portal", Some(&token), None).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(body["error"], "no_billing_account");
+}
+
+#[tokio::test]
+async fn billing_portal_is_dormant_without_config() {
+    let (app, _state, _dir) = test_app(None).await;
+    let (_, body) = signup(&app, "portal-off@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+
+    let (status, body) = call(&app, "POST", "/api/billing/portal", Some(&token), None).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(body["error"], "billing_not_configured");
 }
 
 #[tokio::test]

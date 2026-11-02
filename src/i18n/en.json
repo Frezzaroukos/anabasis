@@ -64,7 +64,8 @@
     },
     "timer": {
       "start": "Start timer",
-      "pause": "Pause timer"
+      "pause": "Pause timer",
+      "label": "Timer"
     },
     "activityKind": "Activity",
     "setType": "Set type",
@@ -108,7 +109,10 @@
     "searchOrTypeExercise": "Search or type any exercise…",
     "useTyped": "Use \"{{name}}\"",
     "createNewExercise": "+ Create \"{{name}}\"",
-    "createNewExerciseHint": "Press Enter to create"
+    "createNewExerciseHint": "Press Enter to create",
+    "pendingWarning": "{{count}} added exercise has no sets and will not be saved.",
+    "bodyweightTitle": "Log your bodyweight",
+    "bodyweightHint": "Used as load for bodyweight exercises today. You can change it later in Body."
   },
   "programs": {
     "title": "Programs",
@@ -162,7 +166,12 @@
     "dayCount_other": "{{count}} days",
     "moveDayLeft": "Move day earlier",
     "moveDayRight": "Move day later",
-    "freeLimit": "Free includes up to 3 programs. Pro removes the limit."
+    "freeLimit": "Free includes up to 3 programs. Pro removes the limit.",
+    "count": "{{count}} program",
+    "count_other": "{{count}} programs",
+    "renameProgram": "Rename program",
+    "nameLabel": "Program name",
+    "activityLabel": "Activity"
   },
   "history": {
     "title": "History",
@@ -197,7 +206,9 @@
     "deleteWorkout": "Delete this workout",
     "deleteConfirmTitle": "Delete this workout?",
     "deleteConfirmDesc": "Its sets and any personal records it produced are removed too. This cannot be undone from the app.",
-    "logFirst": "Log your first workout"
+    "logFirst": "Log your first workout",
+    "completedCount": "{{count}} completed session",
+    "completedCount_other": "{{count}} completed sessions"
   },
   "skills": {
     "title": "Skills",
@@ -338,7 +349,13 @@
         "consecutiveDays": "{{days}} consecutive training days"
       },
       "proOnly": "Coach mode is part of Pro. Upgrade to turn it on."
-    }
+    },
+    "importAdd_one": "{{count}} new item will be added",
+    "importAdd_other": "{{count}} new items will be added",
+    "importUpdate_one": "{{count}} item will be updated from the file",
+    "importUpdate_other": "{{count}} items will be updated from the file",
+    "importKeepNewer_one": "{{count}} item will be kept (local copy is newer)",
+    "importKeepNewer_other": "{{count}} items will be kept (local copy is newer)"
   },
   "common": {
     "save": "Save",
@@ -358,7 +375,8 @@
     "on": "On",
     "off": "Off",
     "offline": "You're offline",
-    "offlineHint": "Logging works as usual — your changes sync when you reconnect."
+    "offlineHint": "Logging works as usual — your changes sync when you reconnect.",
+    "saveError": "Couldn’t save. Try again."
   },
   "activity": {
     "strength": "Strength",
@@ -395,7 +413,15 @@
     "magnitudeHint": "Bigger dot = bigger session",
     "dayExercises": "{{count}} exercise",
     "dayExercises_other": "{{count}} exercises",
-    "startBlocked": "A workout is already in progress — finish it first."
+    "startBlocked": "A workout is already in progress — finish it first.",
+    "backToToday": "Back to today",
+    "quickStart": "Quick start",
+    "quickStartHint": "No gym? Start a bodyweight session with the exercises already added.",
+    "homeBodyweight": "Home · bodyweight",
+    "homeBodyweightHint": "Push-ups · pike push-ups · plank · hollow hold",
+    "pullupBar": "Pull-up bar",
+    "pullupBarHint": "Pull-ups · dips · hanging leg raise · L-sit",
+    "futureBlocked": "You can’t log a workout in the future. Pick today or a past day."
   },
   "body": {
     "weight": "Weight",
@@ -423,7 +449,10 @@
     "fat": "Fat",
     "steps": "Steps",
     "stepsTrend": "Steps",
-    "stepsAvg": "avg"
+    "stepsAvg": "avg",
+    "bodyweightLoad": "Bodyweight load",
+    "bodyweightLoadHint": "Total load = bodyweight + added weight. Tap an exercise for its full chart.",
+    "totalLoad": "Total load"
   },
   "progress": {
     "title": "Exercise progress",
@@ -447,7 +476,10 @@
       "6m": "6M",
       "1y": "1Y",
       "all": "All"
-    }
+    },
+    "byExercise": "By exercise",
+    "lastTrained": "Last trained {{date}}",
+    "never": "Not trained yet"
   },
   "dashboard": {
     "title": "Overview",
@@ -479,7 +511,7 @@
       "skillHint": "Front lever, planche, muscle-up — each one is a ladder.",
       "goal": "Set a goal in your own terms",
       "goalHint": "Sessions, volume, kilometres — whatever you actually count.",
-      "body": "Log your first workout →",
+      "body": "Log your first workout",
       "bodyHint": "Pick a day in the calendar and add exercises."
     },
     "hero": {
@@ -489,8 +521,13 @@
     },
     "recentActivity": "Recent",
     "proUpsellTitle": "Unlock Coach mode",
-    "proUpsellDesc": "Progression suggestions, deload detection and advanced insights.",
-    "proUpsellCta": "See Pro"
+    "proUpsellDesc": "Progression suggestions, deload detection and unlimited programs.",
+    "proUpsellCta": "See Pro",
+    "saveProgressTitle": "Keep your progress",
+    "saveProgressDesc": "Create a free account to back up this device and sync it to your other devices.",
+    "saveProgressCta": "Save it",
+    "activeThisWeek_one": "{{count}} day trained this week",
+    "activeThisWeek_other": "{{count}} days trained this week"
   },
   "setType": {
     "normal": "Normal",
@@ -555,7 +592,8 @@
       "lastPerformed": "Last performed",
       "noHistory": "No history yet — log this exercise to see progress.",
       "reps": "Reps"
-    }
+    },
+    "duplicateName": "An exercise named “{{name}}” already exists."
   },
   "activities": {
     "title": "Activities",
@@ -617,7 +655,9 @@
     "gaining": "up",
     "losing": "down",
     "prs": "{{count}} new PRs this month.",
-    "weightRateUnit": "Weight {{dir}} ~{{rate}} {{unit}}/week."
+    "weightRateUnit": "Weight {{dir}} ~{{rate}} {{unit}}/week.",
+    "prs_one": "{{count}} new PR this month.",
+    "prs_other": "{{count}} new PRs this month."
   },
   "import": {
     "title": "Import data",
@@ -671,7 +711,9 @@
     "safety": {
       "title": "Train smart, stay safe",
       "desc": "Anabasis is a training log, not medical or coaching advice. Warm up, progress gradually, and stop if something hurts. If you have a health condition, check with a professional first. By starting you accept the Terms and acknowledge this."
-    }
+    },
+    "back": "Back",
+    "createAccount": "Create account"
   },
   "plate": {
     "target": "Target",
@@ -752,7 +794,9 @@
     "viewProgress": "View progress",
     "viewSkill": "View skill ladder",
     "achieved": "Achieved",
-    "freeLimit": "Free includes up to 3 goals. Pro removes the limit."
+    "freeLimit": "Free includes up to 3 goals. Pro removes the limit.",
+    "skillGoalTitle_one": "Master {{skill}} · {{count}} step",
+    "skillGoalTitle_other": "Master {{skill}} · {{count}} steps"
   },
   "account": {
     "title": "Account & Sync",
@@ -789,7 +833,7 @@
     "planProLifetime": "Pro · lifetime",
     "plans": {
       "monthly": "Monthly",
-      "monthlyDesc": "Coach mode, advanced insights and unlimited programs. Cancel anytime.",
+      "monthlyDesc": "Coach mode, deload detection and unlimited programs. Cancel anytime.",
       "founding": "Founding lifetime",
       "foundingDesc": "One payment. Pro forever. First 250 members.",
       "standard": "Lifetime",
@@ -805,6 +849,11 @@
     "upgradeError": "Couldn't start checkout. Try again.",
     "billingSuccess": "Payment received. Pro activation can take a few seconds — refresh if it doesn't appear.",
     "billingCancel": "Checkout cancelled — no charge was made.",
+    "manageBilling": "Manage billing",
+    "renewsAutomatically": "Renews automatically · cancel anytime",
+    "billingPortalError": "Couldn't open billing. Try again.",
+    "billingNoSubscription": "No Stripe subscription found for this account.",
+    "secureCheckout": "Secure checkout by Stripe · card, Apple Pay, Google Pay, Link, Klarna and Revolut Pay.",
     "sessions": "Active devices",
     "sessionsHint": "Devices currently signed in to this account.",
     "sessionsError": "Couldn't load devices.",
@@ -844,7 +893,8 @@
     "deleteWarning": "Permanent: removes your account, sync data, sessions, friends and public profile. Your local device data remains until you remove its profile.",
     "confirmEmail": "Type your email to confirm",
     "deleteForever": "Delete permanently",
-    "deleteError": "The account could not be deleted. Check your connection and confirmation email."
+    "deleteError": "The account could not be deleted. Check your connection and confirmation email.",
+    "planIntent": "Create a free account first — you’ll choose {{plan}} on the next screen."
   },
   "admin": {
     "title": "Admin",
@@ -994,7 +1044,9 @@
         "name": "Thirty days",
         "desc": "A 30-day streak"
       }
-    }
+    },
+    "relatedSkills": "Track the progressions behind your XP",
+    "relatedProgress": "See which exercises are moving"
   },
   "community": {
     "title": "Community",

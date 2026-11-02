@@ -64,66 +64,72 @@ export function SettingsPage() {
         <h1 className="font-display text-2xl font-semibold tracking-tight">{t('settings.title')}</h1>
       </header>
 
-      <SettingsGroup title={t('settings.hubAccountGroup')}>
-        <SettingsRow
-          to="/settings/account"
-          Icon={Cloud}
-          label={t('settings.account')}
-          value={auth?.account?.email ?? t('settings.notSignedIn')}
-        />
-        <SettingsRow
-          to="/settings/profiles"
-          Icon={Users}
-          label={t('settings.deviceProfiles')}
-          value={profileValue}
-        />
-      </SettingsGroup>
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="space-y-6">
+          <SettingsGroup title={t('settings.hubAccountGroup')}>
+            <SettingsRow
+              to="/settings/account"
+              Icon={Cloud}
+              label={t('settings.account')}
+              value={auth?.account?.email ?? t('settings.notSignedIn')}
+            />
+            <SettingsRow
+              to="/settings/profiles"
+              Icon={Users}
+              label={t('settings.deviceProfiles')}
+              value={profileValue}
+            />
+          </SettingsGroup>
 
-      <SettingsGroup title={t('settings.hubAppGroup')}>
-        <SettingsRow
-          to="/settings/appearance"
-          Icon={Palette}
-          label={t('settings.appearance')}
-          value={`${t(`settings.theme_${getStoredTheme()}`)} · ${(
-            i18n.resolvedLanguage ?? 'en'
-          ).toUpperCase()}`}
-        />
-        <SettingsRow
-          to="/settings/training"
-          Icon={Timer}
-          label={t('settings.training')}
-          value={trainingValue || null}
-        />
-      </SettingsGroup>
+          <SettingsGroup title={t('settings.hubAppGroup')}>
+            <SettingsRow
+              to="/settings/appearance"
+              Icon={Palette}
+              label={t('settings.appearance')}
+              value={`${t(`settings.theme_${getStoredTheme()}`)} · ${(
+                i18n.resolvedLanguage ?? 'en'
+              ).toUpperCase()}`}
+            />
+            <SettingsRow
+              to="/settings/training"
+              Icon={Timer}
+              label={t('settings.training')}
+              value={trainingValue || null}
+            />
+          </SettingsGroup>
 
-      {/* Η βιβλιοθήκη σου — οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
-      <SettingsGroup title={t('settings.library')}>
-        <SettingsRow to="/exercises" Icon={ListChecks} label={t('exercises.title')} />
-        <SettingsRow to="/activities" Icon={Activity} label={t('activities.title')} />
-        <SettingsRow to="/skills" Icon={Sparkles} label={t('skills.title')} />
-      </SettingsGroup>
+          {/* Η βιβλιοθήκη σου — οθόνες «στήσε το μια φορά», όχι καθημερινής χρήσης. */}
+          <SettingsGroup title={t('settings.library')}>
+            <SettingsRow to="/exercises" Icon={ListChecks} label={t('exercises.title')} />
+            <SettingsRow to="/activities" Icon={Activity} label={t('activities.title')} />
+            <SettingsRow to="/skills" Icon={Sparkles} label={t('skills.title')} />
+          </SettingsGroup>
+        </div>
 
-      <SettingsGroup title={t('settings.hubDataGroup')}>
-        <SettingsRow to="/settings/data" Icon={Database} label={t('settings.data')} />
-        <SettingsRow to="/import" Icon={Download} label={t('import.title')} />
-      </SettingsGroup>
+        <div className="space-y-6">
+          <SettingsGroup title={t('settings.hubDataGroup')}>
+            <SettingsRow to="/settings/data" Icon={Database} label={t('settings.data')} />
+            <SettingsRow to="/import" Icon={Download} label={t('import.title')} />
+          </SettingsGroup>
 
-      <SettingsGroup title={t('settings.hubAboutGroup')}>
-        <SettingsRow to="/settings/about" Icon={Info} label={t('settings.about')} />
-      </SettingsGroup>
+          <SettingsGroup title={t('settings.hubAboutGroup')}>
+            <SettingsRow to="/settings/about" Icon={Info} label={t('settings.about')} />
+          </SettingsGroup>
 
-      <SettingsGroup title={t('settings.hubHelpGroup')}>
-        <SettingsRow to="/help" Icon={HelpCircle} label={t('help.title')} />
-        <SettingsRow to="/whats-new" Icon={Sparkle} label={t('changelog.title')} />
-        <SettingsRow to="/feedback" Icon={MessageSquare} label={t('feedback.title')} />
-      </SettingsGroup>
+          <SettingsGroup title={t('settings.hubHelpGroup')}>
+            <SettingsRow to="/help" Icon={HelpCircle} label={t('help.title')} />
+            <SettingsRow to="/whats-new" Icon={Sparkle} label={t('changelog.title')} />
+            <SettingsRow to="/feedback" Icon={MessageSquare} label={t('feedback.title')} />
+          </SettingsGroup>
 
-      <SettingsGroup title={t('settings.hubLegalGroup')}>
-        <SettingsRow to="/legal/safety" Icon={HeartPulse} label={t('legal.safety.title')} />
-        <SettingsRow to="/legal/privacy" Icon={ShieldCheck} label={t('legal.privacy.title')} />
-        <SettingsRow to="/legal/terms" Icon={FileText} label={t('legal.terms.title')} />
-        <SettingsRow to="/legal/refund" Icon={Receipt} label={t('legal.refund.title')} />
-      </SettingsGroup>
+          <SettingsGroup title={t('settings.hubLegalGroup')}>
+            <SettingsRow to="/legal/safety" Icon={HeartPulse} label={t('legal.safety.title')} />
+            <SettingsRow to="/legal/privacy" Icon={ShieldCheck} label={t('legal.privacy.title')} />
+            <SettingsRow to="/legal/terms" Icon={FileText} label={t('legal.terms.title')} />
+            <SettingsRow to="/legal/refund" Icon={Receipt} label={t('legal.refund.title')} />
+          </SettingsGroup>
+        </div>
+      </div>
 
       <p className="text-center text-xs text-muted-foreground">
         Anabasis · {t('settings.offlineNote')}

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { Sparkles, User } from 'lucide-react';
+import { Cloud, Sparkles, User } from 'lucide-react';
 import {
   getCalendar,
   getCurrentProfile,
@@ -223,6 +223,28 @@ export function DashboardPage() {
           </span>
           <span className="shrink-0 text-xs font-semibold text-primary group-hover:underline">
             {t('dashboard.proUpsellCta')}
+          </span>
+        </Link>
+      )}
+
+      {!auth && hasHistory && (
+        <Link
+          to="/settings/account"
+          className="group flex items-center gap-3 rounded-xl border border-border/70 bg-card p-4 transition-colors hover:bg-elevated md:col-span-2"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Cloud className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">
+              {t('dashboard.saveProgressTitle')}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {t('dashboard.saveProgressDesc')}
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-primary group-hover:underline">
+            {t('dashboard.saveProgressCta')}
           </span>
         </Link>
       )}

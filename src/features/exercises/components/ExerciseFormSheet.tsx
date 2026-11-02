@@ -17,6 +17,7 @@ interface ExerciseFormSheetProps {
   /** undefined = δημιουργία· δοσμένη άσκηση = επεξεργασία (και builtin επιτρέπεται). */
   exercise?: Exercise;
   categorySuggestions: string[];
+  onSaved?: (exercise: Exercise) => void;
 }
 
 const MOVEMENT_TYPES: MovementType[] = ['compound', 'isolation', 'skill'];
@@ -55,10 +56,12 @@ export function ExerciseFormSheet({
   onClose,
   exercise,
   categorySuggestions,
+  onSaved,
 }: ExerciseFormSheetProps) {
   const { t } = useTranslation();
   const [form, setForm] = useState<FormState>(() => stateFromExercise(exercise));
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [mergeQuery, setMergeQuery] = useState('');
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
   const allExercises = useLiveQuery(() => listExercises(), [], []);
@@ -98,6 +101,14 @@ export function ExerciseFormSheet({
   const onSave = async () => {
     const name = form.name.trim();
     if (!name || busy) return;
+    const duplicate = allExercises.find(
+      (e) => e.id !== exercise?.id && e.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+    if (duplicate) {
+      setSaveError(t('exercises.duplicateName', { name: duplicate.name }));
+      return;
+    }
+    setSaveError(null);
     setBusy(true);
     try {
       const input = {
@@ -113,9 +124,12 @@ export function ExerciseFormSheet({
       if (exercise) {
         await updateExercise(exercise.id, input);
       } else {
-        await createExercise(input);
+        const created = await createExercise(input);
+        onSaved?.(created);
       }
       onClose();
+    } catch {
+      setSaveError(t('common.saveError'));
     } finally {
       setBusy(false);
     }
@@ -229,7 +243,7 @@ export function ExerciseFormSheet({
             aria-label={t('exercises.form.notes')}
             rows={3}
             className={cn(
-              'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+              'flex w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm',
               'ring-offset-background placeholder:text-muted-foreground',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             )}
@@ -301,9 +315,16 @@ export function ExerciseFormSheet({
           </details>
         )}
 
+        {saveError && (
+          <p className="text-xs text-destructive" role="alert">
+            {saveError}
+          </p>
+        )}
+
         <div className="flex gap-2 pt-1">
           <Button
             className="flex-1"
+            loading={busy}
             disabled={!form.name.trim() || busy}
             onClick={() => void onSave()}
           >

@@ -16,6 +16,8 @@ export interface Account {
   password_set: boolean;
   plan: 'free' | 'pro';
   plan_expires_at: string | null;
+  /** Πού οφείλεται το plan: stripe / admin / refund / null. */
+  plan_source?: string | null;
   plan_active: boolean;
 }
 
@@ -34,6 +36,7 @@ export interface Me {
   password_set: boolean;
   plan: 'free' | 'pro';
   plan_expires_at: string | null;
+  plan_source?: string | null;
   plan_active: boolean;
 }
 

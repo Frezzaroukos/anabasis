@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { createGoal, updateGoal, getSkillStepStats, MILESTONE_METRICS } from '@/lib/db/goals';
+import { createGoal, updateGoal, getSkillStepStats, METRIC_UNIT, MILESTONE_METRICS } from '@/lib/db/goals';
 import { createTracker, listTrackers } from '@/lib/db/trackers';
-import { listActivities, listExercises, listSkills, createExercise } from '@/lib/db/queries';
+import { listExercises, listSkills, createExercise } from '@/lib/db/queries';
 import {
   BUILTIN_GOAL_METRICS,
   BUILTIN_GOAL_PERIODS,
@@ -42,7 +42,6 @@ export function GoalFormSheet({
   goal: Goal | null;
 }) {
   const { t } = useTranslation();
-  const activities = useLiveQuery(() => listActivities(), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(), [], []);
   const trackers = useLiveQuery(() => listTrackers(), [], []);
@@ -52,12 +51,14 @@ export function GoalFormSheet({
   const [anchor, setAnchor] = useState<GoalPeriodAnchor>('calendar');
   const [target, setTarget] = useState('4');
   const [skillId, setSkillId] = useState<string | null>(null);
-  const [activityKey, setActivityKey] = useState<string | null>(null);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
   const [exerciseQuery, setExerciseQuery] = useState('');
   const [trackerId, setTrackerId] = useState<string | null>(null);
   const [trackerQuery, setTrackerQuery] = useState('');
   const [label, setLabel] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +67,6 @@ export function GoalFormSheet({
     setAnchor(goal?.period_anchor ?? 'calendar');
     setTarget(String(goal?.target ?? 4));
     setSkillId(goal?.skill_id ?? null);
-    setActivityKey(goal?.activity_key ?? null);
     setExerciseId(goal?.exercise_id ?? null);
     setExerciseQuery('');
     setTrackerId(goal?.custom_tracker_id ?? null);
@@ -78,6 +78,8 @@ export function GoalFormSheet({
   const isSkillGoal = metric === 'skill_steps';
   const isWeightTarget = metric === 'top_weight';
   const isCustom = metric === 'custom';
+  const countMetric = ['sessions', 'sets', 'reps', 'skill_steps'].includes(metric);
+  const metricUnit = METRIC_UNIT[metric];
   // Ο στόχος φορτίου δένει κι αυτός με συγκεκριμένη άσκηση (ποιανής το φορτίο).
   const exerciseScoped = EXERCISE_SCOPED.includes(metric) || isWeightTarget;
 
@@ -87,7 +89,6 @@ export function GoalFormSheet({
     if (!exerciseScoped) setExerciseId(null);
     if (!isSkillGoal) setSkillId(null);
     if (!isCustom) setTrackerId(null);
-    if (isMilestone || isCustom) setActivityKey(null);
   }, [metric, exerciseScoped, isSkillGoal, isMilestone, isCustom]);
 
   const selectedExercise = exercises.find((e) => e.id === exerciseId) ?? null;
@@ -137,9 +138,9 @@ export function GoalFormSheet({
 
   const preview = goalTitle(
     t,
-    { metric, target: valid ? targetNum : 0, period, activity_key: activityKey, exercise_id: exerciseId },
+    { metric, target: valid ? targetNum : 0, period, activity_key: null, exercise_id: exerciseId },
     {
-      activity: activityKey ? (activities.find((a) => a.key === activityKey)?.label ?? null) : null,
+      activity: null,
       exercise: exerciseId ? (exercises.find((e) => e.id === exerciseId)?.name ?? null) : null,
       skill: selectedSkill?.name ?? null,
       custom: selectedTracker?.name ?? null,
@@ -147,26 +148,36 @@ export function GoalFormSheet({
   );
 
   const save = async () => {
-    if (!valid) return;
+    if (!valid || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setSaveError(false);
     const payload = {
       metric,
       target: targetNum,
       period,
-      period_anchor: anchor,
-      activity_key: isMilestone || isCustom ? null : activityKey,
+      period_anchor: period === 'day' ? 'calendar' : anchor,
+      activity_key: null,
       exercise_id: isSkillGoal || isCustom ? null : exerciseId,
       skill_id: isSkillGoal ? skillId : null,
       custom_tracker_id: isCustom ? trackerId : null,
       label: label.trim() || null,
     };
-    if (goal) await updateGoal(goal.id, payload);
-    else await createGoal(payload);
-    onClose();
+    try {
+      if (goal) await updateGoal(goal.id, payload);
+      else await createGoal(payload);
+      onClose();
+    } catch {
+      setSaveError(true);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
   };
 
   const chip = (active: boolean) =>
     cn(
-      'rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+      'inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 tap:min-h-11',
       active
         ? 'border-primary bg-primary/10 font-medium text-foreground'
         : 'border-border/70 text-muted-foreground hover:text-foreground',
@@ -246,7 +257,7 @@ export function GoalFormSheet({
             <div className="flex gap-3">
               <Field label={t('goals.customTargetLabel')} className="w-28">
                 <Input
-                  inputMode="decimal"
+                  inputMode={countMetric ? 'numeric' : 'decimal'}
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                   className="h-10 font-mono tabular-nums"
@@ -268,7 +279,7 @@ export function GoalFormSheet({
           // + βάρος-στόχο. Milestone — χωρίς περίοδο.
           <Field label={t('goals.loadTargetLabel')} className="w-40">
             <Input
-              inputMode="decimal"
+              inputMode={countMetric ? 'numeric' : 'decimal'}
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               className="h-10 font-mono tabular-nums"
@@ -323,9 +334,9 @@ export function GoalFormSheet({
         ) : (
           <>
             <div className="flex gap-3">
-              <Field label={t('goals.targetLabel')} className="w-28">
+              <Field label={`${t('goals.targetLabel')}${metricUnit ? ` (${metricUnit})` : ''}`} className="w-28">
                 <Input
-                  inputMode="decimal"
+                  inputMode={countMetric ? 'numeric' : 'decimal'}
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                   className="h-10 font-mono tabular-nums"
@@ -347,36 +358,21 @@ export function GoalFormSheet({
               διαλέγει ο χρήστης — και εξηγούμε τη διαφορά από κάτω, γιατί
               «ημερολογιακό/κυλιόμενο» δεν λέει τίποτα από μόνο του.
             */}
-            <Field label={t('goals.anchorLabel')}>
-              <div className="flex gap-2">
-                {BUILTIN_PERIOD_ANCHORS.map((a) => (
-                  <button key={a} type="button" onClick={() => setAnchor(a)} className={chip(anchor === a)}>
-                    {t(`goals.anchor.${a}`)}
-                  </button>
-                ))}
-              </div>
-              <span className="mt-1 text-xs leading-snug text-muted-foreground">
-                {t(`goals.anchorHint.${anchor}.${period}`)}
-              </span>
-            </Field>
+            {period !== 'day' && (
+              <Field label={t('goals.anchorLabel')}>
+                <div className="flex gap-2">
+                  {BUILTIN_PERIOD_ANCHORS.map((a) => (
+                    <button key={a} type="button" onClick={() => setAnchor(a)} className={chip(anchor === a)}>
+                      {t(`goals.anchor.${a}`)}
+                    </button>
+                  ))}
+                </div>
+                <span className="mt-1 text-xs leading-snug text-muted-foreground">
+                  {t(`goals.anchorHint.${anchor}.${period}`)}
+                </span>
+              </Field>
+            )}
 
-            <Field label={t('goals.activityLabel')}>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setActivityKey(null)} className={chip(activityKey === null)}>
-                  {t('goals.all')}
-                </button>
-                {activities.map((a) => (
-                  <button
-                    key={a.key}
-                    type="button"
-                    onClick={() => setActivityKey(a.key)}
-                    className={chip(activityKey === a.key)}
-                  >
-                    {a.label}
-                  </button>
-                ))}
-              </div>
-            </Field>
           </>
         )}
 
@@ -460,7 +456,12 @@ export function GoalFormSheet({
           <p className="mt-1 text-sm font-medium">{label.trim() || preview}</p>
         </div>
 
-        <Button className="w-full" onClick={() => void save()} disabled={!valid}>
+        {saveError && (
+          <p className="text-xs text-destructive" role="alert">
+            {t('common.saveError')}
+          </p>
+        )}
+        <Button className="w-full" loading={busy} onClick={() => void save()} disabled={!valid}>
           {t('common.save')}
         </Button>
       </div>
@@ -478,9 +479,9 @@ function Field({
   className?: string;
 }) {
   return (
-    <label className={cn('flex flex-col gap-1.5', className)}>
+    <div role="group" aria-label={label} className={cn('flex flex-col gap-1.5', className)}>
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       {children}
-    </label>
+    </div>
   );
 }

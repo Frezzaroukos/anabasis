@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/sheet';
@@ -6,8 +6,6 @@ import { Input } from '@/components/ui/input';
 import { useExercises } from '@/hooks/useExercises';
 import { queries } from '@/lib/db';
 import type { Exercise, ExerciseCategory } from '@/lib/db/types';
-import { CATEGORY_DOT } from '../utils';
-import { cn } from '@/lib/utils';
 
 interface AddExerciseSheetProps {
   open: boolean;
@@ -22,7 +20,14 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
   const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
-  const all = useExercises();
+  const [createError, setCreateError] = useState(false);
+  const exerciseQuery = useExercises();
+  const all = useMemo(() => exerciseQuery ?? [], [exerciseQuery]);
+  const loading = exerciseQuery === undefined;
+
+  useEffect(() => {
+    if (!open) setQ('');
+  }, [open]);
 
   const grouped = useMemo(() => {
     const filtered = all.filter((e) => {
@@ -53,11 +58,14 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
   const onCreate = async () => {
     if (!canCreate || creating) return;
     setCreating(true);
+    setCreateError(false);
     try {
       const created = await queries.createExercise({ name: trimmedQuery });
       onPick(created);
       onClose();
       setQ('');
+    } catch {
+      setCreateError(true);
     } finally {
       setCreating(false);
     }
@@ -94,7 +102,19 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
         </div>
       )}
 
-      {totalShown === 0 && !canCreate ? (
+      {createError && (
+        <p className="px-4 pb-2 text-xs text-destructive" role="alert">
+          {t('common.saveError')}
+        </p>
+      )}
+
+      {loading ? (
+        <div className="space-y-1 px-4 pb-4" role="status" aria-label={t('common.loading')}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-11 animate-pulse rounded-md bg-muted/40" aria-hidden />
+          ))}
+        </div>
+      ) : totalShown === 0 && !canCreate ? (
         <p className="p-6 text-center text-sm text-muted-foreground">
           {t('workout.noResults')}
         </p>
@@ -116,12 +136,8 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
                           onClose();
                           setQ('');
                         }}
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                       >
-                        <span
-                          className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[ex.category])}
-                          aria-hidden
-                        />
                         <span className="flex-1 truncate">{ex.name}</span>
                         {ex.is_bodyweight && (
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">

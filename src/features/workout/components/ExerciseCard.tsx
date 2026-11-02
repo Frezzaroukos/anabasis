@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Plus, Weight, Zap, HelpCircle, Compass } from 'lucide-react';
@@ -34,6 +33,7 @@ interface ExerciseCardProps {
   target?: ProgramExercise | null;
   /** Ξεκίνα κλειστή παρόλο που δεν έχει σετ (άσκηση πλάνου, όχι δική σου επιλογή τώρα). */
   startCollapsed?: boolean;
+  onNeedBodyweight?: () => void;
 }
 
 export function ExerciseCard({
@@ -47,6 +47,7 @@ export function ExerciseCard({
   onChainChange,
   target = null,
   startCollapsed = false,
+  onNeedBodyweight,
 }: ExerciseCardProps) {
   const { t } = useTranslation();
   const settings = useAppSettings();
@@ -100,7 +101,10 @@ export function ExerciseCard({
 
   // «Τι έκανα την τελευταία φορά» — προ-γεμίζει τα inputs ώστε το τυπικό
   // «ίδιο βάρος με πέρσι» να μη θέλει καθόλου πληκτρολόγηση.
-  const last = useLiveQuery(() => getLastPerformance(exercise.id), [exercise.id]);
+  const last = useLiveQuery(
+    () => getLastPerformance(exercise.id, { excludeWorkoutId: workoutId }),
+    [exercise.id, workoutId],
+  );
 
   // Coach hint: ίδιος κανόνας double-progression με το Next Moves panel
   // (coach.ts), localized. Κενό όταν coach OFF ή χωρίς ιστορικό (no invented data).
@@ -263,13 +267,14 @@ export function ExerciseCard({
       <RungCelebration active={prCount > 0} className="absolute -right-1 -top-1 z-10 h-11 w-11" />
 
       {needsBodyweight && (
-        <Link
-          to="/body"
-          className="flex items-center gap-1.5 border-t border-border/60 px-3 py-1.5 text-xs text-muted-foreground hover:text-primary"
+        <button
+          type="button"
+          onClick={onNeedBodyweight}
+          className="flex w-full items-center gap-1.5 border-t border-border/60 px-3 py-1.5 text-left text-xs text-muted-foreground hover:text-primary"
         >
           <Weight className="h-3 w-3 shrink-0" aria-hidden />
           {t('workout.setBodyweightHint')}
-        </Link>
+        </button>
       )}
 
       <div className="divide-y divide-border/60 border-t border-border/60">

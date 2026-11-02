@@ -10,6 +10,8 @@ import { useActiveWorkout } from '@/hooks/useActiveWorkout';
  */
 export function ActiveWorkoutRoute() {
   const active = useActiveWorkout();
-  if (!active) return <Navigate to="/calendar" replace />;
+  // undefined = ακόμα φορτώνει το IndexedDB· μη κάνεις redirect πριν απαντήσει.
+  if (active === undefined) return null;
+  if (active === null) return <Navigate to="/calendar" replace />;
   return null;
 }

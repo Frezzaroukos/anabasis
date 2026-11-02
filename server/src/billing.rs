@@ -307,6 +307,10 @@ pub async fn checkout(
         }
         PlanKind::Lifetime => {
             params.push(("mode".into(), "payment".into()));
+            // One-time Pro needs a real customer + invoice for receipts and
+            // the 14-day refund record. Subscription mode does this by default.
+            params.push(("customer_creation".into(), "always".into()));
+            params.push(("invoice_creation[enabled]".into(), "true".into()));
         }
     }
 
@@ -354,6 +358,95 @@ pub async fn checkout(
     })?;
 
     Ok(Json(json!({ "url": url })))
+}
+
+#[derive(Serialize)]
+pub struct BillingPortalResponse {
+    url: String,
+}
+
+/// POST /api/billing/portal — authenticated; returns a Stripe Billing Portal URL.
+/// The portal is only useful for recurring subscriptions: lifetime owners have
+/// nothing to renew or cancel. The webhook remains the source of truth for plan
+/// changes; opening the portal never grants anything by itself.
+pub async fn portal(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<BillingPortalResponse>, AppError> {
+    let cfg = require_config(&state)?;
+    let subscription_id: Option<String> = sqlx::query_scalar(
+        "SELECT subscription_id FROM billing_subscriptions
+         WHERE account_id = ?
+         ORDER BY CASE status
+                    WHEN 'active' THEN 0
+                    WHEN 'trialing' THEN 0
+                    WHEN 'past_due' THEN 1
+                    ELSE 2
+                  END,
+                  updated_at DESC, created_at DESC
+         LIMIT 1",
+    )
+    .bind(&auth.account_id)
+    .fetch_optional(&state.pool)
+    .await?;
+    let Some(subscription_id) = subscription_id else {
+        return Err(AppError::conflict(
+            "no_billing_account",
+            "Δεν βρέθηκε συνδρομή Stripe για αυτόν τον λογαριασμό.",
+        ));
+    };
+
+    let customer_id = subscription_customer(&state, cfg, &subscription_id).await?;
+    let return_url = format!("{}/settings/account", cfg.public_url.trim_end_matches('/'));
+    let res = state
+        .http_client
+        .post("https://api.stripe.com/v1/billing_portal/sessions")
+        .bearer_auth(&cfg.secret_key)
+        .form(&[
+            ("customer", customer_id.as_str()),
+            ("return_url", return_url.as_str()),
+        ])
+        .send()
+        .await
+        .map_err(|err| {
+            tracing::error!(error = %err, "stripe portal request failed");
+            AppError::new(
+                StatusCode::BAD_GATEWAY,
+                "billing_provider_error",
+                "Δεν μπόρεσα να ανοίξω τη διαχείριση χρέωσης. Δοκίμασε ξανά.",
+            )
+        })?;
+
+    if !res.status().is_success() {
+        let status = res.status();
+        let body = res.text().await.unwrap_or_default();
+        tracing::error!(%status, body = %body, "stripe portal rejected");
+        return Err(AppError::new(
+            StatusCode::BAD_GATEWAY,
+            "billing_provider_error",
+            "Η διαχείριση χρέωσης δεν άνοιξε. Δοκίμασε ξανά.",
+        ));
+    }
+
+    let body: Value = res.json().await.map_err(|err| {
+        tracing::error!(error = %err, "stripe portal returned non-json");
+        AppError::new(
+            StatusCode::BAD_GATEWAY,
+            "billing_provider_error",
+            "Μη αναμενόμενη απάντηση από την πληρωμή.",
+        )
+    })?;
+    let url = body["url"].as_str().ok_or_else(|| {
+        AppError::new(
+            StatusCode::BAD_GATEWAY,
+            "billing_provider_error",
+            "Η διαχείριση χρέωσης δεν επέστρεψε σύνδεσμο.",
+        )
+    })?;
+
+    Ok(Json(BillingPortalResponse {
+        url: url.to_string(),
+    }))
 }
 
 /// POST /api/billing/webhook — Stripe signature verified over the RAW body.
@@ -490,6 +583,10 @@ async fn handle_checkout_completed(
         session["payment_intent"].as_str(),
     )
     .await?;
+    if kind == PlanKind::Lifetime {
+        // Fair transition: keep the already-paid month, but stop the renewal.
+        cancel_active_subscriptions(state, cfg, account_id).await;
+    }
     Ok(())
 }
 
@@ -788,6 +885,93 @@ async fn upsert_subscription(
     .execute(pool)
     .await?;
     Ok(())
+}
+
+/// After a lifetime purchase, stop any recurring subscription at the end of
+/// the paid period. Best-effort: the lifetime grant is already committed and a
+/// provider hiccup must not fail the webhook (Stripe would retry, but the plan
+/// is correct). The subscription.updated webhook will record the final state.
+async fn cancel_active_subscriptions(state: &AppState, cfg: &BillingConfig, account_id: &str) {
+    let ids: Vec<String> = sqlx::query_scalar(
+        "SELECT subscription_id FROM billing_subscriptions
+         WHERE account_id = ? AND status IN ('active','trialing','past_due','unpaid')",
+    )
+    .bind(account_id)
+    .fetch_all(&state.pool)
+    .await
+    .unwrap_or_default();
+    for id in ids {
+        let res = state
+            .http_client
+            .post(format!("https://api.stripe.com/v1/subscriptions/{id}"))
+            .bearer_auth(&cfg.secret_key)
+            .form(&[("cancel_at_period_end", "true")])
+            .send()
+            .await;
+        match res {
+            Ok(res) if !res.status().is_success() => {
+                let status = res.status();
+                let body = res.text().await.unwrap_or_default();
+                tracing::warn!(%status, body = %body, subscription_id = %id, "stripe lifetime cancel rejected");
+            }
+            Err(err) => {
+                tracing::warn!(error = %err, subscription_id = %id, "stripe lifetime cancel failed");
+            }
+            Ok(_) => {}
+        }
+    }
+}
+
+async fn subscription_customer(
+    state: &AppState,
+    cfg: &BillingConfig,
+    subscription_id: &str,
+) -> Result<String, AppError> {
+    let res = state
+        .http_client
+        .get(format!(
+            "https://api.stripe.com/v1/subscriptions/{subscription_id}"
+        ))
+        .bearer_auth(&cfg.secret_key)
+        .send()
+        .await
+        .map_err(|err| {
+            tracing::error!(error = %err, "stripe subscription lookup failed");
+            AppError::new(
+                StatusCode::BAD_GATEWAY,
+                "billing_provider_error",
+                "Δεν μπόρεσα να βρω τη συνδρομή. Δοκίμασε ξανά.",
+            )
+        })?;
+    if !res.status().is_success() {
+        let status = res.status();
+        let body = res.text().await.unwrap_or_default();
+        tracing::error!(%status, body = %body, "stripe subscription lookup rejected");
+        return Err(AppError::new(
+            StatusCode::BAD_GATEWAY,
+            "billing_provider_error",
+            "Δεν βρέθηκε η συνδρομή στην πληρωμή.",
+        ));
+    }
+    let body: Value = res.json().await.map_err(|err| {
+        tracing::error!(error = %err, "stripe subscription returned non-json");
+        AppError::new(
+            StatusCode::BAD_GATEWAY,
+            "billing_provider_error",
+            "Μη αναμενόμενη απάντηση από την πληρωμή.",
+        )
+    })?;
+    body["customer"]
+        .as_str()
+        .or_else(|| body["customer"]["id"].as_str())
+        .map(str::to_string)
+        .ok_or_else(|| {
+            AppError::new(
+                StatusCode::BAD_GATEWAY,
+                "billing_provider_error",
+                "Η συνδρομή δεν έχει πελάτη πληρωμής.",
+            )
+        })
 }
 
 async fn subscription_period_end(

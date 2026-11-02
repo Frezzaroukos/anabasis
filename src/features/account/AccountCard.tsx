@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -143,7 +143,9 @@ function useAuthProviders(): OAuthProviders {
 
 function SignedOutForm({ showTitle }: { showTitle: boolean }) {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [params] = useSearchParams();
+  const planIntent = params.get('plan');
+  const [mode, setMode] = useState<'login' | 'signup'>(planIntent ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -273,8 +275,8 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
           </p>
         )}
 
-        <Button type="submit" disabled={busy} className="w-full">
-          {busy ? t('common.loading') : t(mode === 'login' ? 'account.login' : 'account.signup')}
+        <Button type="submit" loading={busy} className="w-full">
+          {t(mode === 'login' ? 'account.login' : 'account.signup')}
         </Button>
       </form>
 
@@ -303,10 +305,10 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
               type="button"
               variant="secondary"
               className="w-full"
-              disabled={magicBusy}
+              loading={magicBusy}
               onClick={() => void onMagicLink()}
             >
-              {magicBusy ? t('common.loading') : t('account.emailLink')}
+              {t('account.emailLink')}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
               {t('account.emailLinkHint')}
@@ -395,9 +397,11 @@ function SessionsPanel({ refreshKey }: { refreshKey: number }) {
       <p className="mt-0.5 text-xs text-muted-foreground">{t('account.sessionsHint')}</p>
 
       {sessions === null && !error && (
-        <p className="mt-2 text-xs text-muted-foreground" role="status">
-          {t('common.loading')}
-        </p>
+        <div className="mt-2 space-y-1" role="status" aria-label={t('common.loading')}>
+          {[0, 1].map((i) => (
+            <div key={i} className="h-11 animate-pulse rounded-md bg-elevated" aria-hidden />
+          ))}
+        </div>
       )}
       {error && (
         <p className="mt-2 text-xs text-destructive" role="alert">
@@ -429,10 +433,10 @@ function SessionsPanel({ refreshKey }: { refreshKey: number }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={busyId === session.id}
+                  loading={busyId === session.id}
                   onClick={() => void onRevoke(session.id)}
                 >
-                  {busyId === session.id ? t('common.loading') : t('account.revokeSession')}
+                  {t('account.revokeSession')}
                 </Button>
               )}
             </li>
@@ -451,7 +455,7 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
   // Παλιά cached auth (πριν το migration) δεν έχει τα πεδία: θεωρούμε ότι
   // έχει κωδικό, ώστε να μη σπάσει το change-password flow.
   const passwordSet = account.password_set !== false;
-  const planActive = account.plan_active === true;
+  const planActive = account.plan_active === true || role === 'admin';
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showAdminCode, setShowAdminCode] = useState(false);
   const [adminCode, setAdminCode] = useState('');
@@ -469,13 +473,24 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
   const [billing, setBilling] = useState<BillingConfig | null>(null);
   const [upgradeBusy, setUpgradeBusy] = useState(false);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  const sourceRefreshed = useRef(false);
   // >0 = υπάρχουν ασυγχρόνιστες αλλαγές· δείχνουμε «logout ούτως ή άλλως;».
   const [unsyncedPending, setUnsyncedPending] = useState(0);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteErrorKey, setDeleteErrorKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Παλιά cached auth δεν έχει plan_source· ένα refresh το συμπληρώνει ώστε
+    // να ξέρουμε αν το «Manage billing» έχει νόημα (Stripe vs admin grant).
+    if (!planActive || account.plan_source || sourceRefreshed.current) return;
+    sourceRefreshed.current = true;
+    void refreshAccount().catch(() => {});
+  }, [planActive, account.plan_source]);
 
   useEffect(() => {
     if (planActive) return;
@@ -523,6 +538,24 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
       setUpgradeError(t('account.upgradeError'));
     } finally {
       setUpgradeBusy(false);
+    }
+  };
+
+  const onManageBilling = async () => {
+    if (portalBusy) return;
+    setPortalBusy(true);
+    setPortalError(null);
+    try {
+      const { url } = await api.billingPortal();
+      window.location.assign(url);
+    } catch (err) {
+      setPortalError(
+        err instanceof ApiError && err.code === 'no_billing_account'
+          ? 'account.billingNoSubscription'
+          : 'account.billingPortalError',
+      );
+    } finally {
+      setPortalBusy(false);
     }
   };
 
@@ -669,6 +702,20 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
           )}
         </div>
 
+        {planActive && account.plan_expires_at && account.plan_source === 'stripe' && (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2">
+            <p className="text-xs text-muted-foreground">{t('account.renewsAutomatically')}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              loading={portalBusy}
+              onClick={() => void onManageBilling()}
+            >
+              {t('account.manageBilling')}
+            </Button>
+          </div>
+        )}
+
         {!planActive && billing?.enabled && (
           <div className="mt-3 space-y-2">
             {billing.plans.map((plan) => (
@@ -693,14 +740,11 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
                   <span className="font-mono text-sm tabular-nums">{plan.price_label}</span>
                   <Button
                     size="sm"
-                    disabled={upgradeBusy || !plan.available}
+                    loading={upgradeBusy}
+                    disabled={!plan.available}
                     onClick={() => void onUpgrade(plan.id)}
                   >
-                    {upgradeBusy
-                      ? t('common.loading')
-                      : plan.available
-                        ? t('account.plans.choose')
-                        : t('account.plans.soldOut')}
+                    {plan.available ? t('account.plans.choose') : t('account.plans.soldOut')}
                   </Button>
                 </div>
               </div>
@@ -710,6 +754,9 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
               <Link to="/legal/refund" className="underline underline-offset-2 hover:text-foreground">
                 {t('account.plans.refundLink')}
               </Link>
+            </p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {t('account.secureCheckout')}
             </p>
           </div>
         )}
@@ -724,6 +771,11 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
           {upgradeError}
         </p>
       )}
+      {portalError && (
+        <p className="mt-2 text-xs text-destructive" role="alert">
+          {t(portalError)}
+        </p>
+      )}
 
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-3 text-sm">
         <div>
@@ -735,7 +787,7 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
         <Button
           size="sm"
           variant="outline"
-          disabled={sync.state === 'syncing'}
+          loading={sync.state === 'syncing'}
           onClick={() => void syncNow()}
         >
           {t('account.syncNow')}
@@ -772,8 +824,8 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
                 placeholder={t('account.adminCodePlaceholder')}
                 aria-label={t('account.adminCode')}
               />
-              <Button type="submit" size="sm" disabled={adminBusy}>
-                {adminBusy ? t('common.loading') : t('common.confirm')}
+              <Button type="submit" size="sm" loading={adminBusy}>
+                {t('common.confirm')}
               </Button>
             </form>
           )}
@@ -822,8 +874,8 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
               value={confirmNewPassword}
               onChange={setConfirmNewPassword}
             />
-            <Button type="submit" size="sm" disabled={changeBusy}>
-              {changeBusy ? t('common.loading') : t('common.save')}
+            <Button type="submit" size="sm" loading={changeBusy}>
+              {t('common.save')}
             </Button>
           </form>
         )}
@@ -843,10 +895,10 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
           <Button
             size="sm"
             variant="ghost"
-            disabled={logoutOthersBusy}
+            loading={logoutOthersBusy}
             onClick={() => void onLogoutOthers()}
           >
-            {logoutOthersBusy ? t('common.loading') : t('account.logoutOthers')}
+            {t('account.logoutOthers')}
           </Button>
         </div>
         {logoutOthersStatusKey && (
@@ -907,9 +959,10 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
               type="submit"
               size="sm"
               variant="destructive"
-              disabled={deleteBusy || deleteConfirmation.trim().toLowerCase() !== accountEmail.toLowerCase()}
+              loading={deleteBusy}
+              disabled={deleteConfirmation.trim().toLowerCase() !== accountEmail.toLowerCase()}
             >
-              {deleteBusy ? t('common.loading') : t('account.deleteForever')}
+              {t('account.deleteForever')}
             </Button>
           </form>
         )}

@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent / "dist"
 PORT = int(os.environ.get("ANABASIS_PORT", "8120"))
-NO_CACHE = {"/", "/index.html", "/sw.js", "/registerSW.js", "/manifest.webmanifest"}
+NO_CACHE = {"/", "/index.html", "/landing.html", "/sw.js", "/registerSW.js", "/manifest.webmanifest"}
 
 # Text assets που αξίζει να συμπιεστούν. Τα woff2/png/jpg είναι ήδη συμπιεσμένα.
 # Content-Type ρητά — το mimetypes δεν ξέρει .webmanifest, κι ένα λάθος type

@@ -59,29 +59,31 @@ export function FriendsSection({ showHeading = true }: { showHeading?: boolean }
   }
 
   return (
-    <div className="space-y-4">
-      {showHeading && (
-        <header>
-          <h2 className="font-display text-lg font-semibold tracking-tight">{t('social.title')}</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">{t('social.subtitle')}</p>
-        </header>
-      )}
+    <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-start lg:gap-4 lg:space-y-0">
+      <div className="space-y-4">
+        {showHeading && (
+          <header>
+            <h2 className="font-display text-lg font-semibold tracking-tight">{t('social.title')}</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">{t('social.subtitle')}</p>
+          </header>
+        )}
 
-      {state.offline && (
-        <p className="rounded-xl border border-border/60 bg-card p-3 text-center text-xs text-muted-foreground">
-          {t('social.offlineCached')}
-        </p>
-      )}
-      {/* Offline → me είναι null (δεν κρατάμε cache), οπότε το ProfileCard κρύβεται
-          μόνο του· τα υπόλοιπα δείχνουν last-known από το cache. */}
-      <ProfileCard me={state.me} onSave={actions.updateProfile} />
-      <AddFriend onAdd={actions.addFriend} />
-      <Connections
-        friends={state.friends}
-        requests={state.requests}
-        onAccept={actions.accept}
-        onRemove={actions.remove}
-      />
+        {state.offline && (
+          <p className="rounded-xl border border-border/60 bg-card p-3 text-center text-xs text-muted-foreground">
+            {t('social.offlineCached')}
+          </p>
+        )}
+        {/* Offline → me είναι null (δεν κρατάμε cache), οπότε το ProfileCard κρύβεται
+            μόνο του· τα υπόλοιπα δείχνουν last-known από το cache. */}
+        <ProfileCard me={state.me} onSave={actions.updateProfile} />
+        <AddFriend onAdd={actions.addFriend} />
+        <Connections
+          friends={state.friends}
+          requests={state.requests}
+          onAccept={actions.accept}
+          onRemove={actions.remove}
+        />
+      </div>
       <Leaderboard
         rows={state.leaderboard}
         scope={state.scope}

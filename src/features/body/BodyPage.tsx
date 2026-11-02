@@ -2,7 +2,8 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowDown, ArrowUp, Info } from 'lucide-react';
-import { getBodyMetric, getBodyTrend, localDay, saveBodyMetric } from '@/lib/db/queries';
+import { Link } from 'react-router-dom';
+import { getBodyMetric, getBodyTrend, getBodyweightLoads, localDay, saveBodyMetric } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight, parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ export function BodyPage() {
 
   const trend = useLiveQuery(() => getBodyTrend(days), [days], []);
   const todayMetric = useLiveQuery(() => getBodyMetric(today), [today]);
+  const bodyweightLoads = useLiveQuery(() => getBodyweightLoads(5), [], []);
 
   const [w, setW] = useState('');
   const [bf, setBf] = useState('');
@@ -119,6 +121,28 @@ export function BodyPage() {
           {t('body.weightImportantTip')}
         </p>
       </div>
+
+      {bodyweightLoads.length > 0 && (
+        <section className="rounded-xl border border-border/60 bg-card p-4">
+          <h2 className="text-sm font-medium">{t('body.bodyweightLoad')}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('body.bodyweightLoadHint')}</p>
+          <ul className="mt-3 divide-y divide-border/60">
+            {bodyweightLoads.map((row) => (
+              <li key={row.exerciseId}>
+                <Link
+                  to={`/progress?exerciseId=${row.exerciseId}`}
+                  className="flex items-center justify-between gap-3 py-2 text-sm transition-colors hover:text-primary"
+                >
+                  <span className="min-w-0 flex-1 truncate">{row.name}</span>
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                    {formatWeight(row.loadKg, unit)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Καταγραφή σημερινής μέρας — βάρος, λίπος, βήματα */}
       <section className="rounded-xl bg-card p-4">

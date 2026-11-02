@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import type { SetEntry } from '@/lib/db/types';
 
 /** All non-deleted sets for a workout, ordered by exercise then set_number. */
-export function useWorkoutSets(workoutId: string | null | undefined): SetEntry[] {
+export function useWorkoutSets(workoutId: string | null | undefined): SetEntry[] | undefined {
   return (
     useLiveQuery(async () => {
       if (!workoutId) return [];
@@ -16,12 +16,12 @@ export function useWorkoutSets(workoutId: string | null | undefined): SetEntry[]
           }
           return a.set_number - b.set_number;
         });
-    }, [workoutId]) ?? []
+    }, [workoutId])
   );
 }
 
 /** Distinct exercise IDs that have at least one set logged in this workout, in insertion order. */
-export function useWorkoutExerciseIds(workoutId: string | null | undefined): string[] {
+export function useWorkoutExerciseIds(workoutId: string | null | undefined): string[] | undefined {
   return (
     useLiveQuery(async () => {
       if (!workoutId) return [];
@@ -36,6 +36,6 @@ export function useWorkoutExerciseIds(workoutId: string | null | undefined): str
         }
       }
       return order;
-    }, [workoutId]) ?? []
+    }, [workoutId])
   );
 }

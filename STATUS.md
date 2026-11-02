@@ -1,8 +1,17 @@
 # Anabasis — STATUS
 
-**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-11-01
+**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-11-02
 
 ## Τώρα
+- **02/11 Branding/screenshots/press + responsive fixes (OpenCode):**
+  - **Έγινε:** regenerated full brand set (favicon full Ascent A, OG `EVERY SKILL IS A LADDER.`) + `?v=3` cache-bust· guard `npm run build` κατά του live symlink· demo-profile screenshot generator με fixed mid-month clock + auto-copy σε `public/landing`, `public/screenshots`, `docs/screenshots`· new press assets (`brand-sheet` 1920×1080, `logo-lockup` 1024, `app-icon-mockup` 512)· EN/EL copy fixes (Revolut Pay, duplicate arrow), mobile headers Exercises/Calendar, 2-line goal titles (SkillRow/GoalRow, badge moved below), Programs duplicate CTA· `typecheck`, `lint`, `build:staged`, full Vitest **519/519**, device-check landing **10/10** (tiny-text warnings only), staged assets 200/0 errors/0 overflow.
+  - **Batch 2 (02/11):** shared `Spinner`/`Button loading`, sheet/dialog exit motion + reduced-motion, scroll-to-top σε route change, Settings/Community desktop 2-column, ενιαία Progress/History tabs, History skeleton + PR dedupe, plural/copy fixes, onboarding/calendar directional motion, Home «Keep your progress» card για logged-out με ιστορικό· ξανά `typecheck`, `lint`, full Vitest **521/521**, `build:staged` PASS, device-check landing **10/10**.
+  - **Batch 3 (02/11):** timer opt-in χωρίς μόνιμο 00:00, χωρίς backdrop blur και με πιο ψηλά sheets, Calendar με σταθερό Today/Back-to-today + quick presets «Home bodyweight» / «Pull-up bar», Bodyweight load card στο Body, Goals header CTA, category icons σε Exercises/Progress/nav, SkillMark initials αντί για μικρά silhouettes, last-trained στο Progress· full Vitest **523/523**, typecheck/lint/`build:staged` PASS, device-check landing **10/10**.
+  - **Batch 4 (02/11):** admin account πήρε Pro (DB `plan=pro`, `plan_source=admin`, backup `~/.local/state/backups/anabasis-db-20261102-admin-pro.db`) + `useIsPro` admin bypass· onboarding Back + clickable step circles + «Create account» στο τελευταίο slide· BottomSheet γίνεται centered dialog στο desktop, χωρίς blur, με μεγαλύτερο ύψος — ισχύει για όλα τα sheets/menus· full Vitest **525/525**, typecheck/lint/`build:staged` PASS.
+  - **Batch 5 (02/11):** workout flow hardening (loading sets πριν από Discard, atomic start lock, persisted pending exercises, end→History, future-date guard, bodyweight sheet, previous-set scoped, max set_number, backdated detection, quick-start cards collapsed, desktop max-width/safe-bottom)· form fixes (focus trap, goal double-save guard/error, Field groups, exercise duplicate check + onSaved + loading, Goals/Exercises loading states)· landing fixes (relative paths για GitHub Pages, no-cache, mobile pricing, plan intent, carousel/float note, πραγματικά Muscle-up steps, install steps, relative assets)· full Vitest **525/525**, typecheck/lint/`build:staged` PASS, device-check landing **10/10 με 0 tiny-text warnings**.
+  - **Μένει:** visual review των Batch 2–5, AccountCard admin/portal flow, commit/prepush· πλήρες PR cleanup σε delete/edit set.
+  - **Θέλει εσένα:** «ναι» για deploy του staged build· στοιχεία έδρας/VAT για Stripe Tax· review των νέων press assets.
+  - **Σημ.:** κατά λάθος `npm run build` ξαναέγραψε το live release· επαναφέρθηκε αμέσως από clean build του `3a5b703` και το live σερβίρει ξανά `?v=2` (favicon 343B, og 59178B· landing/dashboard 169157B). Τα νέα assets μένουν μόνο σε working tree/`dist-staging`.
 - **01/11 Monetization + Ascent A landing reskin (OpenCode):**
   - **Έγινε:** τιμές **€2.99/μήνα**, **founding €14.99** (πρώτοι 250), **standard €29.99 lifetime**, **14-day refund**· billing backend (πραγματικά days, refund URL, refund ακυρώνει μόνο την τελευταία αγορά, refund ελευθερώνει founding slot, async payment event, `format_unix_iso`) + migration `0012_billing_plans`· Stripe live prices στο env· legal refund page + settings row + i18n fix (`legal.refund`)· Pro gating coach mode + dashboard upsell + free limits 3 programs/3 goals· πλήρες light/violet reskin `public/landing.html` με pricing/refund links· API contract updated· **16 unit + 77 integration + 519 frontend**, fmt/clippy/typecheck/lint/build PASS· local DB backup `~/.local/state/backups/anabasis-db-20261101-prebilling.db`· **live deploy** commit `3a5b703`, release `20261101-135128-375415175`· Stripe webhook `we_1UVthBRDW9RosVPTmseDzfNl` πλέον στέλνει και `invoice.paid`, `customer.subscription.updated/deleted`, `charge.refunded`· live health/config OK, device-check 30/30 (warnings CSP/tiny), landing/refund/settings verified.
   - **Μένει:** live checkout/refund smoke test με πραγματική κάρτα/επιστροφή· first-250 cap race (low risk)· visual review.
@@ -54,20 +63,21 @@
     - Πες ένα «ναι» για push.
 - **16/10 19:11 LIVE 16d3adf** (frontend releases/20261016-191129…): γρηγορότερη πρώτη εμφάνιση — το shell δεν περιμένει το DB bootstrap· LCP / 3201→2552, /calendar 2901→2552, /settings 3057→2552 (5 εναλλάξ μετρήσεις, επιβεβαίωση Grok QA9), διάμεσος score ≥95 · ομάδα: Codex (A9), cross-review Grok (QA9) · rollback: `npm run deploy:rollback` · μένει: σύντομο κενό κείμενο ~200ms στο /history και /calendar πριν τα δεδομένα (προϋπάρχον, HistoryPage.tsx:37)
 - **16/10 LIVE c947478** (frontend releases/20261016-025232…, API migrations 0006 gc_floor + 0007 gc_graveyard): export ανά profile, logout με flush + προειδοποίηση για unsynced, πλήρης διαγραφή profile/λογαριασμού (και graveyard — GDPR), import με version/preview, destructive reset χωρίς ghosts, server-side graveyard (καμία ανάσταση ούτε από παλιούς clients), atomic promote/rollback · vitest 507, cargo 12+64, device-check live 80/80 · ομάδα: Claude (A2–A8), cross-review Grok (QA4/QA5) + Codex (QA6–QA8) · rollback frontend: `npm run deploy:rollback` · rollback API (μονόδρομα migrations): stop anabasis-api → επαναφορά `~/.local/state/backups/anabasis-db-20261016-predeploy.db` + `~/.local/state/backups/anabasis-api.prev-20261016` → start · ⏳ git push στο GitHub (public) θέλει «ναι» Aggelos
-- LIVE https://anabasis.axonos.dev (frontend `dist/` από serve.py :8120, API anabasis-api :8121) · main `3a5b703` (code) + docs commit · release `20261101-135128-375415175` (GitHub `origin`, public)
+- LIVE https://anabasis.axonos.dev (frontend `dist/` από serve.py :8120, API anabasis-api :8121) · main `15e15df` (code + docs) · release `20261101-135128-375415175` (GitHub `origin`, public)
 - Launch P0 έγιναν: Privacy/Terms/Safety + safety ack, landing `/landing.html` EN/EL, SMTP ενεργό (drop-in anabasis-api.service.d/email.conf), quota + tombstone GC
 - Πιστοποίηση συσκευών 10 profiles: live 20/20 χωρίς warnings (`device-check https://anabasis.axonos.dev /,/landing.html`) · docs/DEVICE-CERTIFICATION-2026-10-10.md
 - Tests: 486 frontend (vitest) + server cargo · audit: docs/LAUNCH-READINESS-2026-10-09.md
 
 ## Επόμενα 3
-1. Live checkout/refund smoke test με πραγματική κάρτα/επιστροφή
-2. Visual review landing/account/refund· μετά store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)
-3. Κλείσιμο first-250 cap race αν χρειαστεί (transaction/lock)
+1. Visual review staged landing/press/account + real portal smoke
+2. Commit/prepush gate + «ναι» για deploy του staged build
+3. Stripe Tax/VAT στοιχεία + αποφάσεις PayPal/Wero/iDEAL/SEPA
 
 ## Περιμένουν Aggelos
-- Visual review screenshots `/tmp/anabasis-live-landing-desktop.png`, `/tmp/anabasis-live-landing-mobile.png`, `/tmp/anabasis-live-refund.png`
+- Visual review `/tmp/anabasis-staged-landing-1440.png`, `/tmp/anabasis-staged-landing-390.png`, `public/press/*`
+- «Ναι» για deploy του staged build
+- Στοιχεία έδρας/VAT για Stripe Tax· αποφάσεις PayPal/Wero/iDEAL/SEPA
 - Πραγματική δοκιμαστική αγορά/refund αν θέλει end-to-end
-- Store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)
 
 ## Κανόνες
 - Deploy: `npm run build:staged && npm run deploy:promote` (rollback: `npm run deploy:rollback`). **ΟΧΙ `npm run build`**: το `dist` είναι symlink στο live release και θα το ξαναγράψει επί τόπου. API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)

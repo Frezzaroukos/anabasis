@@ -8,7 +8,7 @@
       name="description"
       content="A training log for weighted calisthenics and skills. Log weighted basics and skill ladders in one place — offline-first, private, no signup to try."
     />
-    <link rel="icon" href="/favicon.svg?v=2" />
+    <link rel="icon" href="./favicon.svg?v=3" />
     <meta name="theme-color" content="#FCFCFD" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Anabasis — weighted calisthenics & skill progression" />
@@ -17,34 +17,34 @@
       content="Every skill is a ladder. Anabasis shows the rung you're on and the next one. Offline-first, private, no signup to try."
     />
     <meta property="og:url" content="https://anabasis.axonos.dev/landing.html" />
-    <meta property="og:image" content="https://anabasis.axonos.dev/og.png?v=2" />
-    <link rel="preload" href="/fonts/manrope-greek-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <meta property="og:image" content="https://anabasis.axonos.dev/og.png?v=3" />
+    <link rel="preload" href="./fonts/manrope-greek-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <style>
       @font-face {
         font-family: "Manrope";
-        src: url("/fonts/manrope-greek-wght-normal.woff2") format("woff2");
+        src: url("./fonts/manrope-greek-wght-normal.woff2") format("woff2");
         font-weight: 200 800;
         font-display: swap;
         unicode-range: U+0370-03FF, U+1F00-1FFF;
       }
       @font-face {
         font-family: "Manrope";
-        src: url("/fonts/manrope-latin-wght-normal.woff2") format("woff2");
+        src: url("./fonts/manrope-latin-wght-normal.woff2") format("woff2");
         font-weight: 200 800;
         font-display: swap;
         unicode-range: U+0000-00FF, U+0100-024F, U+1E00-1EFF, U+2000-206F;
       }
       @font-face {
         font-family: "JetBrains Mono";
-        src: url("/fonts/jetbrains-mono-greek-wght-normal.woff2") format("woff2");
+        src: url("./fonts/jetbrains-mono-greek-wght-normal.woff2") format("woff2");
         font-weight: 100 800;
         font-display: swap;
         unicode-range: U+0370-03FF, U+1F00-1FFF;
       }
       @font-face {
         font-family: "JetBrains Mono";
-        src: url("/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+        src: url("./fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
         font-weight: 100 800;
         font-display: swap;
         unicode-range: U+0000-00FF, U+0100-024F, U+1E00-1EFF, U+2000-206F;
@@ -57,7 +57,7 @@
         --surface-3: #ece5f8;
         --ink: #1c1c21;
         --ink-2: #4d4a57;
-        --muted: #767280;
+        --muted: #6b6775;
         --line: rgba(28, 28, 33, 0.1);
         --line-strong: rgba(28, 28, 33, 0.18);
         --violet: #8239ef;
@@ -154,8 +154,8 @@
         text-transform: uppercase;
       }
       .brand-mark {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         flex: 0 0 auto;
       }
       nav.main-nav { display: none; gap: 26px; margin-left: auto; }
@@ -182,7 +182,7 @@
         padding: 3px;
       }
       .lang button {
-        font: 600 11px/1 var(--mono);
+        font: 600 12px/1 var(--mono);
         color: var(--muted);
         background: transparent;
         border: 0;
@@ -193,6 +193,20 @@
         min-height: 44px;
       }
       .lang button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+      .mobile-price {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+        text-decoration: none;
+      }
+      .mobile-price:hover { color: var(--ink); }
+      @media (min-width: 760px) { .mobile-price { display: none; } }
+      @media (max-width: 359px) { .mobile-price { display: none; } }
       .header-cta {
         display: none;
         text-decoration: none;
@@ -220,7 +234,7 @@
         gap: 10px;
         margin: 0 0 22px;
         color: var(--violet);
-        font: 650 11px/1.4 var(--mono);
+        font: 650 12px/1.4 var(--mono);
         letter-spacing: 0.12em;
         text-transform: uppercase;
       }
@@ -275,12 +289,12 @@
         padding: 0;
         list-style: none;
         color: var(--muted);
-        font: 500 11px/1.5 var(--mono);
+        font: 500 12px/1.5 var(--mono);
       }
       .facts li { display: inline-flex; align-items: center; gap: 7px; }
       .facts li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--violet); }
 
-      .hero-visual { position: relative; min-height: 500px; display: grid; place-items: center; }
+      .hero-visual { position: relative; min-height: 500px; margin-bottom: 96px; display: grid; place-items: center; }
       .hero-visual::before {
         content: "";
         position: absolute;
@@ -309,9 +323,9 @@
         padding: 17px 20px 15px;
         border-bottom: 1px solid var(--line);
       }
-      .ladder-top span:first-child { font: 600 10px/1 var(--mono); letter-spacing: 0.12em; color: var(--muted); }
+      .ladder-top span:first-child { font: 600 12px/1 var(--mono); letter-spacing: 0.12em; color: var(--muted); }
       .demo-pill {
-        font: 600 9px/1 var(--mono);
+        font: 600 12px/1 var(--mono);
         letter-spacing: 0.1em;
         color: var(--violet);
         border: 1px solid rgba(130,57,239,0.28);
@@ -322,8 +336,8 @@
       .ladder-body { padding: 20px; }
       .ladder-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
       .ladder-title h2 { margin: 0; font-size: 25px; line-height: 1.1; letter-spacing: -0.04em; }
-      .ladder-title p { margin: 4px 0 0; color: var(--muted); font: 500 10px/1.4 var(--mono); }
-      .ladder-count { color: var(--violet); font: 600 11px/1 var(--mono); white-space: nowrap; }
+      .ladder-title p { margin: 4px 0 0; color: var(--muted); font: 500 12px/1.4 var(--mono); }
+      .ladder-count { color: var(--violet); font: 600 12px/1 var(--mono); white-space: nowrap; }
       .ladder { position: relative; display: grid; gap: 0; }
       .ladder::before {
         content: "";
@@ -353,7 +367,7 @@
         border: 1px solid var(--line-strong);
         background: var(--surface);
         color: var(--muted);
-        font: 600 9px/1 var(--mono);
+        font: 600 12px/1 var(--mono);
       }
       .rung.done .rung-dot { border-color: rgba(130,57,239,0.34); color: var(--violet); }
       .rung.active .rung-dot {
@@ -363,8 +377,8 @@
         box-shadow: 0 0 0 5px rgba(130,57,239,0.12);
       }
       .rung-name { font-size: 14px; font-weight: 750; letter-spacing: -0.01em; }
-      .rung-sub { color: var(--muted); font: 500 10px/1.35 var(--mono); margin-top: 2px; }
-      .rung-status { color: var(--muted); font: 500 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+      .rung-sub { color: var(--muted); font: 500 12px/1.35 var(--mono); margin-top: 2px; }
+      .rung-status { color: var(--muted); font: 500 12px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
       .rung.active .rung-name { color: var(--violet); }
       .rung.active .rung-status { color: var(--violet); }
       .rung.done .rung-name { color: var(--ink-2); }
@@ -378,13 +392,14 @@
         border-radius: 13px;
         background: var(--surface-2);
       }
-      .ladder-next .next-label { color: var(--muted); font: 500 9px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+      .ladder-next .next-label { color: var(--muted); font: 500 12px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
       .ladder-next strong { display: block; margin-top: 3px; font-size: 12px; }
       .ladder-next .next-arrow { margin-left: auto; color: var(--violet); font-size: 18px; }
       .floating-note {
         position: absolute;
-        right: -4px;
-        bottom: 32px;
+        right: 0;
+        top: calc(100% + 12px);
+        bottom: auto;
         width: max-content;
         max-width: 220px;
         padding: 11px 14px;
@@ -393,7 +408,7 @@
         background: rgba(255,255,255,0.96);
         box-shadow: 0 18px 40px -26px rgba(28,28,33,0.35);
         color: var(--ink-2);
-        font: 500 10px/1.45 var(--mono);
+        font: 500 12px/1.45 var(--mono);
         transform: rotate(-2deg);
       }
       .floating-note b { color: var(--ink); font-weight: 750; }
@@ -413,11 +428,11 @@
       }
       .proof-item { display: flex; align-items: baseline; gap: 9px; }
       .proof-item strong { font: 750 18px/1 var(--mono); color: var(--ink); letter-spacing: -0.04em; }
-      .proof-item span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+      .proof-item span { color: var(--muted); font-size: 12px; line-height: 1.4; }
 
       section { position: relative; z-index: 1; padding: 92px 0; }
       .section-head { display: grid; gap: 18px; margin-bottom: 40px; }
-      .kicker { margin: 0; color: var(--violet); font: 650 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+      .kicker { margin: 0; color: var(--violet); font: 650 12px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
       h2 {
         margin: 0;
         max-width: 17ch;
@@ -468,8 +483,10 @@
         scrollbar-width: thin;
         scrollbar-color: var(--line-strong) transparent;
       }
+      .shots:focus-visible { outline: 2px solid var(--violet); outline-offset: 4px; }
       .shot {
         flex: 0 0 230px;
+        margin: 0;
         scroll-snap-align: start;
       }
       .shot-frame {
@@ -482,9 +499,9 @@
         box-shadow: var(--shadow);
       }
       .shot-frame img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
-      .shot figcaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; color: var(--muted); font: 500 10px/1.3 var(--mono); }
+      .shot figcaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; color: var(--muted); font: 500 12px/1.3 var(--mono); }
       .shot figcaption span:last-child { color: var(--violet); }
-      .shot-note { margin-top: 24px; color: var(--muted); font: 500 10px/1.6 var(--mono); }
+      .shot-note { margin-top: 24px; color: var(--muted); font: 500 12px/1.65 var(--sans); }
 
       .split { display: grid; gap: 44px; align-items: start; }
       .ledger { border-top: 1px solid var(--line-strong); }
@@ -498,6 +515,7 @@
       .ledger-row .mark { color: var(--violet); font: 600 12px/1.4 var(--mono); }
       .ledger-row strong { display: block; font-size: 14px; }
       .ledger-row p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+      .install-hint { margin: 16px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
       .quote {
         margin: 0;
         padding: 28px;
@@ -510,7 +528,7 @@
         letter-spacing: -0.03em;
         font-weight: 650;
       }
-      .quote footer { margin-top: 16px; color: var(--violet); font: 500 10px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+      .quote footer { margin-top: 16px; color: var(--violet); font: 500 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 
       .who { padding-bottom: 0; }
       .who-grid { display: grid; gap: 16px; }
@@ -523,7 +541,7 @@
         color: var(--ink-2);
         font-size: 14px;
       }
-      .who-item span { color: var(--violet); font: 600 10px/1.4 var(--mono); letter-spacing: 0.08em; }
+      .who-item span { color: var(--violet); font: 600 12px/1.4 var(--mono); letter-spacing: 0.08em; }
 
       .pricing-grid { display: grid; gap: 18px; align-items: stretch; }
       .price-card {
@@ -550,21 +568,34 @@
         border-radius: 999px;
         background: var(--violet);
         color: #fff;
-        font: 650 9px/1 var(--mono);
+        font: 650 12px/1 var(--mono);
         letter-spacing: 0.1em;
         text-transform: uppercase;
       }
       .price-card h3 { margin: 0; font-size: 18px; letter-spacing: -0.03em; }
       .price-amount { display: flex; align-items: baseline; gap: 7px; }
       .price-amount strong { font: 760 44px/0.95 var(--sans); letter-spacing: -0.06em; }
-      .price-period { color: var(--muted); font: 500 11px/1.4 var(--mono); }
+      .price-period { color: var(--muted); font: 500 12px/1.4 var(--mono); }
       .price-desc { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
       .price-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--ink-2); font-size: 13px; }
       .price-list li { display: flex; gap: 8px; align-items: baseline; }
       .price-list li::before { content: "✓"; color: var(--violet); font: 700 12px/1.4 var(--mono); }
       .price-cta { margin-top: auto; width: 100%; }
-      .price-note { margin: 18px 0 0; color: var(--muted); font: 500 10px/1.6 var(--mono); }
+      .price-note { margin: 18px 0 0; color: var(--muted); font: 500 12px/1.65 var(--sans); }
       .price-note a { color: var(--violet); text-decoration: underline; text-underline-offset: 2px; }
+      .pay-methods { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; }
+      .pay-label { color: var(--muted); font: 500 12px/1.4 var(--mono); letter-spacing: 0.04em; }
+      .pay-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 0 9px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--ink-2);
+        font: 600 12px/1 var(--mono);
+      }
 
       .final-cta { padding: 84px 0 100px; }
       .final-box {
@@ -619,10 +650,10 @@
       @media (max-width: 759px) {
         .lang button { min-height: 44px; min-width: 44px; }
         .hero h1 { max-width: 11ch; }
-        .hero-visual { min-height: 420px; margin-top: 4px; }
-        .floating-note { right: 4px; bottom: 6px; }
+        .hero-visual { min-height: 420px; margin-top: 4px; margin-bottom: 96px; }
+        .floating-note { right: 4px; top: calc(100% + 12px); bottom: auto; }
         .ladder-card { width: min(100%, 370px); }
-        .section { padding: 70px 0; }
+        #why, #inside, #install, #pricing { padding: 70px 0; }
         .final-cta { padding: 60px 0 76px; }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -648,8 +679,8 @@
 
     <header class="site-header">
       <div class="header-inner">
-        <a class="brand" href="/" aria-label="Anabasis home">
-          <img class="brand-mark" src="/favicon.svg?v=2" alt="" width="28" height="28" />
+        <a class="brand" href="./" aria-label="Anabasis home">
+          <img class="brand-mark" src="./logo.svg?v=3" alt="" width="32" height="32" />
           <span>Anabasis</span>
         </a>
         <nav class="main-nav" aria-label="Main">
@@ -663,7 +694,8 @@
             <button type="button" data-lang="en" aria-pressed="true">EN</button>
             <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
           </div>
-          <a class="header-cta" href="/" data-en="Open app ↗" data-el="Άνοιξε το app ↗">Open app ↗</a>
+          <a class="mobile-price" href="#pricing" data-en="Pricing" data-el="Τιμές">Pricing</a>
+          <a class="header-cta" href="./" data-en="Open app ↗" data-el="Άνοιξε το app ↗">Open app ↗</a>
         </div>
       </div>
     </header>
@@ -682,7 +714,7 @@
               data-el="Καταγράφεις τα βασικά με βάρος και τα skills πίσω τους. Το Anabasis δείχνει σε ποιο σκαλί είσαι — και ποιο είναι το επόμενο. Χωρίς feed, χωρίς θόρυβο, χωρίς εγγραφή για δοκιμή."
             >Log the weighted basics and the skills behind them. Anabasis shows the rung you're on — and the next one. No feed, no noise, no signup to try.</p>
             <div class="cta-row">
-              <a class="btn btn-primary" href="/" data-en="Start the ascent ↗" data-el="Ξεκίνα την ανάβαση ↗">Start the ascent ↗</a>
+              <a class="btn btn-primary" href="./" data-en="Start the ascent ↗" data-el="Ξεκίνα την ανάβαση ↗">Start the ascent ↗</a>
               <a class="btn btn-ghost" href="#inside" data-en="See the log" data-el="Δες το log">See the log</a>
             </div>
             <ul class="facts">
@@ -704,39 +736,39 @@
                     <h2>Muscle-up</h2>
                     <p data-en="Current rung · 3 of 5" data-el="Τρέχον σκαλί · 3 από 5">Current rung · 3 of 5</p>
                   </div>
-                  <span class="ladder-count">+12.5 kg</span>
+                  <span class="ladder-count">5 steps</span>
                 </div>
                 <div class="ladder">
                   <div class="rung done">
                     <span class="rung-dot">01</span>
-                    <div><div class="rung-name">Tuck</div><div class="rung-sub" data-en="3 × 8 · clean" data-el="3 × 8 · καθαρά">3 × 8 · clean</div></div>
+                    <div><div class="rung-name">Strict pull-up ×10</div><div class="rung-sub" data-en="10 reps · clean" data-el="10 επαναλήψεις · καθαρά">10 reps · clean</div></div>
                     <span class="rung-status" data-en="Done" data-el="Έγινε">Done</span>
                   </div>
                   <div class="rung done">
                     <span class="rung-dot">02</span>
-                    <div><div class="rung-name">Advanced tuck</div><div class="rung-sub" data-en="3 × 6 · 5 kg" data-el="3 × 6 · 5 kg">3 × 6 · 5 kg</div></div>
+                    <div><div class="rung-name">Straight-bar dip ×10</div><div class="rung-sub" data-en="10 reps · full lockout" data-el="10 επαναλήψεις · full lockout">10 reps · full lockout</div></div>
                     <span class="rung-status" data-en="Done" data-el="Έγινε">Done</span>
                   </div>
                   <div class="rung active">
                     <span class="rung-dot">03</span>
-                    <div><div class="rung-name">Straddle</div><div class="rung-sub" data-en="4 × 4 · 12.5 kg" data-el="4 × 4 · 12.5 kg">4 × 4 · 12.5 kg</div></div>
+                    <div><div class="rung-name">High pull-up ×5</div><div class="rung-sub" data-en="5 reps · chest to bar" data-el="5 επαναλήψεις · chest to bar">5 reps · chest to bar</div></div>
                     <span class="rung-status" data-en="You are here" data-el="Εδώ είσαι">You are here</span>
                   </div>
                   <div class="rung">
                     <span class="rung-dot">04</span>
-                    <div><div class="rung-name">Full</div><div class="rung-sub" data-en="3 × 2 · bodyweight" data-el="3 × 2 · σωματικό βάρος">3 × 2 · bodyweight</div></div>
+                    <div><div class="rung-name">Banded muscle-up ×3</div><div class="rung-sub" data-en="3 reps · light band" data-el="3 επαναλήψεις · ελαφρύ λάστιχο">3 reps · light band</div></div>
                     <span class="rung-status" data-en="Locked" data-el="Κλειδωμένο">Locked</span>
                   </div>
                   <div class="rung">
                     <span class="rung-dot">05</span>
-                    <div><div class="rung-name">Full + load</div><div class="rung-sub" data-en="3 × 3 · +5 kg" data-el="3 × 3 · +5 kg">3 × 3 · +5 kg</div></div>
+                    <div><div class="rung-name">Strict bar muscle-up ×1</div><div class="rung-sub" data-en="1 rep · no kip" data-el="1 επανάληψη · χωρίς kip">1 rep · no kip</div></div>
                     <span class="rung-status" data-en="Locked" data-el="Κλειδωμένο">Locked</span>
                   </div>
                 </div>
                 <div class="ladder-next">
                   <div>
                     <div class="next-label" data-en="Next target" data-el="Επόμενος στόχος">Next target</div>
-                    <strong data-en="3 clean full reps" data-el="3 καθαρές full επαναλήψεις">3 clean full reps</strong>
+                    <strong data-en="Banded muscle-up ×3" data-el="Banded muscle-up ×3">Banded muscle-up ×3</strong>
                   </div>
                   <span class="next-arrow" aria-hidden="true">↗</span>
                 </div>
@@ -749,8 +781,8 @@
 
       <div class="proof">
         <div class="wrap proof-inner">
-          <div class="proof-item"><strong>08</strong><span data-en="skill ladders, from tuck to full" data-el="σκάλες skill, από tuck έως full">skill ladders, from tuck to full</span></div>
-          <div class="proof-item"><strong>500+</strong><span data-en="tests behind the log" data-el="tests πίσω από το log">tests behind the log</span></div>
+          <div class="proof-item"><strong>08</strong><span data-en="skill ladders, 4–6 steps each" data-el="σκάλες skill, 4–6 σκαλιά η καθεμία">skill ladders, 4–6 steps each</span></div>
+          <div class="proof-item"><strong>32</strong><span data-en="built-in exercises, plus your own" data-el="ενσωματωμένες ασκήσεις, μαζί με τις δικές σου">built-in exercises, plus your own</span></div>
           <div class="proof-item"><strong>0</strong><span data-en="accounts needed to start" data-el="εγγραφές για να ξεκινήσεις">accounts needed to start</span></div>
           <div class="proof-item"><strong>1×</strong><span data-en="workout log. Skills included." data-el="ημερολόγιο προπόνησης. Μαζί με skills.">workout log. Skills included.</span></div>
         </div>
@@ -787,21 +819,21 @@
             <h2 data-en="A training log, not a dashboard." data-el="Ένα training log, όχι dashboard.">A training log, not a dashboard.</h2>
             <p class="section-intro" data-en="Calendar-first, set-by-set, with skill ladders and goals that speak your language. Open it, log the work, see the next step." data-el="Με κέντρο το ημερολόγιο, σετ-σετ, με skill ladders και στόχους στη γλώσσα σου. Άνοιξέ το, κατέγραψε τη δουλειά, δες το επόμενο βήμα.">Calendar-first, set-by-set, with skill ladders and goals that speak your language. Open it, log the work, see the next step.</p>
           </div>
-          <div class="shots" aria-label="Anabasis screenshots">
+          <div class="shots" role="region" aria-label="Anabasis screenshots" tabindex="0">
             <figure class="shot">
-              <div class="shot-frame"><img src="/landing/dashboard.png" width="780" height="1688" loading="lazy" alt="Anabasis dashboard" /></div>
+              <div class="shot-frame"><img src="./landing/dashboard.png" width="780" height="1688" loading="lazy" alt="Anabasis dashboard" /></div>
               <figcaption><span data-en="Overview" data-el="Επισκόπηση">Overview</span><span>01</span></figcaption>
             </figure>
             <figure class="shot">
-              <div class="shot-frame"><img src="/landing/calendar.png" width="780" height="1688" loading="lazy" alt="Anabasis training calendar" /></div>
+              <div class="shot-frame"><img src="./landing/calendar.png" width="780" height="1688" loading="lazy" alt="Anabasis training calendar" /></div>
               <figcaption><span data-en="Calendar" data-el="Ημερολόγιο">Calendar</span><span>02</span></figcaption>
             </figure>
             <figure class="shot">
-              <div class="shot-frame"><img src="/landing/skills.png" width="780" height="1688" loading="lazy" alt="Anabasis skill ladders" /></div>
+              <div class="shot-frame"><img src="./landing/skills.png" width="780" height="1688" loading="lazy" alt="Anabasis skill ladders" /></div>
               <figcaption><span data-en="Skill ladders" data-el="Σκάλες skill">Skill ladders</span><span>03</span></figcaption>
             </figure>
             <figure class="shot">
-              <div class="shot-frame"><img src="/landing/goals.png" width="780" height="1688" loading="lazy" alt="Anabasis goals" /></div>
+              <div class="shot-frame"><img src="./landing/goals.png" width="780" height="1688" loading="lazy" alt="Anabasis goals" /></div>
               <figcaption><span data-en="Goals" data-el="Στόχοι">Goals</span><span>04</span></figcaption>
             </figure>
           </div>
@@ -812,7 +844,7 @@
       <section id="install">
         <div class="wrap split">
           <div>
-            <p class="kicker" data-en="The fine print" data-el="Τα ψιλά γράμματα">The fine print</p>
+            <p class="kicker" data-en="Private by default" data-el="Ιδιωτικότητα πρώτα">Private by default</p>
             <h2 data-en="Yours. Offline. Quiet." data-el="Δικό σου. Offline. Ήσυχο.">Yours. Offline. Quiet.</h2>
           </div>
           <div>
@@ -831,9 +863,10 @@
               </div>
             </div>
             <div class="cta-row">
-              <a class="btn btn-primary" href="/" data-en="Open the app ↗" data-el="Άνοιξε το app ↗">Open the app ↗</a>
+              <a class="btn btn-primary" href="./" data-en="Open the app ↗" data-el="Άνοιξε το app ↗">Open the app ↗</a>
               <a class="btn btn-ghost" href="https://github.com/Frezzaroukos/anabasis" data-en="View source" data-el="Δες τον κώδικα">View source</a>
             </div>
+            <p class="install-hint" data-en="Install: on mobile use Share → Add to Home Screen. On desktop use the install icon in the address bar." data-el="Εγκατάσταση: στο κινητό Share → Add to Home Screen. Στο desktop το εικονίδιο εγκατάστασης στη μπάρα.">Install: on mobile use Share → Add to Home Screen. On desktop use the install icon in the address bar.</p>
           </div>
         </div>
       </section>
@@ -857,7 +890,7 @@
           <div class="section-head">
             <p class="kicker" data-en="Anabasis Pro" data-el="Anabasis Pro">Anabasis Pro</p>
             <h2 data-en="Keep the log free. Add the coach." data-el="Κράτα το log δωρεάν. Πρόσθεσε τον coach.">Keep the log free. Add the coach.</h2>
-            <p class="section-intro" data-en="The core training log stays free, offline and private. Pro adds Coach mode, advanced insights and unlimited programs — monthly or one payment for life." data-el="Το βασικό training log μένει δωρεάν, offline και ιδιωτικό. Το Pro προσθέτει Coach mode, advanced insights και απεριόριστα προγράμματα — μηνιαία ή μία πληρωμή για πάντα.">The core training log stays free, offline and private. Pro adds Coach mode, advanced insights and unlimited programs — monthly or one payment for life.</p>
+            <p class="section-intro" data-en="The core training log stays free, offline and private. Pro adds Coach mode, deload detection and unlimited programs — monthly or one payment for life." data-el="Το βασικό training log μένει δωρεάν, offline και ιδιωτικό. Το Pro προσθέτει Coach mode, ανίχνευση deload και απεριόριστα προγράμματα — μηνιαία ή μία πληρωμή για πάντα.">The core training log stays free, offline and private. Pro adds Coach mode, deload detection and unlimited programs — monthly or one payment for life.</p>
           </div>
           <div class="pricing-grid">
             <article class="price-card">
@@ -866,10 +899,10 @@
               <p class="price-desc" data-en="The full Pro toolkit, renewed monthly. Cancel whenever you want." data-el="Το πλήρες Pro εργαλείο, με μηνιαία ανανέωση. Ακύρωση όποτε θέλεις.">The full Pro toolkit, renewed monthly. Cancel whenever you want.</p>
               <ul class="price-list">
                 <li data-en="Coach mode & next moves" data-el="Coach mode & επόμενες κινήσεις">Coach mode & next moves</li>
-                <li data-en="Advanced training insights" data-el="Advanced training insights">Advanced training insights</li>
+                <li data-en="Deload detection" data-el="Ανίχνευση deload">Deload detection</li>
                 <li data-en="Unlimited programs & goals" data-el="Απεριόριστα προγράμματα & στόχοι">Unlimited programs & goals</li>
               </ul>
-              <a class="btn btn-ghost price-cta" href="/settings/account" data-en="Choose monthly" data-el="Διάλεξε μηνιαίο">Choose monthly</a>
+              <a class="btn btn-ghost price-cta" href="./settings/account?plan=monthly" data-en="Choose monthly" data-el="Διάλεξε μηνιαίο">Choose monthly</a>
             </article>
             <article class="price-card featured">
               <span class="price-badge" data-en="Founding · first 250" data-el="Founding · πρώτοι 250">Founding · first 250</span>
@@ -881,7 +914,7 @@
                 <li data-en="No renewals, no expiry" data-el="Χωρίς ανανεώσεις, χωρίς λήξη">No renewals, no expiry</li>
                 <li data-en="Founding member price" data-el="Τιμή founding member">Founding member price</li>
               </ul>
-              <a class="btn btn-primary price-cta" href="/settings/account" data-en="Claim founding" data-el="Κλείσε τη θέση">Claim founding</a>
+              <a class="btn btn-primary price-cta" href="./settings/account?plan=founding" data-en="Claim founding" data-el="Κλείσε τη θέση">Claim founding</a>
             </article>
             <article class="price-card">
               <h3 data-en="Lifetime" data-el="Lifetime">Lifetime</h3>
@@ -892,10 +925,20 @@
                 <li data-en="No renewals, no expiry" data-el="Χωρίς ανανεώσεις, χωρίς λήξη">No renewals, no expiry</li>
                 <li data-en="Standard lifetime price" data-el="Κανονική τιμή lifetime">Standard lifetime price</li>
               </ul>
-              <a class="btn btn-ghost price-cta" href="/settings/account" data-en="Buy lifetime" data-el="Αγόρασε lifetime">Buy lifetime</a>
+              <a class="btn btn-ghost price-cta" href="./settings/account?plan=standard" data-en="Buy lifetime" data-el="Αγόρασε lifetime">Buy lifetime</a>
             </article>
           </div>
-          <p class="price-note" data-en="Prices in EUR. 14-day withdrawal right — see the <a href='/legal/refund'>refund policy</a>. The core app remains free." data-el="Τιμές σε EUR. Δικαίωμα υπαναχώρησης 14 ημερών — δες την <a href='/legal/refund'>πολιτική επιστροφών</a>. Ο βασικός κώδικας μένει δωρεάν.">Prices in EUR. 14-day withdrawal right — see the <a href="/legal/refund">refund policy</a>. The core app remains free.</p>
+          <p class="price-note" data-en="Prices in EUR. Free includes 3 programs and 3 goals. 14-day withdrawal right — see the <a href='/legal/refund'>refund policy</a>." data-el="Τιμές σε EUR. Το δωρεάν περιλαμβάνει 3 προγράμματα και 3 στόχους. Δικαίωμα υπαναχώρησης 14 ημερών — δες την <a href='/legal/refund'>πολιτική επιστροφών</a>.">Prices in EUR. Free includes 3 programs and 3 goals. 14-day withdrawal right — see the <a href="./legal/refund">refund policy</a>.</p>
+          <div class="pay-methods" aria-label="Payment methods">
+            <span class="pay-label" data-en="Secure checkout by Stripe" data-el="Ασφαλής πληρωμή με Stripe">Secure checkout by Stripe</span>
+            <span class="pay-pill">Visa</span>
+            <span class="pay-pill">Mastercard</span>
+            <span class="pay-pill">Apple Pay</span>
+            <span class="pay-pill">Google Pay</span>
+            <span class="pay-pill">Link</span>
+            <span class="pay-pill">Klarna</span>
+            <span class="pay-pill">Revolut Pay</span>
+          </div>
         </div>
       </section>
 
@@ -906,7 +949,7 @@
             <h2 data-en="The next rung is waiting." data-el="Το επόμενο σκαλί σε περιμένει.">The next rung is waiting.</h2>
             <p data-en="Open Anabasis, log one set, and see the ladder move. It works in the browser, installed as a PWA, or as a desktop app." data-el="Άνοιξε το Anabasis, κατέγραψε ένα σετ και δες τη σκάλα να κινείται. Δουλεύει στον browser, ως PWA ή ως desktop app.">Open Anabasis, log one set, and see the ladder move. It works in the browser, installed as a PWA, or as a desktop app.</p>
             <div class="cta-row">
-              <a class="btn btn-primary" href="/" data-en="Start the ascent ↗" data-el="Ξεκίνα την ανάβαση ↗">Start the ascent ↗</a>
+              <a class="btn btn-primary" href="./" data-en="Start the ascent ↗" data-el="Ξεκίνα την ανάβαση ↗">Start the ascent ↗</a>
               <a class="btn btn-ghost" href="#install" data-en="Install it" data-el="Εγκατέστησέ το">Install it</a>
             </div>
           </div>
@@ -919,14 +962,14 @@
         <div data-en="Anabasis · built by Aggelos Frezzaroukos." data-el="Anabasis · φτιαγμένο από τον Άγγελο Φρεζζαρούκο.">Anabasis · built by Aggelos Frezzaroukos.</div>
         <nav class="footer-links" aria-label="Footer">
           <a href="https://github.com/Frezzaroukos/anabasis">GitHub</a>
-          <a href="/legal/privacy" data-en="Privacy" data-el="Απόρρητο">Privacy</a>
-          <a href="/legal/terms" data-en="Terms" data-el="Όροι">Terms</a>
-          <a href="/legal/refund" data-en="Refunds" data-el="Επιστροφές">Refunds</a>
-          <a href="/legal/safety" data-en="Safety" data-el="Ασφάλεια">Safety</a>
+          <a href="./legal/privacy" data-en="Privacy" data-el="Απόρρητο">Privacy</a>
+          <a href="./legal/terms" data-en="Terms" data-el="Όροι">Terms</a>
+          <a href="./legal/refund" data-en="Refunds" data-el="Επιστροφές">Refunds</a>
+          <a href="./legal/safety" data-en="Safety" data-el="Ασφάλεια">Safety</a>
         </nav>
       </div>
     </footer>
 
-    <script src="/landing/landing.js"></script>
+    <script src="./landing/landing.js"></script>
   </body>
 </html>

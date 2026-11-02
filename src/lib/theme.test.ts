@@ -13,8 +13,8 @@ describe('updateFavicon', () => {
     expect(link!.type).toBe('image/svg+xml');
     expect(link!.href.startsWith('data:image/svg+xml,')).toBe(true);
     const href = decodeURIComponent(link!.href);
-    // Νέο simplified «Ascent A»: σταθερό dark A + accent διαδρομή.
-    expect(href).toContain("M5 59 L29 5 H35 L59 59 H47 L32 27 L17 59 Z");
+    // Πλήρες «Ascent A» από το branding/logo-v2/mark.svg — όχι simplified mark.
+    expect(href).toContain("d='M3245 5885");
     expect(href).toContain('#1C1C21');
     expect(href).toContain('hsl(212,90%,60%)');
   });

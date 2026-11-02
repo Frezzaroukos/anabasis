@@ -79,6 +79,8 @@ export async function startWorkout(
   /** v12: link σε πρόγραμμα/μέρα (ad-hoc = undefined) — για auto-numbering & calendar. */
   programId?: string | null,
   programDayId?: string | null,
+  /** Το label γράφεται στο ΙΔΙΟ insert — όχι δεύτερο update που μπορεί να χαθεί. */
+  workoutType?: string | null,
 ): Promise<Workout> {
   const t = now();
   const startedAt = onDate ? localNoon(onDate).toISOString() : t;
@@ -89,7 +91,7 @@ export async function startWorkout(
     ended_at: null,
     duration_seconds: null,
     notes: null,
-    workout_type: null,
+    workout_type: workoutType ?? null,
     activity_kind: activityKind,
     program_id: programId ?? null,
     program_day_id: programDayId ?? null,
@@ -115,10 +117,11 @@ export async function endWorkout(
   const startedMs = Date.parse(w.started_at);
   const endedMs = Date.parse(t);
   const elapsed = Math.round((endedMs - startedMs) / 1000);
-  // Backdated workout (started_at παλιότερο από ~12 ώρες): το wall-clock
-  // duration θα ήταν λάθος (δεν το έκανες live), οπότε δεν το μετράμε.
-  // Το ended_at ισούται με το started_at ώστε να μείνει στη σωστή μέρα.
-  const backdated = elapsed > 12 * 3600;
+  // Backdated = η προπόνηση δεν ξεκίνησε τη μέρα που δημιουργήθηκε το row.
+  // Το wall-clock duration θα ήταν λάθος, οπότε δεν το μετράμε· το ended_at
+  // ισούται με το started_at ώστε να μείνει στη σωστή μέρα.
+  const backdated =
+    localDay(new Date(w.started_at)) !== localDay(new Date(w.created_at));
   const duration =
     durationOverride != null ? Math.max(0, Math.round(durationOverride)) : backdated ? null : Math.max(0, elapsed);
   await db.workouts.update(workoutId, {
@@ -282,19 +285,31 @@ export interface AddSetResult extends SetEntry {
 
 export async function addSet(input: AddSetInput): Promise<AddSetResult> {
   const t = now();
+  let bodyweightKg = input.bodyweight_kg;
+  if (bodyweightKg == null) {
+    const [workout, exercise] = await Promise.all([
+      db.workouts.get(input.workout_id),
+      db.exercises.get(input.exercise_id),
+    ]);
+    if (workout && exercise?.is_bodyweight) {
+      bodyweightKg = await getLatestBodyweight(localDay(new Date(workout.started_at)));
+    }
+  }
   const existingForExercise = await db.sets
     .where('workout_id')
     .equals(input.workout_id)
     .and((s) => s.exercise_id === input.exercise_id && s.deleted_at == null)
-    .count();
+    .toArray();
+  const nextSetNumber =
+    existingForExercise.reduce((max, s) => Math.max(max, s.set_number), 0) + 1;
 
   const set: SetEntry = {
     id: uuid(),
     workout_id: input.workout_id,
     exercise_id: input.exercise_id,
-    set_number: existingForExercise + 1,
+    set_number: nextSetNumber,
     weight_kg: input.weight_kg,
-    bodyweight_kg: input.bodyweight_kg,
+    bodyweight_kg: bodyweightKg,
     reps: input.reps,
     rest_pause_reps: input.set_type === 'rest_pause' ? (input.rest_pause_reps ?? []) : [],
     hold_seconds: input.hold_seconds,
@@ -477,24 +492,45 @@ export async function updateSet(
     >
   >,
 ): Promise<void> {
-  await db.sets.update(setId, { ...patch, updated_at: now() });
+  const flags =
+    patch.set_type == null
+      ? {}
+      : {
+          is_warmup: patch.set_type === 'warmup',
+          is_failure: patch.set_type === 'failure',
+        };
+  await db.sets.update(setId, { ...patch, ...flags, updated_at: now() });
 }
 
 /**
  * «Τι έκανα την τελευταία φορά σε αυτή την άσκηση» — για auto-fill του logger.
  * Το πιο πρόσφατο ΜΗ-warmup σετ· τα ζεστάματα δεν είναι απόδοση προς επανάληψη.
  */
-export async function getLastPerformance(exerciseId: string): Promise<{
+export async function getLastPerformance(
+  exerciseId: string,
+  opts: { excludeWorkoutId?: string } = {},
+): Promise<{
   weight_kg: number | null;
   reps: number | null;
   hold_seconds: number | null;
   bodyweight_kg: number | null;
   achieved_at: string;
 } | null> {
+  const workouts = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
+  const visibleWorkoutIds = new Set(
+    workouts
+      .filter((w) => w.deleted_at == null && w.id !== opts.excludeWorkoutId)
+      .map((w) => w.id),
+  );
   const rows = await db.sets
     .where('exercise_id')
     .equals(exerciseId)
-    .filter((s) => s.deleted_at == null && !s.is_warmup)
+    .filter(
+      (s) =>
+        s.deleted_at == null &&
+        !s.is_warmup &&
+        visibleWorkoutIds.has(s.workout_id),
+    )
     .toArray();
   if (rows.length === 0) return null;
   const last = rows.sort((a, b) => b.created_at.localeCompare(a.created_at))[0]!;
@@ -511,6 +547,49 @@ export async function getLastPerformance(exerciseId: string): Promise<{
  * Περίληψη ανά άσκηση για badges στις λίστες — «πότε την έκανα τελευταία»
  * και «έχει PR». Ένα pass αντί για N queries ανά γραμμή.
  */
+export interface BodyweightLoad {
+  exerciseId: string;
+  name: string;
+  loadKg: number;
+  date: string;
+}
+
+/**
+ * Τελευταίο συνολικό φορτίο για κάθε άσκηση σωματικού βάρους:
+ * σωματικό βάρος + πρόσθετο βάρος, όπως ακριβώς το μετρά το progress chart.
+ * Χρησιμοποιείται στο «Σώμα» για να φαίνεται πώς το BW τροφοδοτεί τα charts.
+ */
+export async function getBodyweightLoads(limit = 5): Promise<BodyweightLoad[]> {
+  const exercises = (await listExercises()).filter((e) => e.is_bodyweight);
+  if (exercises.length === 0) return [];
+  const byId = new Map(exercises.map((e) => [e.id, e]));
+  const workouts = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
+  const dayByWorkout = new Map(
+    workouts
+      .filter((w) => w.deleted_at == null)
+      .map((w) => [w.id, localDay(new Date(w.started_at))]),
+  );
+  const sets = (
+    await db.sets.where('exercise_id').anyOf([...byId.keys()]).toArray()
+  ).filter((s) => s.deleted_at == null && s.set_type !== 'warmup');
+  const latest = new Map<string, BodyweightLoad>();
+  for (const s of sets) {
+    const date = dayByWorkout.get(s.workout_id);
+    if (!date) continue;
+    const loadKg = (s.weight_kg ?? 0) + (s.bodyweight_kg ?? 0);
+    if (loadKg <= 0) continue;
+    const ex = byId.get(s.exercise_id);
+    if (!ex) continue;
+    const cur = latest.get(ex.id);
+    if (!cur || date > cur.date || (date === cur.date && loadKg > cur.loadKg)) {
+      latest.set(ex.id, { exerciseId: ex.id, name: ex.name, loadKg, date });
+    }
+  }
+  return [...latest.values()]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit);
+}
+
 export async function getExerciseSummaries(): Promise<
   Map<string, { lastTrainedAt: string | null; hasPR: boolean }>
 > {
@@ -1473,24 +1552,39 @@ export async function reorderProgramExercises(orderedIds: string[]): Promise<voi
 }
 
 /**
+ * Μία ενεργή προπόνηση τη φορά, ακόμα και με διπλό tap: το boolean κλείνει
+ * synchronously πριν το πρώτο await, οπότε το δεύτερο call βλέπει lock.
+ */
+let workoutStartLock = false;
+
+async function withWorkoutStartGuard<T>(start: () => Promise<T>): Promise<T | null> {
+  if (workoutStartLock) return null;
+  workoutStartLock = true;
+  try {
+    if (await getActiveWorkout()) return null;
+    return await start();
+  } finally {
+    workoutStartLock = false;
+  }
+}
+
+/**
  * Ξεκινά workout από πρόγραμμα. ΔΕΝ γράφει σετ — ένα σετ σημαίνει «το έκανα».
  * Το πλάνο επιστρέφεται ώστε ο logger να δείξει τους στόχους προς εκτέλεση.
  */
 export async function startWorkoutFromProgram(programId: string, onDate?: string) {
-  // Guard: μία ενεργή προπόνηση τη φορά. Χωρίς αυτό, μια δεύτερη έναρξη (π.χ.
-  // backdated πρόγραμμα-μέρα από το Calendar) θα δημιουργούσε μια ΔΕΥΤΕΡΗ
-  // ανοιχτή εγγραφή που θα «χτυπιόταν» με την ήδη ενεργή στο useActiveWorkout
-  // resume-logic — ένα ξεχασμένο backdated draft θα μπορούσε να παραμείνει
-  // ανοιχτό για πάντα και να μπλοκάρει τη σημερινή, πραγματική προπόνηση.
-  if (await getActiveWorkout()) return null;
-  const data = await getProgramWithExercises(programId);
-  if (!data) return null;
-  const w = await startWorkout(data.program.activity_kind, onDate, programId, null);
-  await db.workouts.update(w.id, {
-    workout_type: data.program.name,
-    updated_at: now(),
+  return withWorkoutStartGuard(async () => {
+    const data = await getProgramWithExercises(programId);
+    if (!data) return null;
+    const w = await startWorkout(
+      data.program.activity_kind,
+      onDate,
+      programId,
+      null,
+      data.program.name,
+    );
+    return { workout: w, plan: data.exercises };
   });
-  return { workout: { ...w, workout_type: data.program.name }, plan: data.exercises };
 }
 
 /* ─────────── Program days (v12: πρόγραμμα → μέρες → ασκήσεις) ─────────── */
@@ -1563,32 +1657,32 @@ export async function countProgramDaySessions(dayId: string): Promise<number> {
 
 /** Ξεκινά προπόνηση από μέρα προγράμματος — linked (auto-numbering) + pre-filled plan. */
 export async function startWorkoutFromProgramDay(dayId: string, onDate?: string) {
-  // Ίδιο guard με startWorkoutFromProgram — δες σχόλιο εκεί.
-  if (await getActiveWorkout()) return null;
-  const data = await getProgramDayWithExercises(dayId);
-  if (!data) return null;
-  const program = await db.programs.get(data.day.program_id);
-  const kind = program?.activity_kind ?? 'strength';
-  const sessionNo = (await countProgramDaySessions(dayId)) + 1;
-  const label = `${data.day.name} #${sessionNo}`;
-  const w = await startWorkout(kind, onDate, data.day.program_id, dayId);
-  await db.workouts.update(w.id, { workout_type: label, updated_at: now() });
-  return {
-    workout: { ...w, workout_type: label, program_id: data.day.program_id, program_day_id: dayId },
-    plan: data.exercises,
-    sessionNo,
-  };
+  return withWorkoutStartGuard(async () => {
+    const data = await getProgramDayWithExercises(dayId);
+    if (!data) return null;
+    const program = await db.programs.get(data.day.program_id);
+    const kind = program?.activity_kind ?? 'strength';
+    const sessionNo = (await countProgramDaySessions(dayId)) + 1;
+    const label = `${data.day.name} #${sessionNo}`;
+    const w = await startWorkout(kind, onDate, data.day.program_id, dayId, label);
+    return {
+      workout: { ...w, program_id: data.day.program_id, program_day_id: dayId },
+      plan: data.exercises,
+      sessionNo,
+    };
+  });
 }
 
 /** Ad-hoc/random προπόνηση — καμία σύνδεση με πρόγραμμα (mini/quick/for-fun). */
 export async function startAdHocWorkout(
   activityKind: ActivityKind = 'strength',
   onDate?: string,
+  workoutType?: string | null,
 ): Promise<{ workout: Workout; plan: ProgramExercise[] } | null> {
-  // Ίδιο guard με startWorkoutFromProgram — δες σχόλιο εκεί.
-  if (await getActiveWorkout()) return null;
-  const w = await startWorkout(activityKind, onDate, null, null);
-  return { workout: w, plan: [] as ProgramExercise[] };
+  return withWorkoutStartGuard(async () => {
+    const w = await startWorkout(activityKind, onDate, null, null, workoutType);
+    return { workout: w, plan: [] as ProgramExercise[] };
+  });
 }
 
 /**

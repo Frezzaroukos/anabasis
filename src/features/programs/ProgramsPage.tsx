@@ -160,8 +160,7 @@ export function ProgramsPage() {
           </h1>
           {programs.length > 0 && (
             <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-mono tabular-nums">{programs.length}</span>{' '}
-              {t('programs.title').toLowerCase()}
+              {t('programs.count', { count: programs.length })}
             </p>
           )}
         </div>
@@ -266,30 +265,45 @@ export function ProgramsPage() {
 
       {creating && (
         <section className="animate-rise-in space-y-3 rounded-xl bg-elevated p-4">
-          <Input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t('programs.namePlaceholder')}
-            aria-label={t('programs.namePlaceholder')}
-          />
-          <div className="flex flex-wrap gap-2">
-            {activities.map((a) => (
-              <ActivityChip
-                key={a.key}
-                activity={a}
-                selected={kind === a.key}
-                onClick={() => setKind(a.key)}
-              />
-            ))}
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {t('programs.nameLabel')}
+            </span>
+            <Input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('programs.namePlaceholder')}
+              aria-label={t('programs.nameLabel')}
+            />
+          </label>
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {t('programs.activityLabel')}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {activities.map((a) => (
+                <ActivityChip
+                  key={a.key}
+                  activity={a}
+                  selected={kind === a.key}
+                  onClick={() => setKind(a.key)}
+                />
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button disabled={!name.trim() || busy || !canCreate} onClick={() => void onCreate()}>
+            <Button
+              loading={busy}
+              disabled={!name.trim() || !canCreate}
+              onClick={() => void onCreate()}
+            >
               {t('common.save')}
             </Button>
             <Button
               variant="outline"
-              disabled={busy || !canCreate}
+              loading={busy}
+              disabled={!canCreate}
               onClick={() => void onFromLastWorkout()}
             >
               <History className="h-4 w-4" />
@@ -317,10 +331,6 @@ export function ProgramsPage() {
             <p className="text-sm font-medium">{t('programs.empty')}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t('programs.emptyHint')}</p>
           </div>
-          <Button variant="outline" className="mt-1" disabled={!canCreate} onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" />
-            {t('programs.newProgram')}
-          </Button>
         </div>
       ) : (
         <ul className="stagger space-y-2">

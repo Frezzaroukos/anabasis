@@ -13,6 +13,7 @@ import { useIsPro } from '@/lib/api/auth';
 import { cn } from '@/lib/utils';
 import { GoalFormSheet } from './components/GoalFormSheet';
 import { GoalRow } from './components/GoalRow';
+import { LoadingState } from '@/components/ui/loading-state';
 
 const VIRTUALIZE_THRESHOLD = 50;
 
@@ -31,7 +32,8 @@ export function GoalsPage() {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [showIntro, setShowIntro] = useState(false);
 
-  const progress = useLiveQuery(() => getAllGoalProgress(), [], []);
+  const progressQuery = useLiveQuery(() => getAllGoalProgress());
+  const progress = progressQuery ?? [];
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(true), [], []);
@@ -63,6 +65,10 @@ export function GoalsPage() {
     overscan: 5,
     scrollMargin,
   });
+
+  if (progressQuery === undefined) {
+    return <LoadingState label={t('common.loading')} />;
+  }
 
   const activityLabel = (key: string | null) =>
     key == null ? null : (activities.find((a) => a.key === key)?.label ?? key);
@@ -98,11 +104,19 @@ export function GoalsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {t('goals.title')}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('goals.intro')}</p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {t('goals.title')}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('goals.intro')}</p>
+        </div>
+        {progress.length > 0 && (
+          <Button variant="outline" className="shrink-0" disabled={atLimit} onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            {t('goals.new')}
+          </Button>
+        )}
       </header>
 
       {atLimit && (
@@ -122,6 +136,10 @@ export function GoalsPage() {
           <Target className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-medium">{t('goals.emptyTitle')}</p>
           <p className="max-w-xs text-xs text-muted-foreground">{t('goals.emptyHint')}</p>
+          <Button className="mt-1" disabled={atLimit} onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            {t('goals.new')}
+          </Button>
         </div>
       ) : (
         <>
@@ -199,11 +217,6 @@ export function GoalsPage() {
           )}
         </>
       )}
-
-      <Button variant="outline" className="w-full" disabled={atLimit} onClick={openCreate}>
-        <Plus className="h-4 w-4" />
-        {t('goals.new')}
-      </Button>
 
       <GoalFormSheet open={formOpen} onClose={() => setFormOpen(false)} goal={editing} />
     </div>

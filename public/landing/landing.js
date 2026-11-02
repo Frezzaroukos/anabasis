@@ -5,6 +5,18 @@
 (function () {
   'use strict';
   var KEY = 'anabasis.landing.lang';
+  var META = {
+    en: {
+      title: 'Anabasis — weighted calisthenics & skill progression',
+      description:
+        'A training log for weighted calisthenics and skills. Log weighted basics and skill ladders in one place — offline-first, private, no signup to try.',
+    },
+    el: {
+      title: 'Anabasis — weighted calisthenics & skill progression',
+      description:
+        'Training log για weighted calisthenics και skills. Κατέγραψε βασικές ασκήσεις και skill ladders σε ένα μέρος — offline-first, ιδιωτικό, χωρίς εγγραφή για να δοκιμάσεις.',
+    },
+  };
   var nodes = document.querySelectorAll('[data-en]');
   var buttons = document.querySelectorAll('.lang button[data-lang]');
 
@@ -26,6 +38,9 @@
   function apply(lang) {
     var l = lang === 'el' ? 'el' : 'en';
     document.documentElement.lang = l;
+    document.title = META[l].title;
+    var meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', META[l].description);
     nodes.forEach(function (node) {
       var text = node.getAttribute('data-' + l);
       if (text != null) node.innerHTML = text;

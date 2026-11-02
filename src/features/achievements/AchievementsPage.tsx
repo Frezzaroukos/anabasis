@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowRight, Lock, Users } from 'lucide-react';
+import { ArrowRight, LineChart, Lock, Sparkles, Users } from 'lucide-react';
 import { getGamificationInput } from '@/lib/db/queries';
 import { useCountUp } from '@/hooks/useCountUp';
 import { Logo } from '@/components/Logo';
@@ -43,6 +43,7 @@ export function AchievementsPage() {
           <Logo className="mx-auto h-12 w-12 text-muted-foreground" />
           <p className="mt-4 text-sm text-muted-foreground">{t('gami.emptyHint')}</p>
         </section>
+        <RelatedLinks />
         <CommunityLink />
       </div>
     );
@@ -54,6 +55,7 @@ export function AchievementsPage() {
       <XpHero data={data} />
       <Badges data={data} />
       <Breakdown data={data} />
+      <RelatedLinks />
       <CommunityLink />
     </div>
   );
@@ -189,6 +191,35 @@ function Breakdown({ data }: { data: GamificationInput }) {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+
+function RelatedLinks() {
+  const { t } = useTranslation();
+  const links = [
+    { to: '/skills', Icon: Sparkles, title: t('skills.title'), hint: t('gami.relatedSkills') },
+    { to: '/progress', Icon: LineChart, title: t('progress.title'), hint: t('gami.relatedProgress') },
+  ];
+  return (
+    <section className="grid gap-2 sm:grid-cols-2">
+      {links.map(({ to, Icon, title, hint }) => (
+        <Link
+          key={to}
+          to={to}
+          className="group flex items-center gap-3 rounded-xl bg-card p-4 transition-colors hover:bg-card/80"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <Icon className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">{title}</span>
+            <span className="block text-xs text-muted-foreground">{hint}</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </Link>
+      ))}
     </section>
   );
 }

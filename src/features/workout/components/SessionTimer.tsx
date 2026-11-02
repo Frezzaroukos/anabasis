@@ -13,6 +13,8 @@ export function SessionTimer({ workoutId }: { workoutId: string }) {
   const { t } = useTranslation();
   const { seconds, running, toggle } = useManualStopwatch(workoutId);
 
+  const hasTime = running || seconds > 0;
+
   return (
     <button
       type="button"
@@ -25,7 +27,7 @@ export function SessionTimer({ workoutId }: { workoutId: string }) {
       }`}
     >
       {running ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-      {formatHMS(seconds)}
+      {hasTime ? formatHMS(seconds) : t('workout.timer.label')}
     </button>
   );
 }

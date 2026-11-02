@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BottomTabNav } from '@/components/layout/BottomTabNav';
@@ -11,12 +11,13 @@ import { SafetyNotice } from '@/features/legal/SafetyNotice';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
 import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutView';
 import { useAppBootReady } from '@/app/BootContext';
+import { Spinner } from '@/components/ui/spinner';
 
 /** Διακριτικό placeholder όσο φορτώνει ένα lazy route chunk. */
 function PageFallback() {
   return (
     <div className="flex animate-in fade-in items-center justify-center py-20 duration-300">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-primary" />
+      <Spinner className="h-6 w-6 border-border border-t-primary text-primary" />
     </div>
   );
 }
@@ -28,7 +29,11 @@ export function AppShell() {
   const hasActive = active != null;
   // key ανά διαδρομή → το boundary ξεκαθαρίζει το σφάλμα όταν αλλάζεις σελίδα,
   // αλλιώς μια σπασμένη σελίδα θα έμενε σπασμένη και μετά την πλοήγηση.
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash && (window.scrollX !== 0 || window.scrollY !== 0)) window.scrollTo(0, 0);
+  }, [pathname, hash]);
 
   return (
     /*

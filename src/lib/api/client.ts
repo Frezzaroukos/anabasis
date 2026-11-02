@@ -313,6 +313,10 @@ export const api = {
     });
   },
 
+  billingPortal(): Promise<{ url: string }> {
+    return request<{ url: string }>('/billing/portal', { method: 'POST' });
+  },
+
   health(): Promise<HealthResponse> {
     return request<HealthResponse>('/health');
   },

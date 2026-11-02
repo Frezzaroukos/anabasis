@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronLeft, ChevronRight, Flame, Plus } from 'lucide-react';
+import { ArrowUpFromLine, ChevronLeft, ChevronRight, Flame, House, Plus } from 'lucide-react';
 import {
   countProgramDaySessions,
   createProgram,
@@ -13,7 +13,6 @@ import {
   listProgramDays,
   listPrograms,
   localDay,
-  setWorkoutType,
   startAdHocWorkout,
   startWorkoutFromProgram,
   startWorkoutFromProgramDay,
@@ -46,6 +45,7 @@ export function CalendarPage() {
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
   const today = localDay();
+  const [monthDirection, setMonthDirection] = useState<'next' | 'prev'>('next');
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -56,6 +56,7 @@ export function CalendarPage() {
   // Τα start-helpers γυρνούν null όταν υπάρχει ήδη ενεργή προπόνηση (ένας
   // guard στο queries.ts). Πριν, το πάτημα απλά δεν έκανε ΤΙΠΟΤΑ.
   const [startError, setStartError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
   const navigate = useNavigate();
 
   const activities = useLiveQuery(() => listActivities(true), [], []);
@@ -100,25 +101,43 @@ export function CalendarPage() {
 
   // Προσθήκη προπόνησης στην επιλεγμένη μέρα (σήμερα = live, παλιά = backdated).
   const onPickProgramDay = async (dayId: string) => {
-    if (!selected) return;
-    const result = await startWorkoutFromProgramDay(dayId, selected === today ? undefined : selected);
-    if (!result) {
-      setStartError(t('calendar.startBlocked'));
+    if (!selected || starting) return;
+    if (selected > today) {
+      setStartError(t('calendar.futureBlocked'));
       return;
     }
-    setAddOpen(false);
-    navigate('/workout/active');
+    setStarting(true);
+    try {
+      const result = await startWorkoutFromProgramDay(dayId, selected === today ? undefined : selected);
+      if (!result) {
+        setStartError(t('calendar.startBlocked'));
+        return;
+      }
+      setAddOpen(false);
+      navigate('/workout/active');
+    } finally {
+      setStarting(false);
+    }
   };
   // Flat πρόγραμμα (χωρίς μέρες) — ξεκινά ολόκληρο.
   const onPickProgram = async (programId: string) => {
-    if (!selected) return;
-    const result = await startWorkoutFromProgram(programId, selected === today ? undefined : selected);
-    if (!result) {
-      setStartError(t('calendar.startBlocked'));
+    if (!selected || starting) return;
+    if (selected > today) {
+      setStartError(t('calendar.futureBlocked'));
       return;
     }
-    setAddOpen(false);
-    navigate('/workout/active');
+    setStarting(true);
+    try {
+      const result = await startWorkoutFromProgram(programId, selected === today ? undefined : selected);
+      if (!result) {
+        setStartError(t('calendar.startBlocked'));
+        return;
+      }
+      setAddOpen(false);
+      navigate('/workout/active');
+    } finally {
+      setStarting(false);
+    }
   };
   /**
    * Ad-hoc = ελεύθερο κείμενο, όχι επιλογή από 5 προκαθορισμένες
@@ -129,17 +148,54 @@ export function CalendarPage() {
   const onSubmitAdHoc = async (e: React.FormEvent) => {
     e.preventDefault();
     const label = adHocLabel.trim();
-    if (!selected || !label) return;
-    const result = await startAdHocWorkout('strength', selected === today ? undefined : selected);
-    if (!result) {
-      setStartError(t('calendar.startBlocked'));
+    if (!selected || !label || starting) return;
+    if (selected > today) {
+      setStartError(t('calendar.futureBlocked'));
       return;
     }
-    await setWorkoutType(result.workout.id, label);
-    setAddOpen(false);
-    setAdHocLabel('');
-    navigate('/workout/active');
+    setStarting(true);
+    try {
+      const result = await startAdHocWorkout(
+        'strength',
+        selected === today ? undefined : selected,
+        label,
+      );
+      if (!result) {
+        setStartError(t('calendar.startBlocked'));
+        return;
+      }
+      setAddOpen(false);
+      setAdHocLabel('');
+      navigate('/workout/active');
+    } finally {
+      setStarting(false);
+    }
   };
+  const onQuickStart = async (label: string, names: string[]) => {
+    if (!selected || starting) return;
+    if (selected > today) {
+      setStartError(t('calendar.futureBlocked'));
+      return;
+    }
+    setStarting(true);
+    try {
+      const result = await startAdHocWorkout(
+        'strength',
+        selected === today ? undefined : selected,
+        label,
+      );
+      if (!result) {
+        setStartError(t('calendar.startBlocked'));
+        return;
+      }
+      setAddOpen(false);
+      setAdHocLabel('');
+      navigate('/workout/active', { state: { seedExercises: names } });
+    } finally {
+      setStarting(false);
+    }
+  };
+
   const closeAddSheet = () => {
     setAddOpen(false);
     setAdHocLabel('');
@@ -212,11 +268,22 @@ export function CalendarPage() {
     });
   }, [i18n.resolvedLanguage]);
 
-  const shift = (delta: number) =>
+  const shift = (delta: number) => {
+    setMonthDirection(delta > 0 ? 'next' : 'prev');
     setCursor(({ year, month }) => {
       const m = month + delta;
       return { year: year + Math.floor(m / 12), month: ((m % 12) + 12) % 12 };
     });
+  };
+
+  const goToday = () => {
+    const d = new Date();
+    const from = cursor.year * 12 + cursor.month;
+    const to = d.getFullYear() * 12 + d.getMonth();
+    setMonthDirection(to >= from ? 'next' : 'prev');
+    setCursor({ year: d.getFullYear(), month: d.getMonth() });
+    setSelected(today);
+  };
 
   const day = selected ? cal.get(selected) : undefined;
 
@@ -246,7 +313,7 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-2">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="truncate font-display text-2xl font-semibold tracking-tight capitalize">
@@ -263,11 +330,22 @@ export function CalendarPage() {
               </span>
             )}
           </div>
-          {isCurrentMonthView && (
-            <p className="mt-0.5 text-xs text-primary">
-              {t('calendar.todayMarked', { date: new Date(today).toLocaleDateString(i18n.resolvedLanguage) })}
-            </p>
-          )}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-primary">
+            <span>
+              {t('calendar.todayMarked', {
+                date: new Date(today).toLocaleDateString(i18n.resolvedLanguage),
+              })}
+            </span>
+            {!isCurrentMonthView && (
+              <button
+                type="button"
+                onClick={goToday}
+                className="font-medium underline underline-offset-2 hover:text-foreground"
+              >
+                {t('calendar.backToToday')}
+              </button>
+            )}
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {monthStats.workouts > 0
               ? [
@@ -285,7 +363,7 @@ export function CalendarPage() {
           μήνα· ζει πλέον στο «Περισσότερα». Τα βελάκια ήταν χαρακτήρες
           «←/→» σε κουτάκια· τώρα εικονίδια, ίδιου βάρους με τα υπόλοιπα.
         */}
-        <div className="flex shrink-0 items-center rounded-lg bg-card">
+        <div className="flex shrink-0 items-center self-end rounded-lg bg-card sm:self-auto">
           <button
             onClick={() => shift(-1)}
             aria-label={t('calendar.prev')}
@@ -294,11 +372,10 @@ export function CalendarPage() {
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => {
-              const d = new Date();
-              setCursor({ year: d.getFullYear(), month: d.getMonth() });
-              setSelected(today);
-            }}
+            onClick={goToday}
+            aria-label={t('calendar.todayMarked', {
+              date: new Date(today).toLocaleDateString(i18n.resolvedLanguage),
+            })}
             className="h-11 border-x border-border/70 px-4 text-xs font-medium ring-offset-background transition-all duration-150 hover:bg-accent active:scale-95 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {t('calendar.today')}
@@ -317,7 +394,13 @@ export function CalendarPage() {
           όχι απότομο swap πλέγματος. */}
       {/* max-sm:px-1.5 → σε στενά τηλέφωνα (375px) τα 7 κελιά της ημέρας
           φτάνουν ≥44px πλάτος (WCAG 2.5.5)· tablet/desktop κρατούν άνετο p-3. */}
-      <div key={`${cursor.year}-${cursor.month}`} className="animate-rise-in rounded-lg bg-card p-3 max-sm:px-1.5">
+      <div
+        key={`${cursor.year}-${cursor.month}`}
+        className={cn(
+          'rounded-lg bg-card p-3 max-sm:px-1.5',
+          monthDirection === 'next' ? 'animate-slide-in-forward' : 'animate-slide-in-back',
+        )}
+      >
         <div className="mb-1 grid grid-cols-7 gap-1 border-b border-border/60 pb-1.5">
           {weekdays.map((w) => (
             <div
@@ -429,7 +512,7 @@ export function CalendarPage() {
 
       {/* Λεπτομέρειες επιλεγμένης ημέρας — key = μέρα ώστε η αλλαγή επιλογής
           να «ανεβαίνει» ξανά αντί να τιναχτεί απότομα το περιεχόμενο. */}
-      <section key={selected ?? 'none'} className="animate-rise-in rounded-lg bg-card p-4">
+      <section key={selected ?? 'none'} className="animate-rise-in rounded-2xl border border-border/50 bg-card p-4 shadow-elevated">
         {/* Ήταν 11px uppercase muted — η ίδια «eyebrow» βαθμίδα με τις ετικέτες
             των καρτών, ενώ εδώ είναι ο τίτλος του περιεχομένου. */}
         <div className="mb-3 flex items-center gap-2">
@@ -487,8 +570,9 @@ export function CalendarPage() {
 
         {selected && (
           <button
+            disabled={selected > today}
             onClick={() => setAddOpen(true)}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40"
           >
             <Plus className="h-4 w-4" />
             {t('calendar.addWorkout')}
@@ -540,6 +624,7 @@ export function CalendarPage() {
                         {days.map(({ day: programDay, nextNo, exercises }) => (
                           <button
                             key={programDay.id}
+                            disabled={starting}
                             onClick={() => void onPickProgramDay(programDay.id)}
                             className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           >
@@ -560,6 +645,7 @@ export function CalendarPage() {
                     // Flat πρόγραμμα: μία επιλογή που ξεκινά ολόκληρο το πρόγραμμα.
                     <button
                       key={program.id}
+                      disabled={starting}
                       onClick={() => void onPickProgram(program.id)}
                       className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-left text-sm ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
@@ -570,6 +656,45 @@ export function CalendarPage() {
                 )}
               </div>
             )}
+          </div>
+
+          <div className="h-px bg-border/70" />
+
+          <div>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('calendar.quickStart')}
+            </h3>
+            <p className="mb-2 text-xs text-muted-foreground">{t('calendar.quickStartHint')}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={starting}
+                onClick={() => void onQuickStart(t('calendar.homeBodyweight'), ['Push-ups', 'Pike Push-ups', 'Plank', 'Hollow Body Hold'])}
+                className="rounded-xl border border-border/70 bg-muted/30 p-3 text-left transition-colors hover:bg-muted/60 active:scale-[0.99]"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <House className="h-4 w-4 text-primary" aria-hidden />
+                  {t('calendar.homeBodyweight')}
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {t('calendar.homeBodyweightHint')}
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={starting}
+                onClick={() => void onQuickStart(t('calendar.pullupBar'), ['Pull-ups', 'Dips', 'Hanging Leg Raise', 'L-Sit'])}
+                className="rounded-xl border border-border/70 bg-muted/30 p-3 text-left transition-colors hover:bg-muted/60 active:scale-[0.99]"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <ArrowUpFromLine className="h-4 w-4 text-primary" aria-hidden />
+                  {t('calendar.pullupBar')}
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {t('calendar.pullupBarHint')}
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="h-px bg-border/70" />
@@ -593,7 +718,7 @@ export function CalendarPage() {
               />
               <button
                 type="submit"
-                disabled={!adHocLabel.trim()}
+                disabled={!adHocLabel.trim() || starting}
                 aria-label={t('calendar.adHocStart')}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground ring-offset-background transition-all duration-150 hover:opacity-90 active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-40"
               >

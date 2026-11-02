@@ -177,6 +177,14 @@ describe('CalendarPage — πλέγμα ανά εβδομάδα', () => {
     expect(number.closest('button')!.className).not.toContain('ring-primary ');
   });
 
+  it('το Today μένει σταθερό όταν αλλάζεις μήνα', async () => {
+    render(wrap(<CalendarPage />));
+    await waitFor(() => expect(screen.getByText(/Today:/)).toBeTruthy());
+    fireEvent.click(screen.getByLabelText(en.calendar.next));
+    await waitFor(() => expect(screen.getByText(/Today:/)).toBeTruthy());
+    expect(screen.getByText(en.calendar.backToToday)).toBeTruthy();
+  });
+
   it('η υπόμνηση των κουκκίδων λείπει σε άδειο μήνα — δεν εξηγεί κάτι που δεν φαίνεται', async () => {
     render(wrap(<CalendarPage />));
     await waitFor(() => expect(screen.getByText('15')).toBeTruthy());

@@ -1,3 +1,5 @@
+import markSvg from '../../branding/logo-v2/mark.svg?raw';
+
 /**
  * Θέμα εμφάνισης. Το `theme` υπάρχει ήδη στο AppSettings (Dexie), αλλά αυτό
  * είναι async — για να μην «αναβοσβήνει» το app στο boot, κρατάμε ΚΑΙ ένα
@@ -145,13 +147,18 @@ export function applyAccent(accentKey: string): void {
 }
 
 /**
- * Δυναμικό favicon: το simplified «Ascent A» (σταθερό dark A + διαδρομή στο
- * accent του χρήστη) πάνω σε φωτεινό πλακίδιο. Το A μένει σταθερό για
- * αναγνωρισιμότητα· η διαδρομή κλαμπάρεται σε φωτεινότητα 42–64% ώστε να
- * διαβάζεται πάνω στο λευκό πλακίδιο. Καθαρό SVG data URI — μηδέν assets.
+ * Δυναμικό favicon: το πλήρες «Ascent A» (σταθερό dark A + διαδρομή στο
+ * accent του χρήστη) πάνω σε φωτεινό πλακίδιο. Η γεωμετρία έρχεται από το
+ * `branding/logo-v2/mark.svg` — ίδια πηγή με app icon, landing και `<Logo>`.
+ * Η διαδρομή κλαμπάρεται σε φωτεινότητα 42–64% ώστε να διαβάζεται πάνω στο
+ * λευκό πλακίδιο. Καθαρό SVG data URI — μηδέν assets.
  */
+const FAVICON_PATHS = [...markSvg.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1]);
+
 export function updateFavicon(h: number, s: number, l: number): void {
   if (typeof document === 'undefined') return;
+  const [darkPath, routePath] = FAVICON_PATHS;
+  if (!darkPath || !routePath) return;
   const hue = Number.isFinite(h) ? h : 240;
   const sat = Number.isFinite(s) ? s : 8;
   const light = Math.min(64, Math.max(42, Number.isFinite(l) ? l : 58));
@@ -159,9 +166,10 @@ export function updateFavicon(h: number, s: number, l: number): void {
   const svg =
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>` +
     `<rect width='64' height='64' rx='14.5' fill='#FCFCFD'/>` +
-    `<path fill='#1C1C21' d='M5 59 L29 5 H35 L59 59 H47 L32 27 L17 59 Z'/>` +
-    `<path fill='${route}' d='M10 59 C 17 47 24 37 31 27 C 34 22 37 17 39 12 L 43 15 C 39 24 35 32 30 41 C 26 48 22 54 19 59 Z'/>` +
-    `</svg>`;
+    `<g transform='translate(0,64) scale(0.00962406,-0.00962406)'>` +
+    `<path fill='#1C1C21' d='${darkPath}'/>` +
+    `<path fill='${route}' d='${routePath}'/>` +
+    `</g></svg>`;
   const href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
 
   let link = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');

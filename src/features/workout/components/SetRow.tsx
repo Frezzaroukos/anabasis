@@ -138,6 +138,8 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
             revealed ? '' : 'opacity-0',
           )}
           aria-label={t('common.edit')}
+          tabIndex={revealed ? 0 : -1}
+          aria-hidden={!revealed}
         >
           <Pencil className="h-4 w-4" />
         </button>
@@ -149,6 +151,8 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
             revealed ? '' : 'opacity-0',
           )}
           aria-label={t('common.delete')}
+          tabIndex={revealed ? 0 : -1}
+          aria-hidden={!revealed}
         >
           <Trash2 className="h-4 w-4" />
         </button>

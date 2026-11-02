@@ -25,6 +25,7 @@ export function DataSettingsPage() {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'export' | 'exportAll' | 'preview' | 'import' | null>(null);
   // Preview-before-import: κρατάμε το περιεχόμενο του αρχείου ΚΑΙ τη στεγνή
   // προεπισκόπηση, ώστε κανένα overwrite να μη γίνεται χωρίς ρητή επιβεβαίωση.
   const [pending, setPending] = useState<{ json: string; preview: ImportPreview } | null>(null);
@@ -53,41 +54,61 @@ export function DataSettingsPage() {
   // Προεπιλογή = ΜΟΝΟ το ενεργό προφίλ — ακριβώς ό,τι δείχνει το «Τα δεδομένα σου»
   // από πάνω. Σε κοινόχρηστη συσκευή δεν φεύγουν σιωπηλά τα άλλα προφίλ.
   const onExport = async () => {
-    download(await exportProfile(), `anabasis-backup-${today()}.json`);
-    setStatus(t('settings.exported'));
+    setBusy('export');
+    try {
+      download(await exportProfile(), `anabasis-backup-${today()}.json`);
+      setStatus(t('settings.exported'));
+    } finally {
+      setBusy(null);
+    }
   };
 
   // Ρητή, ξεχωριστή ενέργεια: ΟΛΑ τα προφίλ αυτής της συσκευής (μετακόμιση).
   const onExportAllProfiles = async () => {
-    download(await exportAll(), `anabasis-all-profiles-${today()}.json`);
-    setStatus(t('settings.exported'));
+    setBusy('exportAll');
+    try {
+      download(await exportAll(), `anabasis-all-profiles-${today()}.json`);
+      setStatus(t('settings.exported'));
+    } finally {
+      setBusy(null);
+    }
   };
 
   // Βήμα 1: διάβασε το αρχείο και δείξε προεπισκόπηση (καμία εγγραφή ακόμα).
   const onImportFile = async (file: File) => {
     setStatus(null);
-    const json = await file.text();
-    const preview = await previewImport(json);
-    if (!preview.ok) {
-      setPending(null);
-      setStatus(t(`settings.${preview.message}`));
-      return;
+    setBusy('preview');
+    try {
+      const json = await file.text();
+      const preview = await previewImport(json);
+      if (!preview.ok) {
+        setPending(null);
+        setStatus(t(`settings.${preview.message}`));
+        return;
+      }
+      setPending({ json, preview });
+    } finally {
+      setBusy(null);
     }
-    setPending({ json, preview });
   };
 
   // Βήμα 2: ο χρήστης επιβεβαιώνει ρητά → εφαρμογή (με LWW, χωρίς clobber).
   const onConfirmImport = async () => {
     if (!pending) return;
-    const res = await importAll(pending.json);
-    setPending(null);
-    setStatus(
-      res.ok
-        ? `${t('settings.imported')} (${Object.values(res.counts ?? {}).reduce((a, b) => a + b, 0)}${
-            res.skipped ? `, ${t('settings.importKeptNewer', { count: res.skipped })}` : ''
-          })`
-        : t(`settings.${res.message}`),
-    );
+    setBusy('import');
+    try {
+      const res = await importAll(pending.json);
+      setPending(null);
+      setStatus(
+        res.ok
+          ? `${t('settings.imported')} (${Object.values(res.counts ?? {}).reduce((a, b) => a + b, 0)}${
+              res.skipped ? `, ${t('settings.importKeptNewer', { count: res.skipped })}` : ''
+            })`
+          : t(`settings.${res.message}`),
+      );
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -118,8 +139,14 @@ export function DataSettingsPage() {
         <SectionTitle>{t('settings.export')}</SectionTitle>
         <p className="-mt-2 text-xs text-muted-foreground">{t('settings.storageNote')}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => void onExport()}>{t('settings.exportProfile')}</Button>
-          <Button variant="outline" onClick={() => fileRef.current?.click()}>
+          <Button loading={busy === 'export'} onClick={() => void onExport()}>
+            {t('settings.exportProfile')}
+          </Button>
+          <Button
+            variant="outline"
+            loading={busy === 'preview'}
+            onClick={() => fileRef.current?.click()}
+          >
             {t('settings.import')}
           </Button>
           <Input
@@ -140,6 +167,7 @@ export function DataSettingsPage() {
           <Button
             variant="ghost"
             className="h-auto min-h-11 px-0 text-xs text-muted-foreground"
+            loading={busy === 'exportAll'}
             onClick={() => void onExportAllProfiles()}
           >
             {t('settings.exportAllProfiles')}
@@ -159,7 +187,9 @@ export function DataSettingsPage() {
               <li>{t('settings.importKeepNewer', { count: pending.preview.skip })}</li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button onClick={() => void onConfirmImport()}>{t('settings.importConfirm')}</Button>
+              <Button loading={busy === 'import'} onClick={() => void onConfirmImport()}>
+                {t('settings.importConfirm')}
+              </Button>
               <Button variant="outline" onClick={() => setPending(null)}>
                 {t('common.cancel')}
               </Button>

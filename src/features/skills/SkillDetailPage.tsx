@@ -27,7 +27,7 @@ import {
 import type { SkillStep } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SkillIcon } from '@/components/SkillIcon';
+import { SkillMark } from '@/components/SkillMark';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import {
   ACCENT_FILL_ID,
@@ -43,6 +43,7 @@ import {
 import { StepFormSheet } from './components/StepFormSheet';
 import { SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
+import { LoadingState } from '@/components/ui/loading-state';
 
 interface LadderPoint {
   date: string;
@@ -99,7 +100,7 @@ export function SkillDetailPage() {
   const progress = useLiveQuery(() => getSkillProgress(skillId), [skillId]);
 
   if (!data) {
-    return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>;
+    return <LoadingState label={t('common.loading')} />;
   }
 
   const { skill } = data;
@@ -135,7 +136,7 @@ export function SkillDetailPage() {
           δύο βέλη πίσω σε 60px ήταν ακριβώς το bug του WorkoutDetail. */}
       <header className="space-y-3">
         <div className="flex items-center gap-3">
-          <SkillIcon skill={skill.short_code} className="h-11 w-11 shrink-0 text-primary" />
+          <SkillMark code={skill.short_code} name={skill.name} className="h-12 w-12 text-sm" />
           <div className="min-w-0 flex-1">
             <h1 className="truncate font-display text-2xl font-semibold tracking-tight">
               {skill.name}

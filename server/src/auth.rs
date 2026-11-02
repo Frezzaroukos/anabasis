@@ -172,26 +172,37 @@ pub(crate) async fn issue_auth_response(
     user_agent: Option<&str>,
 ) -> Result<AuthResponse, AppError> {
     let token = create_session(&state.pool, account_id, user_agent).await?;
-    let (id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at) =
-        sqlx::query_as::<
-            _,
-            (
-                String,
-                String,
-                String,
-                String,
-                Option<String>,
-                bool,
-                String,
-                Option<String>,
-            ),
-        >(
-            "SELECT id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at
-             FROM accounts WHERE id = ?",
-        )
-        .bind(account_id)
-        .fetch_one(&state.pool)
-        .await?;
+    let (
+        id,
+        email,
+        role,
+        created_at,
+        auth_provider,
+        password_set,
+        plan,
+        plan_expires_at,
+        plan_source,
+    ) = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            String,
+            Option<String>,
+            bool,
+            String,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
+        "SELECT id, email, role, created_at, auth_provider, password_set, plan, plan_expires_at,
+                plan_source
+         FROM accounts WHERE id = ?",
+    )
+    .bind(account_id)
+    .fetch_one(&state.pool)
+    .await?;
 
     Ok(AuthResponse {
         token,
@@ -204,6 +215,7 @@ pub(crate) async fn issue_auth_response(
             password_set,
             plan: plan.clone(),
             plan_expires_at: plan_expires_at.clone(),
+            plan_source,
             plan_active: plan_is_active(&plan, plan_expires_at.as_deref()),
         },
     })
@@ -222,6 +234,7 @@ struct AccountRow {
     password_set: bool,
     plan: String,
     plan_expires_at: Option<String>,
+    plan_source: Option<String>,
 }
 
 /// `pro` counts only while it is not expired. `free` is always inactive, and a
@@ -246,6 +259,7 @@ pub struct AccountPublic {
     password_set: bool,
     plan: String,
     plan_expires_at: Option<String>,
+    plan_source: Option<String>,
     plan_active: bool,
 }
 
@@ -368,6 +382,7 @@ pub async fn signup(
             password_set: true,
             plan: "free".into(),
             plan_expires_at: None,
+            plan_source: None,
             plan_active: false,
         },
     }))
@@ -396,7 +411,7 @@ pub async fn login(
 
     let account = sqlx::query_as::<_, AccountRow>(
         "SELECT id, email, password_hash, role, disabled, locked_until, created_at,
-                auth_provider, password_set, plan, plan_expires_at
+                auth_provider, password_set, plan, plan_expires_at, plan_source
          FROM accounts WHERE email = ?",
     )
     .bind(&email)
@@ -483,6 +498,7 @@ pub async fn login(
             password_set: account.password_set,
             plan: account.plan.clone(),
             plan_expires_at: account.plan_expires_at.clone(),
+            plan_source: account.plan_source.clone(),
             plan_active: plan_is_active(&account.plan, account.plan_expires_at.as_deref()),
         },
     }))
@@ -591,6 +607,7 @@ pub struct MeResponse {
     password_set: bool,
     plan: String,
     plan_expires_at: Option<String>,
+    plan_source: Option<String>,
     plan_active: bool,
 }
 
@@ -600,7 +617,7 @@ pub async fn me(
 ) -> Result<impl IntoResponse, AppError> {
     let row = sqlx::query_as::<_, MeResponse>(
         "SELECT id, email, role, created_at, last_sync_at, auth_provider, password_set,
-                plan, plan_expires_at,
+                plan, plan_expires_at, plan_source,
                 CASE WHEN plan = 'pro'
                       AND (plan_expires_at IS NULL OR plan_expires_at > ?2)
                      THEN 1 ELSE 0 END AS plan_active

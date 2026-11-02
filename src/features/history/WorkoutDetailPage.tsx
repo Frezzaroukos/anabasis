@@ -12,6 +12,7 @@ import type { PRType } from '@/lib/db/types';
 import { Card, SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
 import { EditWorkoutSheet } from './components/EditWorkoutSheet';
+import { LoadingState } from '@/components/ui/loading-state';
 
 /** PR types που είναι βάρος (kg storage) — τα υπόλοιπα (reps/hold/απόσταση/pace) δεν μετατρέπονται. */
 const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
@@ -36,7 +37,7 @@ export function WorkoutDetailPage() {
   );
 
   if (detail === undefined) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">{t('common.loading')}</p>;
+    return <LoadingState label={t('common.loading')} />;
   }
   if (detail === null) {
     return (

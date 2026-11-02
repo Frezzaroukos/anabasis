@@ -38,7 +38,8 @@ export function ExercisePickerSheet({
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Exercise[]>([]);
   const [creatingExercise, setCreatingExercise] = useState(false);
-  const all = useExercises();
+  const exerciseQuery = useExercises();
+  const all = useMemo(() => exerciseQuery ?? [], [exerciseQuery]);
 
   const isSelected = (id: string) => selected.some((e) => e.id === id);
 
@@ -169,7 +170,7 @@ export function ExercisePickerSheet({
       )}
 
       {mode === 'multi' && (
-        <div className="sticky bottom-0 border-t border-border bg-background/95 p-3 backdrop-blur safe-bottom">
+        <div className="sticky bottom-0 border-t border-border bg-card p-3 safe-bottom">
           <Button
             className="w-full"
             disabled={selected.length === 0}

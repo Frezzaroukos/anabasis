@@ -10,7 +10,7 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
@@ -18,8 +18,14 @@ import { chromium } from 'playwright';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const OUT = join(ROOT, 'docs/screenshots');
+const LANDING_OUT = join(ROOT, 'public/landing');
+const PWA_OUT = join(ROOT, 'public/screenshots');
 const TEMP = mkdtempSync(join(tmpdir(), 'anabasis-shots-'));
 const DEMO_USER = 'demo-user-00000-4000-8000-000000000001';
+// Mid-month keeps the calendar and weekly goals populated on every run.
+const SHOT_NOW = new Date();
+SHOT_NOW.setDate(18);
+SHOT_NOW.setHours(18, 0, 0, 0);
 
 const PAGES = [
   ['/', 'dashboard'],
@@ -69,17 +75,17 @@ async function waitForServer(url, child) {
 }
 
 function isoDaysAgo(days, hour = 18) {
-  const date = new Date();
+  const date = new Date(SHOT_NOW);
   date.setHours(hour, 0, 0, 0);
   date.setDate(date.getDate() - days);
   return date.toISOString();
 }
 
 function demoRows() {
-  const now = new Date().toISOString();
+  const now = SHOT_NOW.toISOString();
   const workouts = [];
   const sets = [];
-  const pattern = [1, 3, 5, 8, 10, 13, 15, 18, 20, 22, 25, 27, 30, 33, 36, 39, 43, 47, 51, 55];
+  const pattern = [0, 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 33, 36, 40];
   const exerciseIds = [
     'ex-00000000-0000-4000-8000-000000000005', // Pull-ups
     'ex-00000000-0000-4000-8000-000000000004', // Dips
@@ -151,7 +157,7 @@ function demoRows() {
   }));
 
   const body_metrics = Array.from({ length: 9 }, (_, index) => {
-    const date = new Date();
+    const date = new Date(SHOT_NOW);
     date.setDate(date.getDate() - index * 7);
     return {
       id: `demo-body-${index}`,
@@ -206,7 +212,7 @@ async function seedDemo(page) {
 
     put('users', {
       id: demoUser, email: null, display_name: 'Demo', units: 'metric',
-      bodyweight_unit: 'kg', language: 'en', schema_version: 16,
+      bodyweight_unit: 'kg', language: 'en', schema_version: 17,
       created_at: now, updated_at: now, is_pro: false, pro_expires_at: null,
     });
     // bootstrapDB already created the unique settings row for this profile.
@@ -254,6 +260,31 @@ async function seedDemo(page) {
   }, { demoUser: DEMO_USER, rows });
 }
 
+function copyMarketingAssets() {
+  mkdirSync(LANDING_OUT, { recursive: true });
+  mkdirSync(PWA_OUT, { recursive: true });
+
+  // Landing: 390×844 @2x — exactly the four surfaces the page shows.
+  for (const name of ['dashboard', 'calendar', 'skills', 'goals']) {
+    copyFileSync(join(OUT, `${name}.png`), join(LANDING_OUT, `${name}.png`));
+  }
+
+  // PWA install prompt: mobile shots reuse the same 780×1688 captures.
+  for (const name of ['dashboard', 'calendar', 'skills']) {
+    copyFileSync(join(OUT, `${name}.png`), join(PWA_OUT, `mobile-${name}.png`));
+  }
+
+  // Desktop shots: 1440×900 @2x downscaled to the manifest's 1920×1200.
+  for (const name of ['dashboard', 'calendar']) {
+    const result = spawnSync('magick', [
+      join(OUT, `${name}-1440.png`), '-resize', '1920x1200', join(PWA_OUT, `desktop-${name}.png`),
+    ], { cwd: ROOT, encoding: 'utf8' });
+    if (result.status !== 0) throw new Error(result.stderr || `ImageMagick failed for ${name}`);
+  }
+
+  console.log('marketing assets → public/landing + public/screenshots');
+}
+
 function makeHero() {
   const inputs = ['dashboard', 'calendar', 'programs', 'exercises'].map((name) => join(OUT, `${name}.png`));
   const result = spawnSync('magick', [
@@ -289,6 +320,7 @@ try {
       colorScheme: 'dark', locale: 'en-US', timezoneId: 'Europe/Athens',
       serviceWorkers: 'block', reducedMotion: 'reduce',
     });
+    await context.clock.install({ time: SHOT_NOW });
     await context.route(`${baseUrl}/api/**`, (route) => route.abort('blockedbyclient'));
     await context.addInitScript((demoUser) => {
       localStorage.setItem('anabasis.activeProfile', demoUser);
@@ -315,6 +347,7 @@ try {
     }
     await context.close();
   }
+  copyMarketingAssets();
   makeHero();
   console.log(`generated ${join(OUT, 'hero.png')} at 1200x708`);
 } finally {

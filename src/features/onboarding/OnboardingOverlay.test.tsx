@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
@@ -59,7 +60,11 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-const wrap = (ui: React.ReactNode) => <I18nextProvider i18n={i18next}>{ui}</I18nextProvider>;
+const wrap = (ui: React.ReactNode) => (
+  <I18nextProvider i18n={i18next}>
+    <MemoryRouter>{ui}</MemoryRouter>
+  </I18nextProvider>
+);
 
 describe('OnboardingOverlay', () => {
   it('εμφανίζεται όταν δεν υπάρχει το window.localStorage flag', () => {
@@ -78,6 +83,22 @@ describe('OnboardingOverlay', () => {
     fireEvent.click(screen.getByText('Skip'));
     expect(screen.queryByText('Welcome to Anabasis')).toBeNull();
     expect(window.localStorage.getItem(ONBOARDING_STORAGE_KEY)).toBe('1');
+  });
+
+  it('«Πίσω» γυρίζει στο προηγούμενο slide', () => {
+    render(wrap(<OnboardingOverlay />));
+    fireEvent.click(screen.getByText('Next'));
+    expect(screen.getByText('Not just another gym app')).toBeTruthy();
+    fireEvent.click(screen.getByText('Back'));
+    expect(screen.getByText('Welcome to Anabasis')).toBeTruthy();
+  });
+
+  it('τα βήματα είναι clickable και πηγαίνουν μπρος/πίσω', () => {
+    render(wrap(<OnboardingOverlay />));
+    fireEvent.click(screen.getByLabelText('Welcome to Anabasis 3'));
+    expect(screen.getByText('Local-first')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Welcome to Anabasis 1'));
+    expect(screen.getByText('Welcome to Anabasis')).toBeTruthy();
   });
 
   it('προχωράει στα slides και ολοκληρώνει στο τελευταίο', () => {

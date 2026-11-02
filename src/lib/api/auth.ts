@@ -70,7 +70,7 @@ export function useAuth(): StoredAuth | null {
 /** Reactive Pro flag — `plan_active` counts only while the paid plan is valid. */
 export function useIsPro(): boolean {
   const auth = useAuth();
-  return auth?.account?.plan_active === true;
+  return auth?.account?.role === 'admin' || auth?.account?.plan_active === true;
 }
 
 export function isLoggedIn(): boolean {
@@ -203,6 +203,7 @@ export async function refreshAccount(): Promise<Account> {
     password_set: me.password_set,
     plan: me.plan,
     plan_expires_at: me.plan_expires_at,
+    plan_source: me.plan_source ?? null,
     plan_active: me.plan_active,
   };
   updateStoredAccount(account);
@@ -284,6 +285,7 @@ export async function initOAuthFragment(): Promise<void> {
       password_set: me.password_set,
       plan: me.plan,
       plan_expires_at: me.plan_expires_at,
+      plan_source: me.plan_source ?? null,
       plan_active: me.plan_active,
     };
     completeOAuthLogin(token, account);

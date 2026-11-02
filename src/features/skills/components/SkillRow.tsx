@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Archive, ArchiveRestore, Trophy } from 'lucide-react';
 import type { Skill } from '@/lib/db/types';
-import { SkillIcon } from '@/components/SkillIcon';
+import { SkillMark } from '@/components/SkillMark';
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { RungStack } from './RungStack';
 import { cn } from '@/lib/utils';
@@ -32,7 +32,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
           to={`/skills/${skill.id}`}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <SkillIcon skill={skill.short_code} className="h-5 w-5 shrink-0 text-primary" />
+          <SkillMark code={skill.short_code} name={skill.name} />
           <div className="min-w-0 flex-1">
             <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
               <span className="truncate">{skill.name}</span>
@@ -44,7 +44,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
                 </span>
               )}
             </p>
-            <p className="truncate text-xs text-muted-foreground">{skill.ultimate_goal}</p>
+            <p className="line-clamp-2 text-xs text-muted-foreground">{skill.ultimate_goal}</p>
           </div>
           {/* Η πρόοδος δεξιά, σε σταθερή στήλη — σκανάρεις τη λίστα κάθετα και
               βλέπεις πού είσαι σε κάθε skill χωρίς να διαβάζεις. */}

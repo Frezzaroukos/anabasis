@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { CalendarPlus, ChevronRight, Clock, Dumbbell, Layers, LineChart, Trophy } from 'lucide-react';
+import { CalendarPlus, Clock, Dumbbell, Layers, Trophy } from 'lucide-react';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import {
   getRecentPRs,
@@ -17,6 +17,7 @@ import type { PRType } from '@/lib/db/types';
 import { SectionTitle } from '@/components/ui/Section';
 import { VolumeChart } from './components/VolumeChart';
 import { FeelChart } from './components/FeelChart';
+import { ProgressHistoryTabs } from './components/ProgressHistoryTabs';
 import { Link } from 'react-router-dom';
 
 /** PR types που είναι βάρος (kg storage) — τα υπόλοιπα δεν μετατρέπονται. */
@@ -96,6 +97,28 @@ export function HistoryPage() {
     [],
     new Map<string, string>(),
   );
+  const loading = completed === undefined;
+  const uniquePrs = useMemo(() => {
+    const seen = new Set<string>();
+    return prs.filter((pr) => {
+      const key = pr.exercise_id ?? (pr.activity_kind ? `activity:${pr.activity_kind}` : pr.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [prs]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <header>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">{t('history.title')}</h1>
+        </header>
+        <ProgressHistoryTabs />
+        <HistorySkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -105,32 +128,21 @@ export function HistoryPage() {
         </h1>
         {list.length > 0 && (
           <p className="mt-1 font-mono text-sm tabular-nums text-muted-foreground">
-            {list.length} {t('history.completed')}
+            {t('history.completedCount', { count: list.length })}
           </p>
         )}
       </header>
 
-      {/* Σύνδεσμος προς την πρόοδο ως κανονική σειρά (εικονίδιο + chevron), όχι
-          ορφανό card με «→» σε κείμενο — ίδια γλώσσα με το hub των Ρυθμίσεων. */}
-      {list.length > 0 && (
-        <Link
-          to="/progress"
-          className="flex min-h-[3rem] items-center gap-3 rounded-xl bg-card px-4 py-3 text-sm transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <LineChart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          <span className="flex-1">{t('progress.title')}</span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />
-        </Link>
-      )}
+      <ProgressHistoryTabs />
 
       <VolumeChart />
       <FeelChart />
 
-      {prs.length > 0 && (
+      {uniquePrs.length > 0 && (
         <section>
           <SectionTitle>{t('history.recentPRs')}</SectionTitle>
           <ul className="divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
-            {prs.map((pr) => (
+            {uniquePrs.map((pr) => (
               <li key={pr.id} className="flex min-h-[3rem] items-center gap-3 px-4 py-2.5">
                 <Trophy className="h-4 w-4 shrink-0 text-gold" aria-hidden />
                 <div className="min-w-0 flex-1">
@@ -290,5 +302,17 @@ function WorkoutHistoryCard({
         </p>
       )}
     </Link>
+  );
+}
+
+
+function HistorySkeleton() {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-2" role="status" aria-label={t('common.loading')}>
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="h-[5.5rem] animate-pulse rounded-xl bg-card" aria-hidden />
+      ))}
+    </div>
   );
 }
