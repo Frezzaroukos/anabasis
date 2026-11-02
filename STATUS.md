@@ -1,8 +1,12 @@
 # Anabasis — STATUS
 
-**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-10-31
+**Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-11-01
 
 ## Τώρα
+- **01/11 Monetization + Ascent A landing reskin (OpenCode):**
+  - **Έγινε:** τιμές **€2.99/μήνα**, **founding €14.99** (πρώτοι 250), **standard €29.99 lifetime**, **14-day refund**· billing backend (πραγματικά days, refund URL, refund ακυρώνει μόνο την τελευταία αγορά, refund ελευθερώνει founding slot, async payment event, `format_unix_iso`) + migration `0012_billing_plans`· Stripe live prices στο env· legal refund page + settings row + i18n fix (`legal.refund`)· Pro gating coach mode + dashboard upsell + free limits 3 programs/3 goals· πλήρες light/violet reskin `public/landing.html` με pricing/refund links· API contract updated· **16 unit + 77 integration + 519 frontend**, fmt/clippy/typecheck/lint/build PASS· local DB backup `~/.local/state/backups/anabasis-db-20261101-prebilling.db`· **live deploy** commit `3a5b703`, release `20261101-135128-375415175`· Stripe webhook `we_1UVthBRDW9RosVPTmseDzfNl` πλέον στέλνει και `invoice.paid`, `customer.subscription.updated/deleted`, `charge.refunded`· live health/config OK, device-check 30/30 (warnings CSP/tiny), landing/refund/settings verified.
+  - **Μένει:** live checkout/refund smoke test με πραγματική κάρτα/επιστροφή· first-250 cap race (low risk)· visual review.
+  - **Θέλει εσένα:** visual review `/tmp/anabasis-live-landing-desktop.png`, `/tmp/anabasis-live-landing-mobile.png`, `/tmp/anabasis-live-refund.png`· πραγματική δοκιμαστική αγορά/refund αν θέλεις end-to-end.
 - **31/10 Ascent A icon + brand assets (OpenCode):**
   - **Έγινε:** επιλογή `MAPd1.jpg` (bold A + violet route) αντί `LEtqz.jpg` (πολύ λεπτό στα 16px)· vectorized σε `branding/logo-v2/mark.svg` + `mark-mono.svg`· νέα palette dark `#1C1C21`, violet `#8239EF`, light violet `#B88CFF`, bg `#FCFCFD`, gold `#F56E14`· `scripts/gen-brand-assets.mjs` διαβάζει πλέον το mark και παράγει 6 SVG + 8 PNG (logo, logo-white, favicon, app-icon, app-icon-maskable, og + favicon 16/32/48, pwa 192/512, maskable, apple-touch)· simplified `favicon.svg` για 16px· `index.html` PNG favicon links + `vite.config.ts` includeAssets· `Logo.tsx` raw import, currentColor A + violet route, summit gold dot, gradient· BrandingPage/LogoVariants labels «Ascent A» και clarified ότι τα μωβ τετράγωνα είναι ιστορικά preview πλαίσια, όχι το τρέχον app icon· **519 frontend tests, typecheck, lint, build:staged PASS**· local screenshots `/tmp/opencode/icon-review/app-header-new-logo.png`, `branding-new-logo.png`, `branding-labels-fixed.png`, `favicon-sheet-final.png`.
   - **Μένει:** live visual review (favicon 16/32, logo 24px, PWA install)· `public/landing.html` ακόμη παλιό dark palette.
@@ -50,21 +54,20 @@
     - Πες ένα «ναι» για push.
 - **16/10 19:11 LIVE 16d3adf** (frontend releases/20261016-191129…): γρηγορότερη πρώτη εμφάνιση — το shell δεν περιμένει το DB bootstrap· LCP / 3201→2552, /calendar 2901→2552, /settings 3057→2552 (5 εναλλάξ μετρήσεις, επιβεβαίωση Grok QA9), διάμεσος score ≥95 · ομάδα: Codex (A9), cross-review Grok (QA9) · rollback: `npm run deploy:rollback` · μένει: σύντομο κενό κείμενο ~200ms στο /history και /calendar πριν τα δεδομένα (προϋπάρχον, HistoryPage.tsx:37)
 - **16/10 LIVE c947478** (frontend releases/20261016-025232…, API migrations 0006 gc_floor + 0007 gc_graveyard): export ανά profile, logout με flush + προειδοποίηση για unsynced, πλήρης διαγραφή profile/λογαριασμού (και graveyard — GDPR), import με version/preview, destructive reset χωρίς ghosts, server-side graveyard (καμία ανάσταση ούτε από παλιούς clients), atomic promote/rollback · vitest 507, cargo 12+64, device-check live 80/80 · ομάδα: Claude (A2–A8), cross-review Grok (QA4/QA5) + Codex (QA6–QA8) · rollback frontend: `npm run deploy:rollback` · rollback API (μονόδρομα migrations): stop anabasis-api → επαναφορά `~/.local/state/backups/anabasis-db-20261016-predeploy.db` + `~/.local/state/backups/anabasis-api.prev-20261016` → start · ⏳ git push στο GitHub (public) θέλει «ναι» Aggelos
-- LIVE https://anabasis.axonos.dev (frontend `dist/` από serve.py :8120, API anabasis-api :8121) · main da9fe58 · release 20261031-132631-944284712 (GitHub `github` remote, public)
+- LIVE https://anabasis.axonos.dev (frontend `dist/` από serve.py :8120, API anabasis-api :8121) · main `3a5b703` (code) + docs commit · release `20261101-135128-375415175` (GitHub `origin`, public)
 - Launch P0 έγιναν: Privacy/Terms/Safety + safety ack, landing `/landing.html` EN/EL, SMTP ενεργό (drop-in anabasis-api.service.d/email.conf), quota + tombstone GC
 - Πιστοποίηση συσκευών 10 profiles: live 20/20 χωρίς warnings (`device-check https://anabasis.axonos.dev /,/landing.html`) · docs/DEVICE-CERTIFICATION-2026-10-10.md
 - Tests: 486 frontend (vitest) + server cargo · audit: docs/LAUNCH-READINESS-2026-10-09.md
 
 ## Επόμενα 3
-1. Reskin `public/landing.html` στη νέα light/violet ταυτότητα (το Ascent A batch είναι live)
-2. Pricing/prospects/feature roadmap: research έτοιμο (`~/code/axonos/docs/research/ANABASIS-PRICING-2026-10-31.md`) — απόφαση τιμής/refund + Pro gating μετά
-3. Store readiness: Apple/Google accounts, native wrapper, IAP, Apple Sign In — απόφαση Aggelos
+1. Live checkout/refund smoke test με πραγματική κάρτα/επιστροφή
+2. Visual review landing/account/refund· μετά store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)
+3. Κλείσιμο first-250 cap race αν χρειαστεί (transaction/lock)
 
 ## Περιμένουν Aggelos
-- Απόφαση για τιμή Pro (€10–15 lifetime / ≤€3/mo), pause του €7/60d και refund/terms
-- Pro gating (advanced analytics + coach + unlimited programs/goals/custom trackers)
+- Visual review screenshots `/tmp/anabasis-live-landing-desktop.png`, `/tmp/anabasis-live-landing-mobile.png`, `/tmp/anabasis-live-refund.png`
+- Πραγματική δοκιμαστική αγορά/refund αν θέλει end-to-end
 - Store readiness (Apple/Google accounts, native wrapper, IAP, Apple Sign In)
-- Πραγματική δοκιμαστική αγορά αν θέλει end-to-end (χωρίς refund)
 
 ## Κανόνες
 - Deploy: `npm run build:staged && npm run deploy:promote` (rollback: `npm run deploy:rollback`). **ΟΧΙ `npm run build`**: το `dist` είναι symlink στο live release και θα το ξαναγράψει επί τόπου. API: `cargo build --release` + restart anabasis-api (backup DB με sqlite .backup)
