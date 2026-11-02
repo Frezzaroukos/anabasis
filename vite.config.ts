@@ -66,6 +66,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Το landing είναι static marketing page, όχι SPA route· μην την
+        // κλέβει το navigation fallback του service worker.
+        navigateFallbackDenylist: [/\/landing\.html/],
         // Τα press assets είναι για ανθρώπους (README/δελτίο τύπου) και τα
         // screenshots για το install-prompt του browser — κανένα δεν το χρειάζεται
         // η εφαρμογή offline, οπότε έξω από το precache.
