@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -46,6 +46,8 @@ export function CalendarPage() {
   const unit = settings?.weight_unit ?? 'kg';
   const today = localDay();
   const [monthDirection, setMonthDirection] = useState<'next' | 'prev'>('next');
+  const monthStripRef = useRef<HTMLDivElement>(null);
+  const monthButtonsRef = useRef<Record<number, HTMLButtonElement | null>>({});
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -290,6 +292,16 @@ export function CalendarPage() {
     setCursor({ year: cursor.year, month });
   };
 
+  useEffect(() => {
+    const strip = monthStripRef.current;
+    const active = monthButtonsRef.current[cursor.month];
+    if (!strip || !active) return;
+    const left = active.offsetLeft - strip.clientWidth / 2 + active.clientWidth / 2;
+    if (typeof strip.scrollTo === 'function') {
+      strip.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    }
+  }, [cursor.month, cursor.year]);
+
   const day = selected ? cal.get(selected) : undefined;
 
   // Σύνοψη ορατού μήνα — δίνει νόημα σε άδεια/γεμάτη σελίδα χωρίς να ανοίξεις μέρα.
@@ -369,7 +381,8 @@ export function CalendarPage() {
             )}
           </div>
           <div
-            className="mt-3 flex gap-1 overflow-x-auto pb-1"
+            ref={monthStripRef}
+            className="mt-3 flex snap-x snap-mandatory gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label={t('calendar.title')}
           >
             {Array.from({ length: 12 }, (_, month) => {
@@ -380,11 +393,14 @@ export function CalendarPage() {
               return (
                 <button
                   key={month}
+                  ref={(el) => {
+                    monthButtonsRef.current[month] = el;
+                  }}
                   type="button"
                   onClick={() => goToMonth(month)}
                   aria-pressed={cursor.month === month}
                   className={cn(
-                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    'shrink-0 snap-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                     cursor.month === month
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card/80 text-muted-foreground hover:text-foreground',
