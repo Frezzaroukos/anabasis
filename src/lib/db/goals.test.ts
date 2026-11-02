@@ -331,6 +331,49 @@ describe('skill milestone goals (skill_steps)', () => {
   });
 });
 
+describe('strength goals (sets × reps @ weight)', () => {
+  it('μετρά qualifying sets στο all-time window και αγνοεί warm-ups/λιγότερες επαναλήψεις', async () => {
+    await loggedWorkout('strength', [
+      { exercise_id: bench.id, weight: 100, reps: 5 },
+      { exercise_id: bench.id, weight: 100, reps: 4 },
+      { exercise_id: bench.id, weight: 110, reps: 5 },
+      { exercise_id: bench.id, weight: 120, reps: 5, warmup: true },
+    ]);
+    const goal = await createGoal({
+      metric: 'strength',
+      target: 2,
+      period: 'all',
+      exercise_id: bench.id,
+      target_weight: 100,
+      target_reps: 5,
+      load_mode: 'total',
+    });
+    const p = await getGoalProgress(goal);
+    expect(p.current).toBe(2);
+    expect(p.target).toBe(2);
+    expect(p.ratio).toBe(1);
+    expect(p.daysLeft).toBeNull();
+  });
+
+  it('added load mode μετρά μόνο το πρόσθετο βάρος', async () => {
+    const pullup = SEED_EXERCISES.find((e) => e.name === 'Pull-ups')!;
+    const w = await startWorkout('strength');
+    await addSet({ workout_id: w.id, exercise_id: pullup.id, weight_kg: 20, bodyweight_kg: 72, reps: 5, hold_seconds: null });
+    await addSet({ workout_id: w.id, exercise_id: pullup.id, weight_kg: 40, bodyweight_kg: 72, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+    const goal = await createGoal({
+      metric: 'strength',
+      target: 1,
+      period: 'all',
+      exercise_id: pullup.id,
+      target_weight: 40,
+      target_reps: 5,
+      load_mode: 'added',
+    });
+    expect((await getGoalProgress(goal)).current).toBe(1);
+  });
+});
+
 describe('weight-target goals (top_weight — «70kg weighted pull-up»)', () => {
   it('current = καλύτερο φορτίο (σωματικό+πρόσθετο) της άσκησης, all-time', async () => {
     const w = await startWorkout('strength');

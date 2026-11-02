@@ -5,8 +5,8 @@
 > ενημέρωσε αυτό το αρχείο, όχι το αντίστροφο.
 >
 > **Σήμερα:** IndexedDB (Dexie 4) τοπικά + optional sync με το **δικό μας Rust/Axum
-> backend** (self-hosted, όχι Supabase). `SCHEMA_VERSION = 17` στο `schema.ts`.
-> Το v17 προσθέτει rest-pause mini-sets στο γονικό set.
+> backend** (self-hosted, όχι Supabase). `SCHEMA_VERSION = 18` στο `schema.ts`.
+> Το v17 προσθέτει rest-pause mini-sets στο γονικό set· το v18 composite strength goals.
 > Το `sets.hold_seconds` είναι απλό μη-indexed πεδίο — ΔΕΝ πήρε version block
 > (το Dexie δεν απαιτεί δήλωση μη-indexed πεδίων, δεν υπάρχει backfill).
 

@@ -39,7 +39,7 @@ export interface LeaderboardCacheRow {
   updated_at: string;
 }
 
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -394,6 +394,15 @@ export class AnabasisDB extends Dexie {
     this.version(17).upgrade(async (tx) => {
       await tx.table('sets').toCollection().modify((s) => {
         s.rest_pause_reps ??= [];
+      });
+    });
+
+    /** v18 — composite strength goals (sets × reps @ weight, total/added load). */
+    this.version(18).upgrade(async (tx) => {
+      await tx.table('goals').toCollection().modify((g) => {
+        g.target_weight ??= null;
+        g.target_reps ??= null;
+        g.load_mode ??= null;
       });
     });
   }

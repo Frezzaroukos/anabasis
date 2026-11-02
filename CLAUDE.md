@@ -74,7 +74,7 @@ Auth: argon2id + opaque tokens σε session table (ΟΧΙ JWT — θέλουμε
 ΟΧΙ cookies — Tauri production-cookie trap). Ένας μοναδικός **admin** (Aggelos)
 μέσω secret code.
 
-**Κρίσιμα αρχεία:** `src/lib/db/schema.ts` (Dexie, **schema v17**), `queries.ts`
+**Κρίσιμα αρχεία:** `src/lib/db/schema.ts` (Dexie, **schema v18**), `queries.ts`
 (οι περισσότερες DB functions), `goals.ts` (goal engine), `trackers.ts` (custom
 trackers), `sync/index.ts` (push/pull), `api/` (auth+client), `server/src/sync.rs`
 (ALLOWED_TABLES + LWW), `server/src/auth.rs`, `admin.rs`, `oauth.rs`.
@@ -132,7 +132,7 @@ empty-state (όχι stale «355 μέρες»)· **accent-aware favicon**· Frien
 profile /u/:username** (invite loop closed)· **program_days cross-device sync** +
 **soft-delete** (διαγραφή ταξιδεύει)· program→calendar structure.
 
-**525 client + Rust backend tests green · tsc -b clean · schema **v17**.**
+**525 client + Rust backend tests green · tsc -b clean · schema **v18**.**
 
 **Outward-facing (2026-09-06, portfolio-ready):** helper audit verdict =
 «portfolio-ready as-is» (0 console.log/TODO, 1 `as any`, solid a11y+ErrorBoundary).
@@ -168,7 +168,7 @@ verified: app/api/portfolio 200, PWA manifest+SW served (installable any device)
   goals wired· set-by-set με κουμπιά (ΟΧΙ dominating stopwatch — duration optional).
 - **Custom goal = Custom Trackers** (ΟΧΙ manual scalar counter — ο Aggelos το είπε
   λάθος, το review το επιβεβαίωσε): append-only entries, windowed, reusable,
-  create-on-the-spot (όπως τα activities). schema v17.
+  create-on-the-spot (όπως τα activities). schema v18.
 - **Activities/exercises/skills = user-managed** (create/rename/archive)· ΟΧΙ
   hardcoded λίστες· vector lucide icons (ΟΧΙ emoji).
 - **Self-hosted Rust backend** (ΟΧΙ Supabase τώρα) — δες §6.

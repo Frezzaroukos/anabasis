@@ -13,7 +13,7 @@ import {
   BUILTIN_GOAL_PERIODS,
   BUILTIN_PERIOD_ANCHORS,
 } from '@/lib/db/types';
-import type { Goal, GoalMetric, GoalPeriod, GoalPeriodAnchor } from '@/lib/db/types';
+import type { Goal, GoalLoadMode, GoalMetric, GoalPeriod, GoalPeriodAnchor } from '@/lib/db/types';
 import { goalTitle } from '../goalTitle';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +50,9 @@ export function GoalFormSheet({
   const [period, setPeriod] = useState<GoalPeriod>('week');
   const [anchor, setAnchor] = useState<GoalPeriodAnchor>('calendar');
   const [target, setTarget] = useState('4');
+  const [targetWeight, setTargetWeight] = useState('');
+  const [targetReps, setTargetReps] = useState('');
+  const [loadMode, setLoadMode] = useState<GoalLoadMode>('total');
   const [skillId, setSkillId] = useState<string | null>(null);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
   const [exerciseQuery, setExerciseQuery] = useState('');
@@ -66,6 +69,9 @@ export function GoalFormSheet({
     setPeriod(goal?.period ?? 'week');
     setAnchor(goal?.period_anchor ?? 'calendar');
     setTarget(String(goal?.target ?? 4));
+    setTargetWeight(goal?.target_weight != null ? String(goal.target_weight) : '');
+    setTargetReps(goal?.target_reps != null ? String(goal.target_reps) : '');
+    setLoadMode(goal?.load_mode ?? 'total');
     setSkillId(goal?.skill_id ?? null);
     setExerciseId(goal?.exercise_id ?? null);
     setExerciseQuery('');
@@ -74,14 +80,23 @@ export function GoalFormSheet({
     setLabel(goal?.label ?? '');
   }, [open, goal]);
 
+  useEffect(() => {
+    if (metric === 'strength' && !goal) {
+      setPeriod('all');
+      setTarget((v) => (v === '4' ? '5' : v));
+      setTargetReps((v) => v || '5');
+    }
+  }, [goal, metric]);
+
   const isMilestone = MILESTONE_METRICS.includes(metric);
   const isSkillGoal = metric === 'skill_steps';
   const isWeightTarget = metric === 'top_weight';
   const isCustom = metric === 'custom';
-  const countMetric = ['sessions', 'sets', 'reps', 'skill_steps'].includes(metric);
+  const isStrength = metric === 'strength';
+  const countMetric = ['sessions', 'sets', 'reps', 'skill_steps', 'strength'].includes(metric);
   const metricUnit = METRIC_UNIT[metric];
   // Ο στόχος φορτίου δένει κι αυτός με συγκεκριμένη άσκηση (ποιανής το φορτίο).
-  const exerciseScoped = EXERCISE_SCOPED.includes(metric) || isWeightTarget;
+  const exerciseScoped = EXERCISE_SCOPED.includes(metric) || isWeightTarget || isStrength;
 
   // Καθάρισμα άσχετων αξόνων ανά μετρική: skill μόνο σε skill goal, exercise
   // μόνο όπου δένει, άθλημα μόνο σε μετρικές παραθύρου.
@@ -129,16 +144,20 @@ export function GoalFormSheet({
   };
 
   const targetNum = Number(target.replace(',', '.'));
+  const targetWeightNum = Number(targetWeight.replace(',', '.'));
+  const targetRepsNum = Number(targetReps.replace(',', '.'));
   const valid =
     Number.isFinite(targetNum) &&
     targetNum > 0 &&
     (!isSkillGoal || skillId != null) &&
     (!isWeightTarget || exerciseId != null) &&
-    (!isCustom || trackerId != null);
+    (!isCustom || trackerId != null) &&
+    (!isStrength ||
+      (exerciseId != null && targetWeightNum > 0 && targetRepsNum > 0));
 
   const preview = goalTitle(
     t,
-    { metric, target: valid ? targetNum : 0, period, activity_key: null, exercise_id: exerciseId },
+    { metric, target: valid ? targetNum : 0, period, activity_key: null, exercise_id: exerciseId, target_weight: targetWeightNum || null, target_reps: targetRepsNum || null, load_mode: loadMode },
     {
       activity: null,
       exercise: exerciseId ? (exercises.find((e) => e.id === exerciseId)?.name ?? null) : null,
@@ -161,6 +180,9 @@ export function GoalFormSheet({
       exercise_id: isSkillGoal || isCustom ? null : exerciseId,
       skill_id: isSkillGoal ? skillId : null,
       custom_tracker_id: isCustom ? trackerId : null,
+      target_weight: isStrength ? targetWeightNum : null,
+      target_reps: isStrength ? targetRepsNum : null,
+      load_mode: isStrength ? loadMode : null,
       label: label.trim() || null,
     };
     try {
@@ -274,6 +296,70 @@ export function GoalFormSheet({
               </Field>
             </div>
           </>
+        ) : isStrength ? (
+          <>
+            <Field label={t('goals.loadModeLabel')}>
+              <div className="flex flex-wrap gap-2">
+                {(['total', 'added'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setLoadMode(mode)}
+                    className={chip(loadMode === mode)}
+                  >
+                    {t(`goals.loadMode.${mode}`)}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <div className="flex flex-wrap gap-2">
+              <Field label={t('goals.setsLabel')} className="w-24">
+                <Input
+                  inputMode="numeric"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  className="h-10 font-mono tabular-nums"
+                />
+              </Field>
+              <Field label={t('goals.repsLabel')} className="w-24">
+                <Input
+                  inputMode="numeric"
+                  value={targetReps}
+                  onChange={(e) => setTargetReps(e.target.value)}
+                  className="h-10 font-mono tabular-nums"
+                />
+              </Field>
+              <Field label={t('goals.weightLabel')} className="w-32">
+                <Input
+                  inputMode="decimal"
+                  value={targetWeight}
+                  onChange={(e) => setTargetWeight(e.target.value)}
+                  className="h-10 font-mono tabular-nums"
+                />
+              </Field>
+            </div>
+            <Field label={t('goals.periodLabel')}>
+              <div className="flex flex-wrap gap-2">
+                {BUILTIN_GOAL_PERIODS.map((p) => (
+                  <button key={p} type="button" onClick={() => setPeriod(p)} className={chip(period === p)}>
+                    {t(`goals.period.${p}`)}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            {period !== 'all' && period !== 'day' && (
+              <Field label={t('goals.anchorLabel')}>
+                <div className="flex gap-2">
+                  {BUILTIN_PERIOD_ANCHORS.map((a) => (
+                    <button key={a} type="button" onClick={() => setAnchor(a)} className={chip(anchor === a)}>
+                      {t(`goals.anchor.${a}`)}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            )}
+            <p className="text-xs leading-snug text-muted-foreground">{t('goals.strengthHint')}</p>
+          </>
         ) : isWeightTarget ? (
           // Στόχος φορτίου («70kg weighted pull-up»): διάλεξε άσκηση (παρακάτω)
           // + βάρος-στόχο. Milestone — χωρίς περίοδο.
@@ -358,7 +444,7 @@ export function GoalFormSheet({
               διαλέγει ο χρήστης — και εξηγούμε τη διαφορά από κάτω, γιατί
               «ημερολογιακό/κυλιόμενο» δεν λέει τίποτα από μόνο του.
             */}
-            {period !== 'day' && (
+            {period !== 'day' && period !== 'all' && (
               <Field label={t('goals.anchorLabel')}>
                 <div className="flex gap-2">
                   {BUILTIN_PERIOD_ANCHORS.map((a) => (

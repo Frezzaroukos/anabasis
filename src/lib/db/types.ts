@@ -308,6 +308,7 @@ export interface UserSkillStepCompletion {
  */
 export const BUILTIN_GOAL_METRICS = [
   'sessions', // πλήθος προπονήσεων
+  'strength', // σετ σε συγκεκριμένα κιλά × επαναλήψεις (n×r @ kg)
   'volume_kg', // Σ(βάρος × επαναλήψεις)
   'sets', // πλήθος σετ (χωρίς warm-up)
   'reps', // πλήθος επαναλήψεων
@@ -320,7 +321,7 @@ export const BUILTIN_GOAL_METRICS = [
 export type GoalMetric = (typeof BUILTIN_GOAL_METRICS)[number];
 
 /** Το μήκος του παραθύρου μέτρησης. */
-export const BUILTIN_GOAL_PERIODS = ['week', 'month', 'day'] as const;
+export const BUILTIN_GOAL_PERIODS = ['week', 'month', 'day', 'all'] as const;
 export type GoalPeriod = (typeof BUILTIN_GOAL_PERIODS)[number];
 
 /**
@@ -337,6 +338,7 @@ export type GoalPeriod = (typeof BUILTIN_GOAL_PERIODS)[number];
  */
 export const BUILTIN_PERIOD_ANCHORS = ['calendar', 'rolling'] as const;
 export type GoalPeriodAnchor = (typeof BUILTIN_PERIOD_ANCHORS)[number];
+export type GoalLoadMode = 'total' | 'added';
 
 /**
  * Ένας στόχος στα μέτρα του χρήστη.
@@ -365,6 +367,10 @@ export interface Goal {
   exercise_id: UUID | null;
   /** Το skill-στόχος (μόνο σε metric `skill_steps`)· null αλλιώς. */
   skill_id?: UUID | null;
+  /** Strength goal: κιλά, επαναλήψεις και load mode (total/added). */
+  target_weight?: number | null;
+  target_reps?: number | null;
+  load_mode?: GoalLoadMode | null;
   /** @deprecated v14: αντικαταστάθηκε από custom_tracker_id + entries. Μένει για migration. */
   manual_value?: number | null;
   /** Ο custom tracker που μετρά ο στόχος (μόνο σε metric `custom`)· null αλλιώς. */

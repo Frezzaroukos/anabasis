@@ -766,12 +766,14 @@
       "duration_min": "Duration",
       "skill_steps": "Skill",
       "top_weight": "Target weight",
-      "custom": "Custom"
+      "custom": "Custom",
+      "strength": "Strength"
     },
     "period": {
       "day": "day",
       "week": "week",
-      "month": "month"
+      "month": "month",
+      "all": "all time"
     },
     "anchorLabel": "Counter resets",
     "anchor": {
@@ -796,7 +798,18 @@
     "achieved": "Achieved",
     "freeLimit": "Free includes up to 3 goals. Pro removes the limit.",
     "skillGoalTitle_one": "Master {{skill}} · {{count}} step",
-    "skillGoalTitle_other": "Master {{skill}} · {{count}} steps"
+    "skillGoalTitle_other": "Master {{skill}} · {{count}} steps",
+    "strengthTitle": "{{sets}}×{{reps}} @ {{weight}} kg · {{exercise}}",
+    "strengthTitleAdded": "{{sets}}×{{reps}} @ +{{weight}} kg · {{exercise}}",
+    "strengthHint": "Counts completed sets that reach both the weight and the reps. “Added” measures only the extra load on bodyweight exercises.",
+    "loadModeLabel": "Load measured as",
+    "setsLabel": "Sets",
+    "repsLabel": "Reps",
+    "weightLabel": "Weight (kg)",
+    "loadMode": {
+      "total": "Total load",
+      "added": "Added weight"
+    }
   },
   "account": {
     "title": "Account & Sync",

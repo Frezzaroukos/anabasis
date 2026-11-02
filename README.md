@@ -58,7 +58,7 @@ protects against restore-desync. Auth is argon2id + opaque bearer tokens in a
 session table (not JWTs — revocation matters; not cookies — the Tauri
 production-cookie trap).
 
-**Schema migrations, v1 → v17.** Each version ships its own `.upgrade()` with
+**Schema migrations, v1 → v18.** Each version ships its own `.upgrade()` with
 backfills; all additive, no data loss. v9 backfilled existing goals to *rolling*
 windows because that is how they were already counting — migrating them to
 *calendar* would have silently changed the meaning of a goal already set. v12–13
@@ -67,7 +67,8 @@ weight dimension on skill steps (skills and exercises are now one library). v14
 added first-class custom trackers (append-only entries, so a manual counter
 syncs cleanly instead of losing increments to last-write-wins). v15 added
 local-only friends/leaderboard caches for offline social; v16 an opt-in
-`coach_enabled` flag (default off); v17 rest-pause mini-sets on the parent set.
+`coach_enabled` flag (default off); v17 rest-pause mini-sets on the parent set; v18
+composite strength goals (sets × reps @ weight, total/added load).
 
 **Components never touch `db.*`.** All access goes through `lib/db/queries.ts`
 and `lib/db/goals.ts`. `lib/domain/` is pure functions (e1rm, pr, volume) with

@@ -313,8 +313,9 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
+      <header className="rounded-2xl border border-border/50 bg-gradient-to-br from-primary/5 via-card to-card p-4 shadow-elevated">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="truncate font-display text-2xl font-semibold tracking-tight capitalize">
               {monthLabel}
@@ -346,16 +347,22 @@ export function CalendarPage() {
               </button>
             )}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {monthStats.workouts > 0
-              ? [
-                  t('calendar.monthWorkouts', { count: monthStats.workouts }),
-                  monthStats.days > 1 ? t('calendar.monthDays', { count: monthStats.days }) : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
-              : t('calendar.monthEmpty')}
-          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+            {monthStats.workouts > 0 ? (
+              <>
+                <span className="rounded-full bg-card/80 px-2 py-1">
+                  {t('calendar.monthWorkouts', { count: monthStats.workouts })}
+                </span>
+                {monthStats.days > 1 && (
+                  <span className="rounded-full bg-card/80 px-2 py-1">
+                    {t('calendar.monthDays', { count: monthStats.days })}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="rounded-full bg-card/80 px-2 py-1">{t('calendar.monthEmpty')}</span>
+            )}
+          </div>
         </div>
         {/*
           Ένα ενιαίο σύνολο πλοήγησης. Πριν, ένας σύνδεσμος «Σώμα» ήταν
@@ -388,6 +395,7 @@ export function CalendarPage() {
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+        </div>
       </header>
 
       {/* key = μήνας: αλλαγή μήνα ξαναπαίζει το rise-in — «η σελίδα άλλαξε»,
@@ -397,7 +405,7 @@ export function CalendarPage() {
       <div
         key={`${cursor.year}-${cursor.month}`}
         className={cn(
-          'rounded-lg bg-card p-3 max-sm:px-1.5',
+          'rounded-2xl border border-border/50 bg-card p-3 shadow-elevated max-sm:px-1.5',
           monthDirection === 'next' ? 'animate-slide-in-forward' : 'animate-slide-in-back',
         )}
       >

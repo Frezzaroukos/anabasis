@@ -13,7 +13,10 @@ import { METRIC_UNIT } from '@/lib/db/goals';
  */
 export function goalTitle(
   t: TFunction,
-  goal: Pick<Goal, 'metric' | 'target' | 'period' | 'activity_key' | 'exercise_id'>,
+  goal: Pick<
+    Goal,
+    'metric' | 'target' | 'period' | 'activity_key' | 'exercise_id' | 'target_weight' | 'target_reps' | 'load_mode'
+  >,
   names: {
     activity?: string | null;
     exercise?: string | null;
@@ -26,6 +29,18 @@ export function goalTitle(
   if (goal.metric === 'skill_steps') {
     const skill = names.skill ?? t('goals.metric.skill_steps');
     return t('goals.skillGoalTitle', { skill, count: goal.target });
+  }
+
+  // Composite strength: «5×5 @ 100 kg · Weighted Pull-up».
+  if (goal.metric === 'strength') {
+    const exercise = names.exercise ?? t('goals.metric.strength');
+    const key = goal.load_mode === 'added' ? 'goals.strengthTitleAdded' : 'goals.strengthTitle';
+    return t(key, {
+      sets: goal.target,
+      reps: goal.target_reps ?? '—',
+      weight: goal.target_weight ?? '—',
+      exercise,
+    });
   }
 
   // Milestone φορτίου: «Φτάσε 70 kg · Weighted Pull-up» — χωρίς περίοδο.

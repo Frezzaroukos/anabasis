@@ -24,6 +24,7 @@ export const PERIOD_DAYS: Record<GoalPeriod, number> = {
   day: 1,
   week: 7,
   month: 30,
+  all: 0,
 };
 
 export interface GoalWindow {
@@ -55,6 +56,10 @@ export function goalWindow(
 ): GoalWindow {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
+
+  if (period === 'all') {
+    return { start: new Date(0), end: now, daysLeft: null };
+  }
 
   if (anchor === 'rolling') {
     start.setDate(start.getDate() - (PERIOD_DAYS[period] - 1));
@@ -95,6 +100,7 @@ export const METRIC_UNIT: Record<GoalMetric, string> = {
   skill_steps: '',
   top_weight: 'kg',
   custom: '',
+  strength: '',
 };
 
 /** Milestone metrics — μετρώνται όλη-την-ώρα (κατάκτηση), όχι σε παράθυρο χρόνου.
@@ -132,7 +138,15 @@ export async function createGoal(
     Partial<
       Pick<
         Goal,
-        'label' | 'activity_key' | 'exercise_id' | 'skill_id' | 'custom_tracker_id' | 'period_anchor'
+        | 'label'
+        | 'activity_key'
+        | 'exercise_id'
+        | 'skill_id'
+        | 'custom_tracker_id'
+        | 'period_anchor'
+        | 'target_weight'
+        | 'target_reps'
+        | 'load_mode'
       >
     >,
 ): Promise<Goal> {
@@ -157,6 +171,9 @@ export async function createGoal(
     exercise_id: input.exercise_id ?? null,
     skill_id: input.skill_id ?? null,
     custom_tracker_id: input.custom_tracker_id ?? null,
+    target_weight: input.target_weight ?? null,
+    target_reps: input.target_reps ?? null,
+    load_mode: input.load_mode ?? null,
     manual_value: null,
     display_order: existing.length,
     is_archived: false,
@@ -233,6 +250,54 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
     };
   }
 
+  // Composite strength goal («5×5 @ 100kg»): πόσα sets μέσα στο παράθυρο
+  // πληρούν ΚΑΙ το βάρος ΚΑΙ τις επαναλήψεις. Το `target` είναι πλήθος σετ.
+  // load_mode=added μετρά μόνο πρόσθετο (weighted calisthenics), total μετρά
+  // σωματικό + πρόσθετο — ίδιος ορισμός με το progress chart.
+  if (goal.metric === 'strength') {
+    const win = goalWindow(goal.period, goal.period_anchor, now);
+    let current = 0;
+    if (goal.exercise_id && goal.target_weight != null && goal.target_reps != null) {
+      const workouts = (
+        await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
+      ).filter(
+        (w) =>
+          w.deleted_at == null &&
+          w.ended_at != null &&
+          w.started_at >= win.start.toISOString() &&
+          w.started_at < win.end.toISOString(),
+      );
+      const ids = new Set(workouts.map((w) => w.id));
+      if (ids.size > 0) {
+        const sets = (await db.sets.where('workout_id').anyOf([...ids]).toArray()).filter(
+          (s) =>
+            s.deleted_at == null &&
+            s.set_type !== 'warmup' &&
+            !s.is_warmup &&
+            s.exercise_id === goal.exercise_id,
+        );
+        const weightOf = (s: (typeof sets)[number]) =>
+          goal.load_mode === 'added'
+            ? (s.weight_kg ?? 0)
+            : (s.weight_kg ?? 0) + (s.bodyweight_kg ?? 0);
+        current = sets.filter(
+          (s) =>
+            weightOf(s) >= goal.target_weight! &&
+            (s.reps ?? 0) >= goal.target_reps!,
+        ).length;
+      }
+    }
+    return {
+      goal,
+      current,
+      target: goal.target,
+      ratio: goal.target > 0 ? Math.min(1, current / goal.target) : 0,
+      unit: '',
+      daysLeft: win.daysLeft,
+    };
+  }
+
+  // Στόχος φορτίου («70kg weighted pull-up»): το ΚΑΛΥΤΕΡΟ φορτίο (σωματικό +
   // Στόχος φορτίου («70kg weighted pull-up»): το ΚΑΛΥΤΕΡΟ φορτίο (σωματικό +
   // πρόσθετο) που έχεις πιάσει σε αυτή την άσκηση — milestone, all-time.
   if (goal.metric === 'top_weight') {
