@@ -4,12 +4,9 @@
 > `src/lib/db/types.ts`, γεννημένο-από-κώδικα. Αν διαφωνούν, ο κώδικας κερδίζει —
 > ενημέρωσε αυτό το αρχείο, όχι το αντίστροφο.
 >
-> **Σήμερα:** IndexedDB (Dexie 4) τοπικά, μοναδική πηγή δεδομένων στη συσκευή.
-> Cloud sync **δεν έχει shippάρει ακόμα** — το πλάνο είναι **δικό μας Rust/Axum
-> backend, self-hosted** (όχι Supabase — βλ. §"Server sync" παρακάτω), και είναι
-> **σε εξέλιξη** ταυτόχρονα με αυτό το αρχείο. `SCHEMA_VERSION = 10` στο
-> `schema.ts` κατά τη συγγραφή· το **v10** που τελικά μπήκε είναι backfill
-> `app_settings.auto_start_rest_timer ??= true` (auto-start του rest timer).
+> **Σήμερα:** IndexedDB (Dexie 4) τοπικά + optional sync με το **δικό μας Rust/Axum
+> backend** (self-hosted, όχι Supabase). `SCHEMA_VERSION = 17` στο `schema.ts`.
+> Το v17 προσθέτει rest-pause mini-sets στο γονικό set.
 > Το `sets.hold_seconds` είναι απλό μη-indexed πεδίο — ΔΕΝ πήρε version block
 > (το Dexie δεν απαιτεί δήλωση μη-indexed πεδίων, δεν υπάρχει backfill).
 
@@ -25,7 +22,7 @@
 
 ---
 
-## Πίνακες (16)
+## Πίνακες
 
 Όλοι οι τύποι είναι από `src/lib/db/types.ts`. `UUID = string`, `ISOTimestamp = string` (ISO 8601).
 

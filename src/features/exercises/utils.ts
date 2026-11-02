@@ -84,7 +84,7 @@ export function matchesLibraryFilter(
 
 /**
  * Ενοποιημένη βιβλιοθήκη: exercises + skills στα ΙΔΙΑ category sections, με το
- * skill να ξεχωρίζει οπτικά (SkillIcon + rung stack) αντί για ξεχωριστό «marker»
+ * skill να ξεχωρίζει οπτικά (SkillMark + rung stack) αντί για ξεχωριστό «marker»
  * badge — λιγότερο θόρυβος, ίδιο αποτέλεσμα αναγνωρισιμότητας.
  */
 export function groupLibraryByCategory(

@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 /**
  * Η βιβλιοθήκη ασκήσεων — ενοποιημένη με τα skills (οργανωτικό merge,
  * ARCHITECTURE-V4 §4). Ίδια section ανά κατηγορία, ίδια αναζήτηση/φίλτρα·
- * το skill ξεχωρίζει οπτικά (SkillIcon + rung stack) αντί για extra badge.
+ * το skill ξεχωρίζει οπτικά (SkillMark + rung stack) αντί για extra badge.
  * Tap άσκηση → η πρόοδός της (chart)· tap skill → η σκάλα του.
  */
 export function ExercisesPage() {

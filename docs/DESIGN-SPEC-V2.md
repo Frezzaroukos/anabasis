@@ -1,4 +1,6 @@
-# Anabasis Design v2 — «Altitude Violet»
+# Anabasis Design v2 — «Daylight + Ascent A»
+
+> **Ενημέρωση 2026-11-02:** το ενεργό default είναι **Daylight** (`#FCFCFD`) + **Ascent A**. Τα dark tokens παρακάτω μένουν ως ιστορική βάση του dark theme.
 
 Πλήρες visual redesign (2026-08-28). Πηγή: design research (fitness premium
 patterns 2026) + απόφαση κατεύθυνσης. Αντικαθιστά το χρυσό-χάλκινο v1.

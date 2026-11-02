@@ -18,7 +18,6 @@ import { chromium } from 'playwright';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const OUT = join(ROOT, 'docs/screenshots');
-const LANDING_OUT = join(ROOT, 'public/landing');
 const PWA_OUT = join(ROOT, 'public/screenshots');
 const TEMP = mkdtempSync(join(tmpdir(), 'anabasis-shots-'));
 const DEMO_USER = 'demo-user-00000-4000-8000-000000000001';
@@ -261,16 +260,10 @@ async function seedDemo(page) {
 }
 
 function copyMarketingAssets() {
-  mkdirSync(LANDING_OUT, { recursive: true });
   mkdirSync(PWA_OUT, { recursive: true });
 
-  // Landing: 390×844 @2x — exactly the four surfaces the page shows.
+  // Landing + PWA install prompt share the same 780×1688 captures.
   for (const name of ['dashboard', 'calendar', 'skills', 'goals']) {
-    copyFileSync(join(OUT, `${name}.png`), join(LANDING_OUT, `${name}.png`));
-  }
-
-  // PWA install prompt: mobile shots reuse the same 780×1688 captures.
-  for (const name of ['dashboard', 'calendar', 'skills']) {
     copyFileSync(join(OUT, `${name}.png`), join(PWA_OUT, `mobile-${name}.png`));
   }
 
@@ -282,7 +275,7 @@ function copyMarketingAssets() {
     if (result.status !== 0) throw new Error(result.stderr || `ImageMagick failed for ${name}`);
   }
 
-  console.log('marketing assets → public/landing + public/screenshots');
+  console.log('marketing assets → public/screenshots');
 }
 
 function makeHero() {

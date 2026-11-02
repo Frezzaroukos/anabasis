@@ -48,7 +48,7 @@ skill-progression**. Όχι generic gym app, όχι nutrition (το φαγητό
 job-anchor (στόχος: δουλειά — Omilia Χανιά), (γ) δημόσιο προϊόν (φίλοι → κόσμος).
 **Top-level quality** πάντα, benchmark τα Hevy/Whoop/Vercel/Linear.
 
-**Design = "Carbon":** dark-first graphite grounds, mono tabular numerals,
+**Design = Daylight + Ascent A:** light violet-first grounds, dark theme preserved, mono tabular numerals,
 **χρυσό ΜΟΝΟ για ρεκόρ/επιτεύγματα**. Fonts: Fira Sans Condensed (display),
 Manrope (body), JetBrains Mono (numbers). Tokens: `src/styles/globals.css`.
 Calendar-centric: το ημερολόγιο είναι το σπίτι του logging.
@@ -61,7 +61,7 @@ Calendar-centric: το ημερολόγιο είναι το σπίτι του lo
 
 | Layer | Stack | Πού |
 |---|---|---|
-| **Frontend** (offline-first SPA) | Vite 5 · React 18 · TS strict · Dexie 4 (IndexedDB) · Tailwind 3 · Recharts · i18next (EN/EL) · vite-plugin-pwa | `src/` |
+| **Frontend** (offline-first SPA) | Vite 5 · React 18 · TS strict · Dexie 4 (IndexedDB) · Tailwind 4 · Recharts · i18next (EN/EL) · vite-plugin-pwa | `src/` |
 | **Backend** (optional accounts+sync) | Rust · Axum 0.8 · SQLite (sqlx) · argon2id · opaque bearer tokens · tower_governor rate-limit | `server/` |
 | **Desktop** | Tauri 2 (WebKitGTK), ~14MB binary, PWA off in-app | `src-tauri/` → `~/.local/bin/anabasis` |
 | **Delivery** | Cloudflare Tunnel → anabasis.axonos.dev (`/api`→:8121 ΠΡΙΝ το static rule) · systemd user services | `serve.py` + tunnel |
@@ -74,7 +74,7 @@ Auth: argon2id + opaque tokens σε session table (ΟΧΙ JWT — θέλουμε
 ΟΧΙ cookies — Tauri production-cookie trap). Ένας μοναδικός **admin** (Aggelos)
 μέσω secret code.
 
-**Κρίσιμα αρχεία:** `src/lib/db/schema.ts` (Dexie, **schema v14**), `queries.ts`
+**Κρίσιμα αρχεία:** `src/lib/db/schema.ts` (Dexie, **schema v17**), `queries.ts`
 (οι περισσότερες DB functions), `goals.ts` (goal engine), `trackers.ts` (custom
 trackers), `sync/index.ts` (push/pull), `api/` (auth+client), `server/src/sync.rs`
 (ALLOWED_TABLES + LWW), `server/src/auth.rs`, `admin.rs`, `oauth.rs`.
@@ -132,7 +132,7 @@ empty-state (όχι stale «355 μέρες»)· **accent-aware favicon**· Frien
 profile /u/:username** (invite loop closed)· **program_days cross-device sync** +
 **soft-delete** (διαγραφή ταξιδεύει)· program→calendar structure.
 
-**422 client + 40 server tests green · tsc -b clean · schema **v15** · 155+ commits.**
+**525 client + Rust backend tests green · tsc -b clean · schema **v17**.**
 
 **Outward-facing (2026-09-06, portfolio-ready):** helper audit verdict =
 «portfolio-ready as-is» (0 console.log/TODO, 1 `as any`, solid a11y+ErrorBoundary).
@@ -160,7 +160,7 @@ verified: app/api/portfolio 200, PWA manifest+SW served (installable any device)
 
 ## 5. Αποφάσεις (decisions log)
 
-- **Carbon design** (default) + custom accent picker· L5 «Summit-seal» logo· F6
+- **Daylight + Ascent A** (default), dark preserved + custom accent picker· F6
   altitude gamification («Your Ascent»)· M3 theatrical motion. (Ο Aggelos διάλεξε
   από design board.)
 - **Drop nutrition/calories** — ξεχωριστό app· κρατάμε manual steps μόνο.
@@ -168,7 +168,7 @@ verified: app/api/portfolio 200, PWA manifest+SW served (installable any device)
   goals wired· set-by-set με κουμπιά (ΟΧΙ dominating stopwatch — duration optional).
 - **Custom goal = Custom Trackers** (ΟΧΙ manual scalar counter — ο Aggelos το είπε
   λάθος, το review το επιβεβαίωσε): append-only entries, windowed, reusable,
-  create-on-the-spot (όπως τα activities). schema v14.
+  create-on-the-spot (όπως τα activities). schema v17.
 - **Activities/exercises/skills = user-managed** (create/rename/archive)· ΟΧΙ
   hardcoded λίστες· vector lucide icons (ΟΧΙ emoji).
 - **Self-hosted Rust backend** (ΟΧΙ Supabase τώρα) — δες §6.
@@ -255,7 +255,7 @@ quota**. Postgres/Supabase ΜΟΝΟ αν χτυπήσεις write contention (α
 cd ~/code/anabasis
 npm run dev                      # http://localhost:5173
 npm run build                    # tsc -b + vite → dist/  (ΤΡΕΞΕ ΠΡΙΝ deploy)
-npx vitest run                   # 360 tests
+npx vitest run                   # 525 tests
 # web deploy:
 systemctl --user restart anabasis.service        # serves dist/ on :8120
 # server (Rust) build+deploy:

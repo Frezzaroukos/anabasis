@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { LOGO_VARIANTS } from '@/components/LogoVariants';
 import { Logo } from '@/components/Logo';
 import { ACCENTS } from '@/lib/theme';
 
@@ -29,8 +28,7 @@ export function BrandingPage() {
         </Link>
         <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Logo & Brand</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Altitude Violet — το ενεργό σήμα («Ascent A») + η παλέτα. Ιστορικές εκδοχές
-          παρακάτω, μόνο για σύγκριση.
+          Daylight + Ascent A — το ενεργό σήμα + η παλέτα.
         </p>
       </header>
 
@@ -43,7 +41,7 @@ export function BrandingPage() {
           </div>
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-16 w-16" gradient />
-            <span className="text-xs text-muted-foreground">Altitude Violet gradient</span>
+            <span className="text-xs text-muted-foreground">Violet gradient</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <Logo className="h-16 w-16 text-primary" summit />
@@ -62,7 +60,7 @@ export function BrandingPage() {
       </section>
 
       <section>
-        <p className="mb-3 text-sm font-medium">Altitude Violet — παλέτα</p>
+        <p className="mb-3 text-sm font-medium">Violet — παλέτα</p>
         <div className="flex flex-wrap gap-4">
           {PALETTE.map((p) => (
             <div key={p.key} className="flex flex-col items-center gap-1.5">
@@ -90,32 +88,6 @@ export function BrandingPage() {
         </p>
       </section>
 
-      <section className="space-y-3">
-        <p className="text-sm font-medium text-muted-foreground">
-          Ιστορικές εκδοχές (σύγκριση) — τα μωβ τετράγωνα είναι παλιά πλαίσια
-          προεπισκόπησης, όχι το τρέχον app icon.
-        </p>
-        {LOGO_VARIANTS.map(({ key, label, Comp }) => (
-          <div key={key} className="rounded-xl bg-card p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-sm font-medium">{label}</span>
-              <code className="text-xs text-muted-foreground">{key}</code>
-            </div>
-            <div className="flex items-center gap-6">
-              {/* Σε accent χρώμα */}
-              <Comp className="h-16 w-16 text-primary" />
-              {/* Σε μονόχρωμο (favicon test) */}
-              <Comp className="h-10 w-10 text-foreground" />
-              {/* Μικρό (24px — bottom nav test) */}
-              <Comp className="h-6 w-6 text-primary" />
-              {/* Παλιό πλαίσιο προεπισκόπησης — όχι το τρέχον app icon */}
-              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
-                <Comp className="h-10 w-10 text-primary-foreground" />
-              </span>
-            </div>
-          </div>
-        ))}
-      </section>
     </div>
   );
 }

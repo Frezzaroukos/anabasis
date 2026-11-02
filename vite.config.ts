@@ -69,7 +69,7 @@ export default defineConfig({
         // Τα press assets είναι για ανθρώπους (README/δελτίο τύπου) και τα
         // screenshots για το install-prompt του browser — κανένα δεν το χρειάζεται
         // η εφαρμογή offline, οπότε έξω από το precache.
-        globIgnores: ['press/**', 'screenshots/**'],
+        globIgnores: ['press/**', 'screenshots/**', 'landing/**', 'landing.html'],
       },
     }),
   ].filter(Boolean),
