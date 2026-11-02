@@ -78,6 +78,24 @@ describe('PublicProfilePage', () => {
     expect(screen.queryByRole('button', { name: 'Add friend' })).toBeNull();
   });
 
+  it('δείχνει διακριτό icon/tint για κάθε earned badge', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        jsonResponse({
+          ...profile,
+          badges: JSON.stringify(['first-ascent', 'week-streak']),
+        }),
+      ),
+    );
+    const { container } = renderPage();
+
+    expect(await screen.findByText('Bob')).toBeTruthy();
+    expect(container.querySelector('svg.lucide-mountain')).toBeTruthy();
+    expect(container.querySelector('svg.lucide-calendar-check')).toBeTruthy();
+    expect(container.querySelector('svg.lucide-award')).toBeNull();
+  });
+
   it('logged-in μπορεί να στείλει αίτημα από το δημόσιο προφίλ', async () => {
     globalThis.localStorage.setItem(
       'anabasis.auth',

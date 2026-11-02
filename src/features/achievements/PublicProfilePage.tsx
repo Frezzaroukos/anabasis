@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Flame, Award, Lock, UserPlus, Check, Send, X } from 'lucide-react';
+import { Flame, Lock, UserPlus, Check, Send, X } from 'lucide-react';
 import { api, ApiError } from '@/lib/api/client';
 import { useAuth } from '@/lib/api/auth';
 import type { FriendshipState, PublicProfile } from '@/lib/api/types';
 import { levelProgress, BADGES } from '@/lib/gamification';
+import { BADGE_VISUALS, FALLBACK_BADGE_VISUAL } from './badgeIcons';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 
@@ -309,6 +310,8 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {BADGES.map((b) => {
             const has = earned.includes(b.id);
+            const visual = BADGE_VISUALS[b.id] ?? FALLBACK_BADGE_VISUAL;
+            const Icon = visual.Icon;
             return (
               <div
                 key={b.id}
@@ -317,10 +320,14 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
                 }`}
               >
                 {has ? (
-                  <Award className="h-9 w-9 text-[hsl(var(--gold))]" />
+                  <span
+                    className={`grid h-9 w-9 place-items-center rounded-full ${visual.tone}`}
+                  >
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
                 ) : (
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-muted-foreground">
-                    <Lock className="h-4 w-4" />
+                    <Lock className="h-4 w-4" aria-hidden />
                   </span>
                 )}
                 <span className="mt-2 text-sm font-medium">{t(b.nameKey)}</span>

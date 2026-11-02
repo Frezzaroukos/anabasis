@@ -5,6 +5,7 @@ import { ArrowRight, LineChart, Lock, Sparkles, Users } from 'lucide-react';
 import { getGamificationInput } from '@/lib/db/queries';
 import { useCountUp } from '@/hooks/useCountUp';
 import { Logo } from '@/components/Logo';
+import { cn } from '@/lib/utils';
 import {
   levelProgress,
   badgeStates,
@@ -12,6 +13,7 @@ import {
   hasActivity,
   type GamificationInput,
 } from '@/lib/gamification';
+import { BADGE_VISUALS, FALLBACK_BADGE_VISUAL } from './badgeIcons';
 
 const RING_R = 52;
 const RING_CIRC = 2 * Math.PI * RING_R;
@@ -147,26 +149,33 @@ function Badges({ data }: { data: GamificationInput }) {
         {t('gami.badges')}
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {badges.map((b) => (
-          <div
-            key={b.id}
-            className={`flex flex-col items-center rounded-xl bg-card p-4 text-center ${
-              b.isEarned ? '' : 'opacity-55'
-            }`}
-          >
-            {b.isEarned ? (
-              <Logo summit className="h-9 w-9 text-[hsl(var(--gold))]" />
-            ) : (
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-muted-foreground">
-                <Lock className="h-4 w-4" />
+        {badges.map((b) => {
+          const visual = BADGE_VISUALS[b.id] ?? FALLBACK_BADGE_VISUAL;
+          const Icon = visual.Icon;
+          return (
+            <div
+              key={b.id}
+              className={cn(
+                'flex flex-col items-center rounded-xl bg-card p-4 text-center',
+                !b.isEarned && 'opacity-55',
+              )}
+            >
+              {b.isEarned ? (
+                <span className={cn('grid h-10 w-10 place-items-center rounded-full', visual.tone)}>
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+              ) : (
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-elevated text-muted-foreground">
+                  <Lock className="h-4 w-4" aria-hidden />
+                </span>
+              )}
+              <span className="mt-2 text-sm font-medium">{t(b.nameKey)}</span>
+              <span className="mt-0.5 text-xs leading-tight text-muted-foreground">
+                {t(b.descKey)}
               </span>
-            )}
-            <span className="mt-2 text-sm font-medium">{t(b.nameKey)}</span>
-            <span className="mt-0.5 text-xs leading-tight text-muted-foreground">
-              {t(b.descKey)}
-            </span>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
