@@ -232,10 +232,10 @@ payload (που ήδη κουβαλά deleted_at).
 Dormant χωρίς `ANABASIS_STRIPE_SECRET_KEY` + `ANABASIS_STRIPE_WEBHOOK_SECRET`
 και τουλάχιστον ένα price. Καμία χρέωση δεν γίνεται χωρίς αυτά.
 Price env (ένα ή περισσότερα):
-- `ANABASIS_STRIPE_PRICE_MONTHLY` — €2.99/month subscription (fallback:
+- `ANABASIS_STRIPE_PRICE_MONTHLY` — €10.99/month subscription (fallback:
   `ANABASIS_STRIPE_PRICE_ID`, legacy 60-day one-time).
-- `ANABASIS_STRIPE_PRICE_FOUNDING` — €14.99 lifetime, πρώτοι 250.
-- `ANABASIS_STRIPE_PRICE_STANDARD` — €29.99 lifetime.
+- `ANABASIS_STRIPE_PRICE_FOUNDING` — €49.99 lifetime, πρώτοι 250.
+- `ANABASIS_STRIPE_PRICE_STANDARD` — €99.99 lifetime.
 Προαιρετικά: `ANABASIS_PUBLIC_URL` (default `https://anabasis.axonos.dev`),
 `ANABASIS_STRIPE_LABEL_*`, `ANABASIS_STRIPE_AMOUNT_*`,
 `ANABASIS_STRIPE_FOUNDING_LIMIT` (default 250), legacy

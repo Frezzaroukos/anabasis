@@ -109,9 +109,9 @@ impl BillingConfig {
                 id: MONTHLY_ID.into(),
                 price_id,
                 kind: PlanKind::Subscription,
-                amount: amount("ANABASIS_STRIPE_AMOUNT_MONTHLY", 299),
+                amount: amount("ANABASIS_STRIPE_AMOUNT_MONTHLY", 1099),
                 price_label: pick("ANABASIS_STRIPE_LABEL_MONTHLY")
-                    .unwrap_or_else(|| "€2.99 / month".into()),
+                    .unwrap_or_else(|| "€10.99 / month".into()),
                 days: Some(DEFAULT_MONTHLY_DAYS),
             });
         }
@@ -120,9 +120,9 @@ impl BillingConfig {
                 id: FOUNDING_ID.into(),
                 price_id,
                 kind: PlanKind::Lifetime,
-                amount: amount("ANABASIS_STRIPE_AMOUNT_FOUNDING", 1499),
+                amount: amount("ANABASIS_STRIPE_AMOUNT_FOUNDING", 4999),
                 price_label: pick("ANABASIS_STRIPE_LABEL_FOUNDING")
-                    .unwrap_or_else(|| "€14.99 once".into()),
+                    .unwrap_or_else(|| "€49.99 once".into()),
                 days: None,
             });
         }
@@ -131,9 +131,9 @@ impl BillingConfig {
                 id: STANDARD_ID.into(),
                 price_id,
                 kind: PlanKind::Lifetime,
-                amount: amount("ANABASIS_STRIPE_AMOUNT_STANDARD", 2999),
+                amount: amount("ANABASIS_STRIPE_AMOUNT_STANDARD", 9999),
                 price_label: pick("ANABASIS_STRIPE_LABEL_STANDARD")
-                    .unwrap_or_else(|| "€29.99 once".into()),
+                    .unwrap_or_else(|| "€99.99 once".into()),
                 days: None,
             });
         }
@@ -1085,9 +1085,9 @@ mod tests {
         })
         .unwrap();
         assert_eq!(cfg.plans.len(), 3);
-        assert_eq!(cfg.plan(MONTHLY_ID).unwrap().amount, 299);
-        assert_eq!(cfg.plan(FOUNDING_ID).unwrap().amount, 1499);
-        assert_eq!(cfg.plan(STANDARD_ID).unwrap().amount, 2999);
+        assert_eq!(cfg.plan(MONTHLY_ID).unwrap().amount, 1099);
+        assert_eq!(cfg.plan(FOUNDING_ID).unwrap().amount, 4999);
+        assert_eq!(cfg.plan(STANDARD_ID).unwrap().amount, 9999);
         assert_eq!(cfg.founding_limit, 250);
     }
 }

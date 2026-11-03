@@ -11,9 +11,9 @@
 - [x] Γιατί όχι Shopify: digital-only order ⇒ εμείς MoR/VAT, €19–27/μήνα, όχι native app checkout.
 - [ ] KYC/IBAN/ΑΦΜ από Aggelos.
 - [ ] Paddle sandbox + domain verification + products:
-  - `pro-monthly` €2.99/month
-  - `founding-lifetime` €14.99 one-time / 250 cap
-  - `standard-lifetime` €29.99 one-time
+  - `pro-monthly` €10.99/month
+  - `founding-lifetime` €49.99 one-time / 250 cap
+  - `standard-lifetime` €99.99 one-time
 - [ ] Backend provider abstraction + webhook idempotency.
 - [ ] Sandbox: subscription, lifetime, cancel-at-period-end, refund, portal, duplicate webhook.
 - [ ] Production smoke: 1 πραγματική αγορά + refund.
