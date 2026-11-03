@@ -266,6 +266,20 @@ pub fn router(state: AppState) -> Router {
         .finish()
         .expect("έγκυρο governor config για social");
 
+    // Avatars are fetched by <img> for every leaderboard row, so they must not
+    // share the 60/min social governor. Tokens are unguessable and immutable.
+    let avatar_governor = GovernorConfigBuilder::default()
+        .key_extractor(CfConnectingIpKeyExtractor {
+            trust_cf_ip: state.trust_cf_ip,
+        })
+        .period(Duration::from_secs(1))
+        .burst_size(300)
+        .finish()
+        .expect("έγκυρο governor config για avatars");
+    let avatar_routes = Router::new()
+        .route("/api/social/avatar/{token}", get(social::avatar))
+        .layer(GovernorLayer::new(avatar_governor));
+
     let social_routes = Router::new()
         .route("/me", get(social::me))
         .route("/profile", post(social::update_profile))
@@ -320,6 +334,7 @@ pub fn router(state: AppState) -> Router {
         .nest("/api/auth", auth_routes)
         .nest("/api/sync", sync_routes)
         .nest("/api/social", social_routes)
+        .merge(avatar_routes)
         .nest("/api/billing", billing_routes)
         .nest("/api/admin", admin_routes)
         .layer(TraceLayer::new_for_http())

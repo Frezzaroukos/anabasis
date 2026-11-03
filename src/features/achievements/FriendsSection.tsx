@@ -24,7 +24,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { getGamificationInput } from '@/lib/db/queries';
-import { api } from '@/lib/api/client';
+import { api, resolveAssetUrl } from '@/lib/api/client';
 import { useAuth } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -1021,10 +1021,11 @@ function Avatar({
     : self
       ? 'bg-elevated text-foreground ring-1 ring-[hsl(var(--gold)/0.45)]'
       : 'bg-elevated text-muted-foreground';
-  if (image) {
+  const resolvedImage = resolveAssetUrl(image);
+  if (resolvedImage) {
     return (
       <img
-        src={image}
+        src={resolvedImage}
         alt=""
         aria-hidden="true"
         className={`shrink-0 rounded-full object-cover ${dims} ${

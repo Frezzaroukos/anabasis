@@ -129,6 +129,18 @@ function resolveBaseUrl(): string {
   return isTauri ? 'http://localhost:8121/api' : '/api';
 }
 
+/** Τα social payloads επιστρέφουν API-relative avatar paths. Το <img> δεν
+ * περνά από το fetch wrapper, οπότε το Tauri χρειάζεται τον πλήρη API origin. */
+export function resolveAssetUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^(?:https?:|data:|blob:)/i.test(path)) return path;
+  const base = resolveBaseUrl();
+  if (base.startsWith('http') && path.startsWith('/api/')) {
+    return `${base.slice(0, -4)}${path}`;
+  }
+  return path;
+}
+
 /** Πλήρες URL για "Sign in with Google" — browser navigation
  * (`window.location.href = googleStart()`), ΟΧΙ fetch (302 redirect). */
 export function googleStart(): string {

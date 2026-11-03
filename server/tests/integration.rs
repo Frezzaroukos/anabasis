@@ -1,7 +1,7 @@
 use anabasis_api::app::{build_state, router, AppState, EmailConfig, GoogleOAuthConfig};
 use anabasis_api::billing::BillingConfig;
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::{header, Request, StatusCode};
 use axum::Router;
 use hmac::{Hmac, KeyInit, Mac};
 use serde_json::{json, Value};
@@ -1856,6 +1856,75 @@ async fn social_public_profile_respects_privacy() {
     assert_eq!(body["username"], "bbb");
     assert_eq!(body["level"], 3);
     assert!(body.get("email").is_none());
+}
+
+#[tokio::test]
+async fn social_avatar_is_opaque_binary_and_clears() {
+    let (app, _state, _dir) = test_app(None).await;
+    let token = signup(&app, "avatar@example.com", "correcthorsebattery")
+        .await
+        .1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    set_username(&app, &token, "avatar_user").await;
+
+    let png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&token),
+        Some(json!({ "avatar_url": png })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let url = body["avatar_url"].as_str().expect("avatar url").to_string();
+    assert!(url.starts_with("/api/social/avatar/"), "unexpected url: {url}");
+    assert!(!url.contains("data:"), "data URL leaked in profile response");
+
+    let req = Request::builder()
+        .uri(&url)
+        .header("cf-connecting-ip", "203.0.113.7")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        res.headers().get(header::CONTENT_TYPE).unwrap(),
+        "image/png"
+    );
+    assert!(
+        res.headers()
+            .get(header::CACHE_CONTROL)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .contains("immutable")
+    );
+    let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n");
+
+    // Το remove σβήνει ΚΑΙ το token· το παλιό URL δεν πρέπει να σερβίρει τίποτα.
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/social/profile",
+        Some(&token),
+        Some(json!({ "avatar_url": "" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["avatar_url"].is_null());
+    let req = Request::builder()
+        .uri(&url)
+        .header("cf-connecting-ip", "203.0.113.7")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

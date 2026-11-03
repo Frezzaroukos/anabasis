@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Flame, Lock, UserPlus, Check, Send, X } from 'lucide-react';
-import { api, ApiError } from '@/lib/api/client';
+import { api, ApiError, resolveAssetUrl } from '@/lib/api/client';
 import { useAuth } from '@/lib/api/auth';
 import type { FriendshipState, PublicProfile } from '@/lib/api/types';
 import { levelProgress, BADGES } from '@/lib/gamification';
@@ -277,7 +277,7 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
         </div>
         {profile.avatar_url && (
           <img
-            src={profile.avatar_url}
+            src={resolveAssetUrl(profile.avatar_url) ?? undefined}
             alt=""
             className="mt-4 h-20 w-20 rounded-full object-cover ring-1 ring-border"
           />

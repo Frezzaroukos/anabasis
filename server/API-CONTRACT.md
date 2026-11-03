@@ -176,8 +176,9 @@ Body: `{ new_password }`. Μόνο για passwordless (Google/magic-link) λο�
 `{ revoked: <n> }`.
 
 ### Social  (auth, 60 req/min/IP)
-- `GET /api/social/me` → `{ username, display_name, avatar_url, share_profile, friends_count, incoming_count, outgoing_count, has_stats }`.
-- `POST /api/social/profile` body `{ username?, display_name?, avatar_url?, share_profile? }` — `username: ""` και `avatar_url: ""` τα καθαρίζουν· 409 `username_taken`· 400 `invalid_username` / `invalid_avatar` (data URL εικόνας ≤120KB).
+- `GET /api/social/me` → `{ username, display_name, avatar_url, share_profile, friends_count, incoming_count, outgoing_count, has_stats }`. Το `avatar_url` είναι opaque `/api/social/avatar/<token>` — ποτέ data URL.
+- `GET /api/social/avatar/<token>` (anonymous, 300/min/IP) → raster image (`image/webp|jpeg|png`) με immutable cache. Το token αλλάζει σε κάθε upload/remove και δεν προκύπτει από username.
+- `POST /api/social/profile` body `{ username?, display_name?, avatar_url?, share_profile? }` — `username: ""` και `avatar_url: ""` τα καθαρίζουν· 409 `username_taken`· 400 `invalid_username` / `invalid_avatar` (data URL εικόνας ≤120KB input· η απάντηση περιέχει μόνο opaque avatar URL).
 - `POST /api/social/stats` — aggregate snapshot (level/xp/tier/altitude/badges/streaks), ποτέ raw workouts/body.
 - `GET /api/social/friends` · `GET|POST /api/social/requests` · `POST /api/social/requests/{id}/accept` · `POST /api/social/friends/{id}/remove` (decline/cancel/unfriend).
 - `GET /api/social/search?q=` (auth) — min 2 chars, max 40, μόνο `share_profile=1 AND disabled=0`, εκτός εαυτού, `LIMIT 8`· επιστρέφει aggregate + `friendship: "friend"|"in"|"out"|null`.

@@ -165,10 +165,10 @@ export function ProgramsPage() {
           )}
         </div>
         {!creating && (
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 min-[360px]:flex-row">
             <Button
               variant="outline"
-              className="flex-1 sm:flex-none"
+              className="min-[360px]:flex-1 sm:flex-none"
               disabled={!canCreate}
               onClick={() => setTemplatesOpen((v) => !v)}
             >
@@ -176,7 +176,7 @@ export function ProgramsPage() {
               {t('programs.fromTemplate')}
             </Button>
             <Button
-              className="flex-1 sm:flex-none"
+              className="min-[360px]:flex-1 sm:flex-none"
               disabled={!canCreate}
               onClick={() => setCreating(true)}
             >

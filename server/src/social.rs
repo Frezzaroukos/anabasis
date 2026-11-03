@@ -11,11 +11,15 @@
 //! `share_profile=1`. Ο server είναι authoritative για level/tier/altitude (τα
 //! υπολογίζει από το XP) ώστε ο client να μην μπορεί να τα φουσκώσει.
 
+use axum::body::Body;
 use axum::extract::{Path, State};
-use axum::response::IntoResponse;
+use axum::http::{header, HeaderValue};
+use axum::response::{IntoResponse, Response};
 use axum::Json;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::AssertSqlSafe;
+use uuid::Uuid;
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
@@ -83,6 +87,18 @@ fn normalize_username(raw: &str) -> Option<String> {
     Some(u)
 }
 
+fn new_avatar_token() -> String {
+    Uuid::new_v4().simple().to_string()
+}
+
+/// Το avatar ζει πίσω από opaque token, ώστε το URL να είναι unguessable και
+/// cacheable· τα data URLs δεν στέλνονται στα social payloads.
+fn avatar_url_for(token: &Option<String>) -> Option<String> {
+    token
+        .as_deref()
+        .map(|t| format!("/api/social/avatar/{t}"))
+}
+
 // ── /api/social/me ─────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]
@@ -102,7 +118,7 @@ pub async fn me(
     user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let row: (Option<String>, Option<String>, Option<String>, bool) =
-        sqlx::query_as("SELECT username, display_name, avatar_url, share_profile FROM accounts WHERE id = ?")
+        sqlx::query_as("SELECT username, display_name, avatar_token, share_profile FROM accounts WHERE id = ?")
             .bind(&user.account_id)
             .fetch_one(&state.pool)
             .await?;
@@ -138,7 +154,7 @@ pub async fn me(
     Ok(Json(MyProfile {
         username: row.0,
         display_name: row.1,
-        avatar_url: row.2,
+        avatar_url: avatar_url_for(&row.2),
         share_profile: row.3,
         friends_count,
         incoming_count,
@@ -213,18 +229,19 @@ pub async fn update_profile(
     }
 
     if let Some(ref raw) = body.avatar_url {
-        let value: Option<String> = if raw.trim().is_empty() {
-            None
+        let (value, token): (Option<String>, Option<String>) = if raw.trim().is_empty() {
+            (None, None)
         } else if raw.starts_with("data:image/") && raw.len() <= 120_000 {
-            Some(raw.to_string())
+            (Some(raw.clone()), Some(new_avatar_token()))
         } else {
             return Err(AppError::bad_request(
                 "invalid_avatar",
                 "Η εικόνα προφίλ πρέπει να είναι αρχείο εικόνας έως 120KB.",
             ));
         };
-        sqlx::query("UPDATE accounts SET avatar_url = ? WHERE id = ?")
+        sqlx::query("UPDATE accounts SET avatar_url = ?, avatar_token = ? WHERE id = ?")
             .bind(&value)
+            .bind(&token)
             .bind(&user.account_id)
             .execute(&state.pool)
             .await?;
@@ -338,7 +355,7 @@ pub async fn friends(
     user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = sqlx::query_as::<_, FriendRow>(
-        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
+        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name, a.avatar_token AS avatar_url,
                 'accepted' AS status, 'friend' AS direction,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
@@ -353,6 +370,10 @@ pub async fn friends(
     .fetch_all(&state.pool)
     .await?;
 
+    let mut rows = rows;
+    for row in &mut rows {
+        row.avatar_url = avatar_url_for(&row.avatar_url);
+    }
     Ok(Json(rows))
 }
 
@@ -362,7 +383,7 @@ pub async fn requests(
     user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let rows = sqlx::query_as::<_, FriendRow>(
-        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
+        "SELECT a.id AS account_id, a.username AS username, a.display_name AS display_name, a.avatar_token AS avatar_url,
                 'pending' AS status,
                 CASE WHEN f.addressee_id = ?1 THEN 'in' ELSE 'out' END AS direction,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
@@ -378,6 +399,10 @@ pub async fn requests(
     .fetch_all(&state.pool)
     .await?;
 
+    let mut rows = rows;
+    for row in &mut rows {
+        row.avatar_url = avatar_url_for(&row.avatar_url);
+    }
     Ok(Json(rows))
 }
 
@@ -548,7 +573,7 @@ pub async fn leaderboard(
 
     let sql = if q.scope == "global" {
         format!(
-            "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
+            "SELECT a.username AS username, a.display_name AS display_name, a.avatar_token AS avatar_url,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
                     ps.badges AS badges, COALESCE(ps.week_xp, 0) AS week_xp,
@@ -561,7 +586,7 @@ pub async fn leaderboard(
         )
     } else {
         format!(
-            "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
+            "SELECT a.username AS username, a.display_name AS display_name, a.avatar_token AS avatar_url,
                     ps.level AS level, ps.xp AS xp, ps.tier AS tier,
                     ps.altitude_m AS altitude_m, ps.streak_days AS streak_days,
                     ps.badges AS badges, COALESCE(ps.week_xp, 0) AS week_xp,
@@ -586,6 +611,10 @@ pub async fn leaderboard(
     }
     let rows = query.fetch_all(&state.pool).await?;
 
+    let mut rows = rows;
+    for row in &mut rows {
+        row.avatar_url = avatar_url_for(&row.avatar_url);
+    }
     Ok(Json(rows))
 }
 
@@ -632,7 +661,7 @@ pub async fn search(
     let query: String = query.chars().take(40).collect();
 
     let rows = sqlx::query_as::<_, SearchResult>(
-        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
+        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_token AS avatar_url,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
                 COALESCE(ps.streak_days, 0) AS streak_days, COALESCE(ps.badges, '[]') AS badges,
@@ -660,6 +689,10 @@ pub async fn search(
     .fetch_all(&state.pool)
     .await?;
 
+    let mut rows = rows;
+    for row in &mut rows {
+        row.avatar_url = avatar_url_for(&row.avatar_url);
+    }
     Ok(Json(rows))
 }
 
@@ -695,7 +728,7 @@ pub async fn public_profile_anonymous(
     let username = normalize_username(&username).ok_or_else(AppError::not_found)?;
 
     let row = sqlx::query_as::<_, PublicProfile>(
-        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
+        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_token AS avatar_url,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
                 COALESCE(ps.badges, '[]') AS badges,
@@ -710,6 +743,8 @@ pub async fn public_profile_anonymous(
     .await?
     .ok_or_else(AppError::not_found)?;
 
+    let mut row = row;
+    row.avatar_url = avatar_url_for(&row.avatar_url);
     Ok(Json(row))
 }
 
@@ -723,7 +758,7 @@ pub async fn public_profile(
     // Privacy στο SQL: ορατό μόνο αν share_profile=1 Ή είναι accepted φίλος μου.
     // Uniform not-found αλλιώς (καμία διαφορά «δεν υπάρχει» vs «ιδιωτικό»).
     let row = sqlx::query_as::<_, PublicProfile>(
-        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_url AS avatar_url,
+        "SELECT a.username AS username, a.display_name AS display_name, a.avatar_token AS avatar_url,
                 COALESCE(ps.level, 1) AS level, COALESCE(ps.xp, 0) AS xp,
                 COALESCE(ps.tier, 'baseCamp') AS tier, COALESCE(ps.altitude_m, 0) AS altitude_m,
                 COALESCE(ps.badges, '[]') AS badges,
@@ -756,5 +791,66 @@ pub async fn public_profile(
     .await?
     .ok_or_else(AppError::not_found)?;
 
+    let mut row = row;
+    row.avatar_url = avatar_url_for(&row.avatar_url);
     Ok(Json(row))
+}
+
+// ── GET /api/social/avatar/{token} — binary avatar (cacheable, unguessable) ─────
+
+/// Τα data URLs μένουν server-side· ο client παίρνει ένα opaque URL. Το token
+/// αλλάζει σε κάθε upload/remove, οπότε το immutable cache δεν δείχνει παλιά
+/// εικόνα. Επιτρέπονται μόνο raster formats (ποτέ SVG — XSS surface).
+pub async fn avatar(
+    State(state): State<AppState>,
+    Path(token): Path<String>,
+) -> Result<Response, AppError> {
+    if token.len() != 32 || !token.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(AppError::not_found());
+    }
+
+    let raw: Option<String> =
+        sqlx::query_scalar("SELECT avatar_url FROM accounts WHERE avatar_token = ? AND disabled = 0")
+            .bind(&token)
+            .fetch_optional(&state.pool)
+            .await?
+            .flatten();
+    let Some(raw) = raw else {
+        return Err(AppError::not_found());
+    };
+
+    let (mime, payload) = parse_avatar_data_url(&raw).ok_or_else(AppError::not_found)?;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(payload)
+        .map_err(|_| AppError::not_found())?;
+
+    let mut response = Response::new(Body::from(bytes));
+    let headers = response.headers_mut();
+    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
+    headers.insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("public, max-age=31536000, immutable"),
+    );
+    headers.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; style-src 'unsafe-inline'; sandbox"),
+    );
+    Ok(response)
+}
+
+fn parse_avatar_data_url(raw: &str) -> Option<(&'static str, &str)> {
+    let rest = raw.strip_prefix("data:")?;
+    let (meta, payload) = rest.split_once(',')?;
+    let mime = meta.strip_suffix(";base64")?;
+    let normalized = match mime {
+        "image/webp" => "image/webp",
+        "image/jpeg" | "image/jpg" => "image/jpeg",
+        "image/png" => "image/png",
+        _ => return None,
+    };
+    Some((normalized, payload))
 }
