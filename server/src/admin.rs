@@ -356,6 +356,63 @@ pub async fn gc(
     }))
 }
 
+#[derive(Deserialize, Default)]
+pub struct ReportsQuery {
+    /// `open` | `reviewed` | `dismissed` — ή `all`/απόν για όλα.
+    status: Option<String>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct AdminReportRow {
+    id: String,
+    reporter_id: String,
+    reporter_username: Option<String>,
+    target_account_id: String,
+    target_username: String,
+    reason: String,
+    note: Option<String>,
+    status: String,
+    created_at: String,
+    reviewed_at: Option<String>,
+    reviewer_id: Option<String>,
+}
+
+/// GET /api/admin/reports — η ουρά manual moderation. Χωρίς status φίλτρο
+/// επιστρέφει τα πρόσφατα με τα `open` πρώτα· με `status=` φιλτράρει αυστηρά.
+/// Δεν αλλάζει καμία κατάσταση — η απόφαση μένει στον άνθρωπο admin.
+pub async fn reports(
+    State(state): State<AppState>,
+    _admin: AdminUser,
+    Query(q): Query<ReportsQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let status = match q.status.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        None | Some("all") => None,
+        Some(s @ ("open" | "reviewed" | "dismissed")) => Some(s),
+        Some(_) => {
+            return Err(AppError::bad_request(
+                "invalid_status",
+                "Το status πρέπει να είναι 'open', 'reviewed', 'dismissed' ή 'all'.",
+            ))
+        }
+    };
+
+    let rows = sqlx::query_as::<_, AdminReportRow>(
+        "SELECT r.id, r.reporter_id, ra.username AS reporter_username,
+                r.target_account_id, r.target_username, r.reason, r.note, r.status,
+                r.created_at, r.reviewed_at, r.reviewer_id
+         FROM reports r
+         LEFT JOIN accounts ra ON ra.id = r.reporter_id
+         WHERE (?1 IS NULL OR r.status = ?1)
+         ORDER BY CASE WHEN r.status = 'open' THEN 0 ELSE 1 END, r.created_at DESC
+         LIMIT 200",
+    )
+    .bind(status)
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(rows))
+}
+
 pub async fn stats(
     State(state): State<AppState>,
     _admin: AdminUser,

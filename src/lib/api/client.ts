@@ -33,6 +33,8 @@ import type {
   LeaderboardRow,
   PublicProfile,
   PublishStatsBody,
+  ReportReason,
+  AdminReport,
 } from './types';
 
 export * from './types';
@@ -314,6 +316,14 @@ export const api = {
     return request<AdminStats>('/admin/stats');
   },
 
+  /** Manual moderation queue — δεν υπάρχει automated moderation. */
+  adminReports(
+    status?: 'open' | 'reviewed' | 'dismissed',
+  ): Promise<AdminReport[]> {
+    const query = status ? `?status=${status}` : '';
+    return request<AdminReport[]>(`/admin/reports${query}`);
+  },
+
   billingConfig(): Promise<BillingConfig> {
     return request<BillingConfig>('/billing/config');
   },
@@ -390,6 +400,17 @@ export const api = {
 
   socialSendRequest(username: string): Promise<{ status: string }> {
     return request('/social/requests', { method: 'POST', body: { username } });
+  },
+
+  socialReport(
+    username: string,
+    reason: ReportReason,
+    note?: string,
+  ): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>('/social/report', {
+      method: 'POST',
+      body: { username, reason, ...(note ? { note } : {}) },
+    });
   },
 
   socialAccept(id: string): Promise<void> {

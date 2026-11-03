@@ -177,8 +177,9 @@ Body: `{ new_password }`. Μόνο για passwordless (Google/magic-link) λο�
 
 ### Social  (auth, 60 req/min/IP)
 - `GET /api/social/me` → `{ username, display_name, avatar_url, share_profile, friends_count, incoming_count, outgoing_count, has_stats }`. Το `avatar_url` είναι opaque `/api/social/avatar/<token>` — ποτέ data URL.
-- `GET /api/social/avatar/<token>` (anonymous, 300/min/IP) → raster image (`image/webp|jpeg|png`) με immutable cache. Το token αλλάζει σε κάθε upload/remove και δεν προκύπτει από username.
+- `GET /api/social/avatar/<token>` (anonymous, 300/min/IP) → raster image (`image/webp|jpeg|png`) με `public, max-age=3600`· το παλιό token γίνεται 404 στο remove. Το token αλλάζει σε κάθε upload/remove και δεν προκύπτει από username.
 - `POST /api/social/profile` body `{ username?, display_name?, avatar_url?, share_profile? }` — `username: ""` και `avatar_url: ""` τα καθαρίζουν· 409 `username_taken`· 400 `invalid_username` / `invalid_avatar` (data URL εικόνας ≤120KB input· η απάντηση περιέχει μόνο opaque avatar URL).
+- `POST /api/social/report` body `{ username, reason, note? }` — manual moderation report. `reason` ∈ `spam|harassment|nudity|impersonation|other`· `note` ≤500 chars. 400 `invalid_username` / `invalid_reason` / `invalid_note`. Άγνωστος, disabled ή self target → uniform 404 (ίδιο με ανύπαρκτο). Μία ανοιχτή αναφορά per reporter/target (idempotent duplicate) → 200 `{ ok: true }`. **Δεν υπάρχει automated moderation** — η αναφορά απλώς μπαίνει στην ουρά για άνθρωπο admin.
 - `POST /api/social/stats` — aggregate snapshot (level/xp/tier/altitude/badges/streaks), ποτέ raw workouts/body.
 - `GET /api/social/friends` · `GET|POST /api/social/requests` · `POST /api/social/requests/{id}/accept` · `POST /api/social/friends/{id}/remove` (decline/cancel/unfriend).
 - `GET /api/social/search?q=` (auth) — min 2 chars, max 40, μόνο `share_profile=1 AND disabled=0`, εκτός εαυτού, `LIMIT 8`· επιστρέφει aggregate + `friendship: "friend"|"in"|"out"|null`.
@@ -226,6 +227,7 @@ payload (που ήδη κουβαλά deleted_at).
 - POST /api/admin/users/:id/plan body `{ plan: "free"|"pro", days?: 1..3650 }` → 200
   `{ plan, plan_expires_at, plan_active }`. Χειροκίνητη παροχή/ανάκληση Pro
   (δώρα/support)· το `pro` επεκτείνεται από την τρέχουσα λήξη αν είναι ενεργή.
+- GET  /api/admin/reports?status=open|reviewed|dismissed|all → `[ { id, reporter_id, reporter_username, target_account_id, target_username, reason, note, status, created_at, reviewed_at, reviewer_id } ]`. Χωρίς φίλτρο: πρόσφατα με τα `open` πρώτα (max 200). 400 `invalid_status`.
 - GET  /api/admin/stats → `{ accounts, active_accounts, disabled_accounts, admins, pro_accounts, sessions, rows, db_size_bytes, uptime_seconds }`
 
 ### Billing  (Stripe monthly + lifetime)

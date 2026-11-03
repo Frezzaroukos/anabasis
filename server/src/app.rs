@@ -291,6 +291,7 @@ pub fn router(state: AppState) -> Router {
             get(social::requests).post(social::send_request),
         )
         .route("/requests/{id}/accept", post(social::accept_request))
+        .route("/report", post(social::report))
         .route("/leaderboard", get(social::leaderboard))
         .route("/search", get(social::search))
         .route("/user/{username}", get(social::public_profile))
@@ -312,6 +313,7 @@ pub fn router(state: AppState) -> Router {
         .route("/users/{id}/reset_password", post(admin::reset_password))
         .route("/users/{id}/plan", post(admin::set_plan))
         .route("/users/{id}/rows", get(admin::user_rows))
+        .route("/reports", get(admin::reports))
         .route("/stats", get(admin::stats))
         .route("/gc", post(admin::gc));
 

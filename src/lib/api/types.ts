@@ -251,6 +251,24 @@ export interface PublishStatsBody {
   badges: string[];
 }
 
+/** POST /api/social/report — λόγοι που δέχεται ο server (allowlist). */
+export type ReportReason = 'spam' | 'harassment' | 'nudity' | 'impersonation' | 'other';
+
+/** GET /api/admin/reports — admin-only moderation queue (manual review). */
+export interface AdminReport {
+  id: string;
+  reporter_id: string;
+  reporter_username: string | null;
+  target_account_id: string;
+  target_username: string;
+  reason: ReportReason;
+  note: string | null;
+  status: 'open' | 'reviewed' | 'dismissed';
+  created_at: string;
+  reviewed_at: string | null;
+  reviewer_id: string | null;
+}
+
 /** Server error codes ανά endpoint — βλ. server/API-CONTRACT.md. Ελεύθερο
  * string ώστε άγνωστοι/μελλοντικοί κωδικοί να μην σπάνε τύπους. */
 export type ApiErrorCode =

@@ -1982,6 +1982,196 @@ async fn social_remove_friend_clears_edge() {
     assert_eq!(fb.as_array().unwrap().len(), 0);
 }
 
+#[tokio::test]
+async fn social_report_requires_auth_and_rejects_bad_input() {
+    let (app, _state, _dir) = test_app(None).await;
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+
+    // Auth required.
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        None,
+        Some(json!({ "username": "bbb", "reason": "spam" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // Reason allowlist.
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        Some(&a),
+        Some(json!({ "username": "bbb", "reason": "doxxing" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_reason");
+
+    // Note cap (characters, not bytes).
+    let long_note = "x".repeat(501);
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        Some(&a),
+        Some(json!({ "username": "bbb", "reason": "spam", "note": long_note })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_note");
+
+    // Self-report = uniform 404 (same as unknown target).
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        Some(&a),
+        Some(json!({ "username": "aaa", "reason": "spam" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        Some(&a),
+        Some(json!({ "username": "ghost", "reason": "spam" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    // Το B είναι ιδιωτικό (share_profile=0 by default) — η αναφορά περνά
+    // κανονικά χωρίς καμία έξτρα διαρροή/έλεγχο privacy.
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        Some(&a),
+        Some(json!({ "username": "BBB", "reason": "harassment", "note": "rude avatar" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["ok"], true);
+}
+
+#[tokio::test]
+async fn social_report_duplicate_is_idempotent_and_admin_can_list() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+    let admin = signup(&app, "admin@example.com", "correcthorsebattery")
+        .await
+        .1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let (_, b_body) = signup(&app, "b@example.com", "correcthorsebattery").await;
+    let b = b_body["token"].as_str().unwrap().to_string();
+    let b_id = b_body["account"]["id"].as_str().unwrap().to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+
+    // Non-admin cannot read the queue.
+    let (status, _) = call(&app, "GET", "/api/admin/reports", Some(&a), None).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    // Duplicate open report = idempotent OK (partial unique index).
+    for _ in 0..2 {
+        let (status, body) = call(
+            &app,
+            "POST",
+            "/api/social/report",
+            Some(&a),
+            Some(json!({ "username": "bbb", "reason": "spam", "note": "fake account" })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["ok"], true);
+    }
+
+    // Το username snapshot μένει το αρχικό ακόμα κι αν ο target αλλάξει handle.
+    set_username(&app, &b, "ccc").await;
+
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/admin/reports?status=open",
+        Some(&admin),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let rows = body.as_array().unwrap();
+    assert_eq!(rows.len(), 1, "μία ανοιχτή αναφορά per reporter/target");
+    assert_eq!(rows[0]["reporter_username"], "aaa");
+    assert_eq!(rows[0]["target_account_id"], b_id);
+    assert_eq!(rows[0]["target_username"], "bbb");
+    assert_eq!(rows[0]["reason"], "spam");
+    assert_eq!(rows[0]["note"], "fake account");
+    assert_eq!(rows[0]["status"], "open");
+    assert!(rows[0]["created_at"]
+        .as_str()
+        .is_some_and(|s| !s.is_empty()));
+
+    // Status filter.
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/admin/reports?status=dismissed",
+        Some(&admin),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body.as_array().unwrap().len(), 0);
+
+    let (status, body) = call(
+        &app,
+        "GET",
+        "/api/admin/reports?status=bogus",
+        Some(&admin),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_status");
+
+    // Disabled target → uniform 404, ίδιο με ανύπαρκτο.
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{b_id}/disable"),
+        Some(&admin),
+        Some(json!({ "disabled": true })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        Some(&a),
+        Some(json!({ "username": "ccc", "reason": "spam" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
 /// Το `db_size_bytes` ήταν `metadata(main).unwrap_or(0)` ενώ η βάση τρέχει σε
 /// WAL mode: το σκέτο main αρχείο υποτιμά, και το `unwrap_or(0)` έλεγε ψέματα
 /// («0 bytes») όταν το αρχείο δεν διαβαζόταν. Τώρα αθροίζει τα sidecars και

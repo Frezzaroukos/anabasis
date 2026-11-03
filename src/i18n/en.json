@@ -693,6 +693,9 @@
   },
   "onboarding": {
     "title": "Anabasis",
+    "rung": "RUNG {{step}}",
+    "brand": "ANABASIS",
+    "altitude": "ALTITUDE",
     "next": "Next",
     "skip": "Skip",
     "start": "Start",
@@ -706,7 +709,7 @@
     },
     "slide3": {
       "title": "Yours, offline, private",
-      "desc": "Local-first. Your data stays on your device and works without a connection. Let’s go."
+      "desc": "Local-first. Your data stays on your device unless you sign in to sync. Works without a connection. Let’s go."
     },
     "safety": {
       "title": "Train smart, stay safe",
@@ -1124,7 +1127,25 @@
       "avatarLabel": "Profile photo",
       "avatarChange": "Change photo",
       "avatarRemove": "Remove",
-      "avatarHint": "Square crop, resized automatically. Use an image you have rights to — no nudity, hate or harassment."
+      "avatarHint": "Square crop, resized automatically. Use an image you have rights to — no nudity, hate or harassment.",
+      "report": "Report",
+      "reportTitle": "Report this profile",
+      "reportIntro": "Reports are reviewed by a person. Use this for spam, harassment, nudity or impersonation — not for disagreements.",
+      "reportReasonLabel": "Reason",
+      "reportNoteLabel": "Details (optional)",
+      "reportNotePlaceholder": "What should we know?",
+      "reportNoteHint": "Up to 500 characters.",
+      "reportSubmit": "Send report",
+      "reportSuccess": "Thanks — your report was sent for review.",
+      "reportError": "Couldn't send the report. Try again.",
+      "reportDone": "Done",
+      "reportReasons": {
+        "spam": "Spam",
+        "harassment": "Harassment",
+        "nudity": "Nudity or explicit content",
+        "impersonation": "Impersonation",
+        "other": "Something else"
+      }
     },
     "add": {
       "title": "Add a friend",

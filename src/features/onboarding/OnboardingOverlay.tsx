@@ -188,11 +188,11 @@ export function OnboardingOverlay() {
                 {current.icon}
               </div>
               <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold/90">
-                RUNG {step}
+                {t('onboarding.rung', { step })}
               </span>
             </div>
             <p className="hidden font-mono text-[10px] uppercase tracking-[0.28em] text-gold/90 sm:block">
-              RUNG {step} · ANABASIS
+              {t('onboarding.rung', { step })} · {t('onboarding.brand')}
             </p>
             <h2 className="mt-4 max-w-xl font-display text-[2.6rem] font-semibold leading-[0.98] tracking-tight sm:mt-5 sm:text-6xl">
               {current.title}
@@ -204,7 +204,7 @@ export function OnboardingOverlay() {
               {slide > 0 && (
                 <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={prev}>
                   <ArrowLeft className="h-5 w-5" />
-                  {t('nav.back')}
+                  {t('onboarding.back')}
                 </Button>
               )}
               {isLast ? (
@@ -249,8 +249,8 @@ export function OnboardingOverlay() {
               </g>
             </svg>
             <div className="relative flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              <span>RUNG {step}</span>
-              <span className="text-gold/80">ANABASIS</span>
+              <span>{t('onboarding.rung', { step })}</span>
+              <span className="text-gold/80">{t('onboarding.brand')}</span>
             </div>
             <div className="relative flex flex-1 items-center justify-center py-8">
               <div className="absolute h-48 w-48 rounded-full border border-border/60" />
@@ -271,7 +271,7 @@ export function OnboardingOverlay() {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-muted-foreground">
-                    ALTITUDE
+                    {t('onboarding.altitude')}
                   </p>
                   <p className="mt-1 font-display text-5xl leading-none tracking-tight text-foreground">
                     {step}

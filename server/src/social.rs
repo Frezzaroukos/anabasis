@@ -524,6 +524,94 @@ pub async fn remove_friend(
     Ok(Json(serde_json::json!({})))
 }
 
+// ── POST /api/social/report — manual moderation queue ─────────────────────────
+//
+// Δεν υπάρχει automated image moderation. Αυτό είναι απλώς το ανθρώπινο
+// report flow: ο χρήστης αναφέρει ένα προφίλ, ο admin το βλέπει στο
+// /api/admin/reports. Καμία απόφαση/τιμωρία δεν παίρνεται αυτόματα εδώ.
+
+const REPORT_REASONS: &[&str] = &["spam", "harassment", "nudity", "impersonation", "other"];
+const REPORT_NOTE_MAX_CHARS: usize = 500;
+
+#[derive(Deserialize)]
+pub struct ReportRequest {
+    username: String,
+    reason: String,
+    #[serde(default)]
+    note: Option<String>,
+}
+
+pub async fn report(
+    State(state): State<AppState>,
+    user: AuthUser,
+    AppJson(body): AppJson<ReportRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let username = normalize_username(&body.username).ok_or_else(|| {
+        AppError::bad_request(
+            "invalid_username",
+            "Το username θέλει 3–20 χαρακτήρες: πεζά, αριθμοί, κάτω παύλα.",
+        )
+    })?;
+
+    let reason = body.reason.trim().to_lowercase();
+    if !REPORT_REASONS.contains(&reason.as_str()) {
+        return Err(AppError::bad_request(
+            "invalid_reason",
+            "Ο λόγος αναφοράς δεν είναι έγκυρος.",
+        ));
+    }
+
+    let note: Option<String> = body
+        .note
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .map(str::to_string);
+    if note
+        .as_deref()
+        .is_some_and(|n| n.chars().count() > REPORT_NOTE_MAX_CHARS)
+    {
+        return Err(AppError::bad_request(
+            "invalid_note",
+            "Οι λεπτομέρειες μπορούν να έχουν έως 500 χαρακτήρες.",
+        ));
+    }
+
+    let target: Option<(String, bool)> =
+        sqlx::query_as("SELECT id, disabled FROM accounts WHERE username = ?")
+            .bind(&username)
+            .fetch_optional(&state.pool)
+            .await?;
+    let Some((target_id, disabled)) = target else {
+        return Err(AppError::not_found());
+    };
+    if disabled || target_id == user.account_id {
+        // Self-report ή disabled target → uniform not-found, ίδιο με «δεν υπάρχει».
+        return Err(AppError::not_found());
+    }
+
+    // Το partial unique index (reporter, target) WHERE status='open' κρατά
+    // μία ανοιχτή αναφορά· το ON CONFLICT κάνει το retry idempotent. Δεν
+    // κοιτάμε share_profile: ένα ιδιωτικό προφίλ αναφέρεται με τον ίδιο τρόπο.
+    sqlx::query(
+        "INSERT INTO reports
+             (id, reporter_id, target_account_id, target_username, reason, note, status, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'open', ?7)
+         ON CONFLICT(reporter_id, target_account_id) WHERE status = 'open' DO NOTHING",
+    )
+    .bind(Uuid::new_v4().to_string())
+    .bind(&user.account_id)
+    .bind(&target_id)
+    .bind(&username)
+    .bind(&reason)
+    .bind(&note)
+    .bind(now_iso())
+    .execute(&state.pool)
+    .await?;
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
 // ── GET /api/social/leaderboard?scope=friends|global ───────────────────────────
 
 #[derive(Deserialize)]

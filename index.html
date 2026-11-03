@@ -46,13 +46,7 @@
       κι ο React το αντικαθιστά στο πρώτο render. Το θέμα εφαρμόζεται πριν το
       paint ώστε να μην αναβοσβήνει το λευκό σε dark χρήστες.
     -->
-    <script>
-      try {
-        var t = localStorage.getItem('anabasis.theme') || 'light';
-        var dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', dark);
-      } catch (_) {}
-    </script>
+    <script src="/theme-init.js"></script>
     <style>
       html { background: #FCFCFD; }
       #app-skeleton {

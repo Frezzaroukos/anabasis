@@ -59,7 +59,7 @@ export function SettingsRow({
         {hint && <span className="block truncate text-xs text-muted-foreground">{hint}</span>}
       </span>
       {value != null && (
-        <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted-foreground">
+        <span className="min-w-0 max-w-[45%] shrink truncate text-right text-xs text-muted-foreground">
           {value}
         </span>
       )}

@@ -76,6 +76,7 @@ describe('PublicProfilePage', () => {
     renderPage();
     expect(await screen.findByText('Start your ascent')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add friend' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
   });
 
   it('δείχνει διακριτό icon/tint για κάθε earned badge', async () => {
@@ -128,6 +129,52 @@ describe('PublicProfilePage', () => {
       const call = fetchFn.mock.calls.find(([url]) => String(url).includes('/social/requests'));
       expect(call).toBeTruthy();
       expect(String(call![1]?.body)).toContain('"username":"bbb"');
+    });
+  });
+
+  it('logged-in μπορεί να στείλει αναφορά με λόγο και σημείωση', async () => {
+    globalThis.localStorage.setItem(
+      'anabasis.auth',
+      JSON.stringify({
+        token: 'test-token',
+        account: {
+          id: 'account-a',
+          email: 'a@example.com',
+          role: 'user',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      }),
+    );
+    window.dispatchEvent(new CustomEvent(AUTH_CHANGED_EVENT, { detail: null }));
+
+    const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void init;
+      if (String(input).includes('/social/report')) {
+        return jsonResponse({ ok: true });
+      }
+      return jsonResponse(profile);
+    });
+    vi.stubGlobal('fetch', fetchFn);
+
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Report' }));
+    expect(await screen.findByText('Report this profile')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Reason'), {
+      target: { value: 'harassment' },
+    });
+    fireEvent.change(screen.getByLabelText('Details (optional)'), {
+      target: { value: 'abusive avatar' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send report' }));
+
+    expect(await screen.findByText(/your report was sent for review/i)).toBeTruthy();
+    const call = fetchFn.mock.calls.find(([url]) => String(url).includes('/social/report'));
+    expect(call).toBeTruthy();
+    expect(JSON.parse(String(call![1]?.body))).toMatchObject({
+      username: 'bbb',
+      reason: 'harassment',
+      note: 'abusive avatar',
     });
   });
 });

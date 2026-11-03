@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
+import el from '@/i18n/el.json';
 import { ONBOARDING_STORAGE_KEY, OnboardingOverlay } from './OnboardingOverlay';
 
 // Node 26+ ορίζει δικό του (πειραματικό, ανενεργό) global localStorage που
@@ -28,32 +29,23 @@ Object.defineProperty(window, 'localStorage', {
   configurable: true,
 });
 
-// Τα onboarding.* keys δεν υπάρχουν ακόμα στο en.json/el.json (θα προστεθούν
-// χωριστά) — εδώ τα προσθέτουμε inline στο test resource, όπως ζητήθηκε.
-const RESOURCE = {
-  ...en,
-  onboarding: {
-    title: 'Welcome to Anabasis',
-    skip: 'Skip',
-    next: 'Next',
-    start: 'Start',
-    slide1: { title: 'Welcome to Anabasis', desc: 'The map of your ascent.' },
-    slide2: { title: 'Not just another gym app', desc: 'Log weights and skill progressions.' },
-    slide3: { title: 'Local-first', desc: 'Your data, works offline. Start.' },
-    safety: { title: 'Train smart, stay safe', desc: 'Not medical advice; train at your own risk.' },
-  },
-};
-
+// Πραγματικά resources από τα en.json/el.json — έτσι ένα stale inline copy ή
+// ένα σπασμένο i18n key στο onboarding πιάνεται αμέσως.
 beforeAll(async () => {
   await i18next.init({
     lng: 'en',
-    resources: { en: { translation: RESOURCE } },
+    fallbackLng: 'en',
+    resources: {
+      en: { translation: en },
+      el: { translation: el },
+    },
     interpolation: { escapeValue: false },
   });
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   window.localStorage.clear();
+  await i18next.changeLanguage('en');
 });
 
 afterEach(() => {
@@ -69,49 +61,56 @@ const wrap = (ui: React.ReactNode) => (
 describe('OnboardingOverlay', () => {
   it('εμφανίζεται όταν δεν υπάρχει το window.localStorage flag', () => {
     render(wrap(<OnboardingOverlay />));
-    expect(screen.getByText('Welcome to Anabasis')).toBeTruthy();
+    expect(screen.getByText('Train the basics. Climb the skills.')).toBeTruthy();
   });
 
   it('δεν εμφανίζεται αν έχει ήδη γίνει onboard', () => {
     window.localStorage.setItem(ONBOARDING_STORAGE_KEY, '1');
     render(wrap(<OnboardingOverlay />));
-    expect(screen.queryByText('Welcome to Anabasis')).toBeNull();
+    expect(screen.queryByText('Train the basics. Climb the skills.')).toBeNull();
   });
 
   it('«Παράλειψη» κλείνει το overlay και γράφει το flag', () => {
     render(wrap(<OnboardingOverlay />));
     fireEvent.click(screen.getByText('Skip'));
-    expect(screen.queryByText('Welcome to Anabasis')).toBeNull();
+    expect(screen.queryByText('Train the basics. Climb the skills.')).toBeNull();
     expect(window.localStorage.getItem(ONBOARDING_STORAGE_KEY)).toBe('1');
   });
 
   it('«Πίσω» γυρίζει στο προηγούμενο slide', () => {
     render(wrap(<OnboardingOverlay />));
     fireEvent.click(screen.getByText('Next'));
-    expect(screen.getByText('Not just another gym app')).toBeTruthy();
+    expect(screen.getByText('One ladder, two worlds')).toBeTruthy();
     fireEvent.click(screen.getByText('Back'));
-    expect(screen.getByText('Welcome to Anabasis')).toBeTruthy();
+    expect(screen.getByText('Train the basics. Climb the skills.')).toBeTruthy();
   });
 
   it('τα βήματα είναι clickable και πηγαίνουν μπρος/πίσω', () => {
     render(wrap(<OnboardingOverlay />));
-    fireEvent.click(screen.getByLabelText('Welcome to Anabasis 3'));
-    expect(screen.getByText('Local-first')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText('Welcome to Anabasis 1'));
-    expect(screen.getByText('Welcome to Anabasis')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Anabasis 3'));
+    expect(screen.getByText('Yours, offline, private')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Anabasis 1'));
+    expect(screen.getByText('Train the basics. Climb the skills.')).toBeTruthy();
   });
 
   it('προχωράει στα slides και ολοκληρώνει στο τελευταίο', () => {
     render(wrap(<OnboardingOverlay />));
     fireEvent.click(screen.getByText('Next'));
-    expect(screen.getByText('Not just another gym app')).toBeTruthy();
+    expect(screen.getByText('One ladder, two worlds')).toBeTruthy();
     fireEvent.click(screen.getByText('Next'));
-    expect(screen.getByText('Local-first')).toBeTruthy();
+    expect(screen.getByText('Yours, offline, private')).toBeTruthy();
     fireEvent.click(screen.getByText('Next'));
     expect(screen.getByText('Train smart, stay safe')).toBeTruthy();
     fireEvent.click(screen.getByText('Start'));
     expect(window.localStorage.getItem(ONBOARDING_STORAGE_KEY)).toBe('1');
     // Το τελευταίο slide είναι το health-disclaimer — η ολοκλήρωση σφραγίζει το ack.
     expect(window.localStorage.getItem('anabasis.safety.ack')).toBe('1');
+  });
+
+  it('μεταφράζει τα RUNG/ALTITUDE labels από το εκάστοτε locale', async () => {
+    await i18next.changeLanguage('el');
+    render(wrap(<OnboardingOverlay />));
+    expect(screen.getAllByText('ΣΚΑΛΙ 01').length).toBeGreaterThan(0);
+    expect(screen.getByText('ΥΨΟΜΕΤΡΟ')).toBeTruthy();
   });
 });

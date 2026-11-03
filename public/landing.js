@@ -114,8 +114,8 @@
               'Founding: ' + remaining + ' από ' + limit + ' θέσεις. Δες τιμές.'
             )
           : t(
-              'Founding: 250 spots, live status unavailable. See pricing.',
-              'Founding: 250 θέσεις, η ζωντανή κατάσταση δεν είναι διαθέσιμη. Δες τιμές.'
+              'Founding: 250 spots, status unavailable. See pricing.',
+              'Founding: 250 θέσεις, η κατάσταση δεν είναι διαθέσιμη. Δες τιμές.'
             )
     );
 
@@ -129,7 +129,7 @@
       elements.stripBar.style.width = percent + '%';
     } else {
       elements.stripCount.textContent = '250';
-      elements.stripTail.textContent = ' ' + t('spots · live', 'θέσεις · live');
+      elements.stripTail.textContent = ' ' + t('spots', 'θέσεις');
       elements.stripBar.style.width = '100%';
     }
 
@@ -179,7 +179,7 @@
     } else {
       elements.count.textContent = '250';
       elements.unit.textContent = t('spots', 'θέσεις');
-      elements.state.textContent = t('250 spots · live', '250 θέσεις · live');
+      elements.state.textContent = t('250 spots', '250 θέσεις');
       elements.note.textContent = state.mode === 'loading'
         ? t('Checking live spots…', 'Έλεγχος ζωντανών θέσεων…')
         : t('Live counter unavailable.', 'Ο μετρητής δεν είναι διαθέσιμος.');
@@ -201,7 +201,7 @@
     if (elements.short) {
       if (closed) elements.short.textContent = t('Founding closed', 'Το founding έκλεισε');
       else if (live) elements.short.textContent = 'Founding · ' + remaining + ' ' + t('left', 'θέσεις');
-      else elements.short.textContent = t('Founding · 250 spots · live', 'Founding · 250 θέσεις · live');
+      else elements.short.textContent = t('Founding · 250 spots', 'Founding · 250 θέσεις');
     }
   }
 
