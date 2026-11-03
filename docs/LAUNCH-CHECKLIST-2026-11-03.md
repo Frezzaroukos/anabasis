@@ -1,7 +1,7 @@
 # Anabasis — Launch checklist 2026-11-03
 
 **Live:** https://anabasis.axonos.dev · release `20261103-180106-476932064`  
-**Code:** `dbb81c0` (API avatar hardening) · CI/Pages: pending/ενημέρωση μετά push  
+**Code:** `845044d` (API avatar hardening + docs) · CI/Pages: green  
 **Native:** Tauri binary installed, `.deb` built.
 
 ## P0 — Payments (decision/research, όχι live ακόμα)

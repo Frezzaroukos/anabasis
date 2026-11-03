@@ -94,9 +94,7 @@ fn new_avatar_token() -> String {
 /// Το avatar ζει πίσω από opaque token, ώστε το URL να είναι unguessable και
 /// cacheable· τα data URLs δεν στέλνονται στα social payloads.
 fn avatar_url_for(token: &Option<String>) -> Option<String> {
-    token
-        .as_deref()
-        .map(|t| format!("/api/social/avatar/{t}"))
+    token.as_deref().map(|t| format!("/api/social/avatar/{t}"))
 }
 
 // ── /api/social/me ─────────────────────────────────────────────────────────────
@@ -117,11 +115,12 @@ pub async fn me(
     State(state): State<AppState>,
     user: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
-    let row: (Option<String>, Option<String>, Option<String>, bool) =
-        sqlx::query_as("SELECT username, display_name, avatar_token, share_profile FROM accounts WHERE id = ?")
-            .bind(&user.account_id)
-            .fetch_one(&state.pool)
-            .await?;
+    let row: (Option<String>, Option<String>, Option<String>, bool) = sqlx::query_as(
+        "SELECT username, display_name, avatar_token, share_profile FROM accounts WHERE id = ?",
+    )
+    .bind(&user.account_id)
+    .fetch_one(&state.pool)
+    .await?;
 
     let friends_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM friendships
@@ -809,12 +808,13 @@ pub async fn avatar(
         return Err(AppError::not_found());
     }
 
-    let raw: Option<String> =
-        sqlx::query_scalar("SELECT avatar_url FROM accounts WHERE avatar_token = ? AND disabled = 0")
-            .bind(&token)
-            .fetch_optional(&state.pool)
-            .await?
-            .flatten();
+    let raw: Option<String> = sqlx::query_scalar(
+        "SELECT avatar_url FROM accounts WHERE avatar_token = ? AND disabled = 0",
+    )
+    .bind(&token)
+    .fetch_optional(&state.pool)
+    .await?
+    .flatten();
     let Some(raw) = raw else {
         return Err(AppError::not_found());
     };

@@ -1880,8 +1880,14 @@ async fn social_avatar_is_opaque_binary_and_clears() {
     .await;
     assert_eq!(status, StatusCode::OK);
     let url = body["avatar_url"].as_str().expect("avatar url").to_string();
-    assert!(url.starts_with("/api/social/avatar/"), "unexpected url: {url}");
-    assert!(!url.contains("data:"), "data URL leaked in profile response");
+    assert!(
+        url.starts_with("/api/social/avatar/"),
+        "unexpected url: {url}"
+    );
+    assert!(
+        !url.contains("data:"),
+        "data URL leaked in profile response"
+    );
 
     let req = Request::builder()
         .uri(&url)
@@ -1894,14 +1900,13 @@ async fn social_avatar_is_opaque_binary_and_clears() {
         res.headers().get(header::CONTENT_TYPE).unwrap(),
         "image/png"
     );
-    assert!(
-        res.headers()
-            .get(header::CACHE_CONTROL)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .contains("max-age=3600")
-    );
+    assert!(res
+        .headers()
+        .get(header::CACHE_CONTROL)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .contains("max-age=3600"));
     let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
         .await
         .unwrap();
