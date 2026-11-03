@@ -288,18 +288,18 @@
    * ποτέ μπλοκάρει input), αλλά εδώ επιτρέπεται μια πιο σκηνοθετημένη,
    * επικαλυπτόμενη ακολουθία — π.χ. η γιορτή ρεκόρ, που συνολικά δεν
    * ξεπερνά ποτέ τα 900ms.
-   *  page-enter        → «άλλαξε η σελίδα» (ανεβαίνει + μεγαλώνει ελαφρά από 0.98)
+   *  page-enter        → «άλλαξε η σελίδα» (απαλό fade + 8px ανάβαση)
    *  glow-pulse         → «αυτός ο αριθμός μόλις άλλαξε» (προαιρετική κλάση)
    *  summit-ring-draw   → ο δακτύλιος της σφραγίδας «σχεδιάζεται»
    *  summit-mountain-rise → η οροσειρά γεμίζει
    *  flag-pop           → η σημαία «καρφώνεται» στην κορυφή
    */
   @keyframes page-enter {
-    from { transform: translateY(10px) scale(0.98); opacity: 0; }
-    to { transform: translateY(0) scale(1); opacity: 1; }
+    from { transform: translateY(8px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
   .animate-page-enter {
-    animation: page-enter 420ms cubic-bezier(0.22, 1.2, 0.36, 1) both;
+    animation: page-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   @keyframes slide-in-forward {

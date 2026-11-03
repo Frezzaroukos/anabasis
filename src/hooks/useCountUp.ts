@@ -24,7 +24,7 @@ export function useCountUp(target: number, durationMs = 450, decimals = 0): numb
     const factor = 10 ** decimals;
 
     const tick = (now: number) => {
-      const p = Math.min(1, (now - t0) / durationMs);
+      const p = Math.max(0, Math.min(1, (now - t0) / durationMs));
       const eased = 1 - (1 - p) ** 3;
       setValue(Math.round((from + (target - from) * eased) * factor) / factor);
       if (p < 1) rafRef.current = requestAnimationFrame(tick);

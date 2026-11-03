@@ -241,7 +241,7 @@ Price env (ένα ή περισσότερα):
 `ANABASIS_STRIPE_FOUNDING_LIMIT` (default 250), legacy
 `ANABASIS_STRIPE_PRICE_LABEL` / `ANABASIS_STRIPE_DAYS` (default 60).
 - GET  /api/billing/config → public, no secrets:
-  `{ enabled, price_label, days, plans: [{ id, kind, price_label, amount,
+  `{ enabled, price_label, days, founding_limit, plans: [{ id, kind, price_label, amount,
   currency, days, available, remaining }] }`. `remaining` υπάρχει μόνο στο
   founding· `available=false` όταν εξαντλήθηκε.
 - POST /api/billing/checkout (auth) body `{ plan?: "monthly"|"founding"|"standard" }`

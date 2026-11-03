@@ -5,6 +5,7 @@ import { BottomTabNav } from '@/components/layout/BottomTabNav';
 import { NavBar } from '@/components/layout/NavBar';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { SideNav } from '@/components/layout/SideNav';
+import { ScrollProgress } from '@/components/layout/ScrollProgress';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OnboardingOverlay } from '@/features/onboarding/OnboardingOverlay';
 import { SafetyNotice } from '@/features/legal/SafetyNotice';
@@ -12,6 +13,7 @@ import { useActiveWorkout } from '@/hooks/useActiveWorkout';
 import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutView';
 import { useAppBootReady } from '@/app/BootContext';
 import { Spinner } from '@/components/ui/spinner';
+import { CommandMenuProvider } from '@/components/CommandMenu';
 
 /** Διακριτικό placeholder όσο φορτώνει ένα lazy route chunk. */
 function PageFallback() {
@@ -36,51 +38,54 @@ export function AppShell() {
   }, [pathname, hash]);
 
   return (
-    /*
-     * Κινητό: μία στήλη με tabs στον πάτο.
-     * Tablet/desktop (≥md): πλαϊνή στήλη πλοήγησης + πιο φαρδύ περιεχόμενο.
-     * Χωρίς αυτό, σε οθόνη 1440px το app ήταν μια λωρίδα 448px σε μαύρο κενό.
-     */
-    <div className="flex min-h-full bg-background">
-      <SideNav />
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Κρατά και το safe-area padding του notch — γι' αυτό δεν είναι πια
-            στο <main>: αλλιώς θα μετριόταν δύο φορές. */}
-        <NavBar />
-        {/*
-          Το bottom nav έχει δικό του safe-bottom, οπότε σε συσκευή με home
-          indicator είναι ψηλότερο από 6rem — σκέτο pb-24 έκρυβε την τελευταία
-          γραμμή κάθε σελίδας.
-        */}
-        <main className="mx-auto w-full max-w-md flex-1 px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl">
-          <div className="mb-4 empty:mb-0">
-            <OfflineBanner />
-          </div>
-          <SafetyNotice />
-          {bootReady ? (
-            <ErrorBoundary
-              key={pathname}
-              message={t('common.pageError')}
-              retryLabel={t('common.retry')}
-            >
-              <Suspense fallback={<PageFallback />}>
-                {/*
-                  Θεατρική είσοδος σελίδας (M3): το περιεχόμενο ανεβαίνει +
-                  μεγαλώνει ελαφρά από 0.98 σε κάθε πλοήγηση (key={pathname}) —
-                  premium, χωρίς layout shift, καταρρέει σε fade με reduced-motion.
-                */}
-                <div key={pathname} className="animate-page-enter">
-                  <Outlet />
-                </div>
-              </Suspense>
-            </ErrorBoundary>
-          ) : <PageFallback />}
-        </main>
+    <CommandMenuProvider>
+      {/*
+       * Κινητό: μία στήλη με tabs στον πάτο.
+       * Tablet/desktop (≥md): πλαϊνή στήλη πλοήγησης + πιο φαρδύ περιεχόμενο.
+       * Χωρίς αυτό, σε οθόνη 1440px το app ήταν μια λωρίδα 448px σε μαύρο κενό.
+       */}
+      <div className="flex min-h-full bg-background">
+        <ScrollProgress />
+        <SideNav />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Κρατά και το safe-area padding του notch — γι' αυτό δεν είναι πια
+              στο <main>: αλλιώς θα μετριόταν δύο φορές. */}
+          <NavBar />
+          {/*
+            Το bottom nav έχει δικό του safe-bottom, οπότε σε συσκευή με home
+            indicator είναι ψηλότερο από 6rem — σκέτο pb-24 έκρυβε την τελευταία
+            γραμμή κάθε σελίδας.
+          */}
+          <main className="mx-auto w-full max-w-md flex-1 px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl">
+            <div className="mb-4 empty:mb-0">
+              <OfflineBanner />
+            </div>
+            <SafetyNotice />
+            {bootReady ? (
+              <ErrorBoundary
+                key={pathname}
+                message={t('common.pageError')}
+                retryLabel={t('common.retry')}
+              >
+                <Suspense fallback={<PageFallback />}>
+                  {/*
+                    Σύντομη θεατρική είσοδος σελίδας: fade + 8px ανάβαση σε
+                    ~280ms (key={pathname} ξεκινά ΜΙΑ φορά ανά διαδρομή). Χωρίς
+                    κλιμάκωση/layout shift· με reduced-motion γίνεται απλό fade.
+                  */}
+                  <div key={pathname} className="animate-page-enter">
+                    <Outlet />
+                  </div>
+                </Suspense>
+              </ErrorBoundary>
+            ) : <PageFallback />}
+          </main>
+        </div>
+        {!hasActive && <BottomTabNav />}
+        {hasActive && <ActiveWorkoutView workout={active} />}
+        {/* Ελέγχει μόνο του το localStorage· null αν έχει γίνει ήδη onboard. */}
+        <OnboardingOverlay />
       </div>
-      {!hasActive && <BottomTabNav />}
-      {hasActive && <ActiveWorkoutView workout={active} />}
-      {/* Ελέγχει μόνο του το localStorage· null αν έχει γίνει ήδη onboard. */}
-      <OnboardingOverlay />
-    </div>
+    </CommandMenuProvider>
   );
 }

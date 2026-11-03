@@ -175,6 +175,8 @@ pub struct BillingConfigResponse {
     price_label: Option<String>,
     days: i64,
     plans: Vec<PlanResponse>,
+    /// Public campaign cap — the landing counter uses this, not a hardcoded 250.
+    founding_limit: i64,
 }
 
 pub async fn config(State(state): State<AppState>) -> Json<BillingConfigResponse> {
@@ -184,6 +186,7 @@ pub async fn config(State(state): State<AppState>) -> Json<BillingConfigResponse
             price_label: None,
             days: DEFAULT_MONTHLY_DAYS,
             plans: Vec::new(),
+            founding_limit: 0,
         });
     };
 
@@ -215,6 +218,7 @@ pub async fn config(State(state): State<AppState>) -> Json<BillingConfigResponse
             .or_else(|| cfg.plans.first().map(|p| p.price_label.clone())),
         days: cfg.legacy_days,
         plans,
+        founding_limit: cfg.founding_limit,
     })
 }
 

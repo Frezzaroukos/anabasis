@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { BottomSheet } from '@/components/ui/sheet';
+import { commandShortcut, useCommandMenu } from '@/components/CommandMenu';
 import { PRIMARY_NAV, SECONDARY_NAV } from './navItems';
 
 /**
@@ -19,10 +20,18 @@ export function BottomTabNav() {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
+  const { open: openCommandMenu, copy } = useCommandMenu();
 
   const go = (to: string) => {
     setMoreOpen(false);
     navigate(to);
+  };
+
+  // Το sheet κλέβει/επιστρέφει focus όσο ξεμακραίνει· άνοιξε την παλέτα στο
+  // επόμενο tick ώστε το focus trap της να είναι το τελευταίο που μιλάει.
+  const openSearch = () => {
+    setMoreOpen(false);
+    window.setTimeout(openCommandMenu, 0);
   };
 
   return (
@@ -51,8 +60,8 @@ export function BottomTabNav() {
                         colour-blind χρήστες, γι' αυτό μένει και το εικονίδιο accent. */}
                     <span
                       className={cn(
-                        'absolute inset-x-5 top-0 h-[2px] rounded-full transition-all duration-200 ease-out',
-                        isActive ? 'bg-primary opacity-100 shadow-glow-sm' : 'opacity-0',
+                        'absolute inset-x-5 top-0 h-[2px] origin-center rounded-full transition-all duration-200 ease-out motion-reduce:transition-none',
+                        isActive ? 'scale-x-100 bg-primary opacity-100 shadow-glow-sm' : 'scale-x-50 opacity-0',
                       )}
                     />
                     <Icon className="h-5 w-5" />
@@ -81,6 +90,17 @@ export function BottomTabNav() {
       </nav>
 
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={t('nav.more')}>
+        <div className="px-4 pb-2 pt-3">
+          <button
+            type="button"
+            onClick={openSearch}
+            className="flex w-full items-center gap-3 rounded-lg bg-elevated px-3 py-3 text-left text-sm transition-colors duration-150 hover:bg-accent active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-elevated"
+          >
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="min-w-0 flex-1 truncate">{copy.search}</span>
+            <span className="hidden shrink-0 font-mono text-[10px] text-muted-foreground/70 sm:inline">{commandShortcut()}</span>
+          </button>
+        </div>
         <ul className="grid grid-cols-2 gap-2 px-4 pb-4">
           {SECONDARY_NAV.map(({ to, labelKey, Icon }) => (
             <li key={to}>

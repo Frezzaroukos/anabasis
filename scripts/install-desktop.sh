@@ -6,14 +6,18 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_SRC="$REPO/src-tauri/target/release/anabasis"
 BIN_DST="$HOME/.local/bin/anabasis"
-ICON_SRC="$REPO/src-tauri/icons/icon.png"
-ICON_DST="$HOME/.local/share/icons/hicolor/512x512/apps/anabasis.png"
+ICON_DIR="$HOME/.local/share/icons/hicolor"
 APPS_DIR="$HOME/.local/share/applications"
 
 [[ -x "$BIN_SRC" ]] || { echo "❌ Δεν βρέθηκε binary: $BIN_SRC — τρέξε πρώτα: npm run tauri build -- --no-bundle"; exit 1; }
 
 install -Dm755 "$BIN_SRC" "$BIN_DST"
-install -Dm644 "$ICON_SRC" "$ICON_DST"
+
+for entry in "32:32x32.png" "64:64x64.png" "128:128x128.png" "256:128x128@2x.png" "512:icon.png"; do
+  size="${entry%%:*}"
+  src="${entry#*:}"
+  install -Dm644 "$REPO/src-tauri/icons/$src" "$ICON_DIR/${size}x${size}/apps/anabasis.png"
+done
 
 # Κύριο entry: το native app.
 cat > "$APPS_DIR/anabasis.desktop" <<EOF
@@ -36,4 +40,5 @@ EOF
 rm -f "$APPS_DIR/anabasis-web.desktop"
 
 command -v update-desktop-database >/dev/null && update-desktop-database "$APPS_DIR" || true
-echo "✅ Εγκαταστάθηκε: $BIN_DST + anabasis.desktop (native, μόνο αυτό)"
+command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -f -t "$ICON_DIR" >/dev/null 2>&1 || true
+echo "✅ Εγκαταστάθηκε: $BIN_DST + anabasis.desktop + hicolor icons (native, μόνο αυτό)"

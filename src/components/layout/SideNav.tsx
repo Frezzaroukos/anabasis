@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Search } from 'lucide-react';
 import { Wordmark } from '@/components/Logo';
+import { commandShortcut, useCommandMenu } from '@/components/CommandMenu';
 import { PRIMARY_NAV, SECONDARY_NAV, type NavItem } from './navItems';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +16,7 @@ import { cn } from '@/lib/utils';
  */
 export function SideNav() {
   const { t } = useTranslation();
+  const { open, copy } = useCommandMenu();
 
   return (
     // bg-card πλήρες (όχι border-r): το βήμα φωτεινότητας απέναντι στο
@@ -22,6 +25,24 @@ export function SideNav() {
       <div className="px-2">
         <Wordmark />
       </div>
+
+      <button
+        type="button"
+        onClick={open}
+        aria-label={copy.search}
+        aria-keyshortcuts="Control+K Meta+K"
+        className={cn(
+          'flex min-h-9 items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-left text-sm text-muted-foreground transition-colors duration-150 tap:min-h-11',
+          'hover:bg-accent hover:text-foreground active:bg-accent/80',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
+        )}
+      >
+        <Search className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">{copy.search}</span>
+        <kbd className="shrink-0 rounded border border-border/60 bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80">
+          {commandShortcut()}
+        </kbd>
+      </button>
 
       <nav className="flex flex-col gap-1">
         {PRIMARY_NAV.map((item) => (
@@ -46,9 +67,7 @@ function SideLink({ item, label }: { item: NavItem; label: string }) {
       end={end}
       className={({ isActive }) =>
         cn(
-          // tap:min-h-11 → 44px ύψος στα tablet (touch)· στο desktop (ποντίκι)
-          // μένει py-2 (~36px) ώστε να μη χαλάσει η πυκνότητα της πλαϊνής στήλης.
-          'relative flex min-h-9 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150 tap:min-h-11',
+          'group relative flex min-h-9 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150 tap:min-h-11',
           'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
           isActive
             ? 'bg-primary/10 font-medium text-primary'
@@ -62,12 +81,12 @@ function SideLink({ item, label }: { item: NavItem; label: string }) {
               στοιχείο, ώστε κινητό/desktop chrome να μιλάνε το ίδιο λεξιλόγιο. */}
           <span
             className={cn(
-              'absolute inset-y-2 left-0 w-[2px] rounded-full bg-primary transition-opacity duration-150',
-              isActive ? 'opacity-100 shadow-glow-sm' : 'opacity-0',
+              'absolute inset-y-2 left-0 w-[2px] origin-center rounded-full bg-primary transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+              isActive ? 'scale-y-100 opacity-100 shadow-glow-sm' : 'scale-y-50 opacity-0',
             )}
             aria-hidden
           />
-          <Icon className="h-4 w-4 shrink-0" />
+          <Icon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none" />
           <span className="truncate">{label}</span>
         </>
       )}
