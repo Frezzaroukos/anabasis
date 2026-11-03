@@ -1900,7 +1900,7 @@ async fn social_avatar_is_opaque_binary_and_clears() {
             .unwrap()
             .to_str()
             .unwrap()
-            .contains("immutable")
+            .contains("max-age=3600")
     );
     let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
         .await
