@@ -1,7 +1,7 @@
 # Anabasis — Launch checklist 2026-11-03
 
-**Live:** https://anabasis.axonos.dev · release `20261103-203437-445460583`  
-**Code:** `f496280` (pricing raise + avatar hardening) · CI/Pages: green  
+**Live:** https://anabasis.axonos.dev · release `20261103-231428-334456351`  
+**Code:** `163e6c2` (landing, command palette, reports, pricing) · CI/Pages: green  
 **Native:** Tauri binary installed, `.deb` built.
 
 ## P0 — Payments (decision/research, όχι live ακόμα)
@@ -36,8 +36,9 @@
 - [x] Tauri release build (`dist-tauri`).
 - [x] `.deb`: `src-tauri/target/release/bundle/deb/Anabasis_0.1.0_amd64.deb` (5.5MB).
 - [x] Installed: `~/.local/bin/anabasis` + `anabasis.desktop`; window verified.
-- [ ] AppImage: απέτυχε (`linuxdeploy`) — χρειάζεται toolchain.
-- [ ] Flathub/AUR packaging.
+- [x] AppImage built with `NO_STRIP=1` (`Anabasis_0.1.0_amd64.AppImage`, 103MB).
+- [x] AUR source-build scaffold (`packaging/PKGBUILD`, not published).
+- [ ] Flathub packaging / AUR submission (needs tag + release assets + maintainer).
 - [ ] Auto-update/signing.
 - [ ] Apple Sign-In (χρειάζεται Apple Developer account).
 - [ ] Store screenshots/metadata/versioning.
