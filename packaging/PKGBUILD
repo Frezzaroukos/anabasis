@@ -1,0 +1,74 @@
+# shellcheck disable=SC2034,SC2154
+# Maintainer: Aggelos Frezzaroukos <TODO: add AUR maintainer email before submission>
+#
+# =============================================================================
+# PRE-RELEASE SCAFFOLD - NOT SUBMITTED TO THE AUR
+# =============================================================================
+# Verified on 2026-11-03:
+#   git ls-remote --tags https://github.com/Frezzaroukos/anabasis.git  -> empty
+#   gh release list -R Frezzaroukos/anabasis                          -> empty
+#   AUR RPC for anabasis, anabasis-bin, anabasis-git                  -> 0 results
+#
+# There is no v0.1.0 tag and no GitHub release, so `anabasis-bin` cannot exist
+# yet: it needs a real release asset URL plus a real SHA256. This package is
+# the honest temporary alternative - a source build from `main`, named
+# `anabasis-git`.
+#
+# To replace this with `anabasis-bin` after release:
+#   1. Tag the exact release commit as `v0.1.0` and push the tag.
+#   2. Create GitHub release `v0.1.0` and upload:
+#        Anabasis_0.1.0_amd64.deb
+#        Anabasis_0.1.0_amd64.AppImage
+#   3. Download both, run `sha256sum`, and put the REAL values in sha256sums.
+#      Never use an invented checksum. `updpkgsums` is acceptable.
+#   4. Rename the package to `anabasis-bin`, point source=() at the release
+#      assets, and install the .deb payload with `bsdtar -xf` (or repackage the
+#      AppImage).
+#
+# AUR rules expect sources to be fetched in source=(). `npm ci` and cargo still
+# fetch their dependency graphs during build, so this scaffold is not
+# AUR-clean yet. Vendor npm/cargo dependencies before submitting.
+# =============================================================================
+
+pkgname=anabasis-git
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Weighted calisthenics and skill progression tracker (Tauri desktop)'
+arch=('x86_64')
+url='https://github.com/Frezzaroukos/anabasis'
+license=('MIT')
+depends=('gtk3' 'webkit2gtk-4.1' 'librsvg')
+makedepends=('git' 'nodejs' 'npm' 'rust' 'pkgconf' 'patchelf' 'openssl')
+provides=('anabasis')
+conflicts=('anabasis')
+source=("git+${url}.git#branch=main"
+        'anabasis.desktop')
+# `SKIP` is only for the VCS checkout. The desktop file has a real checksum.
+sha256sums=('SKIP'
+            '74a2c382d983f7e98ae4e98393ea24ceec4bd98939e200291285a7a8c80ae141')
+
+pkgver() {
+  cd "$srcdir/anabasis" || return 1
+  printf '0.1.0.r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cd "$srcdir/anabasis" || return 1
+  npm ci --no-audit --no-fund
+  npm run tauri build -- --no-bundle
+}
+
+package() {
+  cd "$srcdir/anabasis" || return 1
+
+  install -Dm755 'src-tauri/target/release/anabasis' "$pkgdir/usr/bin/anabasis"
+  install -Dm644 "$srcdir/anabasis.desktop" "$pkgdir/usr/share/applications/anabasis.desktop"
+
+  install -Dm644 'src-tauri/icons/32x32.png'      "$pkgdir/usr/share/icons/hicolor/32x32/apps/anabasis.png"
+  install -Dm644 'src-tauri/icons/64x64.png'      "$pkgdir/usr/share/icons/hicolor/64x64/apps/anabasis.png"
+  install -Dm644 'src-tauri/icons/128x128.png'    "$pkgdir/usr/share/icons/hicolor/128x128/apps/anabasis.png"
+  install -Dm644 'src-tauri/icons/128x128@2x.png' "$pkgdir/usr/share/icons/hicolor/256x256/apps/anabasis.png"
+  install -Dm644 'src-tauri/icons/icon.png'       "$pkgdir/usr/share/icons/hicolor/512x512/apps/anabasis.png"
+
+  install -Dm644 'LICENSE' "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

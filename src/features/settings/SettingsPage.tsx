@@ -64,8 +64,8 @@ export function SettingsPage() {
         <h1 className="font-display text-2xl font-semibold tracking-tight">{t('settings.title')}</h1>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="min-w-0 space-y-6">
           <SettingsGroup title={t('settings.hubAccountGroup')}>
             <SettingsRow
               to="/settings/account"
@@ -106,7 +106,7 @@ export function SettingsPage() {
           </SettingsGroup>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <SettingsGroup title={t('settings.hubDataGroup')}>
             <SettingsRow to="/settings/data" Icon={Database} label={t('settings.data')} />
             <SettingsRow to="/import" Icon={Download} label={t('import.title')} />

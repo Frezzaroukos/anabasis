@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Anabasis
+GenericName=Calisthenics Tracker
+Comment=Weighted calisthenics & skill progression tracker
+Exec=anabasis
+TryExec=anabasis
+Icon=anabasis
+Terminal=false
+Categories=Utility;Sports;
+StartupWMClass=anabasis
+Keywords=fitness;calisthenics;workout;training;skills;
