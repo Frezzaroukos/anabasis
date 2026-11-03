@@ -51,7 +51,8 @@
 - [x] Native local app built/installed.
 - [ ] Visual review Batch 2–10 από Aggelos.
 - [ ] Beta group 5–10 άτομα, πραγματικά workouts/feedback.
-- [ ] Launch copy EN/EL + Product Hunt/HN/Reddit drafts (χωρίς publishing).
+- [x] Launch copy draft: `docs/LAUNCH-COPY-2026-11-03.md`.
+- [ ] Product Hunt/HN/Reddit publishing (μόνο μετά από review).
 - [ ] Support inbox + refund process.
 - [ ] Rollback plan: `npm run deploy:rollback`, DB backup, API previous binary.
 - [ ] Analytics: κανένα tracking χωρίς consent· απόφαση αν χρειάζεται.
