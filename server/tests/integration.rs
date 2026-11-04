@@ -2528,6 +2528,119 @@ async fn magic_consume_rejects_expired_token() {
     assert_eq!(body["error"], "expired_token");
 }
 
+async fn insert_password_reset_token(
+    state: &AppState,
+    raw_token: &str,
+    account_id: &str,
+    email: &str,
+    expires_at: &str,
+) {
+    let hash = anabasis_api::auth::sha256_hex(raw_token);
+    sqlx::query(
+        "INSERT INTO password_reset_tokens (token_hash, account_id, email, created_at, expires_at)
+         VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(&hash)
+    .bind(account_id)
+    .bind(email)
+    .bind("2026-01-01T00:00:00Z")
+    .bind(expires_at)
+    .execute(&state.pool)
+    .await
+    .expect("insert password reset token");
+}
+
+#[tokio::test]
+async fn password_reset_consume_changes_password_revokes_sessions_and_is_single_use() {
+    let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
+    let (_, signup_body) = signup(&app, "reset@example.com", "correcthorsebattery").await;
+    let token = signup_body["token"].as_str().unwrap().to_string();
+    let account_id = signup_body["account"]["id"].as_str().unwrap().to_string();
+
+    // Existing session works before reset.
+    let (status, _) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(status, StatusCode::OK);
+
+    insert_password_reset_token(
+        &state,
+        "reset-token-123",
+        &account_id,
+        "reset@example.com",
+        "2999-01-01T00:00:00Z",
+    )
+    .await;
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/password/reset/consume",
+        None,
+        Some(json!({ "token": "reset-token-123", "password": "newcorrecthorse" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["ok"], true);
+
+    // Every old session is revoked.
+    let (status, _) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // Old password fails, new password works.
+    let (status, _) = login(&app, "reset@example.com", "correcthorsebattery").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let (status, _) = login(&app, "reset@example.com", "newcorrecthorse").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Single-use.
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/password/reset/consume",
+        None,
+        Some(json!({ "token": "reset-token-123", "password": "anotherpassword" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_reset");
+}
+
+#[tokio::test]
+async fn password_reset_request_does_not_enumerate_accounts() {
+    let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
+    signup(&app, "known@example.com", "correcthorsebattery").await;
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/password/reset/request",
+        None,
+        Some(json!({ "email": "known@example.com" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["ok"], true);
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM password_reset_tokens")
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/password/reset/request",
+        None,
+        Some(json!({ "email": "unknown@example.com" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["ok"], true);
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM password_reset_tokens")
+        .fetch_one(&state.pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 1, "unknown email must not create a token");
+}
+
 #[tokio::test]
 async fn magic_request_throttle_is_silent_and_sends_no_new_token() {
     let (app, state, _dir) = test_app_with_email(Some(test_email_config())).await;
@@ -3509,6 +3622,19 @@ async fn admin_grants_and_revokes_pro_plan() {
     assert_eq!(me["plan"], "pro");
     assert_eq!(me["plan_active"], true);
     assert!(me["plan_expires_at"].is_string());
+
+    // Indefinite comp: active, no expiry, revoked explicitly.
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/users/{user_id}/plan"),
+        Some(&admin_token),
+        Some(json!({ "plan": "pro", "indefinite": true })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["plan_active"], true);
+    assert!(body["plan_expires_at"].is_null());
 
     let (status, body) = call(
         &app,

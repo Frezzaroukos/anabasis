@@ -112,7 +112,13 @@
     "createNewExerciseHint": "Press Enter to create",
     "pendingWarning": "{{count}} added exercise has no sets and will not be saved.",
     "bodyweightTitle": "Log your bodyweight",
-    "bodyweightHint": "Used as load for bodyweight exercises today. You can change it later in Body."
+    "bodyweightHint": "Used as load for bodyweight exercises today. You can change it later in Body.",
+    "saveWorkout": "Save workout",
+    "emptySaveTitle": "No sets logged yet",
+    "emptySaveDesc": "This session has no sets. You can save it anyway (it will show 0 sets in history) or cancel and log a set first.",
+    "saveEmpty": "Save anyway",
+    "discardAnyConfirmTitle": "Discard this workout?",
+    "discardAnyConfirmDesc": "This deletes the active session and any sets already logged. This cannot be undone."
   },
   "programs": {
     "title": "Programs",
@@ -824,7 +830,7 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "errorPasswordMismatch": "Passwords don't match.",
-    "forgotPassword": "Forgot password? Email me a sign-in link",
+    "forgotPassword": "Forgot password? Email me a reset link",
     "logoutOthers": "Log out other devices",
     "logoutOthersDone": "Signed out other devices.",
     "logoutOthersNone": "No other devices were signed in.",
@@ -903,6 +909,7 @@
     "emailLinkHint": "No password needed — we email you a one-time link.",
     "moreOptions": "More sign-in options",
     "magicSent": "Check your inbox — if that email has an account, a login link is on its way (expires in 15 minutes).",
+    "passwordResetSent": "Check your inbox — if that email has an account, a reset link is on its way (expires in 30 minutes).",
     "errorEmailRequired": "Enter your email first.",
     "vsProfiles": "Sharing this device with someone? Set up device profiles",
     "deleteAccount": "Delete cloud account",
@@ -930,7 +937,9 @@
     "disable": "Disable",
     "enable": "Enable",
     "resetPassword": "Reset password",
-    "grantPro": "Grant Pro 60d",
+    "grantPro": "Grant Pro",
+    "grantDays": "Access duration",
+    "forever": "Until revoked",
     "revokePro": "Revoke Pro",
     "planError": "Couldn't update the plan.",
     "copy": "Copy",
@@ -1311,6 +1320,17 @@
     "fallbackNote": "If your email app didn't open, write to contact@axonos.dev directly.",
     "copyEmail": "Copy address",
     "copied": "Copied"
+  },
+  "resetPassword": {
+    "title": "Set a new password",
+    "intro": "Choose a new password for your Anabasis account.",
+    "submit": "Save new password",
+    "success": "Password updated",
+    "successHint": "All devices were signed out. Sign in with your new password.",
+    "invalid": "This reset link is missing or invalid.",
+    "expired": "This reset link has expired. Request a new one.",
+    "failed": "Could not reset the password. Try again.",
+    "backToSignIn": "Back to sign in"
   },
   "legal": {
     "back": "Back to About",

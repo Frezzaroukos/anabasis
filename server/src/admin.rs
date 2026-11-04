@@ -214,6 +214,9 @@ pub struct PlanRequest {
     plan: String,
     /// Μόνο για `pro`: πόσες μέρες ισχύει. Default 60, clamp 1..=3650.
     days: Option<i64>,
+    /// `pro` χωρίς expiry — δίνεται ρητά, δεν είναι το default.
+    #[serde(default)]
+    indefinite: Option<bool>,
 }
 
 /// POST /api/admin/users/{id}/plan — χειροκίνητη παροχή/ανάκληση Pro.
@@ -242,18 +245,22 @@ pub async fn set_plan(
             .await?;
         }
         "pro" => {
-            let days = body.days.unwrap_or(60).clamp(1, 3650);
-            let current: Option<String> =
-                sqlx::query_scalar("SELECT plan_expires_at FROM accounts WHERE id = ?")
-                    .bind(&id)
-                    .fetch_one(&state.pool)
-                    .await?;
-            let base = current
-                .as_deref()
-                .and_then(parse_iso)
-                .filter(|until| *until > now())
-                .unwrap_or_else(now);
-            let expires_at = format_iso(base + TimeDuration::days(days));
+            let expires_at = if body.indefinite == Some(true) {
+                None
+            } else {
+                let days = body.days.unwrap_or(60).clamp(1, 3650);
+                let current: Option<String> =
+                    sqlx::query_scalar("SELECT plan_expires_at FROM accounts WHERE id = ?")
+                        .bind(&id)
+                        .fetch_one(&state.pool)
+                        .await?;
+                let base = current
+                    .as_deref()
+                    .and_then(parse_iso)
+                    .filter(|until| *until > now())
+                    .unwrap_or_else(now);
+                Some(format_iso(base + TimeDuration::days(days)))
+            };
             sqlx::query(
                 "UPDATE accounts SET plan = 'pro', plan_expires_at = ?, plan_source = 'admin' WHERE id = ?",
             )

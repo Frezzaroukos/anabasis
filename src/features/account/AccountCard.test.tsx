@@ -77,7 +77,7 @@ describe('AccountCard — signup guardrails', () => {
     renderCard();
     expect(
       await screen.findByRole('button', {
-        name: 'Forgot password? Email me a sign-in link',
+        name: 'Forgot password? Email me a reset link',
       }),
     ).toBeTruthy();
   });

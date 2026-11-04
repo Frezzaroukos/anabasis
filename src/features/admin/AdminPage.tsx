@@ -115,12 +115,17 @@ export function AdminPage() {
     }
   };
 
-  const onSetPlan = async (user: AdminUser, plan: 'free' | 'pro') => {
+  const onSetPlan = async (
+    user: AdminUser,
+    plan: 'free' | 'pro',
+    days?: number,
+    indefinite?: boolean,
+  ) => {
     if (busyPlanId) return;
     setBusyPlanId(user.id);
     setActionErrorKey(null);
     try {
-      await api.adminSetPlan(user.id, plan, plan === 'pro' ? 60 : undefined);
+      await api.adminSetPlan(user.id, plan, days, indefinite);
       await load();
     } catch {
       setActionErrorKey('admin.planError');
@@ -261,6 +266,7 @@ export function AdminPage() {
                 onToggle={() => setConfirmToggle(u)}
                 onReset={() => setConfirmReset(u)}
                 onPlan={(plan) => void onSetPlan(u, plan)}
+                onGrant={(days, indefinite) => void onSetPlan(u, 'pro', days, indefinite)}
               />
             ))}
         </section>
@@ -381,6 +387,7 @@ function UserCard({
   onToggle,
   onReset,
   onPlan,
+  onGrant,
 }: {
   user: AdminUser;
   isSelf: boolean;
@@ -394,9 +401,11 @@ function UserCard({
   onToggle: () => void;
   onReset: () => void;
   onPlan: (plan: 'free' | 'pro') => void;
+  onGrant: (days: number | undefined, indefinite: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [showRows, setShowRows] = useState(false);
+  const [grantDays, setGrantDays] = useState('60');
 
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: 'medium' });
   const dateTime = (iso: string) =>
@@ -471,18 +480,45 @@ function UserCard({
         <Button variant="ghost" disabled={busy} onClick={onReset}>
           {t('admin.resetPassword')}
         </Button>
-        <Button
-          variant="outline"
-          disabled={busy || planBusy}
-          onClick={() => onPlan(user.plan_active ? 'free' : 'pro')}
-        >
-          <Crown className="h-4 w-4" aria-hidden />
-          {planBusy
-            ? t('common.loading')
-            : user.plan_active
-              ? t('admin.revokePro')
-              : t('admin.grantPro')}
-        </Button>
+        {user.plan_active ? (
+          <Button
+            variant="outline"
+            disabled={busy || planBusy}
+            onClick={() => onPlan('free')}
+          >
+            <Crown className="h-4 w-4" aria-hidden />
+            {planBusy ? t('common.loading') : t('admin.revokePro')}
+          </Button>
+        ) : (
+          <span className="inline-flex items-center gap-1">
+            <select
+              aria-label={t('admin.grantDays')}
+              value={grantDays}
+              onChange={(e) => setGrantDays(e.target.value)}
+              disabled={busy || planBusy}
+              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <option value="7">7d</option>
+              <option value="30">30d</option>
+              <option value="60">60d</option>
+              <option value="90">90d</option>
+              <option value="365">365d</option>
+              <option value="forever">{t('admin.forever')}</option>
+            </select>
+            <Button
+              variant="outline"
+              disabled={busy || planBusy}
+              onClick={() =>
+                grantDays === 'forever'
+                  ? onGrant(undefined, true)
+                  : onGrant(Number(grantDays), false)
+              }
+            >
+              <Crown className="h-4 w-4" aria-hidden />
+              {planBusy ? t('common.loading') : t('admin.grantPro')}
+            </Button>
+          </span>
+        )}
         <Button
           variant="ghost"
           aria-expanded={showRows}

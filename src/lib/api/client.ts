@@ -299,10 +299,11 @@ export const api = {
     id: string,
     plan: 'free' | 'pro',
     days?: number,
+    indefinite?: boolean,
   ): Promise<{ plan: 'free' | 'pro'; plan_expires_at: string | null; plan_active: boolean }> {
     return request(`/admin/users/${id}/plan`, {
       method: 'POST',
-      body: { plan, ...(days == null ? {} : { days }) },
+      body: { plan, ...(days == null ? {} : { days }), ...(indefinite ? { indefinite: true } : {}) },
     });
   },
 
@@ -353,6 +354,22 @@ export const api = {
     return request<{ ok: boolean }>('/auth/magic/request', {
       method: 'POST',
       body: { email },
+    });
+  },
+
+  /** Password reset link: always ok for a configured mail server (no enumeration). */
+  passwordResetRequest(email: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>('/auth/password/reset/request', {
+      method: 'POST',
+      body: { email },
+    });
+  },
+
+  /** Consume a single-use reset token and set a new password; no session issued. */
+  passwordResetConsume(token: string, password: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>('/auth/password/reset/consume', {
+      method: 'POST',
+      body: { token, password },
     });
   },
 

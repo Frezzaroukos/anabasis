@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Link2, Plus, Weight, X } from 'lucide-react';
+import { Link2, Plus, Save, Trash2, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
@@ -104,6 +104,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [plateOpen, setPlateOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [bodyweightOpen, setBodyweightOpen] = useState(false);
   const [bodyweightInput, setBodyweightInput] = useState('');
   const [workoutType, setWorkoutType] = useState(workout.workout_type ?? '');
@@ -244,23 +245,25 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   // Βλ. isEmptyDraftWorkout σχόλιο — άδειο draft απορρίπτεται, δεν «τελειώνει».
   const isEmpty = ready ? isEmptyDraftWorkout(isSetLogged, sets.length) : false;
 
-  const onConfirmEnd = async () => {
+  const finish = async () => {
     if (!ready) return;
     setConfirmEnd(false);
-    if (isEmpty) {
-      await queries.softDeleteWorkout(workout.id);
-      clearStopwatch(workout.id);
-      clearPendingIds(workout.id);
-      navigate('/calendar', { replace: true });
-    } else {
-      // Χειροκίνητο χρονόμετρο: αν ο χρήστης το μέτρησε, ΑΥΤΟ είναι η διάρκεια
-      // (τίμια — μόνο ο χρόνος που όντως μετρούσε)· αλλιώς πέφτει σε wall-clock.
-      const manual = readStopwatchSeconds(workout.id);
-      await queries.endWorkout(workout.id, manual > 0 ? manual : undefined);
-      clearStopwatch(workout.id);
-      clearPendingIds(workout.id);
-      navigate(`/history/${workout.id}`, { replace: true });
-    }
+    // Χειροκίνητο χρονόμετρο: αν ο χρήστης το μέτρησε, ΑΥΤΟ είναι η διάρκεια
+    // (τίμια — μόνο ο χρόνος που όντως μετρούσε)· αλλιώς πέφτει σε wall-clock.
+    const manual = readStopwatchSeconds(workout.id);
+    await queries.endWorkout(workout.id, manual > 0 ? manual : undefined);
+    clearStopwatch(workout.id);
+    clearPendingIds(workout.id);
+    navigate(`/history/${workout.id}`, { replace: true });
+  };
+
+  const discard = async () => {
+    if (!ready) return;
+    setConfirmDiscard(false);
+    await queries.softDeleteWorkout(workout.id);
+    clearStopwatch(workout.id);
+    clearPendingIds(workout.id);
+    navigate('/calendar', { replace: true });
   };
 
   return (
@@ -278,16 +281,27 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           </p>
           <SessionTimer workoutId={workout.id} />
         </div>
-        <Button
-          variant="destructive"
-          size="sm"
-          loading={!ready}
-          onClick={() => setConfirmEnd(true)}
-          className="shrink-0"
-        >
-          <X className="h-4 w-4" />
-          {isEmpty ? t('workout.discard') : t('workout.end')}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
+            aria-label={t('workout.discard')}
+            title={t('workout.discard')}
+            loading={!ready}
+            onClick={() => setConfirmDiscard(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            loading={!ready}
+            onClick={() => setConfirmEnd(true)}
+          >
+            <Save className="h-4 w-4" />
+            {t('workout.saveWorkout')}
+          </Button>
+        </div>
         </div>
       </header>
 
@@ -438,10 +452,10 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
 
       <ConfirmDialog
         open={confirmEnd}
-        title={isEmpty ? t('workout.discardConfirmTitle') : t('workout.endConfirmTitle')}
+        title={isEmpty ? t('workout.emptySaveTitle') : t('workout.endConfirmTitle')}
         description={
           <>
-            {isEmpty ? t('workout.discardConfirmDesc') : t('workout.endConfirmDesc')}
+            {isEmpty ? t('workout.emptySaveDesc') : t('workout.endConfirmDesc')}
             {pending.length > 0 && (
               <span className="mt-2 block text-xs text-muted-foreground">
                 {t('workout.pendingWarning', { count: pending.length })}
@@ -449,11 +463,22 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
             )}
           </>
         }
-        confirmLabel={isEmpty ? t('workout.discard') : t('workout.end')}
+        confirmLabel={isEmpty ? t('workout.saveEmpty') : t('workout.saveWorkout')}
+        cancelLabel={t('common.cancel')}
+        destructive={!isEmpty}
+        onConfirm={() => void finish()}
+        onCancel={() => setConfirmEnd(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        title={t('workout.discardAnyConfirmTitle')}
+        description={t('workout.discardAnyConfirmDesc')}
+        confirmLabel={t('workout.discard')}
         cancelLabel={t('common.cancel')}
         destructive
-        onConfirm={() => void onConfirmEnd()}
-        onCancel={() => setConfirmEnd(false)}
+        onConfirm={() => void discard()}
+        onCancel={() => setConfirmDiscard(false)}
       />
     </div>
   );

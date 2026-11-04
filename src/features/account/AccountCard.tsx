@@ -154,6 +154,8 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
   const providers = useAuthProviders();
   const [magicBusy, setMagicBusy] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const onMagicLink = async () => {
     if (magicBusy) return;
@@ -170,6 +172,24 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
       setErrorKey(errorKeyFor(err));
     } finally {
       setMagicBusy(false);
+    }
+  };
+
+  const onPasswordReset = async () => {
+    if (resetBusy) return;
+    setErrorKey(null);
+    if (!email.trim()) {
+      setErrorKey('account.errorEmailRequired');
+      return;
+    }
+    setResetBusy(true);
+    try {
+      await api.passwordResetRequest(email.trim());
+      setResetSent(true);
+    } catch (err) {
+      setErrorKey(errorKeyFor(err));
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -280,15 +300,21 @@ function SignedOutForm({ showTitle }: { showTitle: boolean }) {
         </Button>
       </form>
 
-      {mode === 'login' && providers.magic && !magicSent && (
+      {mode === 'login' && providers.magic && (
         <button
           type="button"
-          onClick={() => void onMagicLink()}
-          disabled={magicBusy}
+          onClick={() => void onPasswordReset()}
+          disabled={resetBusy}
           className="mt-3 inline-flex min-h-11 items-center text-sm text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
         >
           {t('account.forgotPassword')}
         </button>
+      )}
+
+      {resetSent && (
+        <p className="mt-3 rounded-md bg-elevated px-3 py-2 text-xs text-muted-foreground" role="status">
+          {t('account.passwordResetSent')}
+        </p>
       )}
 
       {providers.magic &&

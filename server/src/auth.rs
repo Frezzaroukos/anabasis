@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::app::AppState;
 use crate::error::AppError;
 use crate::json::AppJson;
+use crate::magic::send_password_reset_email;
 use crate::util::{constant_time_eq, iso_in, now, now_iso, parse_iso};
 
 const SESSION_LIFETIME: TimeDuration = TimeDuration::days(90);
@@ -609,6 +610,151 @@ pub struct MeResponse {
     plan_expires_at: Option<String>,
     plan_source: Option<String>,
     plan_active: bool,
+}
+
+// ── Password reset (email link) ───────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct PasswordResetRequest {
+    email: String,
+}
+
+#[derive(Deserialize)]
+pub struct PasswordResetConsume {
+    token: String,
+    password: String,
+}
+
+/// POST /api/auth/password/reset/request — always 200 for a configured mail
+/// server, whether or not the email exists. Same no-enumeration contract as
+/// magic-link. A 60s per-account throttle suppresses email bombing.
+pub async fn password_reset_request(
+    State(state): State<AppState>,
+    AppJson(body): AppJson<PasswordResetRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let Some(cfg) = state.email.clone() else {
+        return Err(AppError::bad_request(
+            "email_login_unavailable",
+            "Η επαναφορά κωδικού δεν είναι διαθέσιμη.",
+        ));
+    };
+    let email = normalize_email(&body.email);
+    if email.is_empty() || !email.contains('@') || email.len() > MAX_EMAIL_LEN {
+        return Err(AppError::bad_request("invalid_email", "Μη έγκυρο email."));
+    }
+
+    let _ = sqlx::query("DELETE FROM password_reset_tokens WHERE expires_at <= ?")
+        .bind(now_iso())
+        .execute(&state.pool)
+        .await;
+
+    let account: Option<String> =
+        sqlx::query_scalar("SELECT id FROM accounts WHERE email = ? AND disabled = 0")
+            .bind(&email)
+            .fetch_optional(&state.pool)
+            .await?;
+
+    if let Some(account_id) = account {
+        let recent: Option<String> = sqlx::query_scalar(
+            "SELECT created_at FROM password_reset_tokens WHERE account_id = ? ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(&account_id)
+        .fetch_optional(&state.pool)
+        .await?;
+        let throttled = recent
+            .as_deref()
+            .and_then(parse_iso)
+            .map(|created| now() - created < TimeDuration::seconds(60))
+            .unwrap_or(false);
+        if !throttled {
+            // Invalidate older links before issuing a new one.
+            sqlx::query("DELETE FROM password_reset_tokens WHERE account_id = ?")
+                .bind(&account_id)
+                .execute(&state.pool)
+                .await?;
+            let token = generate_token();
+            let token_hash = sha256_hex(&token);
+            sqlx::query(
+                "INSERT INTO password_reset_tokens (token_hash, account_id, email, created_at, expires_at)
+                 VALUES (?, ?, ?, ?, ?)",
+            )
+            .bind(&token_hash)
+            .bind(&account_id)
+            .bind(&email)
+            .bind(now_iso())
+            .bind(iso_in(TimeDuration::minutes(30)))
+            .execute(&state.pool)
+            .await?;
+            if let Err(err) = send_password_reset_email(&cfg, &email, &token).await {
+                // Do not leak whether the address exists; log for ops only.
+                tracing::warn!(error = ?err, "password reset email failed");
+            }
+        }
+    }
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+/// POST /api/auth/password/reset/consume — atomic single-use token, updates
+/// the hash and revokes every existing session. No session is issued here;
+/// the user signs in with the new password.
+pub async fn password_reset_consume(
+    State(state): State<AppState>,
+    AppJson(body): AppJson<PasswordResetConsume>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if state.email.is_none() {
+        return Err(AppError::bad_request(
+            "email_login_unavailable",
+            "Η επαναφορά κωδικού δεν είναι διαθέσιμη.",
+        ));
+    }
+    let token = body.token.trim();
+    if token.is_empty() || body.password.len() < MIN_PASSWORD_LEN {
+        return Err(AppError::bad_request(
+            "invalid_reset",
+            "Ο σύνδεσμος ή ο κωδικός δεν είναι έγκυρος.",
+        ));
+    }
+    if body.password.len() > MAX_PASSWORD_LEN {
+        return Err(AppError::bad_request(
+            "weak_password",
+            format!("Ο κωδικός δεν μπορεί να ξεπερνά τους {MAX_PASSWORD_LEN} χαρακτήρες."),
+        ));
+    }
+
+    // Hash before consuming the token; a failed hash must not burn the link.
+    let password_hash = hash_password(&body.password)?;
+    let token_hash = sha256_hex(token);
+    let account_id: Option<String> = sqlx::query_scalar(
+        "DELETE FROM password_reset_tokens
+         WHERE token_hash = ? AND expires_at > ?
+         RETURNING account_id",
+    )
+    .bind(&token_hash)
+    .bind(now_iso())
+    .fetch_optional(&state.pool)
+    .await?;
+    let Some(account_id) = account_id else {
+        return Err(AppError::bad_request(
+            "invalid_reset",
+            "Ο σύνδεσμος έληξε ή έχει ήδη χρησιμοποιηθεί.",
+        ));
+    };
+
+    sqlx::query(
+        "UPDATE accounts SET password_hash = ?, password_set = 1
+         WHERE id = ? AND disabled = 0",
+    )
+    .bind(&password_hash)
+    .bind(&account_id)
+    .execute(&state.pool)
+    .await?;
+    sqlx::query("DELETE FROM sessions WHERE account_id = ?")
+        .bind(&account_id)
+        .execute(&state.pool)
+        .await?;
+
+    Ok(Json(serde_json::json!({ "ok": true })))
 }
 
 pub async fn me(

@@ -240,6 +240,14 @@ pub fn router(state: AppState) -> Router {
         .route("/delete_account", post(auth::delete_account))
         .route("/change_password", post(auth::change_password))
         .route("/set_password", post(auth::set_password))
+        .route(
+            "/password/reset/request",
+            post(auth::password_reset_request),
+        )
+        .route(
+            "/password/reset/consume",
+            post(auth::password_reset_consume),
+        )
         .route("/sessions", get(auth::sessions))
         .route("/sessions/{id}/revoke", post(auth::revoke_session))
         .route("/claim_admin", post(auth::claim_admin))

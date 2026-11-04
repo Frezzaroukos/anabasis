@@ -163,6 +163,17 @@ Body: `{ new_password }`. Μόνο για passwordless (Google/magic-link) λο�
 200 `{}`· 400 `password_already_set` αν υπάρχει ήδη κωδικός (τότε θέλει
 `change_password` με τον τρέχοντα). Ακυρώνει τα άλλα sessions.
 
+### POST /api/auth/password/reset/request  (public, no enumeration)
+Body: `{ email }`. Πάντα 200 `{ ok: true }` όταν το SMTP είναι configured — ίδιο
+response για υπαρκτό/ανύπαρκτο email. 60s throttle/account· token TTL 30′,
+single-use, μόνο SHA-256 hash στη DB. Το email link είναι
+`<public_url>/reset-password#reset=<token>` (fragment, όχι query/log).
+
+### POST /api/auth/password/reset/consume  (public)
+Body: `{ token, password }` (password ≥8, ≤1024). 200 `{ ok: true }`· 400
+`invalid_reset` για ληγμένο/άκυρο/χρησιμοποιημένο token. Αλλάζει password hash,
+`password_set=1` και **ακυρώνει όλα τα sessions**· δεν εκδίδει session.
+
 ### GET /api/auth/sessions  (auth)
 200 `[ { id, created_at, last_used_at, expires_at, user_agent, current } ]` —
 μόνο ενεργά sessions, χωρίς token/hash. Το `current` δείχνει αυτό του bearer.
@@ -224,9 +235,9 @@ payload (που ήδη κουβαλά deleted_at).
 - POST /api/admin/users/:id/disable  body `{ disabled: bool }` — disable σκοτώνει και τα sessions του.
   400 `self_disable` (δεν απενεργοποιείς τον εαυτό σου) / `last_admin` (δεν αδειάζει ποτέ η λίστα admins) — μόνο στο `disabled: true`.
 - POST /api/admin/users/:id/reset_password body `{}` → 200 `{ temp_password }` (τυχαίο, ο χρήστης το αλλάζει μετά)
-- POST /api/admin/users/:id/plan body `{ plan: "free"|"pro", days?: 1..3650 }` → 200
+- POST /api/admin/users/:id/plan body `{ plan: "free"|"pro", days?: 1..3650, indefinite?: boolean }` → 200
   `{ plan, plan_expires_at, plan_active }`. Χειροκίνητη παροχή/ανάκληση Pro
-  (δώρα/support)· το `pro` επεκτείνεται από την τρέχουσα λήξη αν είναι ενεργή.
+  (δώρα/support)· το `pro` επεκτείνεται από την τρέχουσα λήξη αν είναι ενεργή· `indefinite` δίνει Pro χωρίς expiry και revoke γίνεται με `{ plan: "free" }`.
 - GET  /api/admin/reports?status=open|reviewed|dismissed|all → `[ { id, reporter_id, reporter_username, target_account_id, target_username, reason, note, status, created_at, reviewed_at, reviewer_id } ]`. Χωρίς φίλτρο: πρόσφατα με τα `open` πρώτα (max 200). 400 `invalid_status`.
 - GET  /api/admin/stats → `{ accounts, active_accounts, disabled_accounts, admins, pro_accounts, sessions, rows, db_size_bytes, uptime_seconds }`
 

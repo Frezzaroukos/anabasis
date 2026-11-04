@@ -28,6 +28,7 @@ const SkillsPage = lazyPage(() => import('@/features/skills/SkillsPage'), 'Skill
 const SkillDetailPage = lazyPage(() => import('@/features/skills/SkillDetailPage'), 'SkillDetailPage');
 const SettingsPage = lazyPage(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
 const AccountSettingsPage = lazyPage(() => import('@/features/settings/pages/AccountSettingsPage'), 'AccountSettingsPage');
+const PasswordResetPage = lazyPage(() => import('@/features/account/PasswordResetPage'), 'PasswordResetPage');
 const AppearanceSettingsPage = lazyPage(() => import('@/features/settings/pages/AppearanceSettingsPage'), 'AppearanceSettingsPage');
 const TrainingSettingsPage = lazyPage(() => import('@/features/settings/pages/TrainingSettingsPage'), 'TrainingSettingsPage');
 const DataSettingsPage = lazyPage(() => import('@/features/settings/pages/DataSettingsPage'), 'DataSettingsPage');
@@ -87,6 +88,7 @@ export const router = createBrowserRouter(
       // αδιάβαστη. Το /profile μένει ως redirect — παλιά links & PWA shortcuts.
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/account', element: <AccountSettingsPage /> },
+      { path: 'reset-password', element: <PasswordResetPage /> },
       { path: 'settings/profiles', element: <ProfilePage /> },
       { path: 'settings/appearance', element: <AppearanceSettingsPage /> },
       { path: 'settings/training', element: <TrainingSettingsPage /> },

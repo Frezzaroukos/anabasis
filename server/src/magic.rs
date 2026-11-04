@@ -160,13 +160,14 @@ pub async fn consume(
     Ok(Json(resp))
 }
 
-/// Στέλνει το login email (plain + HTML) μέσω STARTTLS SMTP relay.
-async fn send_login_email(cfg: &EmailConfig, to: &str, token: &str) -> Result<(), AppError> {
-    // Το token μπαίνει στο URL fragment (#magic=…), ΟΧΙ στο query — τα
-    // fragments δεν φεύγουν ποτέ στον server/proxy, οπότε δεν καταγράφονται
-    // σε access logs (ίδια υγιεινή με το OAuth #oauth=… redirect).
-    let link = format!("{}/#magic={}", cfg.public_url.trim_end_matches('/'), token);
-
+/// SMTP relay (STARTTLS) — ένα transport για login και password reset.
+async fn send_mail(
+    cfg: &EmailConfig,
+    to: &str,
+    subject: &str,
+    text: String,
+    html: String,
+) -> Result<(), AppError> {
     let from: Mailbox = cfg
         .from
         .parse()
@@ -175,24 +176,10 @@ async fn send_login_email(cfg: &EmailConfig, to: &str, token: &str) -> Result<()
         .parse()
         .map_err(|_| AppError::bad_request("invalid_email", "Μη έγκυρο email."))?;
 
-    let text = format!(
-        "Σύνδεση στο Anabasis\n\nΆνοιξε αυτόν τον σύνδεσμο για να συνδεθείς \
-         (λήγει σε 15 λεπτά):\n{link}\n\nΑν δεν το ζήτησες εσύ, αγνόησέ το.\n"
-    );
-    let html = format!(
-        "<div style=\"font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:auto\">\
-         <h2 style=\"margin:0 0 8px\">Σύνδεση στο Anabasis</h2>\
-         <p>Πάτησε για να συνδεθείς — ο σύνδεσμος λήγει σε 15 λεπτά:</p>\
-         <p><a href=\"{link}\" style=\"display:inline-block;padding:10px 18px;\
-         background:#111;color:#fff;text-decoration:none;border-radius:8px\">Σύνδεση</a></p>\
-         <p style=\"color:#666;font-size:13px;word-break:break-all\">Ή αντίγραψε: {link}</p>\
-         <p style=\"color:#999;font-size:12px\">Αν δεν το ζήτησες εσύ, αγνόησέ το.</p></div>"
-    );
-
     let message = Message::builder()
         .from(from)
         .to(to_mbox)
-        .subject("Ο σύνδεσμος σύνδεσης στο Anabasis")
+        .subject(subject)
         .multipart(MultiPart::alternative_plain_html(text, html))
         .map_err(|e| AppError::internal(format!("Αποτυχία σύνθεσης email: {e}")))?;
 
@@ -209,4 +196,50 @@ async fn send_login_email(cfg: &EmailConfig, to: &str, token: &str) -> Result<()
         .await
         .map_err(|e| AppError::internal(format!("Αποτυχία αποστολής email: {e}")))?;
     Ok(())
+}
+
+async fn send_login_email(cfg: &EmailConfig, to: &str, token: &str) -> Result<(), AppError> {
+    let link = format!("{}/#magic={}", cfg.public_url.trim_end_matches('/'), token);
+    let text = format!(
+        "Σύνδεση στο Anabasis\n\nΆνοιξε αυτόν τον σύνδεσμο για να συνδεθείς \
+         (λήγει σε 15 λεπτά):\n{link}\n\nΑν δεν το ζήτησες εσύ, αγνόησέ το.\n"
+    );
+    let html = format!(
+        "<div style=\"font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:auto\">\
+         <h2 style=\"margin:0 0 8px\">Σύνδεση στο Anabasis</h2>\
+         <p>Πάτησε για να συνδεθείς — ο σύνδεσμος λήγει σε 15 λεπτά:</p>\
+         <p><a href=\"{link}\" style=\"display:inline-block;padding:10px 18px;\
+         background:#111;color:#fff;text-decoration:none;border-radius:8px\">Σύνδεση</a></p>\
+         <p style=\"color:#666;font-size:13px;word-break:break-all\">Ή αντίγραψε: {link}</p>\
+         <p style=\"color:#999;font-size:12px\">Αν δεν το ζήτησες εσύ, αγνόησέ το.</p></div>"
+    );
+    send_mail(cfg, to, "Ο σύνδεσμος σύνδεσης στο Anabasis", text, html).await
+}
+
+/// Reset link goes to a dedicated SPA route; token stays in the fragment so
+/// it never reaches access logs. Valid for 30 minutes, single-use.
+pub(crate) async fn send_password_reset_email(
+    cfg: &EmailConfig,
+    to: &str,
+    token: &str,
+) -> Result<(), AppError> {
+    let link = format!(
+        "{}/reset-password#reset={}",
+        cfg.public_url.trim_end_matches('/'),
+        token
+    );
+    let text = format!(
+        "Επαναφορά κωδικού Anabasis\n\nΆνοιξε αυτόν τον σύνδεσμο για να ορίσεις νέο κωδικό \
+         (λήγει σε 30 λεπτά):\n{link}\n\nΑν δεν το ζήτησες εσύ, αγνόησέ το. Ο παλιός κωδικός δεν αλλάζει.\n"
+    );
+    let html = format!(
+        "<div style=\"font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:auto\">\
+         <h2 style=\"margin:0 0 8px\">Επαναφορά κωδικού</h2>\
+         <p>Πάτησε για να ορίσεις νέο κωδικό — ο σύνδεσμος λήγει σε 30 λεπτά:</p>\
+         <p><a href=\"{link}\" style=\"display:inline-block;padding:10px 18px;\
+         background:#8239ef;color:#fff;text-decoration:none;border-radius:8px\">Νέος κωδικός</a></p>\
+         <p style=\"color:#666;font-size:13px;word-break:break-all\">Ή αντίγραψε: {link}</p>\
+         <p style=\"color:#999;font-size:12px\">Αν δεν το ζήτησες εσύ, αγνόησέ το.</p></div>"
+    );
+    send_mail(cfg, to, "Επαναφορά κωδικού στο Anabasis", text, html).await
 }
