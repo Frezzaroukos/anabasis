@@ -1,7 +1,7 @@
 # Anabasis — Launch checklist 2026-11-03
 
-**Live:** https://anabasis.axonos.dev · release `20261103-231428-334456351`  
-**Code:** `163e6c2` (landing, command palette, reports, pricing) · CI/Pages: green  
+**Live:** https://anabasis.axonos.dev · release `20261104-155844-561044969`  
+**Code:** `d1900a6` (auth/reset, comp codes, workout save) · CI/Pages: green  
 **Native:** Tauri binary installed, `.deb` built.
 
 ## P0 — Payments (decision/research, όχι live ακόμα)
@@ -10,6 +10,8 @@
 - [x] Σύσταση: **Paddle** πρώτο, **Polar** fallback, **Lemon Squeezy** εύκολο fallback.
 - [x] Γιατί όχι Shopify: digital-only order ⇒ εμείς MoR/VAT, €19–27/μήνα, όχι native app checkout.
 - [ ] KYC/IBAN/ΑΦΜ από Aggelos.
+- [x] Password reset email flow (30′ single-use, hash-only, revokes sessions).
+- [x] Admin comp access + shareable one-time code (7–365d / indefinite).
 - [ ] Paddle sandbox + domain verification + products:
   - `pro-monthly` €10.99/month
   - `founding-lifetime` €49.99 one-time / 250 cap

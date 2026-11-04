@@ -5,5 +5,5 @@
 #   sha256sum -c packaging/SHA256SUMS
 # For a GitHub release, regenerate basenames and upload the identical values
 # next to the assets; never substitute a made-up checksum.
-1741a4edad35e465f85c025253125b9b0e9a13538fdc45785d72e76e41159940  src-tauri/target/release/bundle/deb/Anabasis_0.1.0_amd64.deb
-1b8c30567f43b2a686b67e47a3d49772f7c649bbb44102a2f4cd700e6719b09d  src-tauri/target/release/bundle/appimage/Anabasis_0.1.0_amd64.AppImage
+f1f1be82ed80d9bdea5ef46650d0c3a6eb0542a5611c27e94086a9de4e8e4889  src-tauri/target/release/bundle/deb/Anabasis_0.1.0_amd64.deb
+486a1faff7c892c3ca06923359fbc2b3983783fc7e161c0c56022f0b51dfd4e1  src-tauri/target/release/bundle/appimage/Anabasis_0.1.0_amd64.AppImage
