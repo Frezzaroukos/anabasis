@@ -16,7 +16,7 @@ use crate::app::AppState;
 use crate::error::AppError;
 use crate::json::AppJson;
 use crate::magic::send_password_reset_email;
-use crate::util::{constant_time_eq, iso_in, now, now_iso, parse_iso};
+use crate::util::{constant_time_eq, format_iso, iso_in, now, now_iso, parse_iso};
 
 const SESSION_LIFETIME: TimeDuration = TimeDuration::days(90);
 const SESSION_TOUCH_INTERVAL: TimeDuration = TimeDuration::hours(1);
@@ -755,6 +755,80 @@ pub async fn password_reset_consume(
         .await?;
 
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+pub struct RedeemCodeRequest {
+    code: String,
+}
+
+/// POST /api/auth/redeem_code — one-time/shareable admin access code. The code
+/// is hashed at rest and claimed atomically (uses < max_uses).
+pub async fn redeem_code(
+    State(state): State<AppState>,
+    user: AuthUser,
+    AppJson(body): AppJson<RedeemCodeRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let code = body.code.trim();
+    if code.len() < 8 || code.len() > 128 {
+        return Err(AppError::bad_request("invalid_code", "Άκυρος κωδικός."));
+    }
+    let code_hash = sha256_hex(code);
+    let claimed: Option<(Option<i64>, bool)> = sqlx::query_as(
+        "UPDATE comp_codes
+         SET uses = uses + 1
+         WHERE code_hash = ?1 AND revoked_at IS NULL AND uses < max_uses
+         RETURNING days, indefinite",
+    )
+    .bind(&code_hash)
+    .fetch_optional(&state.pool)
+    .await?;
+    let Some((days, indefinite)) = claimed else {
+        return Err(AppError::bad_request(
+            "invalid_code",
+            "Άκυρος ή χρησιμοποιημένος κωδικός.",
+        ));
+    };
+
+    if indefinite {
+        sqlx::query(
+            "UPDATE accounts SET plan = 'pro', plan_expires_at = NULL, plan_source = 'admin' WHERE id = ?",
+        )
+        .bind(&user.account_id)
+        .execute(&state.pool)
+        .await?;
+    } else {
+        let days = days.unwrap_or(60).clamp(1, 3650);
+        let current: Option<String> =
+            sqlx::query_scalar("SELECT plan_expires_at FROM accounts WHERE id = ?")
+                .bind(&user.account_id)
+                .fetch_one(&state.pool)
+                .await?;
+        let base = current
+            .as_deref()
+            .and_then(parse_iso)
+            .filter(|until| *until > now())
+            .unwrap_or_else(now);
+        sqlx::query(
+            "UPDATE accounts SET plan = 'pro', plan_expires_at = ?, plan_source = 'admin' WHERE id = ?",
+        )
+        .bind(format_iso(base + TimeDuration::days(days)))
+        .bind(&user.account_id)
+        .execute(&state.pool)
+        .await?;
+    }
+
+    let (plan, plan_expires_at): (String, Option<String>) =
+        sqlx::query_as("SELECT plan, plan_expires_at FROM accounts WHERE id = ?")
+            .bind(&user.account_id)
+            .fetch_one(&state.pool)
+            .await?;
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "plan": plan,
+        "plan_expires_at": plan_expires_at,
+        "plan_active": plan_is_active(&plan, plan_expires_at.as_deref()),
+    })))
 }
 
 pub async fn me(

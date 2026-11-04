@@ -3659,6 +3659,58 @@ async fn admin_grants_and_revokes_pro_plan() {
 }
 
 #[tokio::test]
+async fn admin_comp_code_redeems_once_and_grants_pro() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+    let (_, admin) = signup(&app, "admin@example.com", "correcthorsebattery").await;
+    let admin_token = admin["token"].as_str().unwrap().to_string();
+    let (_, user) = signup(&app, "codeuser@example.com", "correcthorsebattery").await;
+    let user_token = user["token"].as_str().unwrap().to_string();
+
+    let (status, created) = call(
+        &app,
+        "POST",
+        "/api/admin/comp_codes",
+        Some(&admin_token),
+        Some(json!({ "days": 7 })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let code = created["code"].as_str().unwrap().to_string();
+    assert!(code.starts_with("ANB-"));
+    assert_eq!(created["days"], 7);
+
+    let (status, redeemed) = call(
+        &app,
+        "POST",
+        "/api/auth/redeem_code",
+        Some(&user_token),
+        Some(json!({ "code": code })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(redeemed["plan"], "pro");
+    assert_eq!(redeemed["plan_active"], true);
+
+    let (status, me) = call(&app, "GET", "/api/me", Some(&user_token), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(me["plan_active"], true);
+
+    // One-time: a second account can't reuse the same code.
+    let (_, other) = signup(&app, "other@example.com", "correcthorsebattery").await;
+    let other_token = other["token"].as_str().unwrap().to_string();
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/auth/redeem_code",
+        Some(&other_token),
+        Some(json!({ "code": code })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_code");
+}
+
+#[tokio::test]
 async fn billing_config_lists_three_plans_and_founding_remaining() {
     let (app, _state, _dir) = test_app_with_billing().await;
     let (status, config) = call(&app, "GET", "/api/billing/config", None, None).await;

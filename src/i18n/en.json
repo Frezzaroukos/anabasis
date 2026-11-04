@@ -917,8 +917,15 @@
     "confirmEmail": "Type your email to confirm",
     "deleteForever": "Delete permanently",
     "deleteError": "The account could not be deleted. Check your connection and confirmation email.",
-    "planIntent": "Create a free account first — you’ll choose {{plan}} on the next screen."
-  },
+    "planIntent": "Create a free account first — you’ll choose {{plan}} on the next screen.",
+    "redeemCode": "Access code",
+    "redeemHint": "Have a one-time code? Redeem it here to unlock Pro.",
+    "redeemPlaceholder": "ANB-…",
+    "redeemButton": "Redeem",
+    "redeemSuccess": "Code accepted — Pro is active.",
+    "redeemInvalid": "Invalid or already-used code.",
+    "redeemError": "Could not redeem the code. Try again."
+},
   "admin": {
     "title": "Admin",
     "statAccounts": "Accounts",
@@ -991,8 +998,15 @@
     "enableConfirmDesc": "They can sign in again. They will need their password.",
     "resetConfirmTitle": "Reset this account's password?",
     "resetConfirmDesc": "All their devices are signed out and you get a temporary password to pass on.",
-    "resetError": "Password reset failed."
-  },
+    "resetError": "Password reset failed.",
+    "accessCodeTitle": "Create access code",
+    "accessCodeHint": "Give this one-time code to a friend. It unlocks Pro for the selected duration, then they need to pay unless you grant again.",
+    "createCode": "Create code",
+    "codeError": "Could not create the code.",
+    "codeShownOnce": "Shown once — copy it now. The server stores only its hash.",
+    "copy": "Copy",
+    "copied": "Copied"
+},
   "templates": {
     "fullBody5x5": {
       "name": "Full-Body 5×5",

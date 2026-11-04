@@ -502,6 +502,9 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
   const [portalBusy, setPortalBusy] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  const [redeemCode, setRedeemCode] = useState('');
+  const [redeemBusy, setRedeemBusy] = useState(false);
+  const [redeemStatusKey, setRedeemStatusKey] = useState<string | null>(null);
   const sourceRefreshed = useRef(false);
   // >0 = υπάρχουν ασυγχρόνιστες αλλαγές· δείχνουμε «logout ούτως ή άλλως;».
   const [unsyncedPending, setUnsyncedPending] = useState(0);
@@ -678,6 +681,29 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
     }
   };
 
+  const onRedeemCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (redeemBusy) return;
+    const code = redeemCode.trim();
+    if (!code) return;
+    setRedeemBusy(true);
+    setRedeemStatusKey(null);
+    try {
+      await api.redeemCompCode(code);
+      await refreshAccount();
+      setRedeemCode('');
+      setRedeemStatusKey('account.redeemSuccess');
+    } catch (err) {
+      setRedeemStatusKey(
+        err instanceof ApiError && err.code === 'invalid_code'
+          ? 'account.redeemInvalid'
+          : 'account.redeemError',
+      );
+    } finally {
+      setRedeemBusy(false);
+    }
+  };
+
   const lastSyncLabel = sync.lastSyncAt
     ? new Date(sync.lastSyncAt).toLocaleString(i18n.resolvedLanguage)
     : t('account.syncNever');
@@ -787,6 +813,30 @@ function SignedInPanel({ account, title }: { account: Account; title: string | n
           </div>
         )}
       </div>
+      <form onSubmit={(e) => void onRedeemCode(e)} className="mt-3 rounded-md border border-border/60 bg-elevated p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {t('account.redeemCode')}
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t('account.redeemHint')}</p>
+        <div className="mt-2 flex gap-2">
+          <Input
+            value={redeemCode}
+            onChange={(e) => setRedeemCode(e.target.value)}
+            placeholder={t('account.redeemPlaceholder')}
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            className="h-9 font-mono text-xs"
+          />
+          <Button type="submit" size="sm" loading={redeemBusy} disabled={!redeemCode.trim()}>
+            {t('account.redeemButton')}
+          </Button>
+        </div>
+        {redeemStatusKey && (
+          <p className="mt-2 text-xs text-muted-foreground" role="status">{t(redeemStatusKey)}</p>
+        )}
+      </form>
+
       {billingNotice && (
         <p className="mt-2 text-xs text-muted-foreground" role="status">
           {billingNotice}

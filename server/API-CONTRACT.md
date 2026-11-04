@@ -174,6 +174,11 @@ Body: `{ token, password }` (password ≥8, ≤1024). 200 `{ ok: true }`· 400
 `invalid_reset` για ληγμένο/άκυρο/χρησιμοποιημένο token. Αλλάζει password hash,
 `password_set=1` και **ακυρώνει όλα τα sessions**· δεν εκδίδει session.
 
+### POST /api/auth/redeem_code  (auth)
+Body: `{ code }` (one-time comp code, `ANB-…`). Ατομική κατανάλωση κωδικού
+(`uses < max_uses`), μετά δίνει Pro για `days` ή indefinite. 400 `invalid_code`
+για άκυρο/χρησιμοποιημένο κωδικό. Επιστρέφει `{ ok, plan, plan_expires_at, plan_active }`.
+
 ### GET /api/auth/sessions  (auth)
 200 `[ { id, created_at, last_used_at, expires_at, user_agent, current } ]` —
 μόνο ενεργά sessions, χωρίς token/hash. Το `current` δείχνει αυτό του bearer.
@@ -238,6 +243,7 @@ payload (που ήδη κουβαλά deleted_at).
 - POST /api/admin/users/:id/plan body `{ plan: "free"|"pro", days?: 1..3650, indefinite?: boolean }` → 200
   `{ plan, plan_expires_at, plan_active }`. Χειροκίνητη παροχή/ανάκληση Pro
   (δώρα/support)· το `pro` επεκτείνεται από την τρέχουσα λήξη αν είναι ενεργή· `indefinite` δίνει Pro χωρίς expiry και revoke γίνεται με `{ plan: "free" }`.
+- POST /api/admin/comp_codes body `{ days?: 1..3650, indefinite?: boolean }` → 200 `{ id, code, code_prefix, days, indefinite, max_uses:1 }`. Το πλήρες `code` εμφανίζεται **μία φορά**· η DB κρατά μόνο SHA-256. Admin-only.
 - GET  /api/admin/reports?status=open|reviewed|dismissed|all → `[ { id, reporter_id, reporter_username, target_account_id, target_username, reason, note, status, created_at, reviewed_at, reviewer_id } ]`. Χωρίς φίλτρο: πρόσφατα με τα `open` πρώτα (max 200). 400 `invalid_status`.
 - GET  /api/admin/stats → `{ accounts, active_accounts, disabled_accounts, admins, pro_accounts, sessions, rows, db_size_bytes, uptime_seconds }`
 

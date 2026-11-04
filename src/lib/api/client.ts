@@ -295,6 +295,23 @@ export const api = {
     return request(`/admin/users/${id}/reset_password`, { method: 'POST', body: {} });
   },
 
+  adminCreateCompCode(
+    days?: number,
+    indefinite?: boolean,
+  ): Promise<{
+    id: string;
+    code: string;
+    code_prefix: string;
+    days: number | null;
+    indefinite: boolean;
+    max_uses: number;
+  }> {
+    return request('/admin/comp_codes', {
+      method: 'POST',
+      body: { ...(days == null ? {} : { days }), ...(indefinite ? { indefinite: true } : {}) },
+    });
+  },
+
   adminSetPlan(
     id: string,
     plan: 'free' | 'pro',
@@ -358,6 +375,15 @@ export const api = {
   },
 
   /** Password reset link: always ok for a configured mail server (no enumeration). */
+  redeemCompCode(code: string): Promise<{
+    ok: boolean;
+    plan: 'free' | 'pro';
+    plan_expires_at: string | null;
+    plan_active: boolean;
+  }> {
+    return request('/auth/redeem_code', { method: 'POST', body: { code } });
+  },
+
   passwordResetRequest(email: string): Promise<{ ok: boolean }> {
     return request<{ ok: boolean }>('/auth/password/reset/request', {
       method: 'POST',

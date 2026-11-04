@@ -1,3 +1,4 @@
+use crate::auth::{generate_token, sha256_hex};
 use axum::extract::{Path, Query, State};
 use axum::response::IntoResponse;
 use axum::Json;
@@ -6,6 +7,7 @@ use base64::Engine;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use time::Duration as TimeDuration;
+use uuid::Uuid;
 
 use crate::app::AppState;
 use crate::auth::AdminUser;
@@ -221,6 +223,66 @@ pub struct PlanRequest {
 
 /// POST /api/admin/users/{id}/plan — χειροκίνητη παροχή/ανάκληση Pro.
 /// Χρήσιμο για δώρα, δοκιμές και support πριν μπει αυτόματο billing.
+#[derive(Deserialize)]
+pub struct CompCodeRequest {
+    /// 1..3650 όταν δεν είναι indefinite.
+    days: Option<i64>,
+    #[serde(default)]
+    indefinite: Option<bool>,
+}
+
+#[derive(Serialize)]
+pub struct CompCodeResponse {
+    id: String,
+    code: String,
+    code_prefix: String,
+    days: Option<i64>,
+    indefinite: bool,
+    max_uses: i64,
+}
+
+/// POST /api/admin/comp_codes — δημιουργεί one-time access code. Το plaintext
+/// επιστρέφεται ΜΟΝΟ εδώ· η βάση κρατά μόνο SHA-256. Admin-only.
+pub async fn create_comp_code(
+    State(state): State<AppState>,
+    admin: AdminUser,
+    AppJson(body): AppJson<CompCodeRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let indefinite = body.indefinite.unwrap_or(false);
+    let days = if indefinite {
+        None
+    } else {
+        Some(body.days.unwrap_or(60).clamp(1, 3650))
+    };
+    // 256-bit random code; `ANB-` makes it easy to recognize/paste.
+    let code = format!("ANB-{}", generate_token());
+    let code_hash = sha256_hex(&code);
+    let code_prefix: String = code.chars().take(12).collect();
+    let id = Uuid::new_v4().to_string();
+    sqlx::query(
+        "INSERT INTO comp_codes
+             (id, code_hash, code_prefix, days, indefinite, max_uses, uses, created_by, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, 1, 0, ?6, ?7)",
+    )
+    .bind(&id)
+    .bind(&code_hash)
+    .bind(&code_prefix)
+    .bind(days)
+    .bind(if indefinite { 1 } else { 0 })
+    .bind(&admin.0.account_id)
+    .bind(crate::util::now_iso())
+    .execute(&state.pool)
+    .await?;
+    Ok(Json(CompCodeResponse {
+        id,
+        code,
+        code_prefix,
+        days,
+        indefinite,
+        max_uses: 1,
+    }))
+}
+
 pub async fn set_plan(
     State(state): State<AppState>,
     _admin: AdminUser,

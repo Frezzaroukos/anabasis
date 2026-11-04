@@ -248,6 +248,7 @@ pub fn router(state: AppState) -> Router {
             "/password/reset/consume",
             post(auth::password_reset_consume),
         )
+        .route("/redeem_code", post(auth::redeem_code))
         .route("/sessions", get(auth::sessions))
         .route("/sessions/{id}/revoke", post(auth::revoke_session))
         .route("/claim_admin", post(auth::claim_admin))
@@ -322,6 +323,7 @@ pub fn router(state: AppState) -> Router {
         .route("/users/{id}/plan", post(admin::set_plan))
         .route("/users/{id}/rows", get(admin::user_rows))
         .route("/reports", get(admin::reports))
+        .route("/comp_codes", post(admin::create_comp_code))
         .route("/stats", get(admin::stats))
         .route("/gc", post(admin::gc));
 

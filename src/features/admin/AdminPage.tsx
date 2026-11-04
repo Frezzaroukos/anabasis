@@ -52,6 +52,10 @@ export function AdminPage() {
   const [tempPassword, setTempPassword] = useState<{ id: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState<string | null>(null);
+  const [compDays, setCompDays] = useState('60');
+  const [compBusy, setCompBusy] = useState(false);
+  const [compCode, setCompCode] = useState<string | null>(null);
+  const [compCopied, setCompCopied] = useState(false);
 
   const isAdmin = auth?.account?.role === 'admin';
 
@@ -134,6 +138,31 @@ export function AdminPage() {
     }
   };
 
+  const onCreateCompCode = async () => {
+    if (compBusy) return;
+    setCompBusy(true);
+    setActionErrorKey(null);
+    setCompCode(null);
+    try {
+      const res = await api.adminCreateCompCode(
+        compDays === 'forever' ? undefined : Number(compDays),
+        compDays === 'forever',
+      );
+      setCompCode(res.code);
+    } catch {
+      setActionErrorKey('admin.codeError');
+    } finally {
+      setCompBusy(false);
+    }
+  };
+
+  const copyCompCode = () => {
+    if (!compCode) return;
+    void navigator.clipboard?.writeText(compCode);
+    setCompCopied(true);
+    globalThis.setTimeout(() => setCompCopied(false), 2000);
+  };
+
   const onCopy = () => {
     if (!tempPassword) return;
     void navigator.clipboard?.writeText(tempPassword.password);
@@ -160,6 +189,46 @@ export function AdminPage() {
           <RefreshCw className={cn('h-4 w-4', state === 'loading' && 'animate-spin')} />
         </Button>
       </header>
+
+      <Card className="border-primary/20 bg-primary/5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">{t('admin.accessCodeTitle')}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t('admin.accessCodeHint')}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label={t('admin.grantDays')}
+              value={compDays}
+              onChange={(e) => setCompDays(e.target.value)}
+              disabled={compBusy}
+              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <option value="7">7d</option>
+              <option value="30">30d</option>
+              <option value="60">60d</option>
+              <option value="90">90d</option>
+              <option value="365">365d</option>
+              <option value="forever">{t('admin.forever')}</option>
+            </select>
+            <Button size="sm" loading={compBusy} onClick={() => void onCreateCompCode()}>
+              <Crown className="h-4 w-4" aria-hidden />
+              {t('admin.createCode')}
+            </Button>
+          </div>
+        </div>
+        {compCode && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-card p-3">
+            <code className="min-w-0 flex-1 break-all font-mono text-xs">{compCode}</code>
+            <Button size="sm" variant="outline" onClick={copyCompCode}>
+              {compCopied ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
+              {compCopied ? t('admin.copied') : t('admin.copy')}
+            </Button>
+            <p className="basis-full text-xs text-muted-foreground">{t('admin.codeShownOnce')}</p>
+          </div>
+        )}
+      </Card>
+
 
       <StatsPanel state={state} stats={stats} />
 
