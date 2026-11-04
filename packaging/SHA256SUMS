@@ -1,9 +1,9 @@
-# Anabasis 0.1.0 native artifacts - local build 2026-11-03.
+# Anabasis 0.1.0 native artifacts - local build 2026-11-04.
 # Binaries are gitignored and NOT committed. This file records the exact
 # local build that was inspected for docs/NATIVE-PACKAGING.md.
 # Verify from the repository root:
 #   sha256sum -c packaging/SHA256SUMS
 # For a GitHub release, regenerate basenames and upload the identical values
 # next to the assets; never substitute a made-up checksum.
-52efecc0d43dd972d09c7b7b44a3f948afac17f75338de0efda245e5e8342886  src-tauri/target/release/bundle/deb/Anabasis_0.1.0_amd64.deb
-0fe79ac911857f59177ed0c4d65c663e16b2855469dc51c1b8e71643629b76ea  src-tauri/target/release/bundle/appimage/Anabasis_0.1.0_amd64.AppImage
+1741a4edad35e465f85c025253125b9b0e9a13538fdc45785d72e76e41159940  src-tauri/target/release/bundle/deb/Anabasis_0.1.0_amd64.deb
+1b8c30567f43b2a686b67e47a3d49772f7c649bbb44102a2f4cd700e6719b09d  src-tauri/target/release/bundle/appimage/Anabasis_0.1.0_amd64.AppImage
