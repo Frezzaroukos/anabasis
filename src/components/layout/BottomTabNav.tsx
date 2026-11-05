@@ -23,8 +23,19 @@ export function BottomTabNav() {
   const { open: openCommandMenu, copy } = useCommandMenu();
 
   const go = (to: string) => {
+    // The sheet's hardware-back cleanup calls history.back() asynchronously.
+    // Navigate only after that popstate; a fixed delay was still losing the
+    // new route on iPhone Safari (settings opened then immediately popped back).
+    let done = false;
+    const goNow = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('popstate', goNow);
+      navigate(to);
+    };
+    window.addEventListener('popstate', goNow, { once: true });
+    window.setTimeout(goNow, 500);
     setMoreOpen(false);
-    navigate(to);
   };
 
   // Το sheet κλέβει/επιστρέφει focus όσο ξεμακραίνει· άνοιξε την παλέτα στο
@@ -101,7 +112,7 @@ export function BottomTabNav() {
             <span className="hidden shrink-0 font-mono text-[10px] text-muted-foreground/70 sm:inline">{commandShortcut()}</span>
           </button>
         </div>
-        <ul className="grid grid-cols-2 gap-2 px-4 pb-4">
+        <ul className="grid grid-cols-2 gap-2 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {SECONDARY_NAV.map(({ to, labelKey, Icon }) => (
             <li key={to}>
               <button
