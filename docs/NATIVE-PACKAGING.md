@@ -15,15 +15,15 @@ gitignored. They are **not committed**; only their checksums are recorded in
 
 | Artifact | Path | Size | SHA256 |
 |---|---|---:|---|
-| Debian package | `src-tauri/target/release/bundle/deb/Anabasis_0.1.0_amd64.deb` | 5,778,702 B | `f1f1be82ed80d9bdea5ef46650d0c3a6eb0542a5611c27e94086a9de4e8e4889` |
-| AppImage | `src-tauri/target/release/bundle/appimage/Anabasis_0.1.0_amd64.AppImage` | 107,362,808 B | `486a1faff7c892c3ca06923359fbc2b3983783fc7e161c0c56022f0b51dfd4e1` |
-| Installed binary (local) | `~/.local/bin/anabasis` | 14,851,216 B | `7e353a8fc71fd86cabc88ed2c6bec93caa46bef5ad11114e52fa74513c90a7f9` |
+| Debian package | `src-tauri/target/release/bundle/deb/Anabasis_0.1.0_amd64.deb` | 5,778,858 B | `addfef8ac7a102132413f4f4dfb5fdfd9b45b42e5a59300dc9d9335984e2176b` |
+| AppImage | `src-tauri/target/release/bundle/appimage/Anabasis_0.1.0_amd64.AppImage` | 107,362,808 B | `9bbc63d0dc43302f82cc2fd38ab751d357ddfd66285f87e7c5757efb3dfe8f57` |
+| Installed binary (local) | `~/.local/bin/anabasis` | 14,851,104 B | `2104d6d73a578e66e88de69534a65236dfe315688609edeeb4119549bae155e2` |
 
 The installed binary is byte-identical to
 `src-tauri/target/release/anabasis`. It is a local install, not a release
 asset.
 
-Build timestamps were 2026-11-04 15:59-16:00 local time. Native app contains the auth/reset/admin/comp-code/workout code from `d1900a6`. The AppImage was built
+Build timestamps were 2026-11-05 13:46-13:47 local time. Native app contains the device-nav/comp-code/auth/reset/workout code from `2b67d94`. The AppImage was built
 with `NO_STRIP=1`. There is no tag and no GitHub release for these artifacts;
 reproducibility from the current `main` was not verified (the working tree was
 being modified by other sessions during this inspection).

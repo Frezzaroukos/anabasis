@@ -1,6 +1,6 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useHistoryNav } from '@/hooks/useHistoryNav';
 import { parentRouteOf } from './parentRoute';
 
@@ -43,16 +43,27 @@ export function NavBar() {
             <span className="max-w-[12rem] truncate">{back.label}</span>
           </button>
         )}
-        {canGoForward && (
-          <button
-            type="button"
-            onClick={goForward}
-            aria-label={t('nav.forward')}
-            className="-mr-1 ml-auto flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:text-foreground active:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        <div className="ml-auto flex items-center gap-1">
+          {canGoForward && (
+            <button
+              type="button"
+              onClick={goForward}
+              aria-label={t('nav.forward')}
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:text-foreground active:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden />
+            </button>
+          )}
+          {/* One-tap Settings on phones: the More sheet works, but this is the
+              predictable iOS path. Hidden on tablet/desktop where SideNav has it. */}
+          <Link
+            to="/settings"
+            aria-label={t('nav.settings')}
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:text-foreground active:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          </button>
-        )}
+            <Settings className="h-5 w-5" aria-hidden />
+          </Link>
+        </div>
       </div>
     </div>
   );
