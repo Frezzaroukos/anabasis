@@ -60,7 +60,7 @@
   - **Θέλει εσένα:** «ναι» για deploy του landing/onboarding· καμία live αλλαγή δεν έγινε.
 - **26/10 P2/P3 hardening (OpenCode):**
   - **Έγινε:** OAuth state binding σε HttpOnly/Secure/SameSite=Lax cookie (login CSRF fix), login πάντα Argon2 verify πριν από disabled/locked (state/timing enumeration fix), constant-time admin-code compare, `CF-Connecting-IP` trust μόνο σε loopback ή με ρητό `ANABASIS_TRUST_CF_IP=1`. Tests: 508 frontend + 67 integration + 13 unit, `cargo build --release` PASS, clippy lib/tests PASS.
-  - **Deploy 16:07:** commit/push `5b178e9`· DB snapshot `~/.local/share/anabasis-server/snapshots/anabasis-pre-hardening-20261026-1608.db`· `anabasis-api` active (PID 165917, :8121)· live `/api/health` OK· `/api/auth/oauth/google/start` 302 + state cookie· mismatched state/cookie -> 400 `invalid_state`.
+  - **Deploy 16:07:** commit/push `5b178e9`· DB snapshot `~/.local/share/anabasis-server/snapshots/anabasis-2026-11-04.db`· `anabasis-api` active (PID 165917, :8121)· live `/api/health` OK· `/api/auth/oauth/google/start` 302 + state cookie· mismatched state/cookie -> 400 `invalid_state`.
   - **Μένει:** full real-browser Google login (account choice/consent).
   - **Θέλει εσένα:** τίποτα· αν θέλεις, κάνε το Google login από browser για end-to-end.
 - **23/10 22:20 GitHub, τέλος (Claude):**
