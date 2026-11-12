@@ -1348,76 +1348,112 @@
   },
   "legal": {
     "back": "Back to About",
-    "updated": "Last updated: 1 November 2026",
+    "updated": "Last updated: 12 November 2026",
     "privacy": {
       "title": "Privacy Policy",
-      "intro": "Anabasis is local-first. Your training data stays in your browser and is never sent anywhere unless you choose to create a cloud account for sync. There are no ads, no analytics and no third-party trackers.",
+      "intro": "Anabasis is local-first. Your training data stays in your browser and is never sent anywhere unless you choose to create a cloud account for sync. There are no ads, no third-party analytics and no trackers. This policy explains what we process, why, and your rights under the GDPR.",
       "sections": [
         {
+          "h": "Who we are",
+          "p": "Anabasis is operated by Aggelos Frantzeskakis, Rethymno, Crete, Greece. For any privacy question or request, email contact@axonos.dev."
+        },
+        {
           "h": "What stays on your device",
-          "p": "All your workouts, exercises, goals and body metrics are stored in your browser (IndexedDB). They work fully offline and never leave your device unless you enable cloud sync. Clearing your browser's site data deletes them — export a backup first."
+          "p": "Your workouts, exercises, goals and body metrics are stored locally in your browser (IndexedDB). They work fully offline and never leave your device unless you enable cloud sync. Clearing your browser's site data deletes them — export a backup first."
         },
         {
           "h": "If you create a cloud account",
-          "p": "A cloud account stores your account email and your private sync rows on the Anabasis server so you can sync across devices. The server may keep short-lived technical logs (such as IP address and request metadata) to operate securely and rate-limit abuse. This data is used only to run the sync service — never sold or shared."
+          "p": "When you sign up we store your email, a hash of your password (never the password itself), and your training data in sync form on a server we run, so you can sync across devices. This is necessary to provide the account and sync you asked for."
         },
         {
-          "h": "No ads, no analytics, no trackers",
-          "p": "Anabasis runs no advertising, no analytics and no third-party tracking scripts, and sets no advertising cookies. We cannot see how you use the app."
+          "h": "Account and profile data",
+          "p": "We store your account email, your password hash, your active sessions (including the device type) and — only if you add them — a username, display name and profile photo. We also store your plan (free or Pro). This is needed to run your account (our contract with you) and to keep it secure (our legitimate interest)."
         },
         {
-          "h": "Social sharing is opt-in",
-          "p": "Friends, ranking and the leaderboard are off by default. If you opt in, only aggregate figures (such as level and totals) are shared with friends — never your raw training data."
+          "h": "Payments",
+          "p": "Payments are processed by Stripe. We never receive or store your card number. We keep only a billing record — the Stripe transaction identifiers, the amount and the currency — so we can keep your Pro access in order and process refunds. Stripe handles your payment details under its own privacy policy."
+        },
+        {
+          "h": "Emails",
+          "p": "We send only transactional emails: a sign-in link and a password-reset link, through an email provider. We do not send marketing email."
+        },
+        {
+          "h": "Social features are opt-in",
+          "p": "Friends, ranking and the leaderboard are off by default. If you opt in (your consent, which you can withdraw anytime), only aggregate figures such as level and totals, plus the username, display name and photo you chose, are shared — never your raw training data."
+        },
+        {
+          "h": "Cookies and local storage",
+          "p": "The app stores your session and settings in your browser's local storage, and your training data in IndexedDB. We set no advertising or tracking cookies. During Sign in with Google our server sets a short-lived security cookie that is deleted when the sign-in completes. The installable app uses a service worker to work offline."
+        },
+        {
+          "h": "How long we keep data",
+          "p": "We keep your account data for as long as your account exists. When you delete your account, the server deletes your account, sessions, synced rows, friendships and profile stats. Billing records are kept as long as required for accounting and tax purposes."
+        },
+        {
+          "h": "Who we share data with",
+          "p": "We do not sell your data. To run the service we rely on Stripe (payments), an email provider (transactional email) and Cloudflare (network and security for traffic to the service). Data is stored on our own server. Where one of these providers processes data outside the European Economic Area, we rely on the safeguards it offers under its own terms."
         },
         {
           "h": "Your rights",
-          "p": "You can export all your data at any time from Settings → Data & backups. You can permanently delete your cloud account and its server-side rows from Settings → Account. Local data is removed by clearing the app's site data."
+          "p": "You can export your data at any time from Settings → Data & backups and delete your cloud account from Settings → Account. You also have the right to access, correct, delete, restrict or object to processing, and to data portability. Email contact@axonos.dev to exercise any of these. You may also complain to the Hellenic Data Protection Authority (https://www.dpa.gr)."
         },
         {
-          "h": "Contact",
-          "p": "Questions about this policy can be raised on the project repository: github.com/Frezzaroukos/anabasis. Anabasis is a personal, non-commercial project by Aggelos Frantzeskakis."
+          "h": "Children",
+          "p": "Anabasis is a training log for people who train independently. We do not knowingly collect data from children. If you are under 16, do not create an account without a parent or guardian."
         }
       ]
     },
     "terms": {
       "title": "Terms of Service",
-      "intro": "By using Anabasis you accept these terms. The core app is free and open-source; Anabasis Pro is an optional paid upgrade provided as-is by an individual, not a company.",
+      "intro": "By using Anabasis you accept these terms. The core app is free and open-source. Anabasis Pro is an optional paid upgrade provided by Aggelos Frantzeskakis, an individual (not a company), based in Rethymno, Greece.",
       "sections": [
         {
           "h": "What Anabasis is",
-          "p": "A free, offline-first log for weighted calisthenics and skill progression. The core app is yours to use; cloud sync and Anabasis Pro are optional, best-effort conveniences."
+          "p": "Anabasis is a log for weighted calisthenics and skill progression. It is a training tool, not medical, health or coaching advice, and not a substitute for a doctor or coach."
         },
         {
-          "h": "No warranty",
-          "p": "Anabasis is provided \"as is\", without warranty of any kind. Cloud sync is self-hosted and best-effort — it may be slow, unavailable or interrupted. Keep your own backups (export is always available). To the maximum extent permitted by law, the author is not liable for any loss or damage arising from use of the app or service."
+          "h": "Health disclaimer",
+          "p": "Strength training carries risk. You are responsible for your own training decisions and their outcomes. If you have a health condition or an injury, are pregnant, or feel pain or dizziness, consult a qualified professional before training. See the Safety notice."
         },
         {
-          "h": "Not professional advice",
-          "p": "Anabasis does not provide medical, health or coaching advice. See the Safety notice. You are responsible for your own training decisions."
+          "h": "Account and security",
+          "p": "You are responsible for keeping your login details safe and for what happens under your account. You can delete your account at any time from Settings → Account."
+        },
+        {
+          "h": "Free and paid plans",
+          "p": "The core app is free. Anabasis Pro is available as a monthly subscription or as a one-time lifetime plan. The price and billing period are shown at checkout before you pay."
+        },
+        {
+          "h": "Payments",
+          "p": "Payments are processed by Stripe and billed in euros (EUR). We never receive or store your card number. A monthly subscription renews automatically until you cancel it; a lifetime plan is a one-time payment."
+        },
+        {
+          "h": "Right of withdrawal and refunds",
+          "p": "EU consumers may withdraw from a Pro purchase within 14 days and receive a full refund. A full refund of your most recent purchase ends the Pro access that purchase gave you. See the refund page for how to request it. After 14 days, payments are non-refundable except where required by law."
+        },
+        {
+          "h": "Lifetime plans",
+          "p": "A lifetime plan is a one-time payment that keeps Pro active on your account with no expiry date, for as long as your account and the service exist."
         },
         {
           "h": "Acceptable use",
-          "p": "Do not attempt to disrupt the service, access other users' data, or abuse the sync server (for example by automated bulk writes). Accounts that do so may be removed."
+          "p": "Do not attempt to disrupt the service, access other users' data, or abuse the sync server (for example with automated bulk writes)."
         },
         {
-          "h": "Your account",
-          "p": "You are responsible for keeping your account credentials safe. You can delete your account at any time from Settings → Account."
+          "h": "Suspension and termination",
+          "p": "We may suspend or disable an account that violates these terms or abuses the service. You may stop using Anabasis and delete your account at any time."
         },
         {
-          "h": "Paid plans",
-          "p": "Anabasis Pro is billed in EUR through Stripe. The monthly plan renews automatically until cancelled; lifetime plans are one-time payments. The price and billing period are shown at checkout before you pay."
+          "h": "No warranty and liability",
+          "p": "Anabasis is provided \"as is\", without warranty of any kind. Cloud sync is self-hosted and best-effort and may be slow, unavailable or interrupted. Keep your own backups. To the extent permitted by law, we are not liable for loss or damage arising from use of the app or service."
         },
         {
-          "h": "14-day withdrawal right",
-          "p": "EU consumers may withdraw from a Pro purchase within 14 days of payment and receive a full refund. See the Refund & withdrawal page for how to request it. After 14 days, payments are non-refundable except where required by law."
-        },
-        {
-          "h": "Changes",
-          "p": "These terms may be updated as the app evolves. Continued use after a change means you accept the updated terms."
+          "h": "Changes to these terms",
+          "p": "We may update these terms as the app evolves. Updates are posted on this page; continued use after a change means you accept the updated terms."
         },
         {
           "h": "Governing law",
-          "p": "As a personal, non-commercial project based in Greece, these terms are governed by Greek law where applicable."
+          "p": "These terms are governed by Greek law. If you are a consumer, your mandatory rights under the law of your country of residence are not affected."
         }
       ]
     },
@@ -1461,12 +1497,16 @@
           "p": "EU consumers can withdraw from a digital purchase within 14 days without giving a reason. To exercise it, email contact@axonos.dev from the address used for the purchase within 14 days, with the account email and approximate purchase date. We will confirm and process the refund to the original payment method."
         },
         {
+          "h": "What a refund does",
+          "p": "A full refund ends the Pro access granted by the most recent purchase. For a founding lifetime plan, the refunded slot becomes available again to other users."
+        },
+        {
           "h": "After 14 days",
           "p": "After the 14-day window, payments are non-refundable except where required by law or where the service was not delivered. Monthly subscriptions can be cancelled at any time; cancellation stops future renewals and Pro stays active until the end of the paid period."
         },
         {
           "h": "How refunds are processed",
-          "p": "Approved refunds are issued through Stripe to the original payment method. Bank processing can take 5–10 business days. A full refund ends the associated Pro access; lifetime purchases are revoked on full refund."
+          "p": "Approved refunds are issued through Stripe to the original payment method. Bank processing can take 5–10 business days."
         },
         {
           "h": "Contact",

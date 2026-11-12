@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18next from 'i18next';
 import en from '@/i18n/en.json';
+import el from '@/i18n/el.json';
 import { LegalPage } from './LegalPage';
 import { SAFETY_ACK_KEY } from '@/lib/safety';
 
@@ -70,5 +71,71 @@ describe('LegalPage', () => {
     fireEvent.click(screen.getByText(en.legal.safety.accept));
     expect(window.localStorage.getItem(SAFETY_ACK_KEY)).toBe('1');
     expect(screen.getByText(en.legal.safety.acked)).toBeTruthy();
+  });
+});
+
+/** Τα κείμενα πρέπει να λένε ό,τι κάνει ΟΝΤΩΣ ο κώδικας (live Stripe πληρωμές κ.λπ.) — όχι «προσωπικό, μη εμπορικό project». */
+interface LegalDoc {
+  title: string;
+  intro: string;
+  sections: { h: string; p: string }[];
+}
+
+const LEGAL_DOCS = ['privacy', 'terms', 'refund', 'safety'] as const;
+type LegalKind = (typeof LEGAL_DOCS)[number];
+
+function getDoc(loc: { legal: Record<LegalKind, LegalDoc> }, kind: LegalKind): LegalDoc {
+  return loc.legal[kind];
+}
+
+function fullText(loc: { legal: Record<LegalKind, LegalDoc> }): string {
+  return LEGAL_DOCS.flatMap((k) => {
+    const doc = getDoc(loc, k);
+    return [doc.title, doc.intro, ...doc.sections.flatMap((s) => [s.h, s.p])];
+  }).join('\n');
+}
+
+describe('legal policy accuracy', () => {
+  it('keeps the same section count in EN and EL', () => {
+    for (const kind of LEGAL_DOCS) {
+      expect(getDoc(el, kind).sections.length).toBe(getDoc(en, kind).sections.length);
+    }
+  });
+
+  it('names the controller and gives a contact email', () => {
+    for (const loc of [en, el]) {
+      expect(fullText(loc)).toContain('contact@axonos.dev');
+    }
+    expect(fullText(en)).toContain('Aggelos Frantzeskakis');
+    expect(fullText(en)).toContain('Rethymno');
+  });
+
+  it('points to the Greek data-protection authority', () => {
+    expect(fullText(en)).toContain('https://www.dpa.gr');
+    expect(fullText(el)).toContain('https://www.dpa.gr');
+  });
+
+  it('discloses Stripe as the payment processor', () => {
+    expect(fullText(en)).toContain('Stripe');
+    expect(fullText(el)).toContain('Stripe');
+  });
+
+  it('contains no “non-commercial” framing', () => {
+    expect(fullText(en).toLowerCase()).not.toContain('non-commercial');
+    expect(fullText(el).toLowerCase()).not.toContain('μη εμπορικό');
+  });
+
+  it('contains no price amounts or currency symbol', () => {
+    expect(fullText(en)).not.toContain('€');
+    expect(fullText(el)).not.toContain('€');
+  });
+
+  it('does not name the person or a company “Frezzaroukos”/“AXON”', () => {
+    expect(fullText(en).toLowerCase()).not.toContain('frezzaroukos');
+    expect(fullText(el).toLowerCase()).not.toContain('φρεζζαρούκου');
+    expect(fullText(en)).not.toContain('AXON');
+    expect(fullText(en)).not.toContain('AXONOS');
+    expect(fullText(el)).not.toContain('AXON');
+    expect(fullText(el)).not.toContain('AXONOS');
   });
 });
