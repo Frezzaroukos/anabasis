@@ -177,4 +177,4 @@ In progress: native app-store builds (installable as a PWA today); Apple sign-in
 
 ---
 
-Built by [Aggelos Frezzaroukos](https://github.com/Frezzaroukos) · MIT
+Built by [Aggelos Frantzeskakis](https://github.com/Frezzaroukos) · MIT

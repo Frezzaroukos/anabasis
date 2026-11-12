@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://anabasis.axonos.dev/sitemap.xml

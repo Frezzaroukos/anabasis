@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 const APP_URL = 'https://anabasis.axonos.dev';
 /** Δημιουργός — πραγματικοί σύνδεσμοι μόνο (no invented handles). */
 const CREATOR = {
-  name: 'Aggelos Frezzaroukos',
+  name: 'Aggelos Frantzeskakis',
   links: [
     { label: 'portfolio.axonos.dev', href: 'https://portfolio.axonos.dev' },
     { label: 'github.com/Frezzaroukos', href: 'https://github.com/Frezzaroukos' },
