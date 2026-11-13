@@ -56,3 +56,8 @@ server/target/
 # transient agent/CLI artifacts
 output/
 .playwright-cli/
+
+# internal operator notes (kept locally, not published)
+/STATUS.md
+/CLAUDE.md
+/.archive/

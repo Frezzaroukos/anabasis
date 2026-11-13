@@ -7,21 +7,21 @@
 //!
 //! It will actually send ONLY when BOTH are true:
 //!   * env `ANABASIS_SMTP_TEST_SEND=1`, and
-//!   * the recipient is exactly `aggelosf2016@gmail.com` (hardcoded allowlist).
+//!   * the recipient is exactly the operator's own address, given in env
+//!     `ANABASIS_SMTP_TEST_OWNER` (nothing is hardcoded).
 //!
 //! Any other recipient is refused, so this tool can never email third parties.
 //!
 //! Usage (operator, with the env loaded from the secrets files):
 //!   set -a; source ~/.config/aggelos-stack/secrets/email.env; set +a
+//!   export ANABASIS_SMTP_TEST_OWNER=you@example.com           # your own address
 //!   cargo run -p anabasis-api --example smtp_check            # dry-run
-//!   ANABASIS_SMTP_TEST_SEND=1 cargo run -p anabasis-api --example smtp_check   # real send to Aggelos only
+//!   ANABASIS_SMTP_TEST_SEND=1 cargo run -p anabasis-api --example smtp_check   # real send to the owner only
 
 use anabasis_api::app::EmailConfig;
 use lettre::message::Message;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
-
-const ALLOWED_RECIPIENT: &str = "aggelosf2016@gmail.com";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,8 +36,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Recipient is fixed to Aggelos; override is allowed only to the same value.
-    let to = std::env::var("ANABASIS_SMTP_TEST_TO").unwrap_or_else(|_| ALLOWED_RECIPIENT.into());
+    // The only address this tool may mail is the operator's own, taken from the environment.
+    let owner = match std::env::var("ANABASIS_SMTP_TEST_OWNER") {
+        Ok(v) if !v.trim().is_empty() => v,
+        _ => {
+            println!(
+                "Set ANABASIS_SMTP_TEST_OWNER to your own address (the only recipient \
+                 this tool will mail) and retry."
+            );
+            return Ok(());
+        }
+    };
+    // ANABASIS_SMTP_TEST_TO may only repeat the same value.
+    let to = std::env::var("ANABASIS_SMTP_TEST_TO").unwrap_or_else(|_| owner.clone());
     let send = std::env::var("ANABASIS_SMTP_TEST_SEND").ok().as_deref() == Some("1");
 
     // Redacted summary — never prints the password.
@@ -62,9 +73,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    if to != ALLOWED_RECIPIENT {
+    if to != owner {
         return Err(format!(
-            "refusing to send: recipient {to:?} is not the allowed address {ALLOWED_RECIPIENT:?}"
+            "refusing to send: recipient {to:?} is not the owner address {owner:?}"
         )
         .into());
     }

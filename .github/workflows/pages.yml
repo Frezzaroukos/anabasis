@@ -1,10 +1,8 @@
 name: Deploy demo to GitHub Pages
 
-# Το anabasis.axonos.dev περνά από Cloudflare tunnel στο PC του Aggelos —
-# ζει μόνο όσο ο υπολογιστής είναι ανοιχτός. Ένα demo link που πεθαίνει είναι
-# χειρότερο από κανένα, οπότε το GitHub Pages κρατά ένα αντίγραφο που δεν
-# σβήνει ποτέ. Τα δεδομένα είναι ούτως ή άλλως τοπικά (IndexedDB), άρα το
-# demo δουλεύει πλήρως χωρίς backend.
+# A static copy of the app on GitHub Pages: a demo link that stays up even
+# when the live deployment is unavailable. Data is local anyway (IndexedDB),
+# so the demo works fully without a backend.
 on:
   push:
     branches: [main]

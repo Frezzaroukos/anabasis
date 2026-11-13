@@ -72,7 +72,7 @@ rollback να κάνει **redo**.
 > Το `deploy:rollback` δεν αναιρεί κανένα από τα δύο, κι ένας παλιός server που
 > δεν τα ξέρει απλώς τα αγνοεί (additive, δεν σπάει). Αν χρειαστεί πραγματική
 > επαναφορά σχήματος, ο μόνος δρόμος είναι **restore του DB backup που πάρθηκε
-> ΠΡΙΝ το deploy** (restic — δες CLAUDE.md §6). Γι' αυτό: πριν από deploy που
+> ΠΡΙΝ το deploy** (restic — δες τις operator notes). Γι' αυτό: πριν από deploy που
 > τρέχει νέο migration, κράτα ρητό snapshot της `anabasis.db`.
 
 ## Σημ.
