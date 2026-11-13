@@ -3,6 +3,8 @@
 **Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-11-03
 
 ## Τώρα
+- **13/11 (απόγευμα) LIVE `20261113-135306`:** email επικοινωνίας στα Terms (EN+EL) + 2 content-guard tests (548 tests), ελληνικό credit στο landing «Άγγελο Φραντζεσκάκη». Pushed 28c13ca.
+- **Θέλει εσένα (repo είναι public):** `STATUS.md`, `CLAUDE.md` και `.archive/` είναι tracked δημόσια (εσωτερικές τιμές, paths secrets, όνομα πελάτη, προσωπικό email) — untrack ή όχι; Λεπτομέρειες: `~/code/axonos/docs/career/github-profile-2026-11/REPO-AUDIT-2026-11-13.md`.
 - **13/11 LIVE release `20261113-093001-131960063` (Claude + DeepSeek lanes, με εντολή Aggelos):** νέες πολιτικές Privacy/Terms/Refund που ταιριάζουν στον κώδικα (όχι πια «non-commercial»· υπεύθυνος Aggelos Frantzeskakis, Stripe, GDPR Άρθρο 13, 14 μέρες υπαναχώρησης), canonical + JSON-LD + sitemap/robots, όνομα «Aggelos Frantzeskakis» (LICENSE/README/credit). vitest 539/539, legal pages ελέγχθηκαν live, push στο GitHub (e508db1).
 - **Μένει:** απόφαση για ετήσιο πλάνο· η πολιτική γράφει όριο ηλικίας 16 που ο κώδικας δεν επιβάλλει· η Terms δεν έχει email επικοινωνίας (οι άλλες δύο έχουν).
 - **Rollback:** `npm run deploy:rollback`. Τίποτα άλλο δεν αλλάχτηκε (billing/server άθικτα).
