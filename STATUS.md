@@ -3,6 +3,9 @@
 **Μέτωπο 2 · herdr ws «2 · Anabasis»** · Ενημέρωση: 2026-11-03
 
 ## Τώρα
+- **13/11 LIVE release `20261113-093001-131960063` (Claude + DeepSeek lanes, με εντολή Aggelos):** νέες πολιτικές Privacy/Terms/Refund που ταιριάζουν στον κώδικα (όχι πια «non-commercial»· υπεύθυνος Aggelos Frantzeskakis, Stripe, GDPR Άρθρο 13, 14 μέρες υπαναχώρησης), canonical + JSON-LD + sitemap/robots, όνομα «Aggelos Frantzeskakis» (LICENSE/README/credit). vitest 539/539, legal pages ελέγχθηκαν live, push στο GitHub (e508db1).
+- **Μένει:** απόφαση για ετήσιο πλάνο· η πολιτική γράφει όριο ηλικίας 16 που ο κώδικας δεν επιβάλλει· η Terms δεν έχει email επικοινωνίας (οι άλλες δύο έχουν).
+- **Rollback:** `npm run deploy:rollback`. Τίποτα άλλο δεν αλλάχτηκε (billing/server άθικτα).
 - **03/11 Reports + admin queue (OpenCode):**
   - **Έγινε:** migration `0015_reports`, `POST /api/social/report` (auth, allowlist, ≤500 note, uniform 404, idempotent open report), `GET /api/admin/reports` (admin, status filter, open first), discreet report sheet στο public profile (EN/EL), server **16+82** + frontend **539** tests, fmt/typecheck/lint/clippy PASS.
   - **Μένει:** admin UI + review action για `reviewed_at`/`reviewer_id`· πραγματικός έλεγχος αναφορών (δεν υπάρχει automated moderation).
