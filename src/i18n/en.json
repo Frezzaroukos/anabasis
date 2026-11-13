@@ -1454,6 +1454,10 @@
         {
           "h": "Governing law",
           "p": "These terms are governed by Greek law. If you are a consumer, your mandatory rights under the law of your country of residence are not affected."
+        },
+        {
+          "h": "Contact",
+          "p": "For any question about these terms, email contact@axonos.dev."
         }
       ]
     },

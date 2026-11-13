@@ -139,3 +139,27 @@ describe('legal policy accuracy', () => {
     expect(fullText(el)).not.toContain('AXONOS');
   });
 });
+
+describe('legal contact email and content guards', () => {
+  const CONTACT_DOCS = ['privacy', 'terms', 'refund'] as const;
+
+  it('gives contact@axonos.dev in privacy, terms and refund, in EN and EL', () => {
+    for (const loc of [en, el]) {
+      for (const kind of CONTACT_DOCS) {
+        const doc = getDoc(loc, kind);
+        const text = [doc.title, doc.intro, ...doc.sections.flatMap((s) => [s.h, s.p])].join('\n');
+        expect(text).toContain('contact@axonos.dev');
+      }
+    }
+  });
+
+  it('contains no “non-commercial” framing or the placeholder name “Frezzaroukos”', () => {
+    for (const loc of [en, el]) {
+      const text = fullText(loc).toLowerCase();
+      expect(text).not.toContain('non-commercial');
+      expect(text).not.toContain('μη εμπορικό');
+      expect(text).not.toContain('frezzaroukos');
+      expect(text).not.toContain('φρεζζαρούκου');
+    }
+  });
+});
