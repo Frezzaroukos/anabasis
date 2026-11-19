@@ -5,6 +5,7 @@ import { BottomSheet } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { useExercises } from '@/hooks/useExercises';
 import { queries } from '@/lib/db';
+import { inferExerciseDefaults } from '@/lib/db/workoutHelpers';
 import type { Exercise, ExerciseCategory } from '@/lib/db/types';
 
 interface AddExerciseSheetProps {
@@ -60,7 +61,7 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
     setCreating(true);
     setCreateError(false);
     try {
-      const created = await queries.createExercise({ name: trimmedQuery });
+      const created = await queries.createExercise(inferExerciseDefaults(trimmedQuery));
       onPick(created);
       onClose();
       setQ('');

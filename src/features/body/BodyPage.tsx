@@ -1,41 +1,38 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowDown, ArrowUp, Info } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Info, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getBodyMetric, getBodyTrend, getBodyweightLoads, localDay, saveBodyMetric } from '@/lib/db/queries';
+import { clearBodyMetric, listRecentBodyMetrics } from '@/lib/db/workoutHelpers';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight, parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCountUp } from '@/hooks/useCountUp';
 import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
+import { cn } from '@/lib/utils';
 
 const BodyTrendChart = lazy(() => import('./BodyTrendChart'));
 
-// Χωρίς 30/60/90/180 επιλογέα (owner: περιττός) — δείχνουμε ό,τι υπάρχει,
-// ένα χρόνο πίσω· τα κενά γεμίζουν, οπότε το εύρος δεν «ψεύδεται».
 const TREND_DAYS = 365;
 
 /**
- * Σώμα: βάρος, ποσοστό λίπους και χειροκίνητα βήματα. Το φαγητό/θερμίδες τα
- * χειρίζεται ξεχωριστό app — εδώ μένουν μόνο μετρικές που δένουν με την
- * προπόνηση. Ξεχωριστά charts επίτηδες: βάρος (~kg), λίπος (%) και βήματα
- * (~χιλιάδες) ζουν σε τελείως διαφορετικές κλίμακες.
- *
- * Χρωματική πειθαρχία (Carbon): οι τάσεις δείχνονται με βέλος (η κατεύθυνση
- * ΕΙΝΑΙ το σημαντικό), όχι με πράσινο/κόκκινο — το μόνο χρώμα είναι το χρυσό,
- * και μόνο για ρεκόρ (δεν υπάρχει εδώ).
+ * Σώμα: βάρος, ποσοστό λίπους και χειροκίνητα βήματα — με επιλογή οποιασδήποτε
+ * ημερομηνίας και λίστα πρόσφατων καταχωρίσεων για γρήγορη διόρθωση/διαγραφή.
  */
 export function BodyPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
   const days = TREND_DAYS;
   const today = localDay();
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [justSaved, setJustSaved] = useState(false);
 
   const trend = useLiveQuery(() => getBodyTrend(days), [days], []);
-  const todayMetric = useLiveQuery(() => getBodyMetric(today), [today]);
+  const selectedMetric = useLiveQuery(() => getBodyMetric(selectedDate), [selectedDate]);
+  const recentEntries = useLiveQuery(() => listRecentBodyMetrics(10), [], []);
   const bodyweightLoads = useLiveQuery(() => getBodyweightLoads(5), [], []);
 
   const [w, setW] = useState('');
@@ -43,28 +40,37 @@ export function BodyPage() {
   const [steps, setSteps] = useState('');
 
   useEffect(() => {
-    if (!todayMetric) return;
+    if (!selectedMetric) {
+      setW('');
+      setBf('');
+      setSteps('');
+      return;
+    }
     setW(
-      todayMetric.weight_kg != null
-        ? String(toDisplayWeight(todayMetric.weight_kg, unit, 'body'))
+      selectedMetric.weight_kg != null
+        ? String(toDisplayWeight(selectedMetric.weight_kg, unit, 'body'))
         : '',
     );
-    setBf(todayMetric.body_fat_pct?.toString() ?? '');
-    setSteps(todayMetric.steps?.toString() ?? '');
-  }, [todayMetric, unit]);
+    setBf(selectedMetric.body_fat_pct?.toString() ?? '');
+    setSteps(selectedMetric.steps?.toString() ?? '');
+  }, [selectedMetric, selectedDate, unit]);
 
   const num = (s: string) => {
-    const v = Number(s);
-    return s.trim() !== '' && Number.isFinite(v) ? v : null;
+    const cleaned = s.trim().replace(',', '.');
+    if (cleaned === '') return null;
+    const v = Number(cleaned);
+    return Number.isFinite(v) ? v : null;
   };
 
-  const save = () => {
+  const save = async () => {
     const weightInUnit = num(w);
-    void saveBodyMetric(today, {
+    await saveBodyMetric(selectedDate, {
       weight_kg: weightInUnit != null ? parseWeightToKg(weightInUnit, unit) : null,
       body_fat_pct: num(bf),
       steps: num(steps),
     });
+    setJustSaved(true);
+    globalThis.setTimeout(() => setJustSaved(false), 1800);
   };
 
   const weightPoints = trend.filter((p) => p.weight != null);
@@ -72,8 +78,6 @@ export function BodyPage() {
   const first = weightPoints[0]?.weight ?? null;
   const deltaKg = latest != null && first != null ? latest - first : null;
   const delta = deltaKg != null ? toDisplayWeight(deltaKg, unit, 'body') : null;
-  // Το latest είναι σε kg· ο τίτλος δείχνει τη ΜΟΝΑΔΑ του χρήστη, οπότε
-  // μετράμε τη ΜΕΤΑΤΡΑΜΜΕΝΗ τιμή (αλλιώς lb-χρήστες βλέπουν kg με ετικέτα lb).
   const displayWeight = useCountUp(latest != null ? toDisplayWeight(latest, unit, 'body') : 0, 450, 1);
 
   const weightTrend = useMemo(
@@ -100,11 +104,9 @@ export function BodyPage() {
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-2">
         <h1 className="font-display text-2xl font-semibold tracking-tight">{t('body.title')}</h1>
-        {/* Τρέχον σωματικό βάρος πάντα ορατό (ακόμα κι από ένα ζύγισμα) — είναι
-            η τιμή που τροφοδοτεί το φορτίο των ασκήσεων σωματικού βάρους. */}
         {latest != null && (
           <div className="text-right">
-            <p className="font-mono text-lg font-semibold tabular-nums leading-none">
+            <p className="font-mono text-lg font-semibold leading-none tabular-nums">
               {formatWeight(latest, unit)}
             </p>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -144,9 +146,25 @@ export function BodyPage() {
         </section>
       )}
 
-      {/* Καταγραφή σημερινής μέρας — βάρος, λίπος, βήματα */}
+      {/* Καταγραφή για σήμερα ή οποιαδήποτε παλαιότερη ημερομηνία */}
       <section className="rounded-xl bg-card p-4">
-        <p className="mb-3 text-sm font-medium">{t('body.logToday')}</p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium">
+            {selectedDate === today
+              ? t('body.logToday')
+              : t('body.logForDate', {
+                  date: new Date(`${selectedDate}T12:00:00`).toLocaleDateString(i18n.resolvedLanguage),
+                })}
+          </p>
+          <input
+            type="date"
+            value={selectedDate}
+            max={today}
+            aria-label={t('body.date')}
+            onChange={(e) => setSelectedDate(e.target.value || today)}
+            className="h-11 rounded-md border border-input bg-background px-2.5 font-mono text-xs tabular-nums text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:h-9"
+          />
+        </div>
         <div className="grid grid-cols-3 gap-2">
           {(
             [
@@ -170,15 +188,73 @@ export function BodyPage() {
             </label>
           ))}
         </div>
-        <Button className="mt-3 h-9 tap:min-h-11" onClick={save}>
-          {t('body.save')}
-        </Button>
-        {/* Σύνδεση με την προπόνηση: το βάρος εδώ είναι το bodyweight που μπαίνει
-            στο φορτίο των ασκήσεων σωματικού βάρους (bw + πρόσθετο). */}
+        <div className="mt-3 flex items-center gap-2">
+          <Button className="h-9 tap:min-h-11" onClick={() => void save()}>
+            {t('body.save')}
+          </Button>
+          {justSaved && (
+            <span className="flex items-center gap-1 text-xs font-medium text-primary" role="status">
+              <Check className="h-3.5 w-3.5" aria-hidden />
+              {t('body.saved')}
+            </span>
+          )}
+        </div>
         <p className="mt-3 text-xs leading-snug text-muted-foreground">
           {t('body.weightFeedsLoad')}
         </p>
       </section>
+
+      {/* Πρόσφατες καταχωρίσεις — tap για άμεση διόρθωση, κάδος για καθαρισμό */}
+      {recentEntries.length > 0 && (
+        <section className="rounded-xl bg-card p-4">
+          <h2 className="mb-2 text-sm font-medium">{t('body.recentEntries')}</h2>
+          <ul className="divide-y divide-border/60">
+            {recentEntries.map((entry) => (
+              <li
+                key={entry.date}
+                className={cn(
+                  'flex items-center justify-between gap-2 py-2 text-sm',
+                  entry.date === selectedDate && 'rounded-md bg-primary/5 px-2 -mx-2',
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(entry.date)}
+                  className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left"
+                >
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {entry.date}
+                  </span>
+                  {entry.weight_kg != null && (
+                    <span className="font-mono font-medium tabular-nums">
+                      {formatWeight(entry.weight_kg, unit, { granularity: 'body' })}
+                    </span>
+                  )}
+                  {entry.body_fat_pct != null && (
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {entry.body_fat_pct}%
+                    </span>
+                  )}
+                  {entry.steps != null && (
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {entry.steps.toLocaleString()} {t('body.steps').toLowerCase()}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void clearBodyMetric(entry.date)}
+                  aria-label={t('body.clearEntry')}
+                  title={t('body.clearEntry')}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Βάρος */}
       {weightPoints.length > 1 && (
@@ -192,7 +268,7 @@ export function BodyPage() {
               </p>
             </div>
             {delta != null && delta !== 0 && (
-              <span className="flex items-center gap-0.5 font-mono text-xs text-muted-foreground tabular-nums">
+              <span className="flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground">
                 {delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                 {Math.abs(delta)} {unit}
               </span>
@@ -217,7 +293,7 @@ export function BodyPage() {
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-medium">{t('body.bodyFatTrend')}</h2>
             {bfDelta != null && bfDelta !== 0 && (
-              <span className="flex items-center gap-0.5 font-mono text-xs text-muted-foreground tabular-nums">
+              <span className="flex items-center gap-0.5 font-mono text-xs tabular-nums text-muted-foreground">
                 {bfDelta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                 {Math.abs(Math.round(bfDelta * 10) / 10)}%
               </span>
@@ -242,7 +318,7 @@ export function BodyPage() {
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-medium">{t('body.stepsTrend')}</h2>
             {stepAvg != null && (
-              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
                 {t('body.stepsAvg')} {stepAvg.toLocaleString()}
               </span>
             )}
@@ -262,4 +338,3 @@ export function BodyPage() {
     </div>
   );
 }
-

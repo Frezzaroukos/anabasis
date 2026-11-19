@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Link2, Plus, Save, Trash2, Weight } from 'lucide-react';
+import { ClipboardPaste, Link2, Plus, Save, Trash2, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
@@ -12,11 +12,19 @@ import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
 import { getWorkoutPlan } from '@/lib/db/schedule';
 import { isEmptyDraftWorkout, isSetLoggedActivity, type SetChain } from '../utils';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getActivity, getLatestBodyweight, localDay, saveBodyMetric } from '@/lib/db/queries';
+import {
+  getActivity,
+  getLatestBodyweight,
+  localDay,
+  saveBodyMetric,
+  setWorkoutDate,
+  updateWorkoutMeta,
+} from '@/lib/db/queries';
 import { useWakeLock } from '../useWakeLock';
 import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
 import { AddExerciseSheet } from './AddExerciseSheet';
+import { QuickPasteWorkoutSheet } from './QuickPasteWorkoutSheet';
 import { readStopwatchSeconds, clearStopwatch } from '@/hooks/useManualStopwatch';
 import { PlateCalculator } from './PlateCalculator';
 import { BottomSheet } from '@/components/ui/sheet';
@@ -99,9 +107,11 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   // Pending = exercises added in this session that haven't received a set yet.
   // Memory-only by design: refresh discards them (sets persist).
   const [pending, setPending] = useState<Exercise[]>([]);
+  const [dismissedPlanIds, setDismissedPlanIds] = useState<Set<string>>(new Set());
   const [weightedById, setWeightedById] = useState<Record<string, boolean>>({});
   const [chain, setChain] = useState<SetChain | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
   const [plateOpen, setPlateOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -109,13 +119,20 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   const [bodyweightInput, setBodyweightInput] = useState('');
   const [workoutType, setWorkoutType] = useState(workout.workout_type ?? '');
   const workoutTypeDirty = useRef(false);
-  // Αυξάνει κάθε φορά που καταγράφεται νέο σετ (από οποιαδήποτε κάρτα
-  // άσκησης) — trigger για το auto-start του rest timer παρακάτω.
+  const [workoutNotes, setWorkoutNotes] = useState(workout.notes ?? '');
+  const workoutNotesDirty = useRef(false);
+  const workoutDay = localDay(new Date(workout.started_at));
+  const today = localDay();
 
   useEffect(() => {
     if (workoutTypeDirty.current) return;
     setWorkoutType(workout.workout_type ?? '');
   }, [workout.workout_type]);
+
+  useEffect(() => {
+    if (workoutNotesDirty.current) return;
+    setWorkoutNotes(workout.notes ?? '');
+  }, [workout.notes]);
 
   const exerciseById = useMemo(() => {
     const m = new Map<string, Exercise>();
@@ -150,11 +167,13 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
       seen.add(id);
       out.push(id);
     };
-    for (const row of plan) push(row.exercise_id);
+    for (const row of plan) {
+      if (!dismissedPlanIds.has(row.exercise_id)) push(row.exercise_id);
+    }
     for (const id of persistedExerciseIds) push(id);
     for (const e of pending) push(e.id);
     return out;
-  }, [plan, persistedExerciseIds, pending]);
+  }, [plan, dismissedPlanIds, persistedExerciseIds, pending]);
 
   // Drop pending entries once they get a set persisted.
   useEffect(() => {
@@ -162,12 +181,26 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
   }, [persistedExerciseIds]);
 
   const onAddExercise = (ex: Exercise) => {
+    if (dismissedPlanIds.has(ex.id)) {
+      setDismissedPlanIds((cur) => {
+        const next = new Set(cur);
+        next.delete(ex.id);
+        return next;
+      });
+    }
     if (orderedIds.includes(ex.id)) return;
     setPending((cur) => [...cur, ex]);
     setWeightedById((cur) => ({
       ...cur,
       [ex.id]: !ex.is_bodyweight, // BW exercises default to bodyweight mode
     }));
+  };
+
+  const onRemoveEmptyExercise = (id: string) => {
+    setPending((cur) => cur.filter((p) => p.id !== id));
+    if (planByExerciseId.has(id)) {
+      setDismissedPlanIds((cur) => new Set(cur).add(id));
+    }
   };
 
   // Quick start από το Calendar (π.χ. «Σπίτι · bodyweight») φέρνει ονόματα
@@ -216,6 +249,12 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     if (!workoutTypeDirty.current) return;
     const trimmed = workoutType.trim();
     void queries.setWorkoutType(workout.id, trimmed === '' ? null : trimmed);
+  };
+
+  const onWorkoutNotesBlur = () => {
+    if (!workoutNotesDirty.current) return;
+    const trimmed = workoutNotes.trim();
+    void updateWorkoutMeta(workout.id, { notes: trimmed === '' ? null : trimmed });
   };
 
   const pendingHydrated = useRef(false);
@@ -306,17 +345,44 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
       </header>
 
       <div className="mx-auto w-full max-w-md flex-1 overflow-y-auto px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:max-w-3xl lg:max-w-4xl">
-        <div className="mb-4">
-          <Input
-            value={workoutType}
-            onChange={(e) => {
-              workoutTypeDirty.current = true;
-              setWorkoutType(e.target.value);
-            }}
-            onBlur={onWorkoutTypeBlur}
-            placeholder={t('workout.typePlaceholder')}
-            className="h-9 text-sm"
-          />
+        <div className="mb-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Input
+              value={workoutType}
+              onChange={(e) => {
+                workoutTypeDirty.current = true;
+                setWorkoutType(e.target.value);
+              }}
+              onBlur={onWorkoutTypeBlur}
+              placeholder={t('workout.typePlaceholder')}
+              className="h-9 flex-1 text-sm"
+            />
+            <input
+              type="date"
+              value={workoutDay}
+              max={today}
+              aria-label={t('workout.sessionDate')}
+              onChange={(e) => {
+                if (e.target.value && e.target.value <= today) {
+                  void setWorkoutDate(workout.id, e.target.value);
+                }
+              }}
+              className="h-11 shrink-0 rounded-md border border-input bg-background px-2 font-mono text-xs tabular-nums text-muted-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:h-9"
+            />
+          </div>
+          {isSetLogged && (
+            <Input
+              value={workoutNotes}
+              onChange={(e) => {
+                workoutNotesDirty.current = true;
+                setWorkoutNotes(e.target.value);
+              }}
+              onBlur={onWorkoutNotesBlur}
+              placeholder={t('workout.notesPlaceholder')}
+              aria-label={t('workout.notes')}
+              className="h-8 text-xs text-muted-foreground"
+            />
+          )}
         </div>
 
         {isSetLogged ? (
@@ -354,7 +420,9 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                   const ex = exerciseById.get(id);
                   if (!ex) return null;
                   const exSets = setsByExercise.get(id) ?? [];
-                  const weightedDefault = !ex.is_bodyweight;
+                  const latestExSet = exSets[exSets.length - 1];
+                  const weightedDefault =
+                    latestExSet != null ? latestExSet.weight_kg != null : !ex.is_bodyweight;
                   const weighted = weightedById[id] ?? weightedDefault;
                   return (
                     <ExerciseCard
@@ -377,6 +445,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                         (planByExerciseId.has(id) || seededIds.current.has(id))
                       }
                       onNeedBodyweight={() => setBodyweightOpen(true)}
+                      onRemove={() => onRemoveEmptyExercise(id)}
                     />
                   );
                 })}
@@ -391,6 +460,15 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               >
                 <Plus className="h-4 w-4" />
                 {t('workout.addExercise')}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPasteOpen(true)}
+                aria-label={t('workout.pasteNotes')}
+                title={t('workout.pasteNotes')}
+              >
+                <ClipboardPaste className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('workout.pasteNotes')}</span>
               </Button>
               <Button
                 variant="outline"
@@ -412,6 +490,14 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           onClose={() => setSheetOpen(false)}
           onPick={onAddExercise}
           excludeIds={orderedIds}
+        />
+      )}
+
+      {isSetLogged && (
+        <QuickPasteWorkoutSheet
+          open={pasteOpen}
+          onClose={() => setPasteOpen(false)}
+          workoutId={workout.id}
         />
       )}
 

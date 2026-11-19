@@ -2450,15 +2450,20 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
     db.personal_records.where('user_id').equals(getCurrentUserId()).toArray(),
   ]);
 
-  const live = sets.filter((s) => s.deleted_at == null);
+  const live = sets
+    .filter((s) => s.deleted_at == null)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.set_number - b.set_number);
   const names = new Map(allExercises.map((e) => [e.id, e.name]));
 
-  // Ομαδοποίηση με σειρά πρώτης εμφάνισης — έτσι διαβάζεται όπως έγινε.
+  // Ομαδοποίηση με σειρά πρώτης εμφάνισης (created_at) — έτσι διαβάζεται όπως έγινε.
   const byExercise = new Map<string, SetEntry[]>();
   for (const s of live) {
     const list = byExercise.get(s.exercise_id);
     if (list) list.push(s);
     else byExercise.set(s.exercise_id, [s]);
+  }
+  for (const list of byExercise.values()) {
+    list.sort((a, b) => a.set_number - b.set_number);
   }
 
   const exercises: WorkoutDetailExercise[] = [...byExercise.entries()].map(

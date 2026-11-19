@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowUpFromLine, ChevronLeft, ChevronRight, Flame, House, Plus } from 'lucide-react';
+import { ArrowUpFromLine, ChevronLeft, ChevronRight, ClipboardPaste, Flame, House, Plus } from 'lucide-react';
 import {
   countProgramDaySessions,
   createProgram,
@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { countProgramDayExercises } from '@/lib/db/schedule';
+import { QuickPasteWorkoutSheet } from '@/features/workout/components/QuickPasteWorkoutSheet';
 import { DOT_SIZE_CLASS, dotSizeOf, weekAdherenceTint } from './calendarMath';
 
 /**
@@ -54,6 +55,7 @@ export function CalendarPage() {
   });
   const [selected, setSelected] = useState<string | null>(today);
   const [addOpen, setAddOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
   const [adHocLabel, setAdHocLabel] = useState('');
   // Τα start-helpers γυρνούν null όταν υπάρχει ήδη ενεργή προπόνηση (ένας
   // guard στο queries.ts). Πριν, το πάτημα απλά δεν έκανε ΤΙΠΟΤΑ.
@@ -202,6 +204,24 @@ export function CalendarPage() {
     setAddOpen(false);
     setAdHocLabel('');
     setStartError(null);
+  };
+
+  /**
+   * Το BottomSheet cleanup (`useBackToClose`) καλεί `history.back()` ασύγχρονα.
+   * Περιμένουμε το `popstate` πριν ανοίξουμε δεύτερο sheet ή πλοηγηθούμε σε
+   * άλλο route (ίδιο fix με BottomTabNav — αλλιώς το `history.back()` ακυρώνει
+   * το νέο route/sheet).
+   */
+  const runAfterSheetClose = (action: () => void) => {
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('popstate', go);
+      action();
+    };
+    window.addEventListener('popstate', go, { once: true });
+    window.setTimeout(go, 300);
   };
   // Γρήγορη δημιουργία προγράμματος από το ημερολόγιο: φτιάχνει κενό και πάει
   // κατευθείαν στον editor του, ώστε να το χτίσεις χωρίς να ψάχνεις το section.
@@ -782,8 +802,37 @@ export function CalendarPage() {
               </button>
             </form>
           </div>
+
+          <div className="h-px bg-border/70" />
+
+          <button
+            type="button"
+            disabled={!selected || selected > today}
+            onClick={() => {
+              runAfterSheetClose(() => setPasteOpen(true));
+              closeAddSheet();
+            }}
+            className="flex w-full items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:bg-primary/10 active:scale-[0.99] disabled:opacity-40"
+          >
+            <ClipboardPaste className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-foreground">
+                {t('calendar.pasteWorkout')}
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {t('calendar.pasteWorkoutHint')}
+              </span>
+            </span>
+          </button>
         </div>
       </BottomSheet>
+
+      <QuickPasteWorkoutSheet
+        open={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        initialDate={selected ?? today}
+        onSaved={(res) => runAfterSheetClose(() => navigate(`/history/${res.workoutId}`))}
+      />
     </div>
   );
 }

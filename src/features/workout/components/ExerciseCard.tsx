@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Plus, Weight, Zap, HelpCircle, Compass } from 'lucide-react';
+import { Check, Compass, Copy, HelpCircle, Plus, TrendingDown, Weight, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
+import { addQuickSets, duplicateSet } from '@/lib/db/workoutHelpers';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
 import { buildLastPerformance, suggestNextForExercise } from '@/lib/domain/coach';
@@ -34,6 +35,8 @@ interface ExerciseCardProps {
   /** Ξεκίνα κλειστή παρόλο που δεν έχει σετ (άσκηση πλάνου, όχι δική σου επιλογή τώρα). */
   startCollapsed?: boolean;
   onNeedBodyweight?: () => void;
+  /** Επιτρέπει αφαίρεση άδειας άσκησης (0 σετ) από την τρέχουσα προπόνηση. */
+  onRemove?: () => void;
 }
 
 export function ExerciseCard({
@@ -48,6 +51,7 @@ export function ExerciseCard({
   target = null,
   startCollapsed = false,
   onNeedBodyweight,
+  onRemove,
 }: ExerciseCardProps) {
   const { t } = useTranslation();
   const settings = useAppSettings();
@@ -57,6 +61,7 @@ export function ExerciseCard({
   const [quickMode, setQuickMode] = useState(false);
   const [quickText, setQuickText] = useState('');
   const [quickBusy, setQuickBusy] = useState(false);
+  const [repeatBusy, setRepeatBusy] = useState(false);
   const [showQuickHelp, setShowQuickHelp] = useState(false);
   // Πόσα ρεκόρ έσπασε το πιο πρόσφατο σετ — για τη γιορτή (χρυσό pulse).
   const [prCount, setPrCount] = useState(0);
@@ -90,12 +95,12 @@ export function ExerciseCard({
     globalThis.setTimeout(() => setPrCount(0), 2600);
   };
 
-  const supportsToggle = exercise.is_bodyweight; // bodyweight exercises can be done with or without added load
   const isHold = exercise.default_unit === 'sec'; // skill/isometric άσκηση — reps γίνεται hold σε δευτερόλεπτα
+  // Οποιαδήποτε μη-hold άσκηση επιτρέπει BW ↔ Weighted toggle, ώστε μια custom
+  // άσκηση (π.χ. Muscle Up) να μη σε κλειδώνει ποτέ σε υποχρεωτικά κιλά.
+  const supportsToggle = !isHold;
   const visibleSets = sets;
-  // Άσκηση σωματικού βάρους → κάθε σετ «φωτογραφίζει» το σωματικό βάρος, ώστε
-  // το φορτίο (bw + πρόσθετο) να είναι σωστό στα charts. Μηδέν σε άσκηση με
-  // εξωτερικό βάρος (μπάρα): εκεί το φορτίο είναι μόνο το weight_kg.
+  const latestSet = visibleSets[visibleSets.length - 1] ?? null;
   const setBodyweight = exercise.is_bodyweight ? bodyweightKg : null;
   const needsBodyweight = exercise.is_bodyweight && bodyweightKg == null;
 
@@ -151,18 +156,43 @@ export function ExerciseCard({
       rpe: intensity.rpe,
       rir: intensity.rir,
       tempo: intensity.tempo,
+      notes: intensity.notes ?? null,
     });
     celebrate(res.newPRs.length);
-    // Η φόρμα ΜΕΝΕΙ ανοιχτή μετά το save — ήρεμη, γρήγορη καταγραφή σετ-σετ
-    // χωρίς tap «Προσθήκη σετ» κάθε φορά (owner feedback). Το AddSetInline
-    // καθαρίζει τα reps/hold και κρατάει το βάρος — το κλείσιμο γίνεται μόνο
-    // με «Άκυρο».
+    // Αν μόλις καταχωρίσαμε drop set, επιστρέφουμε το selector σε normal για το επόμενο κανονικό σετ.
+    if (setType === 'dropset') setSetType('normal');
+  };
+
+  /** 1-tap αντιγραφή του τελευταίου σετ της άσκησης. */
+  const onRepeatLast = async () => {
+    if (!latestSet || repeatBusy) return;
+    setRepeatBusy(true);
+    try {
+      const res = await duplicateSet(latestSet);
+      celebrate(res.newPRs.length);
+    } finally {
+      setRepeatBusy(false);
+    }
+  };
+
+  /** 1-tap έναρξη drop set: συνδέει το τελευταίο σετ αν δεν έχει ήδη group_id και ανοίγει τη φόρμα. */
+  const onStartDropSet = async () => {
+    if (latestSet) {
+      const groupId = latestSet.group_id ?? crypto.randomUUID();
+      if (!latestSet.group_id) {
+        await queries.updateSet(latestSet.id, { group_id: groupId });
+      }
+      onChainChange({ id: groupId, type: 'dropset' });
+    }
+    onWeightedChange(true);
+    setSetType('dropset');
+    setQuickMode(false);
+    setAdding(true);
   };
 
   /**
-   * Γρήγορη καταγραφή ολόκληρης άσκησης σε μία γραμμή («80 5,4,3,2»), όπως
-   * γράφει ο χρήστης στο σημειωματάριό του — αντί για tap ανά σετ. Το
-   * quick-log ΔΕΝ μπλέκει με αλυσίδες: όλα μπαίνουν ως κανονικά σετ.
+   * Γρήγορη καταγραφή ολόκληρης άσκησης σε μία γραμμή («30kg 5+4+3(drop set 10kg 7)»,
+   * «80kg 1 + 90kg 1 + 100kg 1», «18kg 4xmax», «26kg 2,5+1»).
    */
   const onQuickSubmit = async () => {
     if (quickBusy) return;
@@ -170,19 +200,14 @@ export function ExerciseCard({
     if (parsed.length === 0) return;
     setQuickBusy(true);
     try {
-      let prs = 0;
-      for (const s of parsed) {
-        const res = await queries.addSet({
-          workout_id: workoutId,
-          exercise_id: exercise.id,
-          weight_kg: weighted ? s.weightKg : null,
-          bodyweight_kg: setBodyweight,
-          reps: isHold ? null : s.reps,
-          hold_seconds: isHold ? s.reps : null,
-        });
-        prs += res.newPRs.length;
-      }
-      celebrate(prs);
+      const res = await addQuickSets({
+        workoutId,
+        exercise,
+        parsed,
+        weighted,
+        bodyweightKg,
+      });
+      celebrate(res.newPRs.length);
       setQuickText('');
       setQuickMode(false);
       setAdding(false);
@@ -201,24 +226,18 @@ export function ExerciseCard({
       )}
     >
       <header className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn('h-2 w-2 shrink-0 rounded-full', CATEGORY_DOT[exercise.category])}
             aria-hidden
           />
           <span className="min-w-0 truncate text-sm font-medium">{exercise.name}</span>
-          {/* Ο στόχος του προγράμματος, δίπλα στο όνομα: χωρίς αυτόν η δομή
-              έφτανε ως εδώ (σωστή άσκηση, σωστή σειρά) αλλά το «πόσα» έμενε
-              στο πρόγραμμα — έπρεπε να το θυμάσαι ή να γυρίσεις πίσω. */}
           {targetLabel && (
             <span className="shrink-0 rounded-full bg-elevated px-2 py-0.5 font-mono text-xs tabular-nums text-muted-foreground">
               {targetLabel}
             </span>
           )}
-          {/* Coach mode: progression hint from last set */}
           {coachHint && <CoachProgressionHint hint={coachHint} />}
-          {/* Γιορτή ρεκόρ: το status chip μένει (a11y — ανακοινώνεται), το
-              «wow» πλέον είναι το RungCelebration δίπλα (σκαλί-σκαλί + particles). */}
           {prCount > 0 && (
             <span
               className="flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold"
@@ -229,41 +248,52 @@ export function ExerciseCard({
           )}
         </div>
 
-        {supportsToggle && (
-          <div
-            role="tablist"
-            className="flex shrink-0 rounded-md bg-elevated p-0.5 text-xs font-medium"
-          >
+        <div className="flex shrink-0 items-center gap-1.5">
+          {supportsToggle && (
+            <div
+              role="tablist"
+              className="flex shrink-0 rounded-md bg-elevated p-0.5 text-xs font-medium"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!weighted}
+                onClick={() => onWeightedChange(false)}
+                className={cn(
+                  'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                  !weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t('workout.bodyweight')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={weighted}
+                onClick={() => onWeightedChange(true)}
+                className={cn(
+                  'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                  weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t('workout.weighted')}
+              </button>
+            </div>
+          )}
+          {onRemove && visibleSets.length === 0 && (
             <button
               type="button"
-              role="tab"
-              aria-selected={!weighted}
-              onClick={() => onWeightedChange(false)}
-              className={cn(
-                'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-                !weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
+              onClick={onRemove}
+              aria-label={t('workout.removeExercise')}
+              title={t('workout.removeExercise')}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              {t('workout.bodyweight')}
+              <X className="h-3.5 w-3.5" />
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={weighted}
-              onClick={() => onWeightedChange(true)}
-              className={cn(
-                'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-                weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t('workout.weighted')}
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
-      {/* Γιορτή ρεκόρ (macro): «ανέβασμα σκαλιού» — αγκυρωμένο στη γωνία της
-          κάρτας ώστε να μη μετατοπίζει το layout γύρω του. */}
       <RungCelebration active={prCount > 0} className="absolute -right-1 -top-1 z-10 h-11 w-11" />
 
       {needsBodyweight && (
@@ -277,17 +307,21 @@ export function ExerciseCard({
         </button>
       )}
 
-      <div className="divide-y divide-border/60 border-t border-border/60">
-        {visibleSets.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-muted-foreground">{t('workout.swipeHint')}</p>
-        ) : (
-          visibleSets.map((s) => (
-            <SetRow key={s.id} set={s} weighted={weighted} holdMode={isHold} />
-          ))
-        )}
-      </div>
+      {visibleSets.length > 0 && (
+        <div className="divide-y divide-border/60 border-t border-border/60">
+          {visibleSets.map((s) => (
+            <SetRow
+              key={s.id}
+              set={s}
+              weighted={weighted}
+              holdMode={isHold}
+              onDuplicated={celebrate}
+            />
+          ))}
+        </div>
+      )}
 
-      <div className="p-2">
+      <div className="border-t border-border/40 p-2">
         {quickMode ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -334,21 +368,32 @@ export function ExerciseCard({
                 {t('common.cancel')}
               </Button>
             </div>
-            {/* Format hint */}
             {showQuickHelp && (
-              <div className="rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground space-y-0.5">
-                <p>{t('workout.quickLogFormat')}: <span className="font-mono">{t('workout.quickLogFormatExample')}</span></p>
+              <div className="space-y-0.5 rounded-md bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
+                <p>{t('workout.quickLogFormatRich')}</p>
               </div>
             )}
-            {/* Ζωντανή προεπισκόπηση: ο χρήστης βλέπει τι θα καταγραφεί καθώς γράφει */}
             {quickPreview.length > 0 && (
               <p className="rounded-md bg-background/60 px-2 py-1 font-mono text-xs tabular-nums text-muted-foreground">
                 {quickPreview
                   .map((s) => {
-                    const repsLabel = isHold ? `${s.reps}s` : `${s.reps}`;
-                    return s.weightKg != null
-                      ? `${formatWeight(s.weightKg, unit, { withUnit: false })}×${repsLabel}`
-                      : repsLabel;
+                    const repsLabel =
+                      s.reps == null
+                        ? 'max'
+                        : isHold
+                          ? `${s.reps}s`
+                          : `${s.reps}`;
+                    const base =
+                      s.weightKg != null
+                        ? `${formatWeight(s.weightKg, unit, { withUnit: false })}×${repsLabel}`
+                        : `BW×${repsLabel}`;
+                    const tag =
+                      s.setType === 'dropset'
+                        ? ' ↓'
+                        : s.setType === 'amrap'
+                          ? ' AMRAP'
+                          : '';
+                    return `${base}${tag}`;
                   })
                   .join('  ·  ')}{' '}
                 <span className="text-primary">({quickPreview.length} {t('workout.sets')})</span>
@@ -361,7 +406,7 @@ export function ExerciseCard({
               weighted={weighted}
               holdMode={isHold}
               unit={unit}
-              initialWeight={last?.weight_kg ?? null}
+              initialWeight={latestSet?.weight_kg ?? last?.weight_kg ?? null}
               initialReps={last?.reps ?? null}
               initialHoldSeconds={last?.hold_seconds ?? null}
               lastLabel={
@@ -378,17 +423,40 @@ export function ExerciseCard({
               setType={setType}
               onSetTypeChange={setSetType}
             />
-            <button
-              type="button"
-              onClick={() => setQuickMode(true)}
-              className="mt-2 flex w-full items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary"
-            >
-              <Zap className="h-3 w-3" />
-              {t('workout.quickLog')}
-            </button>
+            <div className="mt-2 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => setQuickMode(true)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+              >
+                <Zap className="h-3 w-3" />
+                {t('workout.quickLog')}
+              </button>
+              {latestSet && !isHold && (
+                <button
+                  type="button"
+                  disabled={repeatBusy}
+                  onClick={() => void onRepeatLast()}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                >
+                  <Copy className="h-3 w-3" />
+                  {t('workout.repeatLastSet')}
+                </button>
+              )}
+              {latestSet && !isHold && (
+                <button
+                  type="button"
+                  onClick={() => void onStartDropSet()}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                >
+                  <TrendingDown className="h-3 w-3" />
+                  {t('workout.addDropSet')}
+                </button>
+              )}
+            </div>
           </>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <Button
               variant="ghost"
               size="sm"
@@ -398,10 +466,34 @@ export function ExerciseCard({
               <Plus className="h-4 w-4" />
               {t('workout.addSet')}
             </Button>
+            {latestSet && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={repeatBusy}
+                onClick={() => void onRepeatLast()}
+                title={t('workout.duplicateSet')}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                {t('workout.repeatLastSet')}
+              </Button>
+            )}
+            {latestSet && !isHold && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void onStartDropSet()}
+                title={t('workout.addDropSet')}
+              >
+                <TrendingDown className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t('workout.addDropSet')}</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
               aria-label={t('workout.quickLog')}
+              title={t('workout.quickLog')}
               onClick={() => setQuickMode(true)}
             >
               <Zap className="h-4 w-4" />
@@ -415,8 +507,6 @@ export function ExerciseCard({
 
 /**
  * Coach mode progression hint — non-intrusive chip με την επόμενη κίνηση.
- * Ο κανόνας (double-progression) και η μορφοποίηση (i18n) υπολογίζονται από τον
- * γονέα μέσω coach.ts + formatMove· εδώ μόνο η παρουσίαση.
  */
 function CoachProgressionHint({ hint }: { hint: string }) {
   return (

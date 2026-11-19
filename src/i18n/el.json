@@ -118,7 +118,26 @@
     "emptySaveDesc": "Αυτή η συνεδρία δεν έχει σετ. Μπορείς να την αποθηκεύσεις όπως είναι (θα φαίνεται με 0 σετ στο ιστορικό) ή να ακυρώσεις και να καταγράψεις πρώτα ένα σετ.",
     "saveEmpty": "Αποθήκευση όπως είναι",
     "discardAnyConfirmTitle": "Απόρριψη προπόνησης;",
-    "discardAnyConfirmDesc": "Διαγράφει την ενεργή συνεδρία και όσα σετ έχουν ήδη καταγραφεί. Δεν αναιρείται."
+    "discardAnyConfirmDesc": "Διαγράφει την ενεργή συνεδρία και όσα σετ έχουν ήδη καταγραφεί. Δεν αναιρείται.",
+    "duplicateSet": "Επανάληψη σετ",
+    "repeatLastSet": "+1 ίδιο",
+    "addDropSet": "+ Drop set",
+    "removeExercise": "Αφαίρεση άσκησης",
+    "setNote": "Σημείωση σετ",
+    "setNotePlaceholder": "π.χ. παύση, λαβή, max…",
+    "quickLogFormatRich": "Υποστηρίζει: 80kg 5+4+3 · 30kg 5+4(drop set 10kg 7) · 80kg 1 + 90kg 1 · 18kg 4xmax · 26kg 2,5+1",
+    "pasteNotes": "Επικόλληση σημειώσεων",
+    "pasteNotesTitle": "Γρήγορη επικόλληση προπόνησης",
+    "pasteNotesHint": "Κάνε επικόλληση μία άσκηση ανά γραμμή (π.χ. από Σημειώσεις). Υποστηρίζει drop sets, πολλαπλά βάρη, μισές επαναλήψεις και 4xmax.",
+    "pasteNotesPlaceholder": "Bw Mu: 2+1+1+1\nW.pull ups: 30kg 5+4+3(drop set 10kg 7)\nBench: 80kg 1 + 90kg 1 + 100kg 1 + 80kg 6\nRows: 18kg 4xmax",
+    "pasteNotesEmpty": "Γράψε ή κάνε επικόλληση τουλάχιστον μία γραμμή με σετ για προεπισκόπηση.",
+    "pasteNotesCreateNew": "+ Δημιουργία «{{name}}»",
+    "pasteNotesSuspect": "Έλεγξε τους αριθμούς — ασυνήθιστα μεγάλο βάρος ή επαναλήψεις",
+    "pasteNotesSave": "Αποθήκευση {{sets}} σετ ({{exercises}} ασκήσεις)",
+    "pasteNotesWorkoutName": "Όνομα προπόνησης (προαιρετικό)",
+    "pasteNotesMatchExercise": "Ταίριασμα άσκησης",
+    "amrapPlaceholder": "max (προαιρετικό)",
+    "sessionDate": "Ημερομηνία συνεδρίας"
   },
   "programs": {
     "title": "Προγράμματα",
@@ -214,7 +233,10 @@
     "deleteConfirmDesc": "Σβήνονται και τα σετ της και όσα ρεκόρ γέννησε. Δεν αναιρείται από την εφαρμογή.",
     "logFirst": "Κατέγραψε την πρώτη σου προπόνηση",
     "completedCount": "{{count}} ολοκληρωμένη συνεδρία",
-    "completedCount_other": "{{count}} ολοκληρωμένες συνεδρίες"
+    "completedCount_other": "{{count}} ολοκληρωμένες συνεδρίες",
+    "workoutNotes": "Σημειώσεις",
+    "addExercise": "Προσθήκη άσκησης",
+    "editSetsHint": "Επεξεργασία, επανάληψη ή διαγραφή σε κάθε σετ — ή πρόσθεσε ασκήσεις παρακάτω."
   },
   "skills": {
     "title": "Skills",
@@ -427,7 +449,9 @@
     "homeBodyweightHint": "Push-ups · pike push-ups · plank · hollow hold",
     "pullupBar": "Μπάρα έλξεων",
     "pullupBarHint": "Pull-ups · dips · hanging leg raise · L-sit",
-    "futureBlocked": "Δεν μπορείς να καταγράψεις προπόνηση στο μέλλον. Διάλεξε σήμερα ή προηγούμενη μέρα."
+    "futureBlocked": "Δεν μπορείς να καταγράψεις προπόνηση στο μέλλον. Διάλεξε σήμερα ή προηγούμενη μέρα.",
+    "pasteWorkout": "Επικόλληση σημειώσεων προπόνησης",
+    "pasteWorkoutHint": "Κάνε επικόλληση ολόκληρης προπόνησης από Σημειώσεις και σώσ’ την σε αυτή τη μέρα."
   },
   "body": {
     "weight": "Βάρος",
@@ -458,7 +482,12 @@
     "stepsAvg": "μ.ό.",
     "bodyweightLoad": "Φορτίο σωματικού βάρους",
     "bodyweightLoadHint": "Συνολικό φορτίο = σωματικό βάρος + πρόσθετο. Πάτησε άσκηση για το πλήρες chart.",
-    "totalLoad": "Συνολικό φορτίο"
+    "totalLoad": "Συνολικό φορτίο",
+    "logForDate": "Καταγραφή για {{date}}",
+    "date": "Ημερομηνία",
+    "recentEntries": "Πρόσφατες καταχωρίσεις",
+    "clearEntry": "Καθαρισμός καταχώρισης",
+    "saved": "Αποθηκεύτηκε"
   },
   "progress": {
     "title": "Πρόοδος άσκησης",
@@ -925,7 +954,7 @@
     "redeemSuccess": "Ο κωδικός έγινε δεκτός — το Pro είναι ενεργό.",
     "redeemInvalid": "Άκυρος ή ήδη χρησιμοποιημένος κωδικός.",
     "redeemError": "Η εξαργύρωση απέτυχε. Δοκίμασε ξανά."
-},
+  },
   "admin": {
     "title": "Διαχείριση",
     "statAccounts": "Λογαριασμοί",
@@ -950,7 +979,7 @@
     "revokePro": "Ανάκληση Pro",
     "planError": "Το πλάνο δεν ενημερώθηκε.",
     "copy": "Αντιγραφή",
-    "copied": "Αντιγράφηκε!",
+    "copied": "Αντιγράφηκε",
     "disableConfirmTitle": "Απενεργοποίηση αυτού του λογαριασμού;",
     "enableConfirmTitle": "Ενεργοποίηση αυτού του λογαριασμού;",
     "errorSelfDisable": "Δεν μπορείς να απενεργοποιήσεις τον δικό σου λογαριασμό.",
@@ -1003,10 +1032,8 @@
     "accessCodeHint": "Δώσε αυτόν τον one-time κωδικό σε φίλο. Ενεργοποιεί Pro για την επιλεγμένη διάρκεια· μετά χρειάζεται πληρωμή εκτός αν δώσεις ξανά.",
     "createCode": "Δημιουργία κωδικού",
     "codeError": "Ο κωδικός δεν δημιουργήθηκε.",
-    "codeShownOnce": "Εμφανίζεται μία φορά — αντίγραψέ τον τώρα. Ο server κρατά μόνο το hash.",
-    "copy": "Αντιγραφή",
-    "copied": "Αντιγράφηκε"
-},
+    "codeShownOnce": "Εμφανίζεται μία φορά — αντίγραψέ τον τώρα. Ο server κρατά μόνο το hash."
+  },
   "templates": {
     "fullBody5x5": {
       "name": "Full-Body 5×5",

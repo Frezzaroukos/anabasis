@@ -22,13 +22,47 @@ const HOLD_LABEL = en.workout.holdSeconds; // "Hold (sec)"
 const SAVE = en.workout.addSet; // "Add set"
 
 describe('AddSetInline — hold vs reps flow', () => {
-  it('rejects fractional repetitions instead of silently recording impossible counts', () => {
+  it('accepts half/partial repetitions like 2.5 and rejects zero, negative, or >2-decimal reps', () => {
     const onSave = vi.fn();
     render(wrap(<AddSetInline weighted={false} onSave={onSave} />));
+
+    // Negative cases: 0, negative, >2 decimals rejected
+    for (const bad of ['0', '-1', '2.555']) {
+      fireEvent.change(screen.getByLabelText(REPS_LABEL), { target: { value: bad } });
+      fireEvent.keyDown(screen.getByLabelText(REPS_LABEL), { key: 'Enter' });
+      expect(onSave).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: SAVE })).toHaveProperty('disabled', true);
+    }
+
+    // Positive case: 2.5 half-reps accepted
     fireEvent.change(screen.getByLabelText(REPS_LABEL), { target: { value: '2.5' } });
-    fireEvent.keyDown(screen.getByLabelText(REPS_LABEL), { key: 'Enter' });
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: SAVE })).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    expect(onSave).toHaveBeenCalledWith(null, 2.5, null, expect.anything(), []);
+  });
+
+  it('allows AMRAP sets without numeric reps and passes per-set notes through intensity', () => {
+    const onSave = vi.fn();
+    render(
+      wrap(
+        <AddSetInline
+          weighted
+          initialWeight={18}
+          setType="amrap"
+          onSetTypeChange={() => {}}
+          onSave={onSave}
+        />,
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: en.workout.intensityShow }));
+    fireEvent.change(screen.getByLabelText(en.workout.setNote), { target: { value: 'SAT rows' } });
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    expect(onSave).toHaveBeenCalledWith(
+      18,
+      null,
+      null,
+      expect.objectContaining({ notes: 'SAT rows' }),
+      [],
+    );
   });
 
   it.each([['11', '0'], ['0', '0'], ['8', '-1'], ['8', '1.5']])('rejects invalid intensity RPE=%s, RIR=%s', (rpe, rir) => {

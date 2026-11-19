@@ -118,7 +118,26 @@
     "emptySaveDesc": "This session has no sets. You can save it anyway (it will show 0 sets in history) or cancel and log a set first.",
     "saveEmpty": "Save anyway",
     "discardAnyConfirmTitle": "Discard this workout?",
-    "discardAnyConfirmDesc": "This deletes the active session and any sets already logged. This cannot be undone."
+    "discardAnyConfirmDesc": "This deletes the active session and any sets already logged. This cannot be undone.",
+    "duplicateSet": "Repeat set",
+    "repeatLastSet": "+1 same",
+    "addDropSet": "+ Drop set",
+    "removeExercise": "Remove exercise",
+    "setNote": "Set note",
+    "setNotePlaceholder": "e.g. pause, slow, grip…",
+    "quickLogFormatRich": "Supports: 80kg 5+4+3 · 30kg 5+4(drop set 10kg 7) · 80kg 1 + 90kg 1 · 18kg 4xmax · 26kg 2.5+1",
+    "pasteNotes": "Paste notes",
+    "pasteNotesTitle": "Quick-paste workout",
+    "pasteNotesHint": "Paste one exercise per line (e.g. from Notes). Supports drop sets, multiple weights, half reps, and 4xmax.",
+    "pasteNotesPlaceholder": "Bw Mu: 2+1+1+1\nW.pull ups: 30kg 5+4+3(drop set 10kg 7)\nBench: 80kg 1 + 90kg 1 + 100kg 1 + 80kg 6\nRows: 18kg 4xmax",
+    "pasteNotesEmpty": "Write or paste at least one line with sets to preview.",
+    "pasteNotesCreateNew": "+ Create \"{{name}}\"",
+    "pasteNotesSuspect": "Check numbers — unusually high weight or reps",
+    "pasteNotesSave": "Save {{sets}} sets ({{exercises}} exercises)",
+    "pasteNotesWorkoutName": "Workout name (optional)",
+    "pasteNotesMatchExercise": "Match exercise",
+    "amrapPlaceholder": "max (optional)",
+    "sessionDate": "Session date"
   },
   "programs": {
     "title": "Programs",
@@ -214,7 +233,10 @@
     "deleteConfirmDesc": "Its sets and any personal records it produced are removed too. This cannot be undone from the app.",
     "logFirst": "Log your first workout",
     "completedCount": "{{count}} completed session",
-    "completedCount_other": "{{count}} completed sessions"
+    "completedCount_other": "{{count}} completed sessions",
+    "workoutNotes": "Notes",
+    "addExercise": "Add exercise",
+    "editSetsHint": "Edit, repeat, or delete any set directly — or add missing sets below."
   },
   "skills": {
     "title": "Skills",
@@ -427,7 +449,9 @@
     "homeBodyweightHint": "Push-ups · pike push-ups · plank · hollow hold",
     "pullupBar": "Pull-up bar",
     "pullupBarHint": "Pull-ups · dips · hanging leg raise · L-sit",
-    "futureBlocked": "You can’t log a workout in the future. Pick today or a past day."
+    "futureBlocked": "You can’t log a workout in the future. Pick today or a past day.",
+    "pasteWorkout": "Paste workout notes",
+    "pasteWorkoutHint": "Paste a full session from Notes/Notion and save it straight to this day."
   },
   "body": {
     "weight": "Weight",
@@ -458,7 +482,12 @@
     "stepsAvg": "avg",
     "bodyweightLoad": "Bodyweight load",
     "bodyweightLoadHint": "Total load = bodyweight + added weight. Tap an exercise for its full chart.",
-    "totalLoad": "Total load"
+    "totalLoad": "Total load",
+    "logForDate": "Log for {{date}}",
+    "date": "Date",
+    "recentEntries": "Recent entries",
+    "clearEntry": "Clear entry",
+    "saved": "Saved"
   },
   "progress": {
     "title": "Exercise progress",
@@ -925,7 +954,7 @@
     "redeemSuccess": "Code accepted — Pro is active.",
     "redeemInvalid": "Invalid or already-used code.",
     "redeemError": "Could not redeem the code. Try again."
-},
+  },
   "admin": {
     "title": "Admin",
     "statAccounts": "Accounts",
@@ -950,7 +979,7 @@
     "revokePro": "Revoke Pro",
     "planError": "Couldn't update the plan.",
     "copy": "Copy",
-    "copied": "Copied!",
+    "copied": "Copied",
     "disableConfirmTitle": "Disable this account?",
     "enableConfirmTitle": "Enable this account?",
     "errorSelfDisable": "You can't disable your own account.",
@@ -1003,10 +1032,8 @@
     "accessCodeHint": "Give this one-time code to a friend. It unlocks Pro for the selected duration, then they need to pay unless you grant again.",
     "createCode": "Create code",
     "codeError": "Could not create the code.",
-    "codeShownOnce": "Shown once — copy it now. The server stores only its hash.",
-    "copy": "Copy",
-    "copied": "Copied"
-},
+    "codeShownOnce": "Shown once — copy it now. The server stores only its hash."
+  },
   "templates": {
     "fullBody5x5": {
       "name": "Full-Body 5×5",

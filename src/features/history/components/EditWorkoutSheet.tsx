@@ -11,6 +11,7 @@ import {
   setWorkoutDuration,
   setWorkoutType,
   softDeleteWorkout,
+  updateWorkoutMeta,
 } from '@/lib/db/queries';
 import type { Workout } from '@/lib/db/types';
 import { BottomSheet } from '@/components/ui/sheet';
@@ -45,6 +46,7 @@ export function EditWorkoutSheet({
   const [kind, setKind] = useState(workout.activity_kind);
   const [day, setDay] = useState(localDay(new Date(workout.started_at)));
   const [minutes, setMinutes] = useState('');
+  const [notes, setNotes] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const initialMinutes = (w: Workout) =>
@@ -56,6 +58,7 @@ export function EditWorkoutSheet({
     setKind(workout.activity_kind);
     setDay(localDay(new Date(workout.started_at)));
     setMinutes(initialMinutes(workout));
+    setNotes(workout.notes ?? '');
     setConfirmingDelete(false);
   }, [open, workout]);
 
@@ -73,6 +76,9 @@ export function EditWorkoutSheet({
         workout.id,
         minutes.trim() !== '' && Number.isFinite(mins) && mins > 0 ? mins * 60 : null,
       );
+    }
+    if ((workout.notes ?? '') !== notes.trim()) {
+      await updateWorkoutMeta(workout.id, { notes: notes.trim() || null });
     }
     onClose();
   };
@@ -141,6 +147,19 @@ export function EditWorkoutSheet({
             onChange={(e) => setMinutes(e.target.value)}
             placeholder={t('history.workoutDurationPlaceholder')}
             className="h-10 font-mono tabular-nums"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('history.workoutNotes')}
+          </span>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t('workout.notesPlaceholder')}
+            rows={3}
+            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
           />
         </label>
 

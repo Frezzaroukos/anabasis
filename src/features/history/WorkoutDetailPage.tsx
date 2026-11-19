@@ -1,28 +1,36 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronRight, Pencil, Trophy } from 'lucide-react';
-import { getWorkoutDetail } from '@/lib/db/queries';
+import { Check, ChevronRight, ClipboardPaste, Pencil, Plus, Trophy, X, Zap } from 'lucide-react';
+import { addSet, getLatestBodyweight, getWorkoutDetail, localDay } from '@/lib/db/queries';
+import { addQuickSets } from '@/lib/db/workoutHelpers';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { useExercises } from '@/hooks/useExercises';
 import { formatWeight, toDisplayWeight } from '@/lib/units';
-import { formatLoad } from '@/features/workout/utils';
-import type { PRType } from '@/lib/db/types';
+import { parseQuickSets } from '@/features/workout/quickLog';
+import { AddSetInline, type SetIntensity } from '@/features/workout/components/AddSetInline';
+import { SetRow } from '@/features/workout/components/SetRow';
+import { AddExerciseSheet } from '@/features/workout/components/AddExerciseSheet';
+import { QuickPasteWorkoutSheet } from '@/features/workout/components/QuickPasteWorkoutSheet';
+import type { Exercise, PRType, SetEntry, SetType, WeightUnit } from '@/lib/db/types';
 import { Card, SectionTitle } from '@/components/ui/Section';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { EditWorkoutSheet } from './components/EditWorkoutSheet';
 import { LoadingState } from '@/components/ui/loading-state';
+import { cn } from '@/lib/utils';
 
 /** PR types που είναι βάρος (kg storage) — τα υπόλοιπα (reps/hold/απόσταση/pace) δεν μετατρέπονται. */
 const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
 
 /**
- * Μία προπόνηση, όπως τη διαβάζεις εκ των υστέρων.
+ * Μία προπόνηση, όπως τη διαβάζεις — και τη διορθώνεις — εκ των υστέρων.
  *
- * Έλειπε εντελώς: το ημερολόγιο και το ιστορικό έδειχναν ότι κάτι έγινε,
- * αλλά δεν υπήρχε τρόπος να δεις ΤΙ. Κάθε άσκηση εδώ είναι σύνδεσμος προς
- * την πρόοδό της, ώστε το «τι σήκωσα» να οδηγεί στο «πώς πάω».
+ * Πλήρης διαχείριση επί τόπου: επεξεργασία/επανάληψη/διαγραφή κάθε σετ,
+ * προσθήκη σετ ή quick-log, προσθήκη άσκησης που ξεχάστηκε, ή επικόλληση
+ * σημειώσεων, χωρίς να χρειάζεται να σβήσεις και να ξαναγράψεις την προπόνηση.
  */
 export function WorkoutDetailPage() {
   const { t, i18n } = useTranslation();
@@ -30,11 +38,38 @@ export function WorkoutDetailPage() {
   const unit = settings?.weight_unit ?? 'kg';
   const { workoutId } = useParams<{ workoutId: string }>();
   const [editOpen, setEditOpen] = useState(false);
+  const [addExerciseOpen, setAddExerciseOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pendingExercises, setPendingExercises] = useState<Exercise[]>([]);
+
   const detail = useLiveQuery(
     () => (workoutId ? getWorkoutDetail(workoutId) : Promise.resolve(null)),
     [workoutId],
     undefined,
   );
+  const allExercisesQuery = useExercises();
+  const allExercises = useMemo(() => allExercisesQuery ?? [], [allExercisesQuery]);
+  const exerciseById = useMemo(
+    () => new Map(allExercises.map((e) => [e.id, e])),
+    [allExercises],
+  );
+
+  const workoutStartedAt = detail?.workout.started_at;
+  const bodyweightKg = useLiveQuery(
+    () => (workoutStartedAt ? getLatestBodyweight(localDay(new Date(workoutStartedAt))) : Promise.resolve(null)),
+    [workoutStartedAt],
+    null,
+  );
+
+  const persistedIds = useMemo(
+    () => new Set(detail?.exercises.map((e) => e.exerciseId) ?? []),
+    [detail?.exercises],
+  );
+
+  // Μόλις μια pending άσκηση αποκτήσει το πρώτο της σετ, περνάει στη λίστα των persisted.
+  useEffect(() => {
+    setPendingExercises((cur) => cur.filter((p) => !persistedIds.has(p.id)));
+  }, [persistedIds]);
 
   if (detail === undefined) {
     return <LoadingState label={t('common.loading')} />;
@@ -51,6 +86,23 @@ export function WorkoutDetailPage() {
 
   const { workout, activityLabel, exercises, totalVolume, totalSets, prs } = detail;
   const started = new Date(workout.started_at);
+  const excludeIds = [...persistedIds, ...pendingExercises.map((e) => e.id)];
+
+  // Deduplicate PRs inside the same workout (e.g. ramping 80→90→100kg emits 3 rows;
+  // show only the best achieved per exercise + PR type, and skip zero-value volume noise).
+  const displayPrs = (() => {
+    const best = new Map<string, (typeof prs)[number]>();
+    for (const pr of prs) {
+      if (pr.value <= 0) continue;
+      const key = `${pr.exercise_id ?? pr.activity_kind ?? ''}:${pr.type}`;
+      const cur = best.get(key);
+      const isBetter =
+        !cur ||
+        (pr.type === 'fastest_pace' ? pr.value < cur.value : pr.value > cur.value);
+      if (isBetter) best.set(key, pr);
+    }
+    return [...best.values()];
+  })();
 
   return (
     <div className="space-y-6">
@@ -59,7 +111,6 @@ export function WorkoutDetailPage() {
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {workout.workout_type ?? activityLabel}
           </h1>
-          {/* Η διόρθωση ζει δίπλα σε αυτό που διορθώνεις, όχι σε άλλη οθόνη. */}
           <button
             onClick={() => setEditOpen(true)}
             aria-label={t('history.editWorkout')}
@@ -91,89 +142,95 @@ export function WorkoutDetailPage() {
         />
       </div>
 
-      {prs.length > 0 && (
+      {displayPrs.length > 0 && (
         <Card className="border border-gold/40">
           <SectionTitle>{t('workout.prs')}</SectionTitle>
           <ul className="space-y-1.5">
-            {prs.map((pr) => (
-              <li key={pr.id} className="flex items-center gap-2 text-sm">
-                <Trophy className="h-4 w-4 shrink-0 text-gold" />
-                <span className="flex-1 truncate">{t(`history.pr.${pr.type}`)}</span>
-                <span className="font-mono tabular-nums text-gold">
-                  {WEIGHT_PR_TYPES.has(pr.type)
-                    ? formatWeight(pr.value, unit)
-                    : Math.round(pr.value * 10) / 10}
-                </span>
-              </li>
-            ))}
+            {displayPrs.map((pr) => {
+              const exName = pr.exercise_id ? exerciseById.get(pr.exercise_id)?.name : null;
+              return (
+                <li key={pr.id} className="flex items-center gap-2 text-sm">
+                  <Trophy className="h-4 w-4 shrink-0 text-gold" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {exName ? <span className="font-medium">{exName}</span> : null}
+                    {exName ? ' · ' : null}
+                    <span className={exName ? 'text-xs text-muted-foreground' : undefined}>
+                      {t(`history.pr.${pr.type}`)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-mono tabular-nums text-gold">
+                    {WEIGHT_PR_TYPES.has(pr.type)
+                      ? formatWeight(pr.value, unit)
+                      : Math.round(pr.value * 10) / 10}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </Card>
       )}
 
-      {exercises.length === 0 ? (
+      {exercises.length === 0 && pendingExercises.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {t('workout.noExercises')}
         </p>
       ) : (
         <div className="space-y-3">
-          {exercises.map((ex) => (
-            <Card key={ex.exerciseId}>
-              <Link
-                to={`/exercises/${ex.exerciseId}`}
-                className="-mx-1 mb-2 flex items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{ex.name}</span>
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {formatWeight(ex.volume, unit, { granularity: 'plate' })}
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
-
-              <ul className="divide-y divide-border/60">
-                {ex.sets.map((s) => {
-                  const warmup = s.set_type === 'warmup' || s.is_warmup;
-                  return (
-                    <li
-                      key={s.id}
-                      className={cn(
-                        'flex items-center gap-3 py-2 font-mono text-sm tabular-nums',
-                        warmup && 'text-muted-foreground',
-                      )}
-                    >
-                      <span className="w-6 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-                        {s.set_number}
-                      </span>
-                      <span className="flex-1">
-                        {[
-                          s.weight_kg != null || s.bodyweight_kg != null
-                            ? formatLoad(s.weight_kg, s.bodyweight_kg, unit)
-                            : null,
-                          s.reps != null ? `× ${s.reps}` : null,
-                          s.hold_seconds != null ? `${s.hold_seconds}s` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' ') || '—'}
-                      </span>
-                      {warmup && (
-                        <span className="shrink-0 font-sans text-xs uppercase tracking-wide">
-                          {t('setType.warmup')}
-                        </span>
-                      )}
-                      {s.rpe != null && (
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          RPE {s.rpe}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </Card>
+          {exercises.map((ex) => {
+            const fullEx = exerciseById.get(ex.exerciseId);
+            return (
+              <HistoryExerciseCard
+                key={ex.exerciseId}
+                workoutId={workout.id}
+                exerciseId={ex.exerciseId}
+                name={ex.name}
+                exercise={fullEx}
+                sets={ex.sets}
+                volume={ex.volume}
+                unit={unit}
+                bodyweightKg={bodyweightKg}
+              />
+            );
+          })}
+          {pendingExercises.map((ex) => (
+            <HistoryExerciseCard
+              key={ex.id}
+              workoutId={workout.id}
+              exerciseId={ex.id}
+              name={ex.name}
+              exercise={ex}
+              sets={[]}
+              volume={0}
+              unit={unit}
+              bodyweightKg={bodyweightKg}
+              defaultAdding
+              onRemovePending={() =>
+                setPendingExercises((cur) => cur.filter((p) => p.id !== ex.id))
+              }
+            />
           ))}
         </div>
       )}
 
-      <EditWorkoutSheet open={editOpen} onClose={() => setEditOpen(false)} workout={workout} />
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => setAddExerciseOpen(true)}
+        >
+          <Plus className="h-4 w-4" />
+          {t('history.addExercise')}
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => setPasteOpen(true)}
+          aria-label={t('workout.pasteNotes')}
+        >
+          <ClipboardPaste className="h-4 w-4" />
+          <span>{t('workout.pasteNotes')}</span>
+        </Button>
+      </div>
 
       {workout.notes && (
         <Card>
@@ -181,7 +238,298 @@ export function WorkoutDetailPage() {
           <p className="whitespace-pre-wrap text-sm">{workout.notes}</p>
         </Card>
       )}
+
+      <EditWorkoutSheet open={editOpen} onClose={() => setEditOpen(false)} workout={workout} />
+
+      <AddExerciseSheet
+        open={addExerciseOpen}
+        onClose={() => setAddExerciseOpen(false)}
+        excludeIds={excludeIds}
+        onPick={(ex) => {
+          if (!excludeIds.includes(ex.id)) {
+            setPendingExercises((cur) => [...cur, ex]);
+          }
+        }}
+      />
+
+      <QuickPasteWorkoutSheet
+        open={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        workoutId={workout.id}
+      />
     </div>
+  );
+}
+
+interface HistoryExerciseCardProps {
+  workoutId: string;
+  exerciseId: string;
+  name: string;
+  exercise: Exercise | undefined;
+  sets: SetEntry[];
+  volume: number;
+  unit: WeightUnit;
+  bodyweightKg: number | null;
+  defaultAdding?: boolean;
+  onRemovePending?: () => void;
+}
+
+function HistoryExerciseCard({
+  workoutId,
+  exerciseId,
+  name,
+  exercise,
+  sets,
+  volume,
+  unit,
+  bodyweightKg,
+  defaultAdding = false,
+  onRemovePending,
+}: HistoryExerciseCardProps) {
+  const { t } = useTranslation();
+  const isHold = exercise?.default_unit === 'sec';
+  const lastSet = sets[sets.length - 1] ?? null;
+  const inferredWeighted =
+    lastSet != null
+      ? lastSet.weight_kg != null
+      : exercise
+        ? !exercise.is_bodyweight
+        : true;
+
+  const [weighted, setWeighted] = useState(inferredWeighted);
+  const [adding, setAdding] = useState(defaultAdding);
+  const [quickMode, setQuickMode] = useState(false);
+  const [quickText, setQuickText] = useState('');
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [setType, setSetType] = useState<SetType>('normal');
+
+  const quickPreview = parseQuickSets(quickText, weighted, unit);
+
+  const onAddSet = async (
+    weightKg: number | null,
+    reps: number | null,
+    holdSeconds: number | null,
+    intensity: SetIntensity,
+    restPauseReps: number[],
+  ) => {
+    await addSet({
+      workout_id: workoutId,
+      exercise_id: exerciseId,
+      weight_kg: weightKg,
+      bodyweight_kg: exercise?.is_bodyweight ? bodyweightKg : null,
+      reps,
+      rest_pause_reps: restPauseReps,
+      hold_seconds: holdSeconds,
+      set_type: setType,
+      group_id: setType === 'dropset' || setType === 'superset' ? crypto.randomUUID() : null,
+      is_warmup: setType === 'warmup',
+      is_failure: setType === 'failure',
+      rpe: intensity.rpe,
+      rir: intensity.rir,
+      tempo: intensity.tempo,
+      notes: intensity.notes ?? null,
+    });
+    if (setType === 'dropset') setSetType('normal');
+  };
+
+  const onQuickSubmit = async () => {
+    if (quickBusy || quickPreview.length === 0) return;
+    setQuickBusy(true);
+    try {
+      const targetEx: Exercise = exercise ?? {
+        id: exerciseId,
+        user_id: null,
+        name,
+        category: 'other',
+        movement_type: 'compound',
+        equipment: [],
+        is_weighted: weighted,
+        is_bodyweight: !weighted,
+        default_unit: isHold ? 'sec' : 'kg',
+        notes: null,
+        is_archived: false,
+        created_at: '',
+        updated_at: '',
+        deleted_at: null,
+      };
+      await addQuickSets({
+        workoutId,
+        exercise: targetEx,
+        parsed: quickPreview,
+        weighted,
+        bodyweightKg,
+      });
+      setQuickText('');
+      setQuickMode(false);
+      setAdding(false);
+    } finally {
+      setQuickBusy(false);
+    }
+  };
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+        <Link
+          to={`/exercises/${exerciseId}`}
+          className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
+          {volume > 0 && (
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {formatWeight(volume, unit, { granularity: 'plate' })}
+            </span>
+          )}
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </Link>
+        {onRemovePending && sets.length === 0 && (
+          <button
+            type="button"
+            onClick={onRemovePending}
+            aria-label={t('workout.removeExercise')}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {sets.length > 0 && (
+        <div className="divide-y divide-border/60 border-t border-border/60">
+          {sets.map((s) => (
+            <SetRow
+              key={s.id}
+              set={s}
+              weighted={s.weight_kg != null ? true : weighted}
+              holdMode={isHold}
+              animateCommit={false}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="border-t border-border/50 bg-muted/15 p-2">
+        {quickMode ? (
+          <div className="space-y-2 px-1">
+            <div className="flex items-center gap-2">
+              <Input
+                autoFocus
+                value={quickText}
+                onChange={(e) => setQuickText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && quickPreview.length > 0) void onQuickSubmit();
+                  if (e.key === 'Escape') setQuickMode(false);
+                }}
+                placeholder={
+                  isHold
+                    ? t('workout.quickPlaceholderHold')
+                    : weighted
+                      ? t('workout.quickPlaceholder')
+                      : t('workout.quickPlaceholderBw')
+                }
+                className="h-9 font-mono tabular-nums"
+                aria-label={t('workout.quickLog')}
+              />
+              <Button
+                size="sm"
+                className="h-9 shrink-0"
+                disabled={quickPreview.length === 0 || quickBusy}
+                onClick={() => void onQuickSubmit()}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-9 shrink-0"
+                onClick={() => setQuickMode(false)}
+              >
+                {t('common.cancel')}
+              </Button>
+            </div>
+            {quickPreview.length > 0 && (
+              <p className="rounded-md bg-background/60 px-2 py-1 font-mono text-xs tabular-nums text-muted-foreground">
+                {quickPreview
+                  .map((s) => {
+                    const repsLabel = s.reps == null ? 'max' : isHold ? `${s.reps}s` : `${s.reps}`;
+                    return s.weightKg != null
+                      ? `${formatWeight(s.weightKg, unit, { withUnit: false })}×${repsLabel}`
+                      : `BW×${repsLabel}`;
+                  })
+                  .join(' · ')}{' '}
+                <span className="text-primary">({quickPreview.length} {t('workout.sets')})</span>
+              </p>
+            )}
+          </div>
+        ) : adding ? (
+          <div className="space-y-2 p-1">
+            {!isHold && (
+              <div className="flex justify-end">
+                <div role="tablist" className="flex rounded-md bg-elevated p-0.5 text-xs font-medium">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!weighted}
+                    onClick={() => setWeighted(false)}
+                    className={cn(
+                      'rounded px-2 py-0.5 transition-colors',
+                      !weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {t('workout.bodyweight')}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={weighted}
+                    onClick={() => setWeighted(true)}
+                    className={cn(
+                      'rounded px-2 py-0.5 transition-colors',
+                      weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {t('workout.weighted')}
+                  </button>
+                </div>
+              </div>
+            )}
+            <AddSetInline
+              weighted={weighted}
+              holdMode={isHold}
+              unit={unit}
+              initialWeight={lastSet?.weight_kg ?? null}
+              initialReps={lastSet?.reps ?? null}
+              initialHoldSeconds={lastSet?.hold_seconds ?? null}
+              onSave={onAddSet}
+              onCancel={() => setAdding(false)}
+              setType={setType}
+              onSetTypeChange={setSetType}
+            />
+          </div>
+        ) : (
+          <div className="flex gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 flex-1 justify-center text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setAdding(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t('workout.addSet')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              aria-label={t('workout.quickLog')}
+              onClick={() => setQuickMode(true)}
+            >
+              <Zap className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -189,7 +537,7 @@ function Stat({ label, value, unit }: { label: string; value: string; unit?: str
   return (
     <div className="rounded-lg bg-muted/40 px-3 py-2.5 text-center">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-0.5 font-mono text-lg tabular-nums leading-none">
+      <div className="mt-0.5 font-mono text-lg leading-none tabular-nums">
         {value}
         {unit && <span className="ml-0.5 text-xs text-muted-foreground">{unit}</span>}
       </div>

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link2, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Link2, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
-import type { SetEntry, SetType } from '@/lib/db/types';
+import { duplicateSet } from '@/lib/db/workoutHelpers';
+import { BUILTIN_SET_TYPES, type SetEntry, type SetType } from '@/lib/db/types';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { AddSetInline, type SetIntensity } from './AddSetInline';
 import { formatLoad, groupColorClass, isChainSetType } from '../utils';
@@ -13,6 +14,10 @@ interface SetRowProps {
   weighted: boolean;
   /** Άσκηση skill/isometric — δείχνει hold (δευτ) αντί για reps στο edit. */
   holdMode?: boolean;
+  /** Ενεργοποιεί τη σύντομη λάμψη καταγραφής (true στο active workout, false στο history view). */
+  animateCommit?: boolean;
+  /** Προαιρετικό callback μετά από αντιγραφή σετ (π.χ. για ειδοποίηση PR). */
+  onDuplicated?: (newPRCount: number) => void;
 }
 
 const ACTION_WIDTH = 128;
@@ -20,23 +25,28 @@ const SWIPE_THRESHOLD = 60;
 /** Διάρκεια της accent pulse γύρω από τη γραμμή που μόλις καταγράφηκε. */
 const COMMIT_GLOW_MS = 300;
 
-export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
+export function SetRow({
+  set,
+  weighted,
+  holdMode = false,
+  animateCommit = true,
+  onDuplicated,
+}: SetRowProps) {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
   const [editing, setEditing] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [drag, setDrag] = useState<{ startX: number; current: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  // Η γραμμή μόνο μόλις καταγράφηκε παίρνει τη λάμψη — mount = trigger, ίδιο
-  // pattern με το animate-set-commit που ήδη υπάρχει (νέο σετ = νέο key/mount,
-  // επεξεργασία δεν remount-άρει). Το CSS keyframe παρακάτω σέβεται το
-  // prefers-reduced-motion μόνο του, οπότε δεν χρειάζεται έλεγχος εδώ.
-  const [justCommitted, setJustCommitted] = useState(true);
+  const [justCommitted, setJustCommitted] = useState(animateCommit);
+
   useEffect(() => {
+    if (!animateCommit) return;
     const id = globalThis.setTimeout(() => setJustCommitted(false), COMMIT_GLOW_MS);
     return () => globalThis.clearTimeout(id);
-  }, []);
+  }, [animateCommit]);
 
   // Tap outside collapses the swipe.
   useEffect(() => {
@@ -52,6 +62,8 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (editing) return;
+    // Μην παγιδεύεις τα taps πάνω στα κουμπιά ενεργειών (Edit/Repeat/Delete).
+    if ((e.target as HTMLElement).closest('button')) return;
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     setDrag({ startX: e.clientX, current: revealed ? -ACTION_WIDTH : 0 });
   };
@@ -76,11 +88,22 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
     await queries.softDeleteSet(set.id);
   };
 
+  const onDuplicate = async () => {
+    if (duplicating) return;
+    setDuplicating(true);
+    try {
+      const res = await duplicateSet(set);
+      onDuplicated?.(res.newPRs.length);
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   const onSaveEdit = async (
     weightKg: number | null,
     reps: number | null,
     holdSeconds: number | null,
-    _intensity: SetIntensity,
+    intensity: SetIntensity,
     restPauseReps: number[],
   ) => {
     await queries.updateSet(set.id, {
@@ -88,6 +111,10 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
       reps,
       rest_pause_reps: restPauseReps,
       hold_seconds: holdSeconds,
+      rpe: intensity.rpe,
+      rir: intensity.rir,
+      tempo: intensity.tempo,
+      notes: intensity.notes ?? null,
     });
     setEditing(false);
   };
@@ -102,22 +129,31 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
     });
   };
 
+  const effectiveWeighted = set.weight_kg != null ? true : weighted;
+  const setTypeDisplay = (BUILTIN_SET_TYPES as readonly string[]).includes(set.set_type)
+    ? t(`setType.${set.set_type}`)
+    : set.set_type;
+
   if (editing) {
     return (
       <div className="rounded-md bg-elevated p-2">
         <AddSetInline
-          weighted={weighted}
+          weighted={effectiveWeighted}
           holdMode={holdMode}
           unit={unit}
           initialWeight={set.weight_kg}
           initialReps={set.reps}
           initialHoldSeconds={set.hold_seconds}
           initialRestPauseReps={set.rest_pause_reps ?? []}
+          initialRpe={set.rpe}
+          initialRir={set.rir}
+          initialTempo={set.tempo}
+          initialNotes={set.notes}
           onSave={onSaveEdit}
           onCancel={() => setEditing(false)}
           saveLabelKey="workout.save"
           setType={set.set_type}
-          onSetTypeChange={(t) => void onChangeSetType(t)}
+          onSetTypeChange={(nextType) => void onChangeSetType(nextType)}
         />
       </div>
     );
@@ -125,7 +161,7 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
 
   return (
     <div ref={containerRef} className="relative overflow-hidden rounded-md">
-      {/* Action layer (under the row) */}
+      {/* Swipe action layer (mobile touch gesture preserved) */}
       <div className="pointer-events-none absolute inset-y-0 right-0 flex w-32">
         <button
           type="button"
@@ -161,8 +197,8 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
       {/* Row */}
       <div
         className={cn(
-          'relative flex select-none items-center justify-between bg-card px-3 py-2 transition-transform touch-pan-y',
-          'animate-set-commit',
+          'relative flex select-none items-center justify-between gap-2 bg-card px-3 py-2 transition-transform touch-pan-y',
+          animateCommit && 'animate-set-commit',
           justCommitted && 'set-row-commit-glow',
           set.group_id && groupColorClass(set.group_id),
         )}
@@ -186,38 +222,78 @@ export function SetRow({ set, weighted, holdMode = false }: SetRowProps) {
             }
           `}</style>
         )}
-        <div className="flex items-center gap-3 text-sm">
-          <span className="w-6 font-mono text-xs tabular-nums text-muted-foreground">#{set.set_number}</span>
-          <span className="font-mono font-semibold tabular-nums">
-            {formatLoad(set.weight_kg, set.bodyweight_kg, unit)}
-            {set.reps != null ? <> × {set.reps}</> : null}
-            {(set.rest_pause_reps?.length ?? 0) > 0 ? <> + {set.rest_pause_reps.join(' + ')}</> : null}
-            {set.hold_seconds != null ? <> · {set.hold_seconds}s</> : null}
-          </span>
-          {/* Η ένταση φαίνεται μόνο όταν καταγράφηκε — αλλιώς θα ήταν
-              write-only πεδίο, δηλαδή άχρηστο. */}
-          {set.rpe != null && (
-            <span className="font-mono text-xs text-muted-foreground">
-              RPE {set.rpe}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-sm">
+            <span className="w-6 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+              #{set.set_number}
             </span>
-          )}
-          {set.rir != null && (
-            <span className="font-mono text-xs text-muted-foreground">
-              RIR {set.rir}
+            <span className="font-mono font-semibold tabular-nums">
+              {formatLoad(set.weight_kg, set.bodyweight_kg, unit)}
+              {set.reps != null ? <> × {set.reps}</> : null}
+              {set.reps == null && set.hold_seconds == null && set.set_type === 'amrap' ? (
+                <> × max</>
+              ) : null}
+              {(set.rest_pause_reps?.length ?? 0) > 0 ? (
+                <> + {set.rest_pause_reps.join(' + ')}</>
+              ) : null}
+              {set.hold_seconds != null ? <> · {set.hold_seconds}s</> : null}
             </span>
-          )}
-          {set.tempo && (
-            <span className="font-mono text-xs text-muted-foreground">
-              {set.tempo}
-            </span>
-          )}
+            {set.rpe != null && (
+              <span className="font-mono text-xs text-muted-foreground">RPE {set.rpe}</span>
+            )}
+            {set.rir != null && (
+              <span className="font-mono text-xs text-muted-foreground">RIR {set.rir}</span>
+            )}
+            {set.tempo && (
+              <span className="font-mono text-xs text-muted-foreground">{set.tempo}</span>
+            )}
+            {set.set_type !== 'normal' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {set.group_id && <Link2 className="h-3 w-3" aria-hidden />}
+                {setTypeDisplay}
+              </span>
+            )}
+          </div>
+          {set.notes &&
+            !(set.set_type === 'amrap' && set.reps == null && set.notes.trim().toLowerCase() === 'max') && (
+              <p className="mt-0.5 truncate pl-8 text-xs text-muted-foreground">{set.notes}</p>
+            )}
         </div>
-        {set.set_type !== 'normal' && (
-          <span className="flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {set.group_id && <Link2 className="h-3 w-3" aria-hidden />}
-            {t(`setType.${set.set_type}`)}
-          </span>
-        )}
+
+        {/* Άμεσες, ορατές ενέργειες σετ — χωρίς κρυφά gestures σε desktop ή κινητό */}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            disabled={duplicating}
+            onClick={() => void onDuplicate()}
+            aria-label={t('workout.duplicateSet')}
+            title={t('workout.duplicateSet')}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRevealed(false);
+              setEditing(true);
+            }}
+            aria-label={t('common.edit')}
+            title={t('common.edit')}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void onDelete()}
+            aria-label={t('common.delete')}
+            title={t('common.delete')}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
