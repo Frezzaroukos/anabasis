@@ -22,6 +22,34 @@ const HOLD_LABEL = en.workout.holdSeconds; // "Hold (sec)"
 const SAVE = en.workout.addSet; // "Add set"
 
 describe('AddSetInline — hold vs reps flow', () => {
+  it('wires aria-invalid + aria-describedby to the field error message', () => {
+    render(wrap(<AddSetInline weighted initialWeight={100} onSave={() => {}} />));
+
+    const reps = screen.getByLabelText(REPS_LABEL);
+    fireEvent.change(reps, { target: { value: '0' } });
+
+    expect(reps.getAttribute('aria-invalid')).toBe('true');
+    const errId = reps.getAttribute('aria-describedby');
+    expect(errId).toBeTruthy();
+    const err = document.getElementById(errId!);
+    expect(err?.textContent).toBe(en.workout.invalidReps);
+    expect(err?.getAttribute('role')).toBe('alert');
+
+    // Διόρθωση → το σφάλμα φεύγει και το describedby καθαρίζει.
+    fireEvent.change(reps, { target: { value: '5' } });
+    expect(reps.getAttribute('aria-invalid')).toBe('false');
+    expect(reps.getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('links the weight validation error with aria-describedby', () => {
+    render(wrap(<AddSetInline weighted initialWeight={100} initialReps={5} onSave={() => {}} />));
+    const weight = screen.getByLabelText(/Weight/);
+    fireEvent.change(weight, { target: { value: '5000' } });
+    expect(weight.getAttribute('aria-invalid')).toBe('true');
+    const errId = weight.getAttribute('aria-describedby');
+    expect(document.getElementById(errId!)?.textContent).toBe(en.workout.invalidWeight);
+  });
+
   it('accepts half/partial repetitions like 2.5 and rejects zero, negative, or >2-decimal reps', () => {
     const onSave = vi.fn();
     render(wrap(<AddSetInline weighted={false} onSave={onSave} />));

@@ -7,6 +7,7 @@ import { ExerciseCard } from './ExerciseCard';
 import { db } from '@/lib/db';
 import { setCurrentUserId } from '@/lib/db/session';
 import { startWorkout } from '@/lib/db/queries';
+import { addSet, endWorkout } from '@/lib/db/queries';
 import { SEED_EXERCISES } from '@/lib/db/seeds';
 
 beforeAll(async () => {
@@ -77,5 +78,39 @@ describe('ExerciseCard — set-by-set logging stays calm', () => {
       expect((screen.getByLabelText('Reps') as HTMLInputElement).value).toBe('');
       expect(document.activeElement).toBe(screen.getByLabelText('Reps'));
     });
+  });
+
+  it('announces a new PR through a polite live region carrying the gold-strong text', async () => {
+    // Ιστορικό ώστε το επόμενο βαρύτερο σετ να «σπάσει» ρεκόρ (πρώτο σετ ποτέ
+    // δεν είναι PR).
+    const prior = await startWorkout('strength');
+    await addSet({
+      workout_id: prior.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(prior.id);
+
+    const workout = await startWorkout('strength');
+    render(
+      wrap(
+        <ExerciseCard
+          exercise={squat}
+          workoutId={workout.id}
+          sets={[]}
+          bodyweightKg={null}
+          weighted
+          onWeightedChange={vi.fn()}
+          chain={null}
+          onChainChange={vi.fn()}
+        />,
+      ),
+    );
+
+    fireEvent.change(screen.getByLabelText('Weight (kg)'), { target: { value: '120' } });
+    fireEvent.change(screen.getByLabelText('Reps'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add set' }));
+
+    const status = await screen.findByRole('status');
+    expect(status.getAttribute('aria-live')).toBe('polite');
+    expect(status.className).toContain('text-gold-strong');
   });
 });

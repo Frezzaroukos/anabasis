@@ -99,19 +99,19 @@ export function ActivityProgress() {
           {/* PR περίληψη — χρυσό ΜΟΝΟ εδώ, είναι επίτευξη */}
           <div className="flex flex-wrap gap-2 text-xs">
             {prs.get('longest_distance') && (
-              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
+              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold-strong">
                 ★ {t('progress.longestDistance')}:{' '}
                 <span className="font-mono tabular-nums">{prs.get('longest_distance')!.value} km</span>
               </span>
             )}
             {prs.get('fastest_pace') && (
-              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
+              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold-strong">
                 ★ {t('progress.fastestPace')}:{' '}
                 <span className="font-mono tabular-nums">{fmtPace(prs.get('fastest_pace')!.value)}/km</span>
               </span>
             )}
             {prs.get('longest_duration') && (
-              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold">
+              <span className="rounded-full bg-gold/10 px-2.5 py-1 text-gold-strong">
                 ★ <span className="font-mono tabular-nums">{Math.round(prs.get('longest_duration')!.value / 60)} min</span>
               </span>
             )}

@@ -226,7 +226,7 @@ export function WorkoutDetailPage() {
               const exName = pr.exercise_id ? exerciseById.get(pr.exercise_id)?.name : null;
               return (
                 <li key={pr.id} className="flex items-center gap-2 text-sm">
-                  <Trophy className="h-4 w-4 shrink-0 text-gold" />
+                  <Trophy className="h-4 w-4 shrink-0 text-gold" aria-hidden />
                   <span className="min-w-0 flex-1 truncate">
                     {exName ? <span className="font-medium">{exName}</span> : null}
                     {exName ? ' · ' : null}
@@ -234,7 +234,7 @@ export function WorkoutDetailPage() {
                       {t(`history.pr.${pr.type}`)}
                     </span>
                   </span>
-                  <span className="shrink-0 font-mono tabular-nums text-gold">
+                  <span className="shrink-0 font-mono tabular-nums text-gold-strong">
                     {WEIGHT_PR_TYPES.has(pr.type)
                       ? formatWeight(pr.value, unit)
                       : Math.round(pr.value * 10) / 10}
