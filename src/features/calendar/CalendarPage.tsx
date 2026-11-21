@@ -26,7 +26,7 @@ import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { countProgramDayExercises } from '@/lib/db/schedule';
 import { QuickPasteWorkoutSheet } from '@/features/workout/components/QuickPasteWorkoutSheet';
-import { DOT_SIZE_CLASS, dotSizeOf, weekAdherenceTint } from './calendarMath';
+import { DOT_SIZE_CLASS, dotSizeOf, parseDayKey, weekAdherenceTint } from './calendarMath';
 
 /**
  * Τα χρώματα/σύμβολα ΔΕΝ είναι πια hardcoded — έρχονται από τον πίνακα
@@ -371,7 +371,7 @@ export function CalendarPage() {
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-primary">
             <span>
               {t('calendar.todayMarked', {
-                date: new Date(today).toLocaleDateString(i18n.resolvedLanguage),
+                date: parseDayKey(today).toLocaleDateString(i18n.resolvedLanguage),
               })}
             </span>
             {!isCurrentMonthView && (
@@ -449,7 +449,7 @@ export function CalendarPage() {
           <button
             onClick={goToday}
             aria-label={t('calendar.todayMarked', {
-              date: new Date(today).toLocaleDateString(i18n.resolvedLanguage),
+              date: parseDayKey(today).toLocaleDateString(i18n.resolvedLanguage),
             })}
             className="h-11 border-x border-border/70 px-4 text-xs font-medium ring-offset-background transition-all duration-150 hover:bg-accent active:scale-95 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
@@ -594,7 +594,7 @@ export function CalendarPage() {
         <div className="mb-3 flex items-center gap-2">
           <h2 className="min-w-0 flex-1 truncate text-sm font-medium capitalize">
             {selected
-              ? new Date(selected).toLocaleDateString(i18n.resolvedLanguage, {
+              ? parseDayKey(selected).toLocaleDateString(i18n.resolvedLanguage, {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',

@@ -1,5 +1,18 @@
 import type { DayActivities } from '@/lib/db/queries';
 
+/**
+ * `YYYY-MM-DD` → Date στο ΤΟΠΙΚΟ μεσάνυχτα.
+ *
+ * Το `new Date('2026-08-15')` διαβάζει τη χορδή ως UTC — δυτικά του UTC
+ * (π.χ. Νέα Υόρκη) δίνει την ΠΡΟΗΓΟΥΜΕΝΗ τοπική μέρα, οπότε η ημερομηνία
+ * στο header/aria-label ήταν off-by-one. Χτίζουμε από y/m/d όπως το
+ * `localNoon` του query layer.
+ */
+export function parseDayKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+}
+
 export type DotSize = 'sm' | 'md' | 'lg';
 
 type WorkoutEntry = DayActivities['workouts'][number];
