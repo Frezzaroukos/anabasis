@@ -76,7 +76,7 @@ export function GoalRow({
       <GoalRing ratio={p.ratio} completed={completed} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <p className={cn('line-clamp-2 min-w-0 flex-1 text-sm font-medium', completed && 'text-gold')}>
+          <p className={cn('line-clamp-2 min-w-0 flex-1 text-sm font-medium', completed && 'text-gold-strong')}>
             {p.goal.label ??
               goalTitle(t, p.goal, {
                 activity: activityLabel(p.goal.activity_key),
@@ -93,7 +93,7 @@ export function GoalRow({
           {completed && (
             <span
               className={cn(
-                'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-gold/10 px-1.5 py-0.5 text-xs font-semibold text-gold',
+                'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-gold/10 px-1.5 py-0.5 text-xs font-semibold text-gold-strong',
                 justCompleted && 'animate-glow-pulse',
               )}
             >

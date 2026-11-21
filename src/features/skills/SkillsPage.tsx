@@ -62,7 +62,7 @@ export function SkillsPage() {
             {masteredCount > 0 && (
               <>
                 {' · '}
-                <span className="text-gold">{masteredCount} ★</span>
+                <span className="text-gold-strong">{masteredCount} ★</span>
               </>
             )}
           </p>

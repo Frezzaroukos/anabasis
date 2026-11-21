@@ -72,12 +72,16 @@
 
     /* Πορτοκαλί επίτευξης — PR badges, mastery. */
     --gold: 24 92% 52%;
+    /* Σκουρότερο για ΚΕΙΜΕΝΟ πάνω σε λευκό: 2.88:1 → 4.98:1 (WCAG AA 4.5). */
+    --gold-strong: 24 90% 36%;
 
-    --cat-push: 14 80% 50%;
-    --cat-pull: 217 80% 52%;
-    --cat-legs: 142 60% 38%;
-    --cat-core: 38 85% 44%;
-    --cat-mixed: 271 70% 54%;
+    /* Κατηγορίες ως ΚΕΙΜΕΝΟ (badges, CategoryBadge) πάνω σε αχνό tint 12%:
+       τα αρχικά L έβγαιναν 2.57–4.74:1 · εδώ ≥4.55:1 σε card+elevated. */
+    --cat-push: 14 80% 39%;
+    --cat-pull: 217 80% 45%;
+    --cat-legs: 142 60% 28%;
+    --cat-core: 38 85% 29%;
+    --cat-mixed: 271 70% 52%;
 
     --radius: 0.625rem;
   }
@@ -108,7 +112,9 @@
     --accent: 264 18% 20%;
     --accent-foreground: 264 20% 95%;
 
-    --destructive: 0 70% 58%;
+    /* 58%→52%: λευκό κείμενο πάνω στο destructive ήταν 3.88:1 (<4.5:1 WCAG AA).
+       Στο 52% γίνεται 4.53:1 χωρίς να πάψει να «διαβάζεται» ως κίνδυνος. */
+    --destructive: 0 70% 52%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 8% 19%;
@@ -116,6 +122,8 @@
     --ring: 264 100% 70%;
 
     --gold: 24 95% 60%;
+    /* Dark: αρκετά φωτεινό ώστε το gold text να ναι ≥4.5:1 πάνω σε κάθε surface. */
+    --gold-strong: 24 95% 68%;
 
     --cat-push: 14 85% 60%;
     --cat-pull: 217 85% 64%;
@@ -279,6 +287,18 @@
     .animate-sheen,
     .stagger > * {
       animation: none;
+    }
+
+    /* Καθολικό δίχτυ για τις ενσωματωμένες utilities του Tailwind που
+       χρησιμοποιούνται παντού (skeletons `animate-pulse`, spinners
+       `animate-spin`, entrance `animate-in`/fade) αλλά δεν είχαν όλες το
+       `motion-reduce:` σε κάθε σημείο χρήσης. Το `!important` νικά την
+       utility· οι ίδιες κλάσεις παραμένουν λειτουργικές, απλά στατικές. */
+    .animate-pulse,
+    .animate-spin,
+    .animate-bounce,
+    .animate-ping {
+      animation: none !important;
     }
   }
 

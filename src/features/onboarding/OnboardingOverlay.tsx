@@ -187,11 +187,11 @@ export function OnboardingOverlay() {
               <div className={cn('flex h-14 w-14 items-center justify-center rounded-full border border-gold/25 bg-card/70', iconAnim)}>
                 {current.icon}
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold/90">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold-strong">
                 {t('onboarding.rung', { step })}
               </span>
             </div>
-            <p className="hidden font-mono text-[10px] uppercase tracking-[0.28em] text-gold/90 sm:block">
+            <p className="hidden font-mono text-[10px] uppercase tracking-[0.28em] text-gold-strong sm:block">
               {t('onboarding.rung', { step })} · {t('onboarding.brand')}
             </p>
             <h2 className="mt-4 max-w-xl font-display text-[2.6rem] font-semibold leading-[0.98] tracking-tight sm:mt-5 sm:text-6xl">
@@ -250,7 +250,7 @@ export function OnboardingOverlay() {
             </svg>
             <div className="relative flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
               <span>{t('onboarding.rung', { step })}</span>
-              <span className="text-gold/80">{t('onboarding.brand')}</span>
+              <span className="text-gold-strong">{t('onboarding.brand')}</span>
             </div>
             <div className="relative flex flex-1 items-center justify-center py-8">
               <div className="absolute h-48 w-48 rounded-full border border-border/60" />
@@ -308,7 +308,7 @@ export function OnboardingOverlay() {
                 className={cn(
                   'flex h-8 w-8 items-center justify-center rounded-full border font-mono text-[10px] tabular-nums transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                   i === slide
-                    ? 'border-gold bg-gold/10 text-gold'
+                    ? 'border-gold bg-gold/10 text-gold-strong'
                     : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground',
                 )}
               >

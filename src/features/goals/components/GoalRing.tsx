@@ -71,7 +71,7 @@ export function GoalRing({
       <span
         className={cn(
           'absolute font-mono text-sm font-semibold',
-          completed ? 'text-gold' : 'text-foreground',
+          completed ? 'text-gold-strong' : 'text-foreground',
         )}
       >
         {displayPct}%

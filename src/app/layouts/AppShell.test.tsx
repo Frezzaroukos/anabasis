@@ -59,4 +59,13 @@ describe('AppShell boot rendering', () => {
 
     expect(screen.getByText('Database-backed page')).toBeTruthy();
   });
+
+  it('παρέχει skip-to-content link που στοχεύει το <main>', () => {
+    renderShell(true);
+    const skip = screen.getByRole('link', { name: en.common.skipToContent });
+    expect(skip.getAttribute('href')).toBe('#main');
+    // Ο στόχος υπάρχει και είναι το landmark <main>.
+    const main = screen.getByRole('main');
+    expect(main.id).toBe('main');
+  });
 });

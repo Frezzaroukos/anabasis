@@ -133,7 +133,7 @@ export function ExercisesPage() {
             {masteredCount > 0 && (
               <>
                 {' · '}
-                <span className="font-mono tabular-nums text-gold">{masteredCount} ★</span>
+                <span className="font-mono tabular-nums text-gold-strong">{masteredCount} ★</span>
               </>
             )}
           </p>
@@ -285,7 +285,7 @@ function ExerciseRow({ exercise, summary, highlighted, onOpen, onEdit }: Exercis
           <CategoryIcon category={exercise.category} />
           {exercise.name}
           {summary?.hasPR && (
-            <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />
+            <Trophy className="h-3.5 w-3.5 shrink-0 text-gold-strong" aria-hidden />
           )}
           {exercise.user_id === null ? (
             <span className="rounded bg-muted px-1.5 py-0.5 text-xs uppercase text-muted-foreground">

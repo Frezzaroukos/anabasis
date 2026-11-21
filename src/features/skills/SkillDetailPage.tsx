@@ -159,7 +159,7 @@ export function SkillDetailPage() {
             <p className="truncate text-sm text-muted-foreground">{skill.ultimate_goal}</p>
           </div>
           {masteredSkill && (
-            <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-gold">
+            <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-gold-strong">
               ★ {t('skills.mastered')}
             </span>
           )}
@@ -306,7 +306,7 @@ export function SkillDetailPage() {
                     <span className="font-mono tabular-nums">
                       {done.achieved_value} {step.target_unit}
                       {done.added_weight_kg != null && (
-                        <span className="text-gold"> + {done.added_weight_kg}kg</span>
+                        <span className="text-gold-strong"> + {done.added_weight_kg}kg</span>
                       )}
                     </span>
                     {' · '}
