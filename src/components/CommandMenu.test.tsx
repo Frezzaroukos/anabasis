@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
@@ -57,8 +57,9 @@ function renderMenu() {
   );
 }
 
-function openWithKeyboard() {
+async function openWithKeyboard() {
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  await screen.findByRole('dialog');
 }
 
 describe('fuzzyScore', () => {
@@ -71,18 +72,18 @@ describe('fuzzyScore', () => {
 });
 
 describe('CommandMenu', () => {
-  it('ανοίγει με Ctrl+K, είναι modal και παίρνει focus στο input', () => {
+  it('ανοίγει με Ctrl+K, είναι modal και παίρνει focus στο input', async () => {
     renderMenu();
-    openWithKeyboard();
+    await openWithKeyboard();
 
     const dialog = screen.getByRole('dialog');
     expect(dialog.getAttribute('aria-modal')).toBe('true');
-    expect(screen.getByRole('combobox')).toBe(document.activeElement);
+    await waitFor(() => expect(screen.getByRole('combobox')).toBe(document.activeElement));
   });
 
-  it('φιλτράρει και εκτελεί την επιλεγμένη ενέργεια με Enter', () => {
+  it('φιλτράρει και εκτελεί την επιλεγμένη ενέργεια με Enter', async () => {
     renderMenu();
-    openWithKeyboard();
+    await openWithKeyboard();
 
     const input = screen.getByRole('combobox');
     fireEvent.change(input, { target: { value: 'changelog' } });
@@ -92,52 +93,53 @@ describe('CommandMenu', () => {
 
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    expect(screen.getByTestId('location').textContent).toBe('/whats-new');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/whats-new'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  it('μετακινεί την επιλογή με βελάκια και ανοίγει με Enter', () => {
+  it('μετακινεί την επιλογή με βελάκια και ανοίγει με Enter', async () => {
     renderMenu();
-    openWithKeyboard();
+    await openWithKeyboard();
 
     const input = screen.getByRole('combobox');
     fireEvent.change(input, { target: { value: 'settings' } });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    expect(screen.getByTestId('location').textContent).toBe('/settings/profiles');
+    await waitFor(() =>
+      expect(screen.getByTestId('location').textContent).toBe('/settings/profiles'),
+    );
   });
 
-  it('βρίσκει ελληνικές ετικέτες ακόμη κι όταν το UI είναι αγγλικό', () => {
+  it('βρίσκει ελληνικές ετικέτες ακόμη κι όταν το UI είναι αγγλικό', async () => {
     renderMenu();
-    openWithKeyboard();
+    await openWithKeyboard();
 
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ημερολογιο' } });
     expect(screen.getByRole('option', { name: /calendar/i })).toBeTruthy();
   });
 
-  it('κλείνει με Escape και επιστρέφει το focus στο trigger', () => {
+  it('κλείνει με Escape και επιστρέφει το focus στο trigger', async () => {
     renderMenu();
     const trigger = screen.getByTestId('trigger');
     trigger.focus();
 
-    openWithKeyboard();
-    expect(screen.getByRole('combobox')).toBe(document.activeElement);
+    await openWithKeyboard();
+    await waitFor(() => expect(screen.getByRole('combobox')).toBe(document.activeElement));
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
-  it('κλείνει όταν αλλάζει η διαδρομή', () => {
+  it('κλείνει όταν αλλάζει η διαδρομή', async () => {
     renderMenu();
-    openWithKeyboard();
-    expect(screen.getByRole('dialog')).toBeTruthy();
+    await openWithKeyboard();
 
     fireEvent.click(screen.getByTestId('external'));
 
-    expect(screen.getByTestId('location').textContent).toBe('/body');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/body'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });
