@@ -12,6 +12,7 @@ import {
   removeProgramExercise,
   renameProgram,
   reorderProgramExercises,
+  setProgramDescription,
   softDeleteProgram,
   startWorkout,
   startWorkoutFromLastOfKind,
@@ -200,5 +201,22 @@ describe('ξεκίνα σαν την τελευταία (χωρίς αποθηκ
 
   it('επιστρέφει null όταν δεν υπάρχει ολοκληρωμένη προπόνηση αυτού του είδους', async () => {
     expect(await startWorkoutFromLastOfKind('ανύπαρκτο-είδος-ever')).toBeNull();
+  });
+});
+
+describe('setProgramDescription', () => {
+  it('αποθηκεύει την περιγραφή (trimmed) και ενημερώνει το updated_at', async () => {
+    const p = await createProgram('Desc Program');
+    await setProgramDescription(p.id, '  Heavy push day  ');
+    const saved = await db.programs.get(p.id);
+    expect(saved?.description).toBe('Heavy push day');
+    expect(saved!.updated_at >= p.updated_at).toBe(true);
+  });
+
+  it('κενό/whitespace string αποθηκεύεται ως null (όχι άδειο string)', async () => {
+    const p = await createProgram('Desc Clear');
+    await setProgramDescription(p.id, 'something');
+    await setProgramDescription(p.id, '   ');
+    expect((await db.programs.get(p.id))?.description).toBeNull();
   });
 });

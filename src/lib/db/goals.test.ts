@@ -4,9 +4,11 @@ import { setCurrentUserId } from './session';
 import {
   createGoal,
   getGoalProgress,
+  getAllGoalProgress,
   goalWindow,
   listGoals,
   deleteGoal,
+  setGoalArchived,
   reorderGoals,
 } from './goals';
 import { addSet, endWorkout, startWorkout } from './queries';
@@ -163,6 +165,37 @@ describe('goals — CRUD', () => {
 
     await reorderGoals([b.id, a.id]);
     expect((await listGoals()).map((g) => g.id)).toEqual([b.id, a.id]);
+  });
+
+  it('αρχειοθέτηση: φεύγει από την ενεργή λίστα, μένει με includeArchived', async () => {
+    const g = await createGoal({ metric: 'sessions', target: 3, period: 'week' });
+    await setGoalArchived(g.id, true);
+
+    expect(await listGoals()).toHaveLength(0);
+    const withArchived = await listGoals(true);
+    expect(withArchived).toHaveLength(1);
+    expect(withArchived[0]!.is_archived).toBe(true);
+    // Δεν είναι delete — η εγγραφή μένει ζωντανή (deleted_at null).
+    expect((await db.goals.get(g.id))?.deleted_at).toBeNull();
+  });
+
+  it('επαναφορά αρχειοθετημένου στόχου τον ξαναβάζει στη λίστα', async () => {
+    const g = await createGoal({ metric: 'sessions', target: 3, period: 'week' });
+    await setGoalArchived(g.id, true);
+    await setGoalArchived(g.id, false);
+    expect((await listGoals()).map((x) => x.id)).toEqual([g.id]);
+  });
+
+  it('getAllGoalProgress εξαιρεί τα αρχειοθετημένα by default, τα δείχνει με includeArchived', async () => {
+    const active = await createGoal({ metric: 'sessions', target: 3, period: 'week' });
+    const archived = await createGoal({ metric: 'reps', target: 100, period: 'week' });
+    await setGoalArchived(archived.id, true);
+
+    const defaults = await getAllGoalProgress();
+    expect(defaults.map((p) => p.goal.id)).toEqual([active.id]);
+
+    const all = await getAllGoalProgress(new Date(), true);
+    expect(all).toHaveLength(2);
   });
 });
 

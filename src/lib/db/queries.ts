@@ -1441,6 +1441,15 @@ export async function renameProgram(id: string, name: string): Promise<void> {
   await db.programs.update(id, { name, updated_at: now() });
 }
 
+/** Περιγραφή προγράμματος — κενό string αποθηκεύεται ως null (όχι ''). */
+export async function setProgramDescription(id: string, description: string): Promise<void> {
+  const trimmed = description.trim();
+  await db.programs.update(id, {
+    description: trimmed === '' ? null : trimmed,
+    updated_at: now(),
+  });
+}
+
 export async function softDeleteProgram(id: string): Promise<void> {
   const t = now();
   await db.programs.update(id, { deleted_at: t, updated_at: t });
@@ -1899,6 +1908,51 @@ export async function updateExercise(
  */
 export async function setExerciseArchived(id: string, archived: boolean): Promise<void> {
   await db.exercises.update(id, { is_archived: archived, updated_at: now() });
+}
+
+/**
+ * Πόσα ιστορικά δεδομένα «κρέμονται» από μια άσκηση: σετ, PR, γραμμές
+ * προγράμματος, στόχοι. Το UI το χρησιμοποιεί για να μπλοκάρει τη διαγραφή
+ * (με μήνυμα «χρησιμοποιείται») αντί να σπάσει το ιστορικό.
+ */
+export async function countExerciseUsage(id: string): Promise<{
+  sets: number;
+  prs: number;
+  programs: number;
+  goals: number;
+  total: number;
+}> {
+  const [sets, prs, programs, goals] = await Promise.all([
+    db.sets.where('exercise_id').equals(id).count(),
+    db.personal_records.where('exercise_id').equals(id).count(),
+    db.program_exercises.where('exercise_id').equals(id).filter((r) => r.deleted_at == null).count(),
+    db.goals.where('exercise_id').equals(id).filter((g) => g.deleted_at == null).count(),
+  ]);
+  return { sets, prs, programs, goals, total: sets + prs + programs + goals };
+}
+
+/**
+ * Διαγραφή ΔΙΚΗΣ ΣΟΥ άσκησης (soft delete). Builtin (`user_id === null`) δεν
+ * διαγράφονται — μόνο αρχειοθετούνται. Αν η άσκηση έχει ιστορικό, επιστρέφει
+ * `{ blocked: true, usage }` και δεν διαγράφει τίποτα: το ιστορικό δεν σπάει,
+ * ο χρήστης πρέπει να τη συγχωνεύσει ή να την αρχειοθετήσει.
+ */
+export type DeleteExerciseResult =
+  | { deleted: true }
+  | { deleted: false; reason: 'builtin' | 'in_use'; usage: Awaited<ReturnType<typeof countExerciseUsage>> };
+
+export async function deleteExercise(id: string): Promise<DeleteExerciseResult> {
+  const exercise = await db.exercises.get(id);
+  if (!exercise || exercise.user_id === null) {
+    return { deleted: false, reason: 'builtin', usage: await countExerciseUsage(id) };
+  }
+  const usage = await countExerciseUsage(id);
+  if (usage.total > 0) {
+    return { deleted: false, reason: 'in_use', usage };
+  }
+  const t = now();
+  await db.exercises.update(id, { deleted_at: t, updated_at: t });
+  return { deleted: true };
 }
 
 /** Όλες, μαζί με τις αρχειοθετημένες — για την οθόνη διαχείρισης. */
