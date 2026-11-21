@@ -93,20 +93,11 @@ export async function previewExerciseMatch(
   return { matched, missing };
 }
 
-async function resolveExercise(
-  name: string,
-  byName: Map<string, Exercise>,
-  counters: WorkoutImportResult,
-): Promise<Exercise> {
-  const key = normName(name);
-  const found = byName.get(key);
-  if (found) return found;
-  // Δεν μαντεύουμε category/equipment από το όνομα — ο χρήστης μπορεί να τα
-  // συμπληρώσει μετά· το import δεν πρέπει να «βαφτίζει» λάθος δεδομένα.
-  const created = await createExercise({ name: name.trim() });
-  byName.set(key, created);
-  counters.exercisesCreated += 1;
-  return created;
+interface PlannedExercise {
+  name: string;
+  /** Υπάρχουσα άσκηση ή undefined = θα δημιουργηθεί ΜΟΝΟ αν το workout γραφτεί. */
+  existing: Exercise | undefined;
+  sets: ImportedSet[];
 }
 
 async function importOneSet(
@@ -137,13 +128,6 @@ async function importOneSet(
 export async function importWorkouts(
   workouts: ImportedWorkout[],
 ): Promise<WorkoutImportResult> {
-  const result: WorkoutImportResult = {
-    workoutsAdded: 0,
-    setsAdded: 0,
-    exercisesCreated: 0,
-    duplicatesSkipped: 0,
-  };
-
   const byName = new Map<string, Exercise>();
   for (const e of await listAllExercises()) {
     const key = normName(e.name);
@@ -154,59 +138,113 @@ export async function importWorkouts(
   // χρονολογικά — τα PRs χτίζονται με τη σειρά που έγιναν
   const ordered = [...workouts].sort((a, b) => a.startedAtIso.localeCompare(b.startedAtIso));
 
+  /*
+   * Φάση 1 — ΜΟΝΟ ΑΝΑΓΝΩΣΗ. Αποφασίζουμε ποια σετ είναι όντως νέα ΠΡΙΝ
+   * γράψουμε οτιδήποτε. Έτσι ένα import που τελικά δεν εισάγει τίποτα δεν
+   * αφήνει πίσω orphan custom ασκήσεις.
+   */
+  const plans: Array<{ workout: ImportedWorkout; exercises: PlannedExercise[] }> = [];
+  let duplicatesSkipped = 0;
+
   for (const w of ordered) {
-    // Πρώτο πέρασμα ΧΩΡΙΣ writes: ποια σετ είναι όντως νέα. Αν κανένα, το
-    // workout δεν πρέπει καν να δημιουργηθεί.
-    const plan: Array<{ exercise: Exercise; sets: ImportedSet[] }> = [];
+    const exercises: PlannedExercise[] = [];
     for (const ex of w.exercises) {
-      const exercise = await resolveExercise(ex.name, byName, result);
+      const key = normName(ex.name);
+      const existing = byName.get(key);
+      // Αν η άσκηση δεν υπάρχει, κανένα υπάρχον σετ δεν μπορεί να ταιριάξει.
+      const signatureExerciseId = existing?.id ?? `new:${key}`;
       const fresh: ImportedSet[] = [];
       for (const s of ex.sets) {
-        const sig = setSignature(w.date, exercise.id, s.weightKg, s.reps, s.holdSeconds);
+        const sig = setSignature(
+          w.date,
+          signatureExerciseId,
+          s.weightKg,
+          s.reps,
+          s.holdSeconds,
+        );
         const available = sigs.get(sig) ?? 0;
         if (available > 0) {
           // υπάρχει ήδη ένα ίδιο σετ εκείνη τη μέρα — «καταναλώνεται» ώστε
           // ένα ΤΕΤΑΡΤΟ πανομοιότυπο σετ του αρχείου να περάσει κανονικά
           sigs.set(sig, available - 1);
-          result.duplicatesSkipped += 1;
+          duplicatesSkipped += 1;
           continue;
         }
         fresh.push(s);
       }
-      if (fresh.length > 0) plan.push({ exercise, sets: fresh });
-    }
-    if (plan.length === 0) continue;
-
-    const workout = await startWorkout('strength', w.date);
-    for (const { exercise, sets } of plan) {
-      for (const s of sets) {
-        await importOneSet(workout.id, exercise.id, s);
-        result.setsAdded += 1;
+      if (fresh.length > 0) {
+        exercises.push({ name: ex.name.trim(), existing, sets: fresh });
       }
     }
-    if (w.name || w.notes) {
-      await updateWorkoutMeta(workout.id, {
-        workout_type: w.name ?? null,
-        notes: w.notes ?? null,
-      });
-    }
-    // Το endWorkout μετράει wall-clock διάρκεια — άχρηστο για ιστορικό
-    // import όπου η πραγματική ώρα/διάρκεια είναι ΗΔΗ γνωστές από το αρχείο.
-    // Γράφουμε τα τελικά χρονικά πεδία απευθείας (το query layer δεν έχει
-    // «κλείσε backdated με γνωστή διάρκεια» API).
-    const startedMs = Date.parse(w.startedAtIso);
-    const endedIso =
-      w.durationSeconds != null
-        ? new Date(startedMs + w.durationSeconds * 1000).toISOString()
-        : w.startedAtIso;
-    await db.workouts.update(workout.id, {
-      started_at: w.startedAtIso,
-      ended_at: endedIso,
-      duration_seconds: w.durationSeconds,
-      updated_at: new Date().toISOString(),
-    });
-    result.workoutsAdded += 1;
+    if (exercises.length > 0) plans.push({ workout: w, exercises });
   }
 
-  return result;
+  if (plans.length === 0) {
+    return { workoutsAdded: 0, setsAdded: 0, exercisesCreated: 0, duplicatesSkipped };
+  }
+
+  // Μοναδικά ονόματα που χρειάζονται νέα άσκηση — μόνο για workouts που θα
+  // γραφτούν όντως.
+  const missing = new Map<string, string>();
+  for (const p of plans) {
+    for (const pe of p.exercises) {
+      if (pe.existing) continue;
+      const key = normName(pe.name);
+      if (!missing.has(key)) missing.set(key, pe.name);
+    }
+  }
+
+  let workoutsAdded = 0;
+  let setsAdded = 0;
+  let exercisesCreated = 0;
+
+  /*
+   * Φάση 2 — ΟΛΑ τα writes σε ΜΙΑ transaction: ή μπαίνει ολόκληρο το import ή
+   * τίποτα (ούτε μισό workout, ούτε άσκηση χωρίς σετ).
+   */
+  await db.transaction(
+    'rw',
+    [db.exercises, db.workouts, db.sets, db.personal_records, db.body_metrics],
+    async () => {
+      for (const [key, name] of missing) {
+        const created = await createExercise({ name });
+        byName.set(key, created);
+        exercisesCreated += 1;
+      }
+
+      for (const { workout: w, exercises } of plans) {
+        const workout = await startWorkout('strength', w.date);
+        for (const pe of exercises) {
+          const exercise = pe.existing ?? byName.get(normName(pe.name));
+          if (!exercise) throw new Error(`exercise not resolved: ${pe.name}`);
+          for (const s of pe.sets) {
+            await importOneSet(workout.id, exercise.id, s);
+            setsAdded += 1;
+          }
+        }
+        if (w.name || w.notes) {
+          await updateWorkoutMeta(workout.id, {
+            workout_type: w.name ?? null,
+            notes: w.notes ?? null,
+          });
+        }
+        // Το endWorkout μετράει wall-clock διάρκεια — άχρηστο για ιστορικό
+        // import όπου η πραγματική ώρα/διάρκεια είναι ΗΔΗ γνωστές από το αρχείο.
+        const startedMs = Date.parse(w.startedAtIso);
+        const endedIso =
+          w.durationSeconds != null
+            ? new Date(startedMs + w.durationSeconds * 1000).toISOString()
+            : w.startedAtIso;
+        await db.workouts.update(workout.id, {
+          started_at: w.startedAtIso,
+          ended_at: endedIso,
+          duration_seconds: w.durationSeconds,
+          updated_at: new Date().toISOString(),
+        });
+        workoutsAdded += 1;
+      }
+    },
+  );
+
+  return { workoutsAdded, setsAdded, exercisesCreated, duplicatesSkipped };
 }
