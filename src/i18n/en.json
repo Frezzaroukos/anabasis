@@ -443,7 +443,11 @@
     "deleteAllTitle2": "Are you absolutely sure?",
     "deleteAllDesc2": "This cannot be undone from the app.",
     "deleteAllConfirm": "Delete everything",
-    "deletedAll": "All data for this profile was deleted."
+    "deletedAll": "All data for this profile was deleted.",
+    "integrityIssues_one": "{{count}} issue found",
+    "integrityIssues_other": "{{count}} issues found",
+    "repaired_one": "Repaired {{count}} row.",
+    "repaired_other": "Repaired {{count}} rows."
   },
   "common": {
     "save": "Save",

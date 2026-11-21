@@ -308,7 +308,7 @@
     "deleteSkillConfirmTitle": "Διαγραφή αυτού του skill;",
     "deleteSkillConfirmDesc": "Το skill και η (κενή) σκάλα του θα αφαιρεθούν. Δεν αναιρείται.",
     "deleteBlockedInUse": "Το skill έχει βήματα, πρόοδο ή στόχους. Αρχειοθέτησέ το αντί να το διαγράψεις.",
-    "deleteBlockedBuiltin": "Τα built-in skills δεν διαγράφονται — μπορείς να τα αρχειοθετήσεις."
+    "deleteBlockedBuiltin": "Τα ενσωματωμένα skills δεν διαγράφονται — μπορείς να τα αρχειοθετήσεις."
   },
   "settings": {
     "title": "Ρυθμίσεις",
@@ -418,7 +418,7 @@
     "importScopeUnknown": "Παλαιότερη μορφή backup — τα δεδομένα ενώνονται με το ενεργό προφίλ.",
     "importScopeOtherProfile": "Αυτό το backup είναι από άλλο προφίλ — τα δεδομένα του θα ενωθούν με το ενεργό.",
     "integrity": "Έλεγχος δεδομένων",
-    "integrityDesc": "Βρίσκει σετ, ρεκόρ, γραμμές προγραμμάτων και καταχωρήσεις tracker που ο γονέας τους δεν υπάρχει πια.",
+    "integrityDesc": "Βρίσκει σετ, ρεκόρ, γραμμές προγραμμάτων και καταχωρήσεις μετρητή που ο γονέας τους δεν υπάρχει πια.",
     "integrityCheck": "Έλεγξε τώρα",
     "integrityRepair": "Επιδιόρθωση",
     "integrityClean": "Δεν βρέθηκαν προβλήματα.",
@@ -432,8 +432,8 @@
     "integrity_programDaysOfDeletedProgram": "Μέρες σβησμένων προγραμμάτων",
     "integrity_programExercisesWithoutProgram": "Ασκήσεις προγράμματος χωρίς πρόγραμμα",
     "integrity_programExercisesWithoutDay": "Ασκήσεις προγράμματος σε μέρα που λείπει",
-    "integrity_trackerEntriesWithoutTracker": "Καταχωρήσεις tracker χωρίς tracker",
-    "integrity_trackerEntriesOfDeletedTracker": "Καταχωρήσεις σβησμένων tracker",
+    "integrity_trackerEntriesWithoutTracker": "Καταχωρήσεις μετρητή χωρίς μετρητή",
+    "integrity_trackerEntriesOfDeletedTracker": "Καταχωρήσεις σβησμένων μετρητών",
     "dangerZone": "Επικίνδυνη ζώνη",
     "deleteAll": "Διαγραφή όλων των δεδομένων",
     "deleteAllHint": "Αφαιρεί προπονήσεις, προγράμματα, δραστηριότητες, skills, στόχους και δεδομένα σώματος αυτού του προφίλ. Η βιβλιοθήκη, οι ρυθμίσεις και το προφίλ μένουν.",
@@ -443,7 +443,11 @@
     "deleteAllTitle2": "Είσαι απόλυτα σίγουρος;",
     "deleteAllDesc2": "Δεν αναιρείται από την εφαρμογή.",
     "deleteAllConfirm": "Διαγραφή όλων",
-    "deletedAll": "Όλα τα δεδομένα αυτού του προφίλ διαγράφηκαν."
+    "deletedAll": "Όλα τα δεδομένα αυτού του προφίλ διαγράφηκαν.",
+    "integrityIssues_one": "Βρέθηκε {{count}} πρόβλημα",
+    "integrityIssues_other": "Βρέθηκαν {{count}} προβλήματα",
+    "repaired_one": "Επιδιορθώθηκε {{count}} γραμμή.",
+    "repaired_other": "Επιδιορθώθηκαν {{count}} γραμμές."
   },
   "common": {
     "save": "Αποθήκευση",
@@ -517,13 +521,13 @@
     "noPlanned": "Τίποτα προγραμματισμένο για αυτή τη μέρα.",
     "scheduleSession": "Προγραμματισμός",
     "newScheduled": "Προγραμματισμός προπόνησης",
-    "editScheduled": "Επεξεργασία προγραμματισμένης",
+    "editScheduled": "Επεξεργασία προγραμματισμένης προπόνησης",
     "sessionTitle": "Τίτλος",
     "sessionTitlePlaceholder": "π.χ. Άνω σώμα",
     "sessionDate": "Ημερομηνία",
     "sessionTime": "Ώρα",
     "sessionProgram": "Από πρόγραμμα",
-    "sessionNoProgram": "Χωρίς πρόγραμμα (ad-hoc)",
+    "sessionNoProgram": "Χωρίς πρόγραμμα (ελεύθερη)",
     "sessionWholeProgram": "{{name}} — ολόκληρο",
     "sessionActivity": "Δραστηριότητα",
     "sessionNotes": "Σημειώσεις",
@@ -540,7 +544,7 @@
     "status": {
       "planned": "Προγραμματισμένη",
       "done": "Ολοκληρωμένη",
-      "skipped": "Παραλειπόμενη"
+      "skipped": "Παραλειμμένη"
     }
   },
   "body": {
@@ -613,21 +617,21 @@
       "title": "Αναλυτικά προπόνησης",
       "hint": "Εβδομαδιαίο φορτίο, συχνότητα και ρεκόρ από τα σετ σου.",
       "weeklyVolume": "Εβδομαδιαίος όγκος",
-      "weeklyVolumeHint": "Μόνο working σετ — το σωματικό βάρος μετράει ως φορτίο.",
+      "weeklyVolumeHint": "Μόνο σετ εργασίας — το σωματικό βάρος μετράει ως φορτίο.",
       "frequency": "Προπονήσεις ανά εβδομάδα",
       "frequencyHint": "Ολοκληρωμένες προπονήσεις, όλων των δραστηριοτήτων.",
       "categories": "Σετ ανά κατηγορία",
-      "categoriesHint": "Working σετ σε αυτό το διάστημα.",
-      "prTimeline": "Χρονολόγιο PR",
+      "categoriesHint": "Σετ εργασίας σε αυτό το διάστημα.",
+      "prTimeline": "Χρονολόγιο ρεκόρ",
       "prTimelineHint": "Σωρευτικά προσωπικά ρεκόρ σε αυτό το διάστημα.",
       "volume": "Όγκος",
       "sessions": "προπονήσεις",
       "sets": "σετ",
-      "prs": "PR",
+      "prs": "ρεκόρ",
       "weekOf": "Εβδομάδα {{date}}",
       "summaryVolume": "Εβδομαδιαίος όγκος προπόνησης",
       "summaryFrequency": "Προπονήσεις ανά εβδομάδα",
-      "summaryCategories": "Working σετ ανά κατηγορία",
+      "summaryCategories": "Σετ εργασίας ανά κατηγορία",
       "summaryPrs": "Σωρευτικά προσωπικά ρεκόρ"
     }
   },
@@ -751,7 +755,7 @@
     "deleteConfirmTitle": "Διαγραφή αυτής της άσκησης;",
     "deleteConfirmDesc": "Θα αφαιρεθεί από τη βιβλιοθήκη σου. Δεν αναιρείται.",
     "deleteBlockedInUse": "Η άσκηση χρησιμοποιείται στο ιστορικό, σε προγράμματα ή σε στόχους. Ενοποίησέ την με άλλη ή αρχειοθέτησέ την.",
-    "deleteBlockedBuiltin": "Οι built-in ασκήσεις δεν διαγράφονται — μπορείς να τις αρχειοθετήσεις."
+    "deleteBlockedBuiltin": "Οι ενσωματωμένες ασκήσεις δεν διαγράφονται — μπορείς να τις αρχειοθετήσεις."
   },
   "activities": {
     "title": "Δραστηριότητες",
