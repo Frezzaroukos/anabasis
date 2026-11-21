@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from '@/app/routes';
 import { bootstrapDB } from '@/lib/db';
-import { initAutoSync } from '@/lib/sync';
-import { initMagicLink, initOAuthFragment, repairMissingProfileBinding } from '@/lib/api/auth';
 import { AppBootContext } from '@/app/BootContext';
 
 export default function App() {
@@ -15,16 +13,23 @@ export default function App() {
     bootstrapDB()
       .then(async () => {
         setReady(true);
+        // Auth + sync είναι βαρείς (queries/API client/sync engine) και δεν
+        // χρειάζονται για το πρώτο paint. Dynamic import ώστε το entry chunk
+        // της Αρχικής να μένει ελαφρύ· το boot τα φορτώνει αμέσως μετά.
+        const [auth, sync] = await Promise.all([
+          import('@/lib/api/auth'),
+          import('@/lib/sync'),
+        ]);
         // OAuth-redirect fragment (αν υπάρχει, βλ. src/lib/api/auth.ts) ΠΡΙΝ
         // το auto-sync boot-trigger, ώστε το isLoggedIn() check του
         // initAutoSync να δει ήδη τον συνδεδεμένο λογαριασμό.
-        await initOAuthFragment();
+        await auth.initOAuthFragment();
         // Magic-link (/auth/magic?token=…) — ίδιο σκεπτικό: ΠΡΙΝ το auto-sync.
-        await initMagicLink();
+        await auth.initMagicLink();
         // Cached session without its profile binding (storage was partially
         // cleared) — bind before auto-sync, otherwise push sends local-user rows.
         try {
-          await repairMissingProfileBinding();
+          await auth.repairMissingProfileBinding();
         } catch (err) {
           console.warn('[auth] profile repair failed', err);
         }
@@ -34,7 +39,7 @@ export default function App() {
         // teardown πρέπει να καταγράφεται (StrictMode τρέχει mount/cleanup/
         // mount στο dev) — αλλιώς initAutoSync's guard θα έβλεπε ήδη ενεργό
         // και δεν θα ξανασυνδεόταν στο δεύτερο πραγματικό mount.
-        teardownAutoSync = initAutoSync();
+        teardownAutoSync = sync.initAutoSync();
       })
       .catch((err: unknown) => {
         console.error('[bootstrap]', err);

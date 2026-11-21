@@ -9,20 +9,12 @@ import { cn } from '@/lib/utils';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { setSafetyAck } from '@/lib/safety';
 
-/** localStorage key: αν υπάρχει, ο χρήστης έχει ήδη δει το onboarding. */
-export const ONBOARDING_STORAGE_KEY = 'anabasis.onboarded';
+import { ONBOARDING_STORAGE_KEY, hasOnboarded } from '@/lib/onboarding';
+
+export { ONBOARDING_STORAGE_KEY };
 
 const SLIDE_COUNT = 4;
 const SWIPE_THRESHOLD_PX = 40;
-
-function hasOnboarded(): boolean {
-  try {
-    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === '1';
-  } catch {
-    // Private browsing / disabled storage — μην μπλοκάρεις το app, δείξε το app.
-    return true;
-  }
-}
 
 /**
  * Full-screen overlay 3 slides που παρουσιάζει το Anabasis στην πρώτη

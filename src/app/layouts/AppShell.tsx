@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BottomTabNav } from '@/components/layout/BottomTabNav';
@@ -7,14 +7,35 @@ import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { SideNav } from '@/components/layout/SideNav';
 import { ScrollProgress } from '@/components/layout/ScrollProgress';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { OnboardingOverlay } from '@/features/onboarding/OnboardingOverlay';
+import { hasOnboarded } from '@/lib/onboarding';
 import { SafetyNotice } from '@/features/legal/SafetyNotice';
 import { useActiveWorkout } from '@/hooks/useActiveWorkout';
-import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutView';
 import { useAppBootReady } from '@/app/BootContext';
 import { Spinner } from '@/components/ui/spinner';
 import { CommandMenuProvider } from '@/components/CommandMenu';
 import { ToastProvider } from '@/components/ui/toast';
+
+/**
+ * Το onboarding είναι full-screen overlay που χρειάζεται μόνο στην πρώτη
+ * επίσκεψη. Lazy + gate στο localStorage ώστε οι υπόλοιπες επισκέψεις να μην
+ * κατεβάζουν καθόλου το chunk του.
+ */
+const OnboardingOverlay = lazy(() =>
+  import('@/features/onboarding/OnboardingOverlay').then((m) => ({
+    default: m.OnboardingOverlay,
+  })),
+);
+
+/**
+ * Ο logger είναι βαρύς (σετ/πιάτα/quick-log/sheets) και χρειάζεται ΜΟΝΟ όταν
+ * υπάρχει ενεργή προπόνηση. Lazy ώστε το entry chunk της Αρχικής να μην τον
+ * κατεβάζει — και μαζί του ό,τι τραβά (queries, workout components).
+ */
+const ActiveWorkoutView = lazy(() =>
+  import('@/features/workout/components/ActiveWorkoutView').then((m) => ({
+    default: m.ActiveWorkoutView,
+  })),
+);
 
 /** Διακριτικό placeholder όσο φορτώνει ένα lazy route chunk. */
 function PageFallback() {
@@ -30,6 +51,7 @@ export function AppShell() {
   const bootReady = useAppBootReady();
   const active = useActiveWorkout();
   const hasActive = active != null;
+  const [showOnboarding] = useState(() => !hasOnboarded());
   // key ανά διαδρομή → το boundary ξεκαθαρίζει το σφάλμα όταν αλλάζεις σελίδα,
   // αλλιώς μια σπασμένη σελίδα θα έμενε σπασμένη και μετά την πλοήγηση.
   const { pathname, hash } = useLocation();
@@ -97,9 +119,16 @@ export function AppShell() {
           </main>
         </div>
         {!hasActive && <BottomTabNav />}
-        {hasActive && <ActiveWorkoutView workout={active} />}
-        {/* Ελέγχει μόνο του το localStorage· null αν έχει γίνει ήδη onboard. */}
-        <OnboardingOverlay />
+        {active != null && (
+          <Suspense fallback={null}>
+            <ActiveWorkoutView workout={active} />
+          </Suspense>
+        )}
+        {showOnboarding && (
+          <Suspense fallback={null}>
+            <OnboardingOverlay />
+          </Suspense>
+        )}
       </div>
       </ToastProvider>
     </CommandMenuProvider>
