@@ -14,6 +14,7 @@ import {
   startWorkoutFromCompleted,
 } from '@/lib/db/queries';
 import { addQuickSets } from '@/lib/db/workoutHelpers';
+import { restoreExerciseInWorkout } from '@/lib/db/workoutRestore';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useExercises } from '@/hooks/useExercises';
@@ -124,8 +125,15 @@ export function WorkoutDetailPage() {
     : null;
   const confirmRemoveExercise = async () => {
     if (!removeExerciseId) return;
-    await removeExerciseFromWorkout(workout.id, removeExerciseId);
+    const exerciseId = removeExerciseId;
+    await removeExerciseFromWorkout(workout.id, exerciseId);
     setRemoveExerciseId(null);
+    showToast({
+      message: t('workout.exerciseDeletedToast'),
+      actionLabel: t('history.undo'),
+      onAction: () => void restoreExerciseInWorkout(workout.id, exerciseId),
+      durationMs: 6000,
+    });
   };
 
   const confirmMoveSet = async (exercise: Exercise) => {

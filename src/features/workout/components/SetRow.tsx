@@ -4,6 +4,8 @@ import { ArrowLeftRight, Copy, Link2, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import { duplicateSet } from '@/lib/db/workoutHelpers';
+import { restoreSet } from '@/lib/db/workoutRestore';
+import { useToast } from '@/components/ui/toast-context';
 import { BUILTIN_SET_TYPES, type SetEntry, type SetType } from '@/lib/db/types';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { AddSetInline, type SetIntensity } from './AddSetInline';
@@ -37,6 +39,7 @@ export function SetRow({
 }: SetRowProps) {
   const { t } = useTranslation();
   const settings = useAppSettings();
+  const { showToast } = useToast();
   const unit = settings?.weight_unit ?? 'kg';
   const [editing, setEditing] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -89,6 +92,12 @@ export function SetRow({
   const onDelete = async () => {
     setRevealed(false);
     await queries.softDeleteSet(set.id);
+    showToast({
+      message: t('workout.setDeletedToast'),
+      actionLabel: t('history.undo'),
+      onAction: () => void restoreSet(set.id),
+      durationMs: 6000,
+    });
   };
 
   const onDuplicate = async () => {

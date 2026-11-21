@@ -129,6 +129,8 @@
     "moveDown": "Move down",
     "removeExerciseConfirmTitle": "Remove this exercise?",
     "removeExerciseConfirmDesc": "All its sets are removed from this workout. You can add it again later.",
+    "setDeletedToast": "Set deleted",
+    "exerciseDeletedToast": "Exercise removed",
     "setNote": "Set note",
     "setNotePlaceholder": "e.g. pause, slow, grip…",
     "quickLogFormatRich": "Supports: 80kg 5+4+3 · 30kg 5+4(drop set 10kg 7) · 80kg 1 + 90kg 1 · 18kg 4xmax · 26kg 2.5+1",

@@ -100,6 +100,30 @@ describe('WorkoutDetailPage — inline set & exercise management on past workout
     });
   });
 
+  it('undoes a set deletion from the toast', async () => {
+    const w = await startWorkout('strength', '2026-11-18', null, null, 'Upper');
+    const s = await addSet({
+      workout_id: w.id,
+      exercise_id: bench.id,
+      weight_kg: 80,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await endWorkout(w.id);
+
+    renderDetail(w.id);
+    await waitFor(() => expect(screen.getByRole('link', { name: /Bench Press/ })).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: en.common.delete }));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain(en.workout.setDeletedToast));
+    await waitFor(async () => expect((await db.sets.get(s.id))!.deleted_at).not.toBeNull());
+
+    fireEvent.click(screen.getByRole('button', { name: en.history.undo }));
+    await waitFor(async () => expect((await db.sets.get(s.id))!.deleted_at).toBeNull());
+    await waitFor(() => expect(screen.getByText(/80kg × 5/)).toBeTruthy());
+  });
+
   it('appends new exercises & sets via Paste notes directly into a past workout', async () => {
     const w = await startWorkout('strength', '2026-11-18', null, null, 'Upper');
     await addSet({
@@ -116,25 +140,43 @@ describe('WorkoutDetailPage — inline set & exercise management on past workout
     await waitFor(() => expect(screen.getByRole('link', { name: /Bench Press/ })).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: en.workout.pasteNotes }));
-    const textarea = await screen.findByRole('textbox', { name: en.workout.pasteNotes });
+    const textarea = await screen.findByRole(
+      'textbox',
+      { name: en.workout.pasteNotes },
+      { timeout: 4000 },
+    );
     fireEvent.change(textarea, {
       target: { value: 'W.pull ups: 30kg 5+4(drop set 10kg 7)' },
     });
 
-    const saveBtn = await screen.findByRole('button', { name: /Save 3 sets/i });
+    // Το parsing του paste γίνεται async· κάτω από παράλληλο φόρτο το default
+    // 1s timeout είναι οριακό (flaky). Περιμένουμε ρητά το κουμπί αποθήκευσης.
+    const saveBtn = await screen.findByRole(
+      'button',
+      { name: /Save 3 sets/i },
+      { timeout: 4000 },
+    );
     fireEvent.click(saveBtn);
 
-    await waitFor(() =>
-      expect(screen.queryByRole('textbox', { name: en.workout.pasteNotes })).toBeNull(),
+    await waitFor(
+      () => expect(screen.queryByRole('textbox', { name: en.workout.pasteNotes })).toBeNull(),
+      { timeout: 4000 },
     );
-    await waitFor(async () => {
-      const liveSets = (await db.sets.where('workout_id').equals(w.id).toArray()).filter(
-        (row) => row.deleted_at == null,
-      );
-      expect(liveSets).toHaveLength(4);
-      expect(liveSets.some((row) => row.set_type === 'dropset' && row.weight_kg === 10)).toBe(true);
-    });
-    expect(screen.getByRole('link', { name: /Weighted Pull-ups/ })).toBeTruthy();
+    await waitFor(
+      async () => {
+        const liveSets = (await db.sets.where('workout_id').equals(w.id).toArray()).filter(
+          (row) => row.deleted_at == null,
+        );
+        expect(liveSets).toHaveLength(4);
+        expect(liveSets.some((row) => row.set_type === 'dropset' && row.weight_kg === 10)).toBe(true);
+      },
+      { timeout: 4000 },
+    );
+    // Το νέο link εμφανίζεται μόνο όταν το liveQuery ξαναδιαβάσει — findByRole
+    // αντί για σύγχρονο getByRole ώστε να μην τρέχουμε πριν το re-render.
+    expect(
+      await screen.findByRole('link', { name: /Weighted Pull-ups/ }, { timeout: 4000 }),
+    ).toBeTruthy();
   });
 
   it('removes a whole exercise (all its sets) after a confirm', async () => {

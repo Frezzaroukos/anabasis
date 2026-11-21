@@ -129,6 +129,8 @@
     "moveDown": "Μετακίνηση κάτω",
     "removeExerciseConfirmTitle": "Αφαίρεση αυτής της άσκησης;",
     "removeExerciseConfirmDesc": "Όλα της τα σετ αφαιρούνται από την προπόνηση. Μπορείς να την ξαναπροσθέσεις αργότερα.",
+    "setDeletedToast": "Το σετ διαγράφηκε",
+    "exerciseDeletedToast": "Η άσκηση αφαιρέθηκε",
     "setNote": "Σημείωση σετ",
     "setNotePlaceholder": "π.χ. παύση, λαβή, max…",
     "quickLogFormatRich": "Υποστηρίζει: 80kg 5+4+3 · 30kg 5+4(drop set 10kg 7) · 80kg 1 + 90kg 1 · 18kg 4xmax · 26kg 2,5+1",
