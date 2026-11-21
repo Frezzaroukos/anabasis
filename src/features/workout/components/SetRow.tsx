@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Link2, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Copy, Link2, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { queries } from '@/lib/db';
 import { duplicateSet } from '@/lib/db/workoutHelpers';
@@ -18,6 +18,8 @@ interface SetRowProps {
   animateCommit?: boolean;
   /** Προαιρετικό callback μετά από αντιγραφή σετ (π.χ. για ειδοποίηση PR). */
   onDuplicated?: (newPRCount: number) => void;
+  /** Όταν δίνεται, εμφανίζεται ενέργεια «μετακίνηση σε άλλη άσκηση» (λάθος άσκηση). */
+  onMoveToExercise?: () => void;
 }
 
 const ACTION_WIDTH = 128;
@@ -31,6 +33,7 @@ export function SetRow({
   holdMode = false,
   animateCommit = true,
   onDuplicated,
+  onMoveToExercise,
 }: SetRowProps) {
   const { t } = useTranslation();
   const settings = useAppSettings();
@@ -262,6 +265,20 @@ export function SetRow({
 
         {/* Άμεσες, ορατές ενέργειες σετ — χωρίς κρυφά gestures σε desktop ή κινητό */}
         <div className="flex shrink-0 items-center gap-0.5">
+          {onMoveToExercise && (
+            <button
+              type="button"
+              onClick={() => {
+                setRevealed(false);
+                onMoveToExercise();
+              }}
+              aria-label={t('workout.moveSet')}
+              title={t('workout.moveSet')}
+              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             type="button"
             disabled={duplicating}

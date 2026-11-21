@@ -6,9 +6,11 @@ import { Trash2 } from 'lucide-react';
 import {
   listActivities,
   localDay,
+  restoreWorkout,
   setWorkoutActivity,
   setWorkoutDate,
   setWorkoutDuration,
+  setWorkoutTimes,
   setWorkoutType,
   softDeleteWorkout,
   updateWorkoutMeta,
@@ -18,6 +20,7 @@ import { BottomSheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ActivityChip } from '@/components/ActivityChip';
+import { useToast } from '@/components/ui/toast-context';
 
 /**
  * Διόρθωση μιας καταγεγραμμένης προπόνησης.
@@ -40,29 +43,59 @@ export function EditWorkoutSheet({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const activities = useLiveQuery(() => listActivities(true), [], []);
 
   const [label, setLabel] = useState('');
   const [kind, setKind] = useState(workout.activity_kind);
   const [day, setDay] = useState(localDay(new Date(workout.started_at)));
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [minutes, setMinutes] = useState('');
   const [notes, setNotes] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [timeError, setTimeError] = useState(false);
 
   const initialMinutes = (w: Workout) =>
     w.duration_seconds != null ? String(Math.round(w.duration_seconds / 60)) : '';
+
+  const hhmm = (iso: string | null): string => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (!open) return;
     setLabel(workout.workout_type ?? '');
     setKind(workout.activity_kind);
     setDay(localDay(new Date(workout.started_at)));
+    setStartTime(hhmm(workout.started_at));
+    setEndTime(hhmm(workout.ended_at));
     setMinutes(initialMinutes(workout));
     setNotes(workout.notes ?? '');
     setConfirmingDelete(false);
+    setTimeError(false);
   }, [open, workout]);
 
   const save = async () => {
+    // Η ώρα προηγείται της διάρκειας: αν δοθεί λήξη, η διάρκεια υπολογίζεται
+    // από τη διαφορά και το πεδίο «λεπτά» δεν χρειάζεται να την πατήσει.
+    const origStart = hhmm(workout.started_at);
+    const origEnd = hhmm(workout.ended_at);
+    const timeChanged = startTime !== origStart || endTime !== origEnd;
+    let endEdited = false;
+    if (timeChanged) {
+      const ok = await setWorkoutTimes(workout.id, {
+        start: startTime.trim() || null,
+        end: endTime.trim() || null,
+      });
+      if (!ok) {
+        setTimeError(true);
+        return;
+      }
+      endEdited = endTime.trim() !== origEnd && endTime.trim() !== '';
+    }
     // Γράφουμε μόνο ό,τι άλλαξε — κάθε update σφραγίζει updated_at, και δεν
     // θέλουμε να «αγγίζουμε» πεδία που ο χρήστης δεν πείραξε.
     if ((workout.workout_type ?? '') !== label.trim()) {
@@ -70,7 +103,8 @@ export function EditWorkoutSheet({
     }
     if (workout.activity_kind !== kind) await setWorkoutActivity(workout.id, kind);
     if (localDay(new Date(workout.started_at)) !== day) await setWorkoutDate(workout.id, day);
-    if (minutes.trim() !== initialMinutes(workout)) {
+    // Χειροκίνητη διάρκεια — παράκαμπτεται αν μόλις όρισες λήξη (τότε ισχύει η διαφορά).
+    if (!endEdited && minutes.trim() !== initialMinutes(workout)) {
       const mins = Number(minutes);
       await setWorkoutDuration(
         workout.id,
@@ -87,6 +121,14 @@ export function EditWorkoutSheet({
     await softDeleteWorkout(workout.id);
     onClose();
     navigate('/history', { replace: true });
+    showToast({
+      message: t('history.deletedToast'),
+      actionLabel: t('history.undo'),
+      onAction: () => {
+        void restoreWorkout(workout.id).then(() => navigate(`/history/${workout.id}`, { replace: true }));
+      },
+      durationMs: 7000,
+    });
   };
 
   return (
@@ -133,8 +175,45 @@ export function EditWorkoutSheet({
           />
         </label>
 
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t('history.workoutStartTime')}
+            </span>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => {
+                setTimeError(false);
+                setStartTime(e.target.value);
+              }}
+              className="h-10 w-full rounded-md bg-elevated px-3 font-mono text-sm tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t('history.workoutEndTime')}
+            </span>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => {
+                setTimeError(false);
+                setEndTime(e.target.value);
+              }}
+              className="h-10 w-full rounded-md bg-elevated px-3 font-mono text-sm tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            />
+          </label>
+        </div>
+        {timeError && (
+          <p role="alert" className="text-sm text-destructive">
+            {t('history.timeInvalid')}
+          </p>
+        )}
+
         {/* Χειροκίνητη διάρκεια — προαιρετική. Δεν χρειάζεται ζωντανό χρονόμετρο·
-            γράψε πόσα λεπτά κράτησε, ή άφησέ το κενό. */}
+            γράψε πόσα λεπτά κράτησε, ή άφησέ το κενό. Αν όρισες λήξη, η
+            διάρκεια υπολογίζεται από τη διαφορά. */}
         <label className="flex flex-col gap-1.5">
           <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('history.workoutDuration')}

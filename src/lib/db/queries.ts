@@ -165,16 +165,72 @@ export async function setWorkoutType(
  */
 export async function softDeleteWorkout(workoutId: string): Promise<void> {
   const t = now();
-  await db.transaction('rw', db.workouts, db.sets, db.personal_records, async () => {
+  const workout = await db.workouts.get(workoutId);
+  const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
+  const affectedExercises = new Set(
+    sets.filter((s) => s.deleted_at == null).map((s) => s.exercise_id),
+  );
+  await db.transaction('rw', db.workouts, db.sets, async () => {
     await db.workouts.update(workoutId, { deleted_at: t, updated_at: t });
     await db.sets
       .where('workout_id')
       .equals(workoutId)
       .modify({ deleted_at: t, updated_at: t });
-    await db.personal_records.where('user_id').equals(getCurrentUserId()).and(
-      (r) => r.workout_id === workoutId,
-    ).delete();
   });
+  // Ξαναϋπολόγισε αντί να σβήσεις απλώς τις γραμμές της προπόνησης: αν αυτή
+  // κρατούσε το ρεκόρ και ο «δεύτερος» δεν είχε ποτέ γραμμή (δεν ήταν PR τότε),
+  // το ρεκόρ θα χανόταν εντελώς. Το recompute το ρίχνει στο αληθινό καλύτερο.
+  for (const exerciseId of affectedExercises) {
+    await recomputePRsForExercise(exerciseId);
+  }
+  if (workout) await recomputeActivityPRs(workout.activity_kind);
+}
+
+/**
+ * «Αναίρεση» διαγραφής προπόνησης — επαναφέρει την προπόνηση και τα σετ της.
+ * Χρειάζεται για το Undo του toast μετά από `softDeleteWorkout`: η διαγραφή
+ * είναι soft (tombstone), άρα η επαναφορά είναι απλώς καθάρισμα των σημαδιών
+ * — κανένα δεδομένο δεν είχε σβηστεί πραγματικά. Τα PR ξαναχτίζονται μόνα
+ * τους επειδή η `recomputePRsForExercise` διαβάζει τα ζωντανά σετ.
+ */
+export async function restoreWorkout(workoutId: string): Promise<void> {
+  const t = now();
+  const workout = await db.workouts.get(workoutId);
+  if (!workout || workout.deleted_at == null) return;
+  const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
+  const affectedExercises = new Set(sets.map((s) => s.exercise_id));
+  await db.transaction('rw', db.workouts, db.sets, async () => {
+    await db.workouts.update(workoutId, { deleted_at: null, updated_at: t });
+    await db.sets.where('workout_id').equals(workoutId).modify({ deleted_at: null, updated_at: t });
+  });
+  for (const exerciseId of affectedExercises) {
+    await recomputePRsForExercise(exerciseId);
+  }
+  await recomputeActivityPRs(workout.activity_kind);
+}
+
+/**
+ * Σβήνει μια ΟΛΟΚΛΗΡΗ άσκηση από μια προπόνηση (όλα της τα σετ μαζί).
+ * Ξεχωριστά από το `softDeleteSet` γιατί ο χρήστης που πρόσθεσε λάθος
+ * άσκηση δεν θέλει να πατάει delete σε κάθε σετ — ένα confirm αρκεί.
+ */
+export async function removeExerciseFromWorkout(
+  workoutId: string,
+  exerciseId: string,
+): Promise<void> {
+  const t = now();
+  const sets = await db.sets
+    .where('workout_id')
+    .equals(workoutId)
+    .and((s) => s.exercise_id === exerciseId && s.deleted_at == null)
+    .toArray();
+  if (sets.length === 0) return;
+  await db.sets
+    .where('workout_id')
+    .equals(workoutId)
+    .and((s) => s.exercise_id === exerciseId && s.deleted_at == null)
+    .modify({ deleted_at: t, updated_at: t });
+  await recomputePRsForExercise(exerciseId);
 }
 
 /**
@@ -213,7 +269,60 @@ export async function setWorkoutDuration(
   seconds: number | null,
 ): Promise<void> {
   const value = seconds != null && Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds) : null;
+  const workout = await db.workouts.get(workoutId);
   await db.workouts.update(workoutId, { duration_seconds: value, updated_at: now() });
+  // Duration feeds «longest duration» / «fastest pace» — recompute so a
+  // corrected time does not leave a stale activity PR behind.
+  if (workout) await recomputeActivityPRs(workout.activity_kind);
+}
+
+/**
+ * Ορίζει ώρα έναρξης και/ή λήξης (HH:MM) πάνω στην ήδη υπάρχουσα ΗΜΕΡΑ.
+ *
+ * Το `setWorkoutDate` μετακινεί μόνο τη μέρα κρατώντας την ώρα· εδώ
+ * διορθώνεις την ΩΡΑ («ξεκίνησα 18:00, όχι 20:15»). Η μέρα μένει ίδια. Αν
+ * δοθεί και λήξη, επανυπολογίζεται η διάρκεια από τη διαφορά. Αν η λήξη
+ * πέσει πριν την έναρξη, απορρίπτεται (επιστρέφει false) — δεν γράφουμε
+ * αρνητική διάρκεια.
+ */
+export async function setWorkoutTimes(
+  workoutId: string,
+  times: { start?: string | null; end?: string | null },
+): Promise<boolean> {
+  const w = await db.workouts.get(workoutId);
+  if (!w) return false;
+
+  const withTime = (base: Date, hhmm: string): Date | null => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+    if (!m) return null;
+    const hours = Number(m[1]);
+    const minutes = Number(m[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    const d = new Date(base);
+    d.setHours(hours, minutes, 0, 0);
+    return d;
+  };
+
+  const started = new Date(w.started_at);
+  const nextStart = times.start != null ? withTime(started, times.start) : null;
+  if (times.start != null && nextStart == null) return false;
+
+  const endedBase = w.ended_at ? new Date(w.ended_at) : new Date(w.started_at);
+  const nextEnd = times.end != null ? withTime(endedBase, times.end) : null;
+  if (times.end != null && nextEnd == null) return false;
+
+  const finalStart = nextStart ?? started;
+  const finalEnd = nextEnd ?? (w.ended_at ? new Date(w.ended_at) : null);
+  if (finalEnd != null && finalEnd.getTime() < finalStart.getTime()) return false;
+
+  const patch: Partial<Workout> = { started_at: finalStart.toISOString(), updated_at: now() };
+  if (finalEnd != null) {
+    patch.ended_at = finalEnd.toISOString();
+    patch.duration_seconds = Math.max(0, Math.round((finalEnd.getTime() - finalStart.getTime()) / 1000));
+  }
+  await db.workouts.update(workoutId, patch);
+  await recomputeActivityPRs(w.activity_kind);
+  return true;
 }
 
 /** Αλλάζει το άθλημα μιας καταγεγραμμένης προπόνησης. */
@@ -221,7 +330,12 @@ export async function setWorkoutActivity(
   workoutId: string,
   activityKind: ActivityKind,
 ): Promise<void> {
+  const before = await db.workouts.get(workoutId);
   await db.workouts.update(workoutId, { activity_kind: activityKind, updated_at: now() });
+  if (before && before.activity_kind !== activityKind) {
+    await recomputeActivityPRs(before.activity_kind);
+    await recomputeActivityPRs(activityKind);
+  }
 }
 
 export async function getActiveWorkout(): Promise<Workout | undefined> {
@@ -425,6 +539,140 @@ async function detectActivityPRs(workout: Workout): Promise<void> {
   }
 }
 
+/**
+ * Ξαναϋπολογίζει ΟΛΑ τα strength PRs μιας άσκησης από τα ζωντανά σετ.
+ *
+ * Γιατί χρειάζεται: το `detectPRs` τρέχει μόνο όταν ΠΡΟΣΘΕΤΕΙΣ σετ — γράφει
+ * μια γραμμή κάθε φορά που ξεπερνάς το τρέχον ρεκόρ. Αν όμως διορθώσεις ένα
+ * σετ προς τα κάτω (π.χ. είχες γράψει 110, ήταν 100) ή το σβήσεις, η γραμμή
+ * «110» έμενε και το app συνέχιζε να λέει ψέματα. Εδώ σβήνουμε τις γραμμές
+ * της άσκησης και τις ξαναπαράγουμε με την ΙΔΙΑ λογική (candidatesFromSet +
+ * isNewPR), με χρονολογική σειρά, ώστε το τελικό «καλύτερο» να είναι αληθινό.
+ *
+ * Η σειρά ακολουθεί `workout.started_at` (πότε έγινε), ώστε το history των
+ * PR rows να έχει νόημα ακόμα και με backdated καταχωρίσεις. Η τιμή-ρεκόρ
+ * δεν εξαρτάται από τη σειρά (max/min), μόνο το ποια γραμμή «κέρδισε πότε».
+ */
+export async function recomputePRsForExercise(exerciseId: string): Promise<void> {
+  const uid = getCurrentUserId();
+  const [allSets, workouts] = await Promise.all([
+    db.sets.where('exercise_id').equals(exerciseId).toArray(),
+    db.workouts.where('user_id').equals(uid).toArray(),
+  ]);
+  const workoutById = new Map(workouts.map((w) => [w.id, w]));
+
+  const live = allSets
+    .filter(
+      (s) =>
+        s.deleted_at == null &&
+        !s.is_warmup &&
+        s.set_type !== 'warmup' &&
+        workoutById.get(s.workout_id)?.deleted_at == null,
+    )
+    .sort((a, b) => {
+      const wa = workoutById.get(a.workout_id)?.started_at ?? '';
+      const wb = workoutById.get(b.workout_id)?.started_at ?? '';
+      return (
+        wa.localeCompare(wb) ||
+        a.created_at.localeCompare(b.created_at) ||
+        a.set_number - b.set_number
+      );
+    });
+
+  await db.transaction('rw', db.personal_records, async () => {
+    await db.personal_records
+      .where('user_id')
+      .equals(uid)
+      .and((r) => r.exercise_id === exerciseId)
+      .delete();
+
+    const best = new Map<PRType, PersonalRecord>();
+    for (const set of live) {
+      for (const c of candidatesFromSet(set)) {
+        const current = best.get(c.type) ?? null;
+        if (!isNewPR(c, current)) continue;
+        const row: PersonalRecord = {
+          id: uuid(),
+          user_id: uid,
+          exercise_id: exerciseId,
+          activity_kind: null,
+          type: c.type,
+          value: c.value,
+          reps: c.reps,
+          weight_kg: c.weight_kg,
+          achieved_at: set.created_at,
+          workout_id: set.workout_id,
+          set_id: set.id,
+          created_at: set.created_at,
+          updated_at: now(),
+        };
+        await db.personal_records.add(row);
+        best.set(c.type, row);
+      }
+    }
+  });
+}
+
+/**
+ * Ξαναϋπολογίζει τα PRs δραστηριοτήτων χωρίς σετ (τρέξιμο/ποδήλατο/…).
+ * Χρειάζεται όταν αλλάζει χειροκίνητα η διάρκεια ή η απόσταση μιας
+ * ολοκληρωμένης προπόνησης — αλλιώς το «longest distance» παλιό μένει
+ * κολλημένο. Μόνο ολοκληρωμένες, μη-διαγραμμένες, μη set-logged συμμετέχουν
+ * (ίδιος κανόνας με το `endWorkout`).
+ */
+export async function recomputeActivityPRs(activityKind: ActivityKind): Promise<void> {
+  const uid = getCurrentUserId();
+  const activity = await getActivity(activityKind);
+  const setLogged = activity
+    ? activity.uses_sets
+    : activityKind === 'strength' || activityKind === 'skill';
+  if (setLogged) return;
+
+  const workouts = (
+    await db.workouts.where('user_id').equals(uid).toArray()
+  )
+    .filter(
+      (w) =>
+        w.deleted_at == null &&
+        w.ended_at != null &&
+        w.activity_kind === activityKind,
+    )
+    .sort((a, b) => a.started_at.localeCompare(b.started_at));
+
+  await db.transaction('rw', db.personal_records, async () => {
+    await db.personal_records
+      .where('user_id')
+      .equals(uid)
+      .and((r) => r.activity_kind === activityKind)
+      .delete();
+
+    const best = new Map<PRType, PersonalRecord>();
+    for (const w of workouts) {
+      for (const c of candidatesFromWorkout(w)) {
+        const current = best.get(c.type) ?? null;
+        if (!isNewPR(c, current)) continue;
+        const row: PersonalRecord = {
+          id: uuid(),
+          user_id: uid,
+          exercise_id: null,
+          activity_kind: activityKind,
+          type: c.type,
+          value: c.value,
+          reps: c.reps,
+          weight_kg: c.weight_kg,
+          achieved_at: w.ended_at ?? w.started_at,
+          workout_id: w.id,
+          set_id: null,
+          created_at: now(),
+          updated_at: now(),
+        };
+        await db.personal_records.add(row);
+        best.set(c.type, row);
+      }
+    }
+  });
+}
+
 /** PRs ανά άσκηση — για το UI (exercise_id → PersonalRecord[]). Μόνο strength PRs. */
 export async function getPRsByExercise(): Promise<Map<string, PersonalRecord[]>> {
   const rows = await db.personal_records
@@ -499,7 +747,151 @@ export async function updateSet(
           is_warmup: patch.set_type === 'warmup',
           is_failure: patch.set_type === 'failure',
         };
+  const before = await db.sets.get(setId);
+  const exerciseTouched =
+    before != null &&
+    (patch.weight_kg !== undefined ||
+      patch.reps !== undefined ||
+      patch.hold_seconds !== undefined ||
+      patch.set_type !== undefined ||
+      patch.rest_pause_reps !== undefined);
   await db.sets.update(setId, { ...patch, ...flags, updated_at: now() });
+  // Διόρθωση βάρους/reps/hold/set_type αλλάζει το τι «άξιζε» το σετ —
+  // ξαναϋπολόγισε τα ρεκόρ της άσκησης, αλλιώς παλιά PR μένουν ψευδή.
+  if (exerciseTouched && before) await recomputePRsForExercise(before.exercise_id);
+}
+
+/**
+ * «Επανάληψη προπόνησης» από το ιστορικό → νέα ΕΝΕΡΓΗ συνεδρία.
+ *
+ * Σε αντίθεση με το `startWorkoutFromLastOfKind` (τελευταία του είδους), εδώ
+ * ξεκινάς από ΟΠΟΙΑΔΗΠΟΤΕ ολοκληρωμένη προπόνηση επιλέξεις. Αντιγράφει το
+ * όνομα/άθλημα, αλλά ΟΧΙ τα σετ: το νέο workout ξεκινά άδειο και ο logger
+ * προγεμίζει τις ασκήσεις (μέσω seedExercises στη ροή). Δεν αντιγράφει
+ * ημερομηνία — ξεκινά «τώρα». Επιστρέφει null αν υπάρχει ήδη ενεργή
+ * (μία ενεργή τη φορά) ή αν η πηγή δεν υπάρχει.
+ */
+export async function startWorkoutFromCompleted(
+  workoutId: string,
+): Promise<{ workout: Workout; exerciseNames: string[] } | null> {
+  return withWorkoutStartGuard(async () => {
+    const source = await db.workouts.get(workoutId);
+    if (!source || source.deleted_at != null) return null;
+    const w = await startWorkout(
+      source.activity_kind,
+      undefined,
+      null,
+      null,
+      source.workout_type,
+    );
+    if (source.notes) {
+      await db.workouts.update(w.id, { notes: source.notes, updated_at: now() });
+    }
+    const sets = (
+      await db.sets.where('workout_id').equals(workoutId).toArray()
+    )
+      .filter((s) => s.deleted_at == null)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.set_number - b.set_number);
+    const names: string[] = [];
+    const exercises = await db.exercises.toArray();
+    const nameById = new Map(exercises.map((e) => [e.id, e.name]));
+    const seen = new Set<string>();
+    for (const s of sets) {
+      if (seen.has(s.exercise_id)) continue;
+      seen.add(s.exercise_id);
+      const name = nameById.get(s.exercise_id);
+      if (name) names.push(name);
+    }
+    return {
+      workout: { ...w, notes: source.notes ?? w.notes },
+      exerciseNames: names,
+    };
+  });
+}
+
+/**
+ * Αναδιατάσσει τις ασκήσεις ΜΙΑΣ προπόνησης.
+ *
+ * Δεν υπάρχει πεδίο θέσης ανά άσκηση-σε-workout (και δεν προσθέτουμε schema):
+ * η σειρά προκύπτει από το `created_at` του πρώτου σετ κάθε άσκησης (βλ.
+ * `getWorkoutDetail`). Εδώ ξαναγράφουμε τα `created_at` με βήμα 1ms στην
+ * επιθυμητή σειρά, κρατώντας τη σχετική σειρά των σετ ΜΕΣΑ σε κάθε άσκηση.
+ * Τα PR δεν επηρεάζονται (η τιμή είναι max/min, όχι σειρά) — και τα
+ * ξαναχτίζουμε προληπτικά για σιγουριά αφού άλλαξε το `achieved_at` τους.
+ */
+export async function reorderWorkoutExercises(
+  workoutId: string,
+  orderedExerciseIds: string[],
+): Promise<void> {
+  const sets = (
+    await db.sets.where('workout_id').equals(workoutId).toArray()
+  ).filter((s) => s.deleted_at == null);
+  if (sets.length === 0) return;
+
+  const byExercise = new Map<string, SetEntry[]>();
+  for (const s of sets) {
+    const arr = byExercise.get(s.exercise_id) ?? [];
+    arr.push(s);
+    byExercise.set(s.exercise_id, arr);
+  }
+  const present = [...byExercise.keys()];
+  const ordered = [
+    ...orderedExerciseIds.filter((id) => byExercise.has(id)),
+    ...present.filter((id) => !orderedExerciseIds.includes(id)),
+  ];
+
+  const base = sets.reduce(
+    (min, s) => Math.min(min, Date.parse(s.created_at) || 0),
+    Date.parse(sets[0]!.created_at) || Date.now(),
+  );
+
+  const touchedExercises = new Set<string>();
+  await db.transaction('rw', db.sets, async () => {
+    let cursor = base;
+    for (const exerciseId of ordered) {
+      const group = (byExercise.get(exerciseId) ?? []).sort(
+        (a, b) => a.set_number - b.set_number,
+      );
+      for (const s of group) {
+        const iso = new Date(cursor).toISOString();
+        if (s.created_at !== iso) {
+          await db.sets.update(s.id, { created_at: iso });
+          touchedExercises.add(exerciseId);
+        }
+        cursor += 1;
+      }
+    }
+  });
+  for (const exerciseId of touchedExercises) {
+    await recomputePRsForExercise(exerciseId);
+  }
+}
+
+/**
+ * Μεταφέρει ένα σετ σε άλλη άσκηση — «το έγραψα σε λάθος άσκηση».
+ *
+ * Ο set_number ξαναϋπολογίζεται ώστε να μπει στο τέλος της νέας άσκησης
+ * (όχι να κρατήσει π.χ. #2 και να μοιάζει σαν να έλειπε το #1). Τα ρεκόρ
+ * και των ΔΥΟ ασκήσεων ξαναχτίζονται: η παλιά μπορεί να χάνει ρεκόρ, η νέα
+ * μπορεί να κερδίζει.
+ */
+export async function moveSetToExercise(setId: string, exerciseId: string): Promise<void> {
+  const set = await db.sets.get(setId);
+  if (!set || set.exercise_id === exerciseId) return;
+  const previousExerciseId = set.exercise_id;
+  const targetSets = await db.sets
+    .where('workout_id')
+    .equals(set.workout_id)
+    .and((s) => s.exercise_id === exerciseId && s.deleted_at == null && s.id !== setId)
+    .toArray();
+  const nextNumber = targetSets.reduce((max, s) => Math.max(max, s.set_number), 0) + 1;
+  await db.sets.update(setId, {
+    exercise_id: exerciseId,
+    set_number: nextNumber,
+    updated_at: now(),
+  });
+  await recomputePRsForExercise(previousExerciseId);
+  await recomputePRsForExercise(exerciseId);
 }
 
 /**
@@ -613,7 +1005,11 @@ export async function getExerciseSummaries(): Promise<
 
 export async function softDeleteSet(setId: string): Promise<void> {
   const t = now();
+  const set = await db.sets.get(setId);
   await db.sets.update(setId, { deleted_at: t, updated_at: t });
+  // Σβήσιμο σετ μπορεί να αφαιρεί το μόνο σετ που είχε σπάσει ένα ρεκόρ —
+  // τα PR πρέπει να πέσουν πίσω στο αληθινό καλύτερο, όχι να μείνουν.
+  if (set) await recomputePRsForExercise(set.exercise_id);
 }
 
 /* ─────────── Exercises ─────────── */
@@ -1835,7 +2231,9 @@ export async function updateWorkoutDistance(
   workoutId: string,
   km: number | null,
 ): Promise<void> {
+  const workout = await db.workouts.get(workoutId);
   await db.workouts.update(workoutId, { distance_km: km, updated_at: now() });
+  if (workout) await recomputeActivityPRs(workout.activity_kind);
 }
 
 /** Σημειώσεις & αίσθηση συνεδρίας — χρήσιμα σε non-strength δραστηριότητες. */
