@@ -1,10 +1,13 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import en from '@/i18n/en.json';
 import { ProfilePage } from './ProfilePage';
+import { db } from '@/lib/db';
+import { createProfile } from '@/lib/db/queries';
+import { setCurrentUserId } from '@/lib/db/session';
 
 beforeAll(async () => {
   if (!i18next.isInitialized) {
@@ -53,5 +56,48 @@ describe('ProfilePage — ταυτότητα συσκευής vs λογαρια�
     renderPage();
     await waitFor(() => expect(screen.getByText('Profiles on this device')).toBeTruthy());
     expect(screen.queryByText(/· synced/)).toBeNull();
+  });
+});
+
+describe('ProfilePage — backup πριν από τη διαγραφή', () => {
+  const createObjectURL = vi.fn(() => 'blob:profile-backup');
+
+  beforeEach(async () => {
+    setCurrentUserId('profile-keeper');
+    await db.users.clear();
+    await db.app_settings.clear();
+    await createProfile('First');
+    await createProfile('Second');
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    createObjectURL.mockClear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('κατεβάζει JSON backup πριν το deleteProfile', async () => {
+    renderPage();
+    const label = await screen.findByText('Second');
+    const row = label.closest('div.rounded-lg') as HTMLElement;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete profile' }));
+    await waitFor(() => expect(within(row).getByText('Delete this profile and all its data?')).toBeTruthy());
+
+    const confirmButtons = within(row).getAllByRole('button', { name: 'Delete profile' });
+    fireEvent.click(confirmButtons[confirmButtons.length - 1]!);
+
+    await waitFor(() => expect(screen.queryByText('Second')).toBeNull());
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const remaining = await db.users.toArray();
+    expect(remaining.map((u) => u.display_name)).toEqual(['First']);
   });
 });

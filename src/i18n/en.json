@@ -750,6 +750,7 @@
     "prs": "PRs",
     "deleteConfirmTitle": "Delete this profile and all its data?",
     "deleteConfirmDesc": "{{workouts}} workouts and {{prs}} records will be permanently deleted. This cannot be undone.",
+    "deleteBackupNote": "A JSON backup of this profile downloads automatically before deletion.",
     "syncHint": "Without an account this data lives only in this browser. Clearing browser data deletes it.",
     "vsAccount": "Looking for your email, password or sync? That is your account",
     "syncedByAccount": "synced"
