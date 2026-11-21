@@ -16,7 +16,8 @@
     "build:tauri": "tsc -b && vite build --outDir dist-tauri --emptyOutDir",
     "build:staged": "tsc -b && vite build --outDir dist-staging --emptyOutDir",
     "deploy:promote": "scripts/promote.sh",
-    "deploy:rollback": "scripts/rollback.sh"
+    "deploy:rollback": "scripts/rollback.sh",
+    "e2e": "node scripts/e2e/smoke.mjs"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
