@@ -2172,6 +2172,140 @@ async fn social_report_duplicate_is_idempotent_and_admin_can_list() {
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
+/// POST /api/admin/reports/:id/review — ο admin σημαίνει μια αναφορά ως
+/// ελεγμένη. Idempotent, 404 για άγνωστο id, 403 για μη-admin, 400 για
+/// άκυρο status. Τα πεδία (`reviewed_at`, `reviewer_id`) υπάρχουν ήδη στο
+/// 0015_reports.sql — κανένα migration.
+#[tokio::test]
+async fn admin_review_report_marks_reviewed_idempotent_and_guarded() {
+    let (app, _state, _dir) = test_app(Some("admin@example.com")).await;
+    let admin_body = signup(&app, "admin@example.com", "correcthorsebattery")
+        .await
+        .1;
+    let admin = admin_body["token"].as_str().unwrap().to_string();
+    let admin_id = admin_body["account"]["id"].as_str().unwrap().to_string();
+    let a = signup(&app, "a@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = signup(&app, "b@example.com", "correcthorsebattery").await.1["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    set_username(&app, &a, "aaa").await;
+    set_username(&app, &b, "bbb").await;
+
+    // Μία αναφορά στην ουρά.
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/social/report",
+        Some(&a),
+        Some(json!({ "username": "bbb", "reason": "spam", "note": "fake account" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (_, body) = call(
+        &app,
+        "GET",
+        "/api/admin/reports?status=open",
+        Some(&admin),
+        None,
+    )
+    .await;
+    let rows = body.as_array().unwrap();
+    assert_eq!(rows.len(), 1);
+    let id = rows[0]["id"].as_str().unwrap().to_string();
+    assert_eq!(rows[0]["status"], "open");
+    assert!(rows[0]["reviewed_at"].is_null());
+
+    // Non-admin → 403.
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/reports/{id}/review"),
+        Some(&a),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    // Άγνωστο id → 404.
+    let (status, body) = call(
+        &app,
+        "POST",
+        "/api/admin/reports/does-not-exist/review",
+        Some(&admin),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(body["error"], "not_found");
+
+    // Άκυρο status → 400.
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/reports/{id}/review"),
+        Some(&admin),
+        Some(json!({ "status": "open" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["error"], "invalid_status");
+
+    // Επιτυχία (default reviewed) → 200 + γράφτηκε reviewed_at/reviewer_id.
+    let (status, body) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/reports/{id}/review"),
+        Some(&admin),
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["ok"], true);
+
+    let (_, body) = call(
+        &app,
+        "GET",
+        "/api/admin/reports?status=reviewed",
+        Some(&admin),
+        None,
+    )
+    .await;
+    let rows = body.as_array().unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["status"], "reviewed");
+    assert_eq!(rows[0]["reviewer_id"], admin_id);
+    assert!(rows[0]["reviewed_at"]
+        .as_str()
+        .is_some_and(|s| !s.is_empty()));
+
+    // Idempotent: ξανα-σήμανση ξανά OK.
+    let (status, _) = call(
+        &app,
+        "POST",
+        &format!("/api/admin/reports/{id}/review"),
+        Some(&admin),
+        Some(json!({ "status": "reviewed" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Η αναφορά έφυγε από την «ανοιχτές» ουρά.
+    let (_, body) = call(
+        &app,
+        "GET",
+        "/api/admin/reports?status=open",
+        Some(&admin),
+        None,
+    )
+    .await;
+    assert_eq!(body.as_array().unwrap().len(), 0);
+}
+
 /// Το `db_size_bytes` ήταν `metadata(main).unwrap_or(0)` ενώ η βάση τρέχει σε
 /// WAL mode: το σκέτο main αρχείο υποτιμά, και το `unwrap_or(0)` έλεγε ψέματα
 /// («0 bytes») όταν το αρχείο δεν διαβαζόταν. Τώρα αθροίζει τα sidecars και

@@ -4,7 +4,7 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import en from '@/i18n/en.json';
-import { api, type AdminStats, type AdminUser } from '@/lib/api/client';
+import { api, type AdminReport, type AdminStats, type AdminUser } from '@/lib/api/client';
 import { AdminPage } from './AdminPage';
 
 vi.mock('@/lib/api/auth', () => ({
@@ -83,9 +83,10 @@ function renderPage() {
   );
 }
 
-function stub(users: AdminUser[], stats: AdminStats = STATS) {
+function stub(users: AdminUser[], stats: AdminStats = STATS, reports: AdminReport[] = []) {
   vi.spyOn(api, 'adminListUsers').mockResolvedValue(users);
   vi.spyOn(api, 'adminStats').mockResolvedValue(stats);
+  vi.spyOn(api, 'adminReports').mockResolvedValue(reports);
 }
 
 /**
@@ -97,6 +98,7 @@ describe('AdminPage — καταστάσεις φόρτωσης', () => {
   it('όσο φορτώνει ΔΕΝ ισχυρίζεται ότι δεν υπάρχουν λογαριασμοί', () => {
     vi.spyOn(api, 'adminListUsers').mockReturnValue(new Promise(() => {}));
     vi.spyOn(api, 'adminStats').mockReturnValue(new Promise(() => {}));
+    vi.spyOn(api, 'adminReports').mockResolvedValue([]);
     renderPage();
     expect(screen.queryByText('No accounts yet.')).toBeNull();
     expect(screen.queryByText('me@example.com')).toBeNull();
@@ -105,6 +107,7 @@ describe('AdminPage — καταστάσεις φόρτωσης', () => {
   it('σε σφάλμα δείχνει μήνυμα ΚΑΙ κουμπί επανάληψης που ξαναφορτώνει', async () => {
     const list = vi.spyOn(api, 'adminListUsers').mockRejectedValue(new Error('boom'));
     vi.spyOn(api, 'adminStats').mockRejectedValue(new Error('boom'));
+    vi.spyOn(api, 'adminReports').mockResolvedValue([]);
     renderPage();
 
     await screen.findByText("Couldn't load admin data.");
@@ -190,5 +193,60 @@ describe('AdminPage — ενέργειες', () => {
     // 5.0 MB θα φαινόταν αν το κρύβαμε πίσω από ψεύτικο μηδέν.
     expect(screen.queryByText('5.0 MB')).toBeNull();
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+  });
+});
+
+const REPORT: AdminReport = {
+  id: 'rep-1',
+  reporter_id: 'u-reporter',
+  reporter_username: 'reporter',
+  target_account_id: 'u-target',
+  target_username: 'targetuser',
+  reason: 'spam',
+  note: 'fake account',
+  status: 'open',
+  created_at: '2026-03-01T10:00:00Z',
+  reviewed_at: null,
+  reviewer_id: null,
+};
+
+describe('AdminPage — αναφορές', () => {
+  it('δείχνει reporter/target/λόγο/σημείωση για τις ανοιχτές αναφορές', async () => {
+    stub(USERS, STATS, [REPORT]);
+    renderPage();
+
+    expect(await screen.findByText('reporter')).toBeTruthy();
+    expect(screen.getByText('@targetuser')).toBeTruthy();
+    expect(screen.getByText('Spam')).toBeTruthy();
+    expect(screen.getByText(/fake account/)).toBeTruthy();
+  });
+
+  it('«Σήμανση ως ελεγμένη» καλεί το review endpoint και ξαναφορτώνει', async () => {
+    vi.spyOn(api, 'adminListUsers').mockResolvedValue(USERS);
+    vi.spyOn(api, 'adminStats').mockResolvedValue(STATS);
+    const review = vi.spyOn(api, 'adminReviewReport').mockResolvedValue({ ok: true });
+    // Πρώτο fetch = ανοιχτή· μετά το review το refetch δίνει την ελεγμένη
+    // έκδοση (χωρίς κουμπί «Mark as reviewed»).
+    const reports = vi
+      .spyOn(api, 'adminReports')
+      .mockResolvedValueOnce([REPORT])
+      .mockResolvedValue([{ ...REPORT, status: 'reviewed', reviewed_at: '2026-03-02T09:00:00Z' }]);
+
+    renderPage();
+    await screen.findByText('@targetuser');
+
+    fireEvent.click(screen.getByRole('button', { name: /Mark as reviewed/ }));
+
+    await waitFor(() => expect(review).toHaveBeenCalledWith('rep-1', 'reviewed'));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Mark as reviewed/ })).toBeNull(),
+    );
+    expect(reports.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('χωρίς αναφορές λέει ρητά «καμία» — όχι κενή οθόνη', async () => {
+    stub(USERS, STATS, []);
+    renderPage();
+    expect(await screen.findByText('No reports here.')).toBeTruthy();
   });
 });
