@@ -491,7 +491,36 @@
     "pullupBarHint": "Pull-ups · dips · hanging leg raise · L-sit",
     "futureBlocked": "Δεν μπορείς να καταγράψεις προπόνηση στο μέλλον. Διάλεξε σήμερα ή προηγούμενη μέρα.",
     "pasteWorkout": "Επικόλληση σημειώσεων προπόνησης",
-    "pasteWorkoutHint": "Κάνε επικόλληση ολόκληρης προπόνησης από Σημειώσεις και σώσ’ την σε αυτή τη μέρα."
+    "pasteWorkoutHint": "Κάνε επικόλληση ολόκληρης προπόνησης από Σημειώσεις και σώσ’ την σε αυτή τη μέρα.",
+    "planned": "Προγραμματισμένα",
+    "noPlanned": "Τίποτα προγραμματισμένο για αυτή τη μέρα.",
+    "scheduleSession": "Προγραμματισμός",
+    "newScheduled": "Προγραμματισμός προπόνησης",
+    "editScheduled": "Επεξεργασία προγραμματισμένης",
+    "sessionTitle": "Τίτλος",
+    "sessionTitlePlaceholder": "π.χ. Άνω σώμα",
+    "sessionDate": "Ημερομηνία",
+    "sessionTime": "Ώρα",
+    "sessionProgram": "Από πρόγραμμα",
+    "sessionNoProgram": "Χωρίς πρόγραμμα (ad-hoc)",
+    "sessionWholeProgram": "{{name}} — ολόκληρο",
+    "sessionActivity": "Δραστηριότητα",
+    "sessionNotes": "Σημειώσεις",
+    "sessionNotesPlaceholder": "Προαιρετικές σημειώσεις",
+    "sessionStatusLabel": "Κατάσταση",
+    "repeatWeeks": "Εβδομαδιαία επανάληψη",
+    "repeatWeeksHint": "Δημιουργεί {{count}} προπόνηση, μία κάθε 7 ημέρες.",
+    "repeatWeeksHint_other": "Δημιουργεί {{count}} προπονήσεις, μία κάθε 7 ημέρες.",
+    "sessionStart": "Ξεκίνα τώρα",
+    "sessionSkip": "Παράλειψη",
+    "sessionUnskip": "Επαναφορά",
+    "sessionDeleteTitle": "Διαγραφή προγραμματισμένης;",
+    "sessionDeleteDesc": "Θα αφαιρεθεί από το ημερολόγιο.",
+    "status": {
+      "planned": "Προγραμματισμένη",
+      "done": "Ολοκληρωμένη",
+      "skipped": "Παραλειπόμενη"
+    }
   },
   "body": {
     "weight": "Βάρος",
@@ -627,7 +656,10 @@
     "saveProgressDesc": "Φτιάξε δωρεάν λογαριασμό για backup αυτής της συσκευής και sync στις υπόλοιπες.",
     "saveProgressCta": "Αποθήκευσέ την",
     "activeThisWeek_one": "{{count}} μέρα προπόνησης αυτή την εβδομάδα",
-    "activeThisWeek_other": "{{count}} μέρες προπόνησης αυτή την εβδομάδα"
+    "activeThisWeek_other": "{{count}} μέρες προπόνησης αυτή την εβδομάδα",
+    "scheduledToday": "Σήμερα στο πρόγραμμα",
+    "scheduledMore": "και {{count}} ακόμη",
+    "scheduledMore_other": "και {{count}} ακόμη"
   },
   "setType": {
     "normal": "Κανονικό",
