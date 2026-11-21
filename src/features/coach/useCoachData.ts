@@ -111,17 +111,16 @@ export function useCoachData(enabled: boolean): CoachData {
 
       // Skill progress → {skill_name, current_step, max_step}.
       const skillProgRaw = await getAllSkillProgress();
-      const skills = await db.skills.toArray();
+      const skills = (await db.skills.toArray()).filter((sk) => sk.deleted_at == null);
       const skillById = new Map(skills.map((sk) => [sk.id, sk]));
       const skillProgress = new Map<
         string,
         { skill_name: string; current_step: number; max_step: number }
       >();
       for (const [skillId, prog] of skillProgRaw) {
-        const steps = await db.skill_steps
-          .where('skill_id')
-          .equals(skillId)
-          .sortBy('step_number');
+        const steps = (
+          await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number')
+        ).filter((st) => st.deleted_at == null);
         const maxStep = steps.length;
         const currentStep = prog.current_step_id
           ? steps.findIndex((st) => st.id === prog.current_step_id) + 1

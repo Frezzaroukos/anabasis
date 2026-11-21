@@ -184,7 +184,7 @@ describe('διαγραφή προφίλ', () => {
     expect(await db.sets.where('workout_id').equals(w.id).count()).toBe(0);
   });
 
-  it('σβήνει goals και δικά του skills (+ τα βήματά τους) — πριν έμεναν ορφανά', async () => {
+  it('σβήνει goals και κάνει tombstone τα δικά του skills (+ τα βήματά τους)', async () => {
     const doomed = await createProfile('Ορφανοί στόχοι');
     setCurrentUserId(doomed.id);
     await createGoal({ metric: 'sessions', target: 3, period: 'week' });
@@ -195,8 +195,9 @@ describe('διαγραφή προφίλ', () => {
     await deleteProfile(doomed.id);
 
     expect(await db.goals.where('user_id').equals(doomed.id).count()).toBe(0);
-    expect(await db.skills.where('user_id').equals(doomed.id).count()).toBe(0);
-    expect(await db.skill_steps.get(step.id)).toBeUndefined();
+    // Wave 2: tombstone αντί για hard delete, ώστε η διαγραφή να συγχρονιστεί.
+    expect((await db.skills.get(skill.id))?.deleted_at).toBeTruthy();
+    expect((await db.skill_steps.get(step.id))?.deleted_at).toBeTruthy();
     // τα seeded skills (κοινά) δεν αγγίζονται από τη διαγραφή ενός προφίλ
     expect((await listSkills()).length).toBeGreaterThan(0);
   });

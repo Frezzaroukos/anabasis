@@ -8,7 +8,7 @@
  *  - παιδιά με λείποντα/σβησμένο γονέα → soft delete (tombstone, sync-safe),
  *  - personal_records χωρίς προπόνηση → οριστική διαγραφή (παράγωγα, χωρίς
  *    deleted_at στο schema),
- *  - skill_steps χωρίς skill → οριστική διαγραφή (δεν έχουν deleted_at).
+ *  - skill_steps χωρίς skill → soft delete (tombstone, sync-safe).
  */
 import { db } from './schema';
 
@@ -62,7 +62,8 @@ async function analyze(): Promise<FoundIssue[]> {
     ]);
 
   const workoutById = new Map(workouts.map((w) => [w.id, w]));
-  const skillIds = new Set(skills.map((s) => s.id));
+  // Tombstoned skill = «λείπει»: ζωντανά βήματά του είναι orphans.
+  const skillIds = new Set(skills.filter((s) => s.deleted_at == null).map((s) => s.id));
   const programById = new Map(programs.map((p) => [p.id, p]));
   const dayById = new Map(programDays.map((d) => [d.id, d]));
   const trackerById = new Map(trackers.map((t) => [t.id, t]));
@@ -103,7 +104,9 @@ async function analyze(): Promise<FoundIssue[]> {
   push(
     'skillStepsWithoutSkill',
     'skill_steps',
-    skillSteps.filter((s) => !skillIds.has(s.skill_id)).map((s) => s.id),
+    skillSteps
+      .filter((s) => s.deleted_at == null && !skillIds.has(s.skill_id))
+      .map((s) => s.id),
   );
   push(
     'programDaysWithoutProgram',
@@ -218,7 +221,7 @@ export async function repairDataIntegrity(): Promise<RepairResult> {
           case 'skillStepsWithoutSkill':
             repaired[issue.code] =
               (repaired[issue.code] ?? 0) +
-              (await db.skill_steps.where('id').anyOf(ids).delete());
+              (await db.skill_steps.where('id').anyOf(ids).modify(soft()));
             break;
           case 'programDaysWithoutProgram':
           case 'programDaysOfDeletedProgram':

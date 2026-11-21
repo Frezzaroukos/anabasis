@@ -116,11 +116,13 @@ export const MILESTONE_METRICS: readonly GoalMetric[] = ['skill_steps', 'top_wei
 export async function getSkillStepStats(
   skillId: string,
 ): Promise<{ cleared: number; total: number }> {
-  const steps = await db.skill_steps.where('skill_id').equals(skillId).toArray();
+  const steps = (await db.skill_steps.where('skill_id').equals(skillId).toArray()).filter(
+    (s) => s.deleted_at == null,
+  );
   const stepIds = new Set(steps.map((s) => s.id));
   const completions = (
     await db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray()
-  ).filter((r) => stepIds.has(r.skill_step_id));
+  ).filter((r) => r.deleted_at == null && stepIds.has(r.skill_step_id));
   return { cleared: completions.length, total: steps.length };
 }
 
@@ -241,11 +243,13 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
   if (goal.metric === 'skill_steps') {
     let cleared = 0;
     if (goal.skill_id) {
-      const steps = await db.skill_steps.where('skill_id').equals(goal.skill_id).toArray();
+      const steps = (
+        await db.skill_steps.where('skill_id').equals(goal.skill_id).toArray()
+      ).filter((s) => s.deleted_at == null);
       const stepIds = new Set(steps.map((s) => s.id));
       const completions = (
         await db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray()
-      ).filter((r) => stepIds.has(r.skill_step_id));
+      ).filter((r) => r.deleted_at == null && stepIds.has(r.skill_step_id));
       cleared = completions.length;
     }
     const current = cleared;
