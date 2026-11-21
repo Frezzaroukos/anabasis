@@ -94,6 +94,12 @@ export function ProgramsPage() {
   const onCreate = async () => {
     const trimmed = name.trim();
     if (!trimmed || busy || !canCreate) return;
+    const duplicate = programs.find((p) => p.name.trim().toLowerCase() === trimmed.toLowerCase());
+    if (duplicate) {
+      setError(t('programs.duplicateName', { name: duplicate.name }));
+      return;
+    }
+    setError(null);
     setBusy(true);
     try {
       const p = await createProgram(trimmed, kind);
@@ -147,7 +153,17 @@ export function ProgramsPage() {
 
   const onConfirmRename = async (id: string) => {
     const trimmed = renameDraft.trim();
-    if (trimmed) await renameProgram(id, trimmed);
+    if (trimmed) {
+      const dup = programs.find(
+        (p) => p.id !== id && p.name.trim().toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (dup) {
+        setError(t('programs.duplicateName', { name: dup.name }));
+        return;
+      }
+      await renameProgram(id, trimmed);
+    }
+    setError(null);
     setRenamingId(null);
   };
 
@@ -186,6 +202,10 @@ export function ProgramsPage() {
           </div>
         )}
       </header>
+
+      {error && !creating && (
+        <p className="text-xs text-destructive" role="alert">{error}</p>
+      )}
 
       {!isPro && programs.length >= 3 && (
         <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
