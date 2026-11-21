@@ -4,8 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { createExercise, updateExercise, listExercises } from '@/lib/db/queries';
+import { createExercise, updateExercise, listExercises, deleteExercise } from '@/lib/db/queries';
 import { mergeExercises } from '@/lib/db/exerciseMerge';
+import { ConfirmDialog } from '@/components/ui/dialog';
 import type { DefaultUnit, Exercise, MovementType } from '@/lib/db/types';
 import { CategoryCombobox } from './CategoryCombobox';
 import { TagInput } from './TagInput';
@@ -64,6 +65,8 @@ export function ExerciseFormSheet({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mergeQuery, setMergeQuery] = useState('');
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBlock, setDeleteBlock] = useState<'in_use' | 'builtin' | null>(null);
   const allExercises = useLiveQuery(() => listExercises(), [], []);
 
   // reset το φόρμα κάθε φορά που ανοίγει με νέα/άλλη άσκηση
@@ -72,8 +75,25 @@ export function ExerciseFormSheet({
       setForm(stateFromExercise(exercise));
       setMergeQuery('');
       setMergeTargetId(null);
+      setDeleteBlock(null);
     }
   }, [open, exercise]);
+
+  const onDelete = async () => {
+    if (!exercise) return;
+    setBusy(true);
+    try {
+      const result = await deleteExercise(exercise.id);
+      if (result.deleted) {
+        onClose();
+      } else {
+        // Builtin ή άσκηση με ιστορικό: δεν σβήνουμε τίποτα, εξηγούμε γιατί.
+        setDeleteBlock(result.reason);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const mergeTarget = allExercises.find((e) => e.id === mergeTargetId) ?? null;
   const mergeMatches = allExercises
@@ -321,6 +341,23 @@ export function ExerciseFormSheet({
           </p>
         )}
 
+        {deleteBlock && (
+          <p className="text-xs text-destructive" role="alert">
+            {t(deleteBlock === 'builtin' ? 'exercises.deleteBlockedBuiltin' : 'exercises.deleteBlockedInUse')}
+          </p>
+        )}
+
+        {/* Διαγραφή μόνο για ΔΙΚΕΣ ΣΟΥ ασκήσεις — οι builtin αρχειοθετούνται. */}
+        {exercise && exercise.user_id !== null && (
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="text-xs text-destructive underline-offset-2 hover:underline"
+          >
+            {t('exercises.deleteExercise')}
+          </button>
+        )}
+
         <div className="flex gap-2 pt-1">
           <Button
             className="flex-1"
@@ -335,6 +372,20 @@ export function ExerciseFormSheet({
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title={t('exercises.deleteConfirmTitle')}
+        description={t('exercises.deleteConfirmDesc')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onConfirm={() => {
+          setDeleteOpen(false);
+          void onDelete();
+        }}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </BottomSheet>
   );
 }

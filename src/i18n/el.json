@@ -196,7 +196,11 @@
     "count_other": "{{count}} προγράμματα",
     "renameProgram": "Μετονομασία προγράμματος",
     "nameLabel": "Όνομα προγράμματος",
-    "activityLabel": "Άθλημα"
+    "activityLabel": "Άθλημα",
+    "descriptionLabel": "Περιγραφή",
+    "descriptionPlaceholder": "Σε τι χρησιμεύει αυτό το πρόγραμμα;",
+    "addDescription": "Προσθήκη περιγραφής",
+    "duplicateName": "Υπάρχει ήδη πρόγραμμα με όνομα «{{name}}»."
   },
   "history": {
     "title": "Ιστορικό",
@@ -628,7 +632,12 @@
       "noHistory": "Χωρίς ιστορικό ακόμα — κατέγραψέ την για να δεις πρόοδο.",
       "reps": "Επαναλήψεις"
     },
-    "duplicateName": "Υπάρχει ήδη άσκηση με όνομα «{{name}}»."
+    "duplicateName": "Υπάρχει ήδη άσκηση με όνομα «{{name}}».",
+    "deleteExercise": "Διαγραφή άσκησης",
+    "deleteConfirmTitle": "Διαγραφή αυτής της άσκησης;",
+    "deleteConfirmDesc": "Θα αφαιρεθεί από τη βιβλιοθήκη σου. Δεν αναιρείται.",
+    "deleteBlockedInUse": "Η άσκηση χρησιμοποιείται στο ιστορικό, σε προγράμματα ή σε στόχους. Ενοποίησέ την με άλλη ή αρχειοθέτησέ την.",
+    "deleteBlockedBuiltin": "Οι built-in ασκήσεις δεν διαγράφονται — μπορείς να τις αρχειοθετήσεις."
   },
   "activities": {
     "title": "Δραστηριότητες",
@@ -847,7 +856,15 @@
     "loadMode": {
       "total": "Συνολικό φορτίο",
       "added": "Πρόσθετο βάρος"
-    }
+    },
+    "archive": "Αρχειοθέτηση",
+    "unarchive": "Επαναφορά",
+    "showArchived": "Εμφάνιση αρχειοθετημένων ({{count}})",
+    "showArchived_one": "Εμφάνιση αρχειοθετημένων ({{count}})",
+    "showArchived_other": "Εμφάνιση αρχειοθετημένων ({{count}})",
+    "hideArchived": "Απόκρυψη αρχειοθετημένων",
+    "deleteConfirmTitle": "Διαγραφή αυτού του στόχου;",
+    "deleteConfirmDesc": "Ο στόχος και ο ορισμός του θα αφαιρεθούν. Δεν αναιρείται."
   },
   "account": {
     "title": "Λογαριασμός & Sync",

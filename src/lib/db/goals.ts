@@ -197,6 +197,15 @@ export async function deleteGoal(id: string): Promise<void> {
   await db.goals.update(id, { deleted_at: now(), updated_at: now() });
 }
 
+/**
+ * Αρχειοθέτηση = «απόσυρση» στόχου χωρίς να χαθεί. Ένας στόχος φεύγει από τη
+ * λίστα αλλά μένει στη βάση, ώστε να μπορεί να επανέλθει (σε αντίθεση με το
+ * soft-delete που τον κρύβει για πάντα). Η λίστα φιλτράρει τα αρχειοθετημένα.
+ */
+export async function setGoalArchived(id: string, archived: boolean): Promise<void> {
+  await db.goals.update(id, { is_archived: archived, updated_at: now() });
+}
+
 export async function reorderGoals(idsInOrder: string[]): Promise<void> {
   const t = now();
   await db.transaction('rw', db.goals, async () => {
@@ -432,8 +441,11 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
 }
 
 /** Πρόοδος για όλους τους ενεργούς στόχους, με τη σειρά που τους έβαλε ο χρήστης. */
-export async function getAllGoalProgress(now: Date = new Date()): Promise<GoalProgress[]> {
-  const goals = await listGoals();
+export async function getAllGoalProgress(
+  now: Date = new Date(),
+  includeArchived = false,
+): Promise<GoalProgress[]> {
+  const goals = await listGoals(includeArchived);
   // ΟΧΙ `goals.map(getGoalProgress)`: το .map περνά και τον δείκτη, που θα
   // κατέληγε στην παράμετρο `now` ως αριθμός.
   return Promise.all(goals.map((g) => getGoalProgress(g, now)));

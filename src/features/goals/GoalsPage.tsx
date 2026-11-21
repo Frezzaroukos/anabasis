@@ -3,12 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { Plus, Target, ChevronDown } from 'lucide-react';
-import { deleteGoal, getAllGoalProgress, listGoals, reorderGoals } from '@/lib/db/goals';
+import { Plus, Target, ChevronDown, Archive } from 'lucide-react';
+import {
+  deleteGoal,
+  getAllGoalProgress,
+  reorderGoals,
+  setGoalArchived,
+} from '@/lib/db/goals';
 import { listActivities, listExercises, listSkills } from '@/lib/db/queries';
 import { listTrackers } from '@/lib/db/trackers';
 import type { Goal } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/dialog';
 import { useIsPro } from '@/lib/api/auth';
 import { cn } from '@/lib/utils';
 import { GoalFormSheet } from './components/GoalFormSheet';
@@ -31,14 +37,21 @@ export function GoalsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [showIntro, setShowIntro] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const progressQuery = useLiveQuery(() => getAllGoalProgress());
-  const progress = progressQuery ?? [];
+  // Φέρνουμε ΚΑΙ τα αρχειοθετημένα (true) μία φορά, ώστε το toggle να μη
+  // ξανατρέχει το query· το όριο του free plan μετράει μόνο τα ΕΝΕΡΓΑ.
+  const progressQuery = useLiveQuery(() => getAllGoalProgress(new Date(), true));
+  const allProgress = progressQuery ?? [];
+  const activeProgress = allProgress.filter((p) => !p.goal.is_archived);
+  const archivedProgress = allProgress.filter((p) => p.goal.is_archived);
+  const progress = showArchived ? allProgress : activeProgress;
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(true), [], []);
   const trackers = useLiveQuery(() => listTrackers(true), [], []);
-  const atLimit = !isPro && progress.length >= 3;
+  const atLimit = !isPro && activeProgress.length >= 3;
   const virtualized = progress.length > VIRTUALIZE_THRESHOLD;
   const virtualListRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -80,16 +93,21 @@ export function GoalsPage() {
     id == null ? null : (trackers.find((tr) => tr.id === id)?.name ?? null);
 
   const move = async (index: number, delta: number) => {
-    const goals = await listGoals();
     const target = index + delta;
-    if (target < 0 || target >= goals.length) return;
-    const next = [...goals];
+    if (target < 0 || target >= progress.length) return;
+    const next = [...progress];
     const a = next[index];
     const b = next[target];
     if (!a || !b) return;
     next[index] = b;
     next[target] = a;
-    await reorderGoals(next.map((g) => g.id));
+    await reorderGoals(next.map((p) => p.goal.id));
+  };
+
+  const toggleArchive = async (id: string) => {
+    const row = allProgress.find((p) => p.goal.id === id);
+    if (!row) return;
+    await setGoalArchived(id, !row.goal.is_archived);
   };
 
   const openCreate = () => {
@@ -190,7 +208,8 @@ export function GoalsPage() {
                       trackerName={trackerName}
                       onMove={(i, delta) => void move(i, delta)}
                       onEdit={openEdit}
-                      onDelete={(id) => void deleteGoal(id)}
+                      onArchive={(id) => void toggleArchive(id)}
+                      onDelete={(id) => setDeleteId(id)}
                     />
                   </div>
                 );
@@ -210,13 +229,41 @@ export function GoalsPage() {
                   trackerName={trackerName}
                   onMove={(i, delta) => void move(i, delta)}
                   onEdit={openEdit}
-                  onDelete={(id) => void deleteGoal(id)}
+                  onArchive={(id) => void toggleArchive(id)}
+                  onDelete={(id) => setDeleteId(id)}
                 />
               ))}
             </ul>
           )}
         </>
       )}
+
+      {archivedProgress.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowArchived((v) => !v)}
+          className="flex h-11 items-center gap-1.5 px-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          <Archive className="h-3.5 w-3.5" aria-hidden />
+          {showArchived
+            ? t('goals.hideArchived')
+            : t('goals.showArchived', { count: archivedProgress.length })}
+        </button>
+      )}
+
+      <ConfirmDialog
+        open={deleteId != null}
+        title={t('goals.deleteConfirmTitle')}
+        description={t('goals.deleteConfirmDesc')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onConfirm={() => {
+          if (deleteId) void deleteGoal(deleteId);
+          setDeleteId(null);
+        }}
+        onCancel={() => setDeleteId(null)}
+      />
 
       <GoalFormSheet open={formOpen} onClose={() => setFormOpen(false)} goal={editing} />
     </div>

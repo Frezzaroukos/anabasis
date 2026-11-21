@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronUp, CircleCheck, LineChart, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Archive, ChevronDown, ChevronUp, CircleCheck, LineChart, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { GoalProgress } from '@/lib/db/goals';
 import { addTrackerEntry } from '@/lib/db/trackers';
 import type { Goal } from '@/lib/db/types';
@@ -27,6 +27,7 @@ export function GoalRow({
   trackerName,
   onMove,
   onEdit,
+  onArchive,
   onDelete,
 }: {
   progress: GoalProgress;
@@ -38,6 +39,7 @@ export function GoalRow({
   trackerName: (id: string | null | undefined) => string | null;
   onMove: (index: number, delta: number) => void;
   onEdit: (goal: Goal) => void;
+  onArchive: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const { t } = useTranslation();
@@ -181,6 +183,13 @@ export function GoalRow({
           className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => onArchive(p.goal.id)}
+          aria-label={t(p.goal.is_archived ? 'goals.unarchive' : 'goals.archive')}
+          className="flex h-9 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Archive className="h-4 w-4" />
         </button>
         <button
           onClick={() => onDelete(p.goal.id)}

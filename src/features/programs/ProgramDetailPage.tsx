@@ -25,6 +25,7 @@ import {
   listProgramDays,
   renameProgram,
   renameProgramDay,
+  setProgramDescription,
   reorderProgramDays,
   setProgramTarget,
   listExercises,
@@ -88,6 +89,8 @@ export function ProgramDetailPage() {
   const [renamingDayId, setRenamingDayId] = useState<string | null>(null);
   const [renameDayDraft, setRenameDayDraft] = useState('');
   const [deleteDayId, setDeleteDayId] = useState<string | null>(null);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState('');
 
   // Όταν φορτώνουν/αλλάζουν οι μέρες, κράτα την ενεργή έγκυρη — προεπιλογή στην
   // πρώτη μέρα αν υπάρχουν μέρες, αλλιώς σιωπηρή μέρα (null = flat πρόγραμμα).
@@ -311,6 +314,60 @@ export function ProgramDetailPage() {
             </>
           )}
         </div>
+
+        {/* Περιγραφή — προαιρετική, επεξεργάσιμη inline. Δεν υπάρχει «άδειο
+            κουτί»: χωρίς περιγραφή δείχνεται μόνο το «+ προσθήκη». */}
+        {editingDesc ? (
+          <div className="flex flex-col gap-2">
+            <textarea
+              autoFocus
+              value={descDraft}
+              onChange={(e) => setDescDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setEditingDesc(false);
+              }}
+              rows={2}
+              placeholder={t('programs.descriptionPlaceholder')}
+              aria-label={t('programs.descriptionLabel')}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  void setProgramDescription(program.id, descDraft).then(() => setEditingDesc(false));
+                }}
+              >
+                {t('common.save')}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditingDesc(false)}>
+                {t('common.cancel')}
+              </Button>
+            </div>
+          </div>
+        ) : program.description ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDescDraft(program.description ?? '');
+              setEditingDesc(true);
+            }}
+            className="w-full rounded-md text-left text-sm leading-relaxed text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {program.description}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setDescDraft('');
+              setEditingDesc(true);
+            }}
+            className="flex h-11 items-center text-xs text-muted-foreground underline-offset-2 ring-offset-background transition-colors hover:text-foreground hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            + {t('programs.addDescription')}
+          </button>
+        )}
 
         {/* Στόχος συχνότητας/εβδομάδα — habit nudge για casual, adherence για serious */}
         <div className="flex flex-wrap items-center gap-2 text-sm">
