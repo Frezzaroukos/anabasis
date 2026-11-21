@@ -84,7 +84,7 @@ describe('checkDataIntegrity', () => {
     expect((await db.sets.get(set.id))?.deleted_at).toBeTruthy();
   });
 
-  it('βρίσκει personal record χωρίς προπόνηση και το διαγράφει οριστικά', async () => {
+  it('βρίσκει personal record χωρίς προπόνηση και το κάνει tombstone', async () => {
     const t = new Date().toISOString();
     await db.personal_records.add({
       id: 'orphan-pr',
@@ -106,7 +106,7 @@ describe('checkDataIntegrity', () => {
     expect(report.issues.find((i) => i.code === 'prsWithoutWorkout')?.count).toBe(1);
 
     await repairDataIntegrity();
-    expect(await db.personal_records.get('orphan-pr')).toBeUndefined();
+    expect((await db.personal_records.get('orphan-pr'))?.deleted_at).toBeTruthy();
   });
 
   it('βρίσκει άσκηση προγράμματος που δείχνει σε σβησμένη μέρα', async () => {

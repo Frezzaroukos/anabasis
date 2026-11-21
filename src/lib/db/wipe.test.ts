@@ -146,6 +146,9 @@ describe('deleteCurrentProfileData', () => {
         (x) => x.deleted_at != null,
       ),
     ).toBe(true);
+    const myPrs = await db.personal_records.where('user_id').equals(A).toArray();
+    expect(myPrs.length).toBeGreaterThan(0);
+    expect(myPrs.every((x) => x.deleted_at != null)).toBe(true);
 
     // Builtin row επιβιώνει.
     expect((await db.activities.get('wipe-builtin-activity'))?.deleted_at).toBeFalsy();

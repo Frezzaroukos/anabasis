@@ -8,10 +8,10 @@
  *    προφίλ της συσκευής, όχι «δικά σου».
  *
  * Ό,τι έχει `deleted_at` σημαδεύεται (tombstone) ώστε η διαγραφή να φύγει
- * και με sync. Αυτό ισχύει πλέον και για skills/skill_steps,
- * user_skill_progress, user_skill_step_completions και body_metrics (Wave 2).
- * Μόνο τα personal_records διαγράφονται οριστικά (παράγωγα, χωρίς tombstone
- * column — τα χειρίζεται άλλο lane)· γνωστός sync-κίνδυνος, όχι κρυφός.
+ * και με sync. Αυτό ισχύει πλέον για ΟΛΟΥΣ τους user-data πίνακες,
+ * συμπεριλαμβανομένων των skills/skill_steps, user_skill_progress,
+ * user_skill_step_completions, body_metrics και personal_records (Wave 2 +
+ * lane A PR tombstones).
  *
  * Όλο το σβήσιμο σε ΜΙΑ transaction: ή φεύγουν όλα ή τίποτα.
  */
@@ -88,7 +88,7 @@ export async function deleteCurrentProfileData(): Promise<WipeResult> {
         .modify({ deleted_at: t, updated_at: t }),
     );
 
-    // 2) Δικά σου custom skills + τα βήματά τους (δεν έχουν deleted_at).
+    // 2) Δικά σου custom skills + τα βήματά τους.
     const skillIds = (
       await db.skills.where('user_id').equals(uid).toArray()
     ).map((s) => s.id);
@@ -111,10 +111,14 @@ export async function deleteCurrentProfileData(): Promise<WipeResult> {
         .modify({ deleted_at: t, updated_at: t }),
     );
 
-    // 3) Παράγωγα χωρίς tombstone column — οριστική διαγραφή.
+    // 3) Παράγωγα PRs — tombstone (lane A), όχι hard delete.
     bump(
       'personal_records',
-      await db.personal_records.where('user_id').equals(uid).delete(),
+      await db.personal_records
+        .where('user_id')
+        .equals(uid)
+        .and((r) => r.deleted_at == null)
+        .modify({ deleted_at: t, updated_at: t }),
     );
     bump(
       'user_skill_progress',

@@ -6,8 +6,7 @@
  * Ο έλεγχος είναι ΜΟΝΟ ΑΝΑΓΝΩΣΗ. Η επιδιόρθωση είναι ρητή ενέργεια του
  * χρήστη και αγγίζει μόνο rows που δεν φαίνονται πουθενά στην εφαρμογή:
  *  - παιδιά με λείποντα/σβησμένο γονέα → soft delete (tombstone, sync-safe),
- *  - personal_records χωρίς προπόνηση → οριστική διαγραφή (παράγωγα, χωρίς
- *    deleted_at στο schema),
+ *  - personal_records χωρίς προπόνηση → soft delete (tombstone, sync-safe),
  *  - skill_steps χωρίς skill → soft delete (tombstone, sync-safe).
  */
 import { db } from './schema';
@@ -96,6 +95,7 @@ async function analyze(): Promise<FoundIssue[]> {
     'personal_records',
     prs
       .filter((r) => {
+        if (r.deleted_at != null) return false;
         const parent = workoutById.get(r.workout_id);
         return parent == null || parent.deleted_at != null;
       })
@@ -216,7 +216,7 @@ export async function repairDataIntegrity(): Promise<RepairResult> {
           case 'prsWithoutWorkout':
             repaired[issue.code] =
               (repaired[issue.code] ?? 0) +
-              (await db.personal_records.where('id').anyOf(ids).delete());
+              (await db.personal_records.where('id').anyOf(ids).modify(soft()));
             break;
           case 'skillStepsWithoutSkill':
             repaired[issue.code] =
