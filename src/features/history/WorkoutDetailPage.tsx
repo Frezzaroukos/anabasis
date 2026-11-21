@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, ChevronRight, ClipboardPaste, Pencil, Plus, Trophy, X, Zap } from 'lucide-react';
-import { addSet, getLatestBodyweight, getWorkoutDetail, localDay } from '@/lib/db/queries';
+import { Check, ChevronDown, ChevronRight, ChevronUp, ClipboardPaste, Pencil, Plus, Repeat, Trophy, Trash2, X, Zap } from 'lucide-react';
+import {
+  addSet,
+  getLatestBodyweight,
+  getWorkoutDetail,
+  localDay,
+  moveSetToExercise,
+  removeExerciseFromWorkout,
+  reorderWorkoutExercises,
+  startWorkoutFromCompleted,
+} from '@/lib/db/queries';
 import { addQuickSets } from '@/lib/db/workoutHelpers';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import { useAppSettings } from '@/hooks/useAppSettings';
@@ -18,6 +27,8 @@ import type { Exercise, PRType, SetEntry, SetType, WeightUnit } from '@/lib/db/t
 import { Card, SectionTitle } from '@/components/ui/Section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ConfirmDialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast-context';
 import { EditWorkoutSheet } from './components/EditWorkoutSheet';
 import { LoadingState } from '@/components/ui/loading-state';
 import { cn } from '@/lib/utils';
@@ -37,10 +48,16 @@ export function WorkoutDetailPage() {
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
   const { workoutId } = useParams<{ workoutId: string }>();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [addExerciseOpen, setAddExerciseOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pendingExercises, setPendingExercises] = useState<Exercise[]>([]);
+  // «Μετακίνηση σετ σε άλλη άσκηση» — κρατά το set id όσο ο picker είναι ανοιχτός.
+  const [moveSetId, setMoveSetId] = useState<string | null>(null);
+  // «Αφαίρεση άσκησης» — κρατά το exercise id για το confirm dialog.
+  const [removeExerciseId, setRemoveExerciseId] = useState<string | null>(null);
 
   const detail = useLiveQuery(
     () => (workoutId ? getWorkoutDetail(workoutId) : Promise.resolve(null)),
@@ -88,6 +105,47 @@ export function WorkoutDetailPage() {
   const started = new Date(workout.started_at);
   const excludeIds = [...persistedIds, ...pendingExercises.map((e) => e.id)];
 
+  const onRepeat = async () => {
+    const res = await startWorkoutFromCompleted(workout.id);
+    if (!res) {
+      showToast({ message: t('history.repeatBlocked') });
+      return;
+    }
+    // Ο logger διαβάζει `seedExercises` από το location.state και τις
+    // προγεμίζει στο νέο active session (ίδιος μηχανισμός με το Calendar).
+    navigate('/workout/active', {
+      state: { seedExercises: res.exerciseNames },
+    });
+  };
+
+  // Σβήνει όλη την άσκηση (όλα της τα σετ) από την προπόνηση, με confirm.
+  const exercisePendingRemoval = removeExerciseId
+    ? exercises.find((e) => e.exerciseId === removeExerciseId)
+    : null;
+  const confirmRemoveExercise = async () => {
+    if (!removeExerciseId) return;
+    await removeExerciseFromWorkout(workout.id, removeExerciseId);
+    setRemoveExerciseId(null);
+  };
+
+  const confirmMoveSet = async (exercise: Exercise) => {
+    if (!moveSetId) return;
+    await moveSetToExercise(moveSetId, exercise.id);
+    setMoveSetId(null);
+  };
+
+  // Μετακίνηση άσκησης πάνω/κάτω — ξαναγράφει τη σειρά μέσω created_at (βλ.
+  // reorderWorkoutExercises) και το useLiveQuery ξαναδιαβάζει τη νέα σειρά.
+  const moveExercise = async (exerciseId: string, dir: -1 | 1) => {
+    const ids = exercises.map((e) => e.exerciseId);
+    const from = ids.indexOf(exerciseId);
+    const to = from + dir;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    const next = [...ids];
+    [next[from], next[to]] = [next[to]!, next[from]!];
+    await reorderWorkoutExercises(workout.id, next);
+  };
+
   // Deduplicate PRs inside the same workout (e.g. ramping 80→90→100kg emits 3 rows;
   // show only the best achieved per exercise + PR type, and skip zero-value volume noise).
   const displayPrs = (() => {
@@ -111,13 +169,23 @@ export function WorkoutDetailPage() {
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {workout.workout_type ?? activityLabel}
           </h1>
-          <button
-            onClick={() => setEditOpen(true)}
-            aria-label={t('history.editWorkout')}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              onClick={() => void onRepeat()}
+              aria-label={t('history.repeatWorkout')}
+              title={t('history.repeatWorkout')}
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Repeat className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setEditOpen(true)}
+              aria-label={t('history.editWorkout')}
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <p className="-mt-1 text-sm text-muted-foreground">
           {started.toLocaleDateString(i18n.resolvedLanguage, {
@@ -176,7 +244,7 @@ export function WorkoutDetailPage() {
         </p>
       ) : (
         <div className="space-y-3">
-          {exercises.map((ex) => {
+          {exercises.map((ex, idx) => {
             const fullEx = exerciseById.get(ex.exerciseId);
             return (
               <HistoryExerciseCard
@@ -189,6 +257,11 @@ export function WorkoutDetailPage() {
                 volume={ex.volume}
                 unit={unit}
                 bodyweightKg={bodyweightKg}
+                onMoveSet={(setId) => setMoveSetId(setId)}
+                onRemoveExercise={() => setRemoveExerciseId(ex.exerciseId)}
+                canMoveUp={idx > 0}
+                canMoveDown={idx < exercises.length - 1}
+                onMoveExercise={(dir) => void moveExercise(ex.exerciseId, dir)}
               />
             );
           })}
@@ -257,6 +330,28 @@ export function WorkoutDetailPage() {
         onClose={() => setPasteOpen(false)}
         workoutId={workout.id}
       />
+
+      <ConfirmDialog
+        open={exercisePendingRemoval != null}
+        title={t('workout.removeExerciseConfirmTitle')}
+        description={
+          exercisePendingRemoval
+            ? `${exercisePendingRemoval.name} · ${t('workout.removeExerciseConfirmDesc')}`
+            : t('workout.removeExerciseConfirmDesc')
+        }
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onConfirm={() => void confirmRemoveExercise()}
+        onCancel={() => setRemoveExerciseId(null)}
+      />
+
+      <AddExerciseSheet
+        open={moveSetId != null}
+        onClose={() => setMoveSetId(null)}
+        title={t('workout.moveSetTitle')}
+        onPick={(ex) => void confirmMoveSet(ex)}
+      />
     </div>
   );
 }
@@ -272,6 +367,14 @@ interface HistoryExerciseCardProps {
   bodyweightKg: number | null;
   defaultAdding?: boolean;
   onRemovePending?: () => void;
+  /** Μετακίνηση ενός μεμονωμένου σετ σε άλλη άσκηση. */
+  onMoveSet?: (setId: string) => void;
+  /** Αφαίρεση ΟΛΗΣ της άσκησης (όλα τα σετ) — ζητά confirm στον γονιό. */
+  onRemoveExercise?: () => void;
+  /** Αναδιάταξη ασκήσεων (πάνω/κάτω). */
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveExercise?: (dir: -1 | 1) => void;
 }
 
 function HistoryExerciseCard({
@@ -285,6 +388,11 @@ function HistoryExerciseCard({
   bodyweightKg,
   defaultAdding = false,
   onRemovePending,
+  onMoveSet,
+  onRemoveExercise,
+  canMoveUp = false,
+  canMoveDown = false,
+  onMoveExercise,
 }: HistoryExerciseCardProps) {
   const { t } = useTranslation();
   const isHold = exercise?.default_unit === 'sec';
@@ -392,6 +500,41 @@ function HistoryExerciseCard({
             <X className="h-4 w-4" />
           </button>
         )}
+        {onMoveExercise && sets.length > 0 && (
+          <div className="flex shrink-0 items-center">
+            <button
+              type="button"
+              disabled={!canMoveUp}
+              onClick={() => onMoveExercise(-1)}
+              aria-label={t('workout.moveUp')}
+              title={t('workout.moveUp')}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              disabled={!canMoveDown}
+              onClick={() => onMoveExercise(1)}
+              aria-label={t('workout.moveDown')}
+              title={t('workout.moveDown')}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        {onRemoveExercise && sets.length > 0 && (
+          <button
+            type="button"
+            onClick={onRemoveExercise}
+            aria-label={t('workout.removeExercise')}
+            title={t('workout.removeExercise')}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {sets.length > 0 && (
@@ -403,6 +546,7 @@ function HistoryExerciseCard({
               weighted={s.weight_kg != null ? true : weighted}
               holdMode={isHold}
               animateCommit={false}
+              onMoveToExercise={onMoveSet ? () => onMoveSet(s.id) : undefined}
             />
           ))}
         </div>

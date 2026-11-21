@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
@@ -9,6 +9,7 @@ import { setCurrentUserId } from '@/lib/db/session';
 import { addSet, endWorkout, startWorkout } from '@/lib/db/queries';
 import { SEED_EXERCISES } from '@/lib/db/seeds';
 import { WorkoutDetailPage } from './WorkoutDetailPage';
+import { ToastProvider } from '@/components/ui/toast';
 
 beforeAll(async () => {
   if (!i18next.isInitialized) {
@@ -34,11 +35,14 @@ const bench = SEED_EXERCISES.find((e) => e.name === 'Bench Press')!;
 function renderDetail(workoutId: string) {
   return render(
     <I18nextProvider i18n={i18next}>
-      <MemoryRouter initialEntries={[`/history/${workoutId}`]}>
-        <Routes>
-          <Route path="/history/:workoutId" element={<WorkoutDetailPage />} />
-        </Routes>
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/history/${workoutId}`]}>
+          <Routes>
+            <Route path="/history/:workoutId" element={<WorkoutDetailPage />} />
+            <Route path="/workout/active" element={<div>active</div>} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
     </I18nextProvider>,
   );
 }
@@ -131,5 +135,94 @@ describe('WorkoutDetailPage — inline set & exercise management on past workout
       expect(liveSets.some((row) => row.set_type === 'dropset' && row.weight_kg === 10)).toBe(true);
     });
     expect(screen.getByRole('link', { name: /Weighted Pull-ups/ })).toBeTruthy();
+  });
+
+  it('removes a whole exercise (all its sets) after a confirm', async () => {
+    const w = await startWorkout('strength', '2026-11-18', null, null, 'Upper');
+    await addSet({
+      workout_id: w.id,
+      exercise_id: bench.id,
+      weight_kg: 80,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await endWorkout(w.id);
+
+    renderDetail(w.id);
+    await waitFor(() => expect(screen.getByRole('link', { name: /Bench Press/ })).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: en.workout.removeExercise }));
+    const confirm = await screen.findByRole('dialog');
+    fireEvent.click(within(confirm).getByRole('button', { name: en.common.delete }));
+
+    await waitFor(async () => {
+      const live = (await db.sets.where('workout_id').equals(w.id).toArray()).filter(
+        (row) => row.deleted_at == null,
+      );
+      expect(live).toHaveLength(0);
+    });
+    await waitFor(() => expect(screen.queryByRole('link', { name: /Bench Press/ })).toBeNull());
+  });
+
+  it('starts a fresh active workout from the repeat button, preserving the name', async () => {
+    const w = await startWorkout('strength', '2026-11-18', null, null, 'Upper');
+    await addSet({
+      workout_id: w.id,
+      exercise_id: bench.id,
+      weight_kg: 80,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await endWorkout(w.id);
+
+    renderDetail(w.id);
+    await waitFor(() => expect(screen.getByRole('link', { name: /Bench Press/ })).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: en.history.repeatWorkout }));
+
+    await waitFor(async () => {
+      const active = (await db.workouts.toArray()).filter(
+        (row) => row.deleted_at == null && row.ended_at == null && row.id !== w.id,
+      );
+      expect(active).toHaveLength(1);
+      expect(active[0]!.workout_type).toBe('Upper');
+    });
+  });
+
+  it('reorders exercises with the move-down button', async () => {
+    const squat = SEED_EXERCISES.find((e) => e.name === 'Back Squat')!;
+    const w = await startWorkout('strength', '2026-11-18', null, null, 'Legs');
+    await addSet({
+      workout_id: w.id,
+      exercise_id: bench.id,
+      weight_kg: 80,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await addSet({
+      workout_id: w.id,
+      exercise_id: squat.id,
+      weight_kg: 100,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await endWorkout(w.id);
+
+    const { getWorkoutDetail } = await import('@/lib/db/queries');
+    let detail = await getWorkoutDetail(w.id);
+    expect(detail!.exercises.map((e) => e.exerciseId)).toEqual([bench.id, squat.id]);
+
+    renderDetail(w.id);
+    await waitFor(() => expect(screen.getByRole('link', { name: /Bench Press/ })).toBeTruthy());
+    fireEvent.click(screen.getAllByRole('button', { name: en.workout.moveDown })[0]!);
+
+    await waitFor(async () => {
+      detail = await getWorkoutDetail(w.id);
+      expect(detail!.exercises.map((e) => e.exerciseId)).toEqual([squat.id, bench.id]);
+    });
   });
 });
