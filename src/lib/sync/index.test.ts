@@ -5,9 +5,11 @@ import { DEFAULT_USER_ID, setCurrentUserId } from '../db/session';
 import {
   addProgramExercise,
   addSet,
+  addSkillStep,
   createExercise,
   createProgram,
   createProgramDay,
+  createSkill,
   deleteProgramDay,
   listProgramDays,
   startWorkout,
@@ -701,3 +703,37 @@ describe('two-device unique-index convergence (δεν κολλάει το sync)'
     expect(sync.lastSyncAt).not.toBeNull(); // το sync ΟΛΟΚΛΗΡΩΘΗΚΕ
   });
 })
+
+/**
+ * Παλιές ολοκληρώσεις skill (πριν υπάρξει `updated_at` στο row) έμεναν για
+ * πάντα τοπικές: το `undefined > cutoff` ήταν false. Το push πρέπει να πέφτει
+ * πίσω στο `created_at`, αλλιώς η πρόοδος δεν φτάνει ποτέ σε δεύτερη συσκευή.
+ */
+describe('syncNow — legacy skill completion', () => {
+  it('στέλνει ολοκλήρωση χωρίς updated_at χρησιμοποιώντας το created_at', async () => {
+    const skill = await createSkill({ name: 'Legacy Skill' });
+    const step = await addSkillStep(skill.id, { name: 'Hang', target_value: 30 });
+    const t = new Date().toISOString();
+    await db.user_skill_step_completions.put({
+      id: 'legacy-completion-1',
+      user_id: DEFAULT_USER_ID,
+      skill_step_id: step.id,
+      achieved_value: 30,
+      added_weight_kg: null,
+      achieved_at: t,
+      workout_id: null,
+      notes: null,
+      created_at: t,
+    });
+
+    const { calls } = stubFetch({});
+    await syncNow();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+    const completions = changes.find((c) => c.tbl === 'user_skill_step_completions');
+    expect(completions?.rows.some((r) => r.id === 'legacy-completion-1')).toBe(true);
+  });
+});

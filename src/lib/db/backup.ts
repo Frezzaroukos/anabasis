@@ -121,6 +121,8 @@ export interface ImportPreview {
   message?: string;
   version?: number;
   scope?: BackupScope;
+  /** Όταν scope='profile': το προφίλ από το οποίο εξήχθη (για προειδοποίηση merge). */
+  profileId?: string;
   /** νέα rows (δεν υπάρχουν τοπικά) */
   add: number;
   /** rows που θα ενημερωθούν (το αρχείο είναι νεότερο) */
@@ -154,6 +156,7 @@ interface ParsedBackup {
   format: string;
   version?: number;
   scope?: BackupScope;
+  profile_id?: string;
   data: Record<string, unknown[]>;
 }
 
@@ -246,6 +249,7 @@ export async function previewImport(json: string): Promise<ImportPreview> {
     ok: true,
     version: typeof b.version === 'number' ? b.version : 1,
     scope: b.scope,
+    profileId: typeof b.profile_id === 'string' ? b.profile_id : undefined,
     add,
     update,
     skip,

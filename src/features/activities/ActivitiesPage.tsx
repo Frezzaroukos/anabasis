@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity as ActivityGlyph, Archive, ChevronDown, ChevronUp, Pencil, Plus, RotateCcw } from 'lucide-react';
+import { Activity as ActivityGlyph, Archive, ChevronDown, ChevronUp, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { reorderActivities, updateActivity } from '@/lib/db/queries';
+import { deleteActivity } from '@/lib/db/activities';
 import type { Activity } from '@/lib/db/types';
 import { ActivityIcon } from '@/components/activityIcon';
 import { useActivities } from './useActivities';
@@ -22,6 +24,7 @@ export function ActivitiesPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
 
   const openCreate = () => {
     setEditing(null);
@@ -46,6 +49,12 @@ export function ActivitiesPage() {
 
   const setArchived = async (id: string, archivedNext: boolean) => {
     await updateActivity(id, { is_archived: archivedNext });
+  };
+
+  const onDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteActivity(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   return (
@@ -109,6 +118,18 @@ export function ActivitiesPage() {
                 >
                   <Archive className="h-4 w-4" />
                 </button>
+                {/* Τα builtin είναι κοινά σε όλα τα προφίλ — μόνο τα δικά σου
+                    custom rows έχουν νόημα να διαγραφούν. */}
+                {a.user_id != null && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(a)}
+                    aria-label={t('activities.delete')}
+                    className="flex h-11 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -153,6 +174,17 @@ export function ActivitiesPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         activity={editing}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        title={t('activities.deleteConfirmTitle')}
+        description={t('activities.deleteConfirmDesc')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onConfirm={() => void onDelete()}
+        onCancel={() => setDeleteTarget(null)}
       />
     </div>
   );

@@ -206,7 +206,11 @@ async function collectPushChanges(cutoffIso: string): Promise<SyncChange[]> {
 
   for (const name of DIRECT_OWNER_TABLES) {
     const rows = (await tables[name]!.where('user_id').equals(uid).toArray()).filter(
-      (r) => (r.updated_at as string) > cutoffIso,
+      // Legacy rows χωρίς `updated_at` (π.χ. παλιές ολοκληρώσεις skill steps)
+      // έπεφταν ΠΑΝΤΑ έξω από το cutoff — δεν έφταναν ποτέ στον server. Το
+      // `created_at` είναι η σωστή έσχατη λύση: μια φορά γεννημένη γραμμή
+      // πρέπει να συγχρονιστεί τουλάχιστον μία φορά.
+      (r) => String(r.updated_at ?? r.created_at ?? '') > cutoffIso,
     );
     if (rows.length) changes.push({ tbl: name, rows });
   }

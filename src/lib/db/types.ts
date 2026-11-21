@@ -297,6 +297,12 @@ export interface UserSkillStepCompletion {
   workout_id: UUID | null;
   notes: string | null;
   created_at: ISOTimestamp;
+  /**
+   * Προαιρετικό για συμβατότητα με rows που γράφτηκαν πριν το sync τα
+   * χρειαστεί (δεν υπήρχε στο αρχικό schema). Το sync πέφτει πίσω στο
+   * `created_at` όταν λείπει — αλλιώς οι παλιές ολοκληρώσεις δεν έφευγαν ποτέ.
+   */
+  updated_at?: ISOTimestamp;
 }
 
 /* ───────────────────────── Στόχοι ───────────────────────── */
@@ -480,6 +486,8 @@ export interface Activity {
   is_archived: boolean;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /** Soft delete: μόνο για δικές σου (user_id != null) — τα builtin μένουν κοινά. */
+  deleted_at?: ISOTimestamp | null;
 }
 
 /* ─────────── Programs / routines (v3) ─────────── */
