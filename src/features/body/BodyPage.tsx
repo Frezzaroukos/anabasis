@@ -1,13 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowDown, ArrowUp, Check, Info, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Info, Pencil, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getBodyMetric, getBodyTrend, getBodyweightLoads, localDay, saveBodyMetric } from '@/lib/db/queries';
 import { clearBodyMetric, listRecentBodyMetrics } from '@/lib/db/workoutHelpers';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight, parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useCountUp } from '@/hooks/useCountUp';
 import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
@@ -29,6 +30,7 @@ export function BodyPage() {
   const today = localDay();
   const [selectedDate, setSelectedDate] = useState(today);
   const [justSaved, setJustSaved] = useState(false);
+  const [deleteDate, setDeleteDate] = useState<string | null>(null);
 
   const trend = useLiveQuery(() => getBodyTrend(days), [days], []);
   const selectedMetric = useLiveQuery(() => getBodyMetric(selectedDate), [selectedDate]);
@@ -241,15 +243,26 @@ export function BodyPage() {
                     </span>
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void clearBodyMetric(entry.date)}
-                  aria-label={t('body.clearEntry')}
-                  title={t('body.clearEntry')}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(entry.date)}
+                    aria-label={t('body.editEntry')}
+                    title={t('body.editEntry')}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteDate(entry.date)}
+                    aria-label={t('body.clearEntry')}
+                    title={t('body.clearEntry')}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -335,6 +348,27 @@ export function BodyPage() {
           </div>
         </section>
       )}
+
+      <ConfirmDialog
+        open={deleteDate != null}
+        title={t('body.deleteEntryTitle')}
+        description={
+          deleteDate
+            ? t('body.deleteEntryDesc', {
+                date: new Date(`${deleteDate}T12:00:00`).toLocaleDateString(i18n.resolvedLanguage),
+              })
+            : undefined
+        }
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onConfirm={() => {
+          const date = deleteDate;
+          setDeleteDate(null);
+          if (date) void clearBodyMetric(date);
+        }}
+        onCancel={() => setDeleteDate(null)}
+      />
     </div>
   );
 }

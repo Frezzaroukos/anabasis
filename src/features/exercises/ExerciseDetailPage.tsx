@@ -132,6 +132,7 @@ export function ExerciseDetailPage() {
         onMetricChange={setMetric}
         range={range}
         onRangeChange={setRange}
+        isBodyweight={exercise.is_bodyweight}
       />
 
       <button

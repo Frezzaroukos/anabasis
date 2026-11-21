@@ -42,6 +42,7 @@ export default function BodyTrendChart({
   const config = {
     weight: {
       dataKey: 'weight',
+      labelKey: 'body.weightTrend',
       marginLeft: -18,
       yDomain: ['dataMin - 1', 'dataMax + 1'] as [string, string],
       yWidth: undefined as number | undefined,
@@ -49,6 +50,7 @@ export default function BodyTrendChart({
     },
     bodyFat: {
       dataKey: 'bodyFatPct',
+      labelKey: 'body.bodyFatTrend',
       marginLeft: -18,
       yDomain: [0, 'dataMax + 5'] as [number, string],
       yWidth: undefined as number | undefined,
@@ -56,6 +58,7 @@ export default function BodyTrendChart({
     },
     steps: {
       dataKey: 'steps',
+      labelKey: 'body.stepsTrend',
       marginLeft: -6,
       yDomain: [0, 'dataMax + 500'] as [number, string],
       yWidth: 44 as number | undefined,
@@ -64,35 +67,37 @@ export default function BodyTrendChart({
   }[variant];
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: config.marginLeft }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
-        <XAxis
-          dataKey="date"
-          tickFormatter={(d: string) => d.slice(5)}
-          tick={CHART_TICK}
-          axisLine={false}
-          tickLine={false}
-          interval={interval}
-        />
-        <YAxis
-          domain={config.yDomain}
-          tick={CHART_TICK}
-          axisLine={false}
-          tickLine={false}
-          width={config.yWidth}
-        />
-        <Tooltip contentStyle={TOOLTIP_STYLE} formatter={config.format} />
-        <Line
-          type="monotone"
-          dataKey={config.dataKey}
-          stroke={CHART_STROKE}
-          strokeWidth={CHART_STROKE_WIDTH}
-          dot={false}
-          activeDot={ACTIVE_DOT}
-          connectNulls
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div role="img" aria-label={t(config.labelKey)} className="h-full w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: config.marginLeft }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(d: string) => d.slice(5)}
+            tick={CHART_TICK}
+            axisLine={false}
+            tickLine={false}
+            interval={interval}
+          />
+          <YAxis
+            domain={config.yDomain}
+            tick={CHART_TICK}
+            axisLine={false}
+            tickLine={false}
+            width={config.yWidth}
+          />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={config.format} />
+          <Line
+            type="monotone"
+            dataKey={config.dataKey}
+            stroke={CHART_STROKE}
+            strokeWidth={CHART_STROKE_WIDTH}
+            dot={false}
+            activeDot={ACTIVE_DOT}
+            connectNulls
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

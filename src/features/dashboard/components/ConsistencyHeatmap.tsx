@@ -37,7 +37,11 @@ export function ConsistencyHeatmap() {
         {t('dashboard.last91days')}
       </SectionTitle>
 
-      <div className="flex gap-1 overflow-x-auto pb-0.5">
+      <div
+        className="flex gap-1 overflow-x-auto pb-0.5"
+        role="img"
+        aria-label={`${t('dashboard.last91days')}: ${trainedCount}/${cells.length} ${t('profile.workouts')}`}
+      >
         {weeks.map((week, wi) => (
           <div key={wi} className="flex flex-col gap-1">
             {week.map((c, di) =>
@@ -45,6 +49,7 @@ export function ConsistencyHeatmap() {
                 <span
                   key={c.date}
                   title={c.date}
+                  aria-hidden
                   className={cn(
                     'h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-[3px] border',
                     c.trained ? 'border-transparent bg-primary' : 'border-border/60 bg-muted/30',

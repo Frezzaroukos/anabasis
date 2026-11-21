@@ -3,6 +3,7 @@ import { db } from './index';
 import { SEED_EXERCISES } from './seeds';
 import {
   addSet,
+  getExerciseProgress,
   getTrainingSummary,
   getVolumeTrend,
   hasAnyCompletedWorkout,
@@ -46,6 +47,41 @@ describe('getVolumeTrend', () => {
       weight_kg: 999, bodyweight_kg: null, reps: 99, hold_seconds: null, is_warmup: true,
     });
     expect((await getTrainingSummary(14)).totalVolume).toBe(afterWorking);
+  });
+
+  /**
+   * Το `set_type` και το `is_warmup` μπορούν να αποκλίνουν (imports/χειροκίνητα
+   * δεδομένα). Ένα warm-up που δηλώνεται ΜΟΝΟ με set_type='warmup' μετρούσε
+   * στον όγκο — το chart φούσκωνε σιωπηλά.
+   */
+  it('αγνοεί warm-up που δηλώνεται μόνο με set_type', async () => {
+    const squat = SEED_EXERCISES.find((e) => e.name === 'Back Squat')!;
+    const w = await startWorkout();
+    const before = (await getTrainingSummary(14)).totalVolume;
+
+    await addSet({
+      workout_id: w.id, exercise_id: squat.id,
+      weight_kg: 500, bodyweight_kg: null, reps: 50, hold_seconds: null,
+      set_type: 'warmup',
+    });
+    expect((await getTrainingSummary(14)).totalVolume).toBe(before);
+  });
+
+  it('getExerciseProgress αγνοεί warm-up με μόνο set_type', async () => {
+    const squat = SEED_EXERCISES.find((e) => e.name === 'Back Squat')!;
+    const w = await startWorkout();
+    await addSet({
+      workout_id: w.id, exercise_id: squat.id,
+      weight_kg: 110, bodyweight_kg: null, reps: 3, hold_seconds: null,
+    });
+    await addSet({
+      workout_id: w.id, exercise_id: squat.id,
+      weight_kg: 999, bodyweight_kg: null, reps: 50, hold_seconds: null,
+      set_type: 'warmup',
+    });
+
+    const progress = await getExerciseProgress(squat.id, 365);
+    expect(progress.at(-1)!.topWeight).toBe(110);
   });
 });
 
