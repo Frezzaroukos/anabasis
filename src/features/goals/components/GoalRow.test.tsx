@@ -95,6 +95,7 @@ const renderRow = (progress: GoalProgress) =>
           trackerName={() => null}
           onMove={() => {}}
           onEdit={() => {}}
+          onArchive={() => {}}
           onDelete={() => {}}
         />
       </MemoryRouter>

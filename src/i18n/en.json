@@ -196,7 +196,11 @@
     "count_other": "{{count}} programs",
     "renameProgram": "Rename program",
     "nameLabel": "Program name",
-    "activityLabel": "Activity"
+    "activityLabel": "Activity",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "What is this program for?",
+    "addDescription": "Add description",
+    "duplicateName": "A program named “{{name}}” already exists."
   },
   "history": {
     "title": "History",
@@ -628,7 +632,12 @@
       "noHistory": "No history yet — log this exercise to see progress.",
       "reps": "Reps"
     },
-    "duplicateName": "An exercise named “{{name}}” already exists."
+    "duplicateName": "An exercise named “{{name}}” already exists.",
+    "deleteExercise": "Delete exercise",
+    "deleteConfirmTitle": "Delete this exercise?",
+    "deleteConfirmDesc": "It will be removed from your library. This can't be undone.",
+    "deleteBlockedInUse": "This exercise is used in your history, programs or goals. Merge it into another or archive it instead.",
+    "deleteBlockedBuiltin": "Built-in exercises cannot be deleted — you can archive them."
   },
   "activities": {
     "title": "Activities",
@@ -847,7 +856,15 @@
     "loadMode": {
       "total": "Total load",
       "added": "Added weight"
-    }
+    },
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "showArchived": "Show archived ({{count}})",
+    "showArchived_one": "Show archived ({{count}})",
+    "showArchived_other": "Show archived ({{count}})",
+    "hideArchived": "Hide archived",
+    "deleteConfirmTitle": "Delete this goal?",
+    "deleteConfirmDesc": "The goal and its definition will be removed. This can't be undone."
   },
   "account": {
     "title": "Account & Sync",
