@@ -35,6 +35,18 @@ export const METRIC_OPTIONS: Record<ChartMetric, MetricOption> = {
 /** exposed για fetch-side χρήση (πόσες μέρες να ζητήσει ο caller). */
 export { CHART_RANGE_DAYS };
 
+/**
+ * Η γραμμή PR είναι σε άλλη βάση για τις ασκήσεις σωματικού βάρους: το chart
+ * δείχνει ΣΥΝΟΛΙΚΟ φορτίο (σωματικό + πρόσθετο) για topWeight/e1rm, ενώ το
+ * αποθηκευμένο PR (max_weight/e1rm) είναι ΜΟΝΟ το πρόσθετο. Η γραμμή θα
+ * καθόταν πολύ χαμηλότερα από τη σειρά — ψέμα, όχι αναφορά. Τα volume/reps
+ * είναι συμβατά (το max_volume περιλαμβάνει το σωματικό βάρος).
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function prLineApplies(metric: ChartMetric, isBodyweight: boolean): boolean {
+  return !(isBodyweight && (metric === 'topWeight' || metric === 'e1rm'));
+}
+
 interface ExerciseProgressChartProps {
   /** Ωμά σημεία σε kg (getExerciseProgress) — η μετατροπή μονάδας γίνεται εδώ. */
   rawPoints: ExercisePoint[];
@@ -48,6 +60,8 @@ interface ExerciseProgressChartProps {
   range: ChartRangeKey;
   /** undefined = χωρίς selector (fixed range, καθορισμένο απ' έξω). */
   onRangeChange?: (r: ChartRangeKey) => void;
+  /** true = το chart δείχνει συνολικό φορτίο· κρύβει τη γραμμή PR όπου δεν συγκρίνεται. */
+  isBodyweight?: boolean;
   className?: string;
 }
 
@@ -67,6 +81,7 @@ export function ExerciseProgressChart({
   onMetricChange,
   range,
   onRangeChange,
+  isBodyweight = false,
   className,
 }: ExerciseProgressChartProps) {
   const { t } = useTranslation();
@@ -91,7 +106,12 @@ export function ExerciseProgressChart({
   const unitSuffix = option.unitless ? t(option.labelKey) : unit;
 
   const prRaw = prs.find((r) => r.type === option.prType)?.value ?? null;
-  const prValue = prRaw == null ? null : option.unitless ? prRaw : toDisplayWeight(prRaw, unit);
+  const prValue =
+    prRaw == null || !prLineApplies(metric, isBodyweight)
+      ? null
+      : option.unitless
+        ? prRaw
+        : toDisplayWeight(prRaw, unit);
 
   return (
     <div className={className}>

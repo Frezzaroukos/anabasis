@@ -487,6 +487,9 @@
     "date": "Date",
     "recentEntries": "Recent entries",
     "clearEntry": "Clear entry",
+    "editEntry": "Edit entry",
+    "deleteEntryTitle": "Delete this measurement?",
+    "deleteEntryDesc": "This clears weight, body fat and steps for {{date}}. It cannot be undone.",
     "saved": "Saved"
   },
   "progress": {
@@ -514,7 +517,29 @@
     },
     "byExercise": "By exercise",
     "lastTrained": "Last trained {{date}}",
-    "never": "Not trained yet"
+    "never": "Not trained yet",
+    "rangeLabel": "Time range",
+    "analytics": {
+      "title": "Training analytics",
+      "hint": "Weekly load, frequency and records from your logged sets.",
+      "weeklyVolume": "Weekly volume",
+      "weeklyVolumeHint": "Working sets only — bodyweight counts as load.",
+      "frequency": "Sessions per week",
+      "frequencyHint": "Completed workouts, all activity types.",
+      "categories": "Sets per category",
+      "categoriesHint": "Working sets in this period.",
+      "prTimeline": "PR timeline",
+      "prTimelineHint": "Cumulative personal records in this period.",
+      "volume": "Volume",
+      "sessions": "sessions",
+      "sets": "sets",
+      "prs": "PRs",
+      "weekOf": "Week of {{date}}",
+      "summaryVolume": "Weekly training volume",
+      "summaryFrequency": "Sessions per week",
+      "summaryCategories": "Working sets per category",
+      "summaryPrs": "Cumulative personal records"
+    }
   },
   "dashboard": {
     "title": "Overview",

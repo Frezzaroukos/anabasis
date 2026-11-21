@@ -22,6 +22,7 @@ import type { ChartRangeKey } from '@/components/charts/timeRange';
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { ActivityProgress } from './ActivityProgress';
+import { TrainingAnalytics } from './analytics/TrainingAnalytics';
 import { ProgressHistoryTabs } from '@/features/history/components/ProgressHistoryTabs';
 
 const PROGRESS_METRICS: ChartMetric[] = ['topWeight', 'e1rm', 'volume'];
@@ -147,6 +148,7 @@ export function ProgressPage() {
             )}
           </ul>
           <ActivityProgress />
+          <TrainingAnalytics />
         </section>
       ) : (
         <section className="animate-rise-in space-y-4">
@@ -178,6 +180,7 @@ export function ProgressPage() {
             onMetricChange={setMetric}
             range={range}
             onRangeChange={setRange}
+            isBodyweight={selected?.is_bodyweight ?? false}
           />
         </section>
       )}
