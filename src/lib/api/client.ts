@@ -342,6 +342,17 @@ export const api = {
     return request<AdminReport[]>(`/admin/reports${query}`);
   },
 
+  /** Σημάνει μια αναφορά ως ελεγμένη/απορριφθείσα. Idempotent. */
+  adminReviewReport(
+    id: string,
+    status: 'reviewed' | 'dismissed' = 'reviewed',
+  ): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`/admin/reports/${id}/review`, {
+      method: 'POST',
+      body: { status },
+    });
+  },
+
   billingConfig(): Promise<BillingConfig> {
     return request<BillingConfig>('/billing/config');
   },

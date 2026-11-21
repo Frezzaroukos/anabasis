@@ -14,6 +14,7 @@ import { ActiveWorkoutView } from '@/features/workout/components/ActiveWorkoutVi
 import { useAppBootReady } from '@/app/BootContext';
 import { Spinner } from '@/components/ui/spinner';
 import { CommandMenuProvider } from '@/components/CommandMenu';
+import { ToastProvider } from '@/components/ui/toast';
 
 /** Διακριτικό placeholder όσο φορτώνει ένα lazy route chunk. */
 function PageFallback() {
@@ -39,6 +40,7 @@ export function AppShell() {
 
   return (
     <CommandMenuProvider>
+      <ToastProvider>
       {/*
        * Κινητό: μία στήλη με tabs στον πάτο.
        * Tablet/desktop (≥md): πλαϊνή στήλη πλοήγησης + πιο φαρδύ περιεχόμενο.
@@ -86,6 +88,7 @@ export function AppShell() {
         {/* Ελέγχει μόνο του το localStorage· null αν έχει γίνει ήδη onboard. */}
         <OnboardingOverlay />
       </div>
+      </ToastProvider>
     </CommandMenuProvider>
   );
 }

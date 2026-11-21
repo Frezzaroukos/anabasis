@@ -75,6 +75,24 @@ describe('AddSetInline — hold vs reps flow', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  it('rejects absurd magnitudes (stuck-zero typo) but accepts large-but-plausible loads', () => {
+    const onSave = vi.fn();
+    render(wrap(<AddSetInline weighted initialWeight={100} onSave={onSave} />));
+
+    // 250 reps — σχεδόν σίγουρα κολλημένο μηδέν, απορρίπτεται
+    fireEvent.change(screen.getByLabelText(REPS_LABEL), { target: { value: '2500' } });
+    expect(screen.getByRole('button', { name: SAVE })).toHaveProperty('disabled', true);
+
+    // 5000 kg — παράλογο, απορρίπτεται
+    fireEvent.change(screen.getByLabelText(REPS_LABEL), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText(/Weight/), { target: { value: '5000' } });
+    expect(screen.getByRole('button', { name: SAVE })).toHaveProperty('disabled', true);
+
+    // 300 kg × 5 — μεγάλο αλλά έγκυρο, περνά
+    fireEvent.change(screen.getByLabelText(/Weight/), { target: { value: '300' } });
+    expect(screen.getByRole('button', { name: SAVE })).toHaveProperty('disabled', false);
+  });
+
   it('keeps values and announces failed writes, then allows an explicit retry', async () => {
     const onSave = vi.fn().mockRejectedValueOnce(new Error('disk error')).mockResolvedValue(undefined);
     render(wrap(<AddSetInline weighted initialWeight={40} initialReps={8} onSave={onSave} />));

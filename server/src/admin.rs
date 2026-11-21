@@ -482,6 +482,58 @@ pub async fn reports(
     Ok(Json(rows))
 }
 
+#[derive(Deserialize)]
+pub struct ReviewRequest {
+    /// `reviewed` | `dismissed` — προαιρετικό· default `reviewed`.
+    status: Option<String>,
+}
+
+/// POST /api/admin/reports/{id}/review — σημαίνει μια αναφορά ως ελεγμένη.
+///
+/// Idempotent: ξανα-σήμανση μιας ήδη ελεγμένης γράφει ξανά `reviewed_at`/
+/// `reviewer_id` χωρίς σφάλμα. Άγνωστο id → 404. Τα πεδία υπάρχουν ήδη
+/// (`0015_reports.sql`), κανένα migration. Δεν υπάρχει automated moderation —
+/// αυτό καταγράφει ότι ο άνθρωπος admin κοίταξε την αναφορά.
+pub async fn review_report(
+    State(state): State<AppState>,
+    admin: AdminUser,
+    Path(id): Path<String>,
+    AppJson(body): AppJson<ReviewRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let status = match body
+        .status
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        None => "reviewed",
+        Some(s @ ("reviewed" | "dismissed")) => s,
+        Some(_) => {
+            return Err(AppError::bad_request(
+                "invalid_status",
+                "Το status πρέπει να είναι 'reviewed' ή 'dismissed'.",
+            ))
+        }
+    };
+
+    // UPDATE ... WHERE id = ? → rows_affected == 0 σημαίνει άγνωστο id, χωρίς
+    // ξεχωριστό SELECT (ένα round-trip, ίδιο αποτέλεσμα).
+    let result =
+        sqlx::query("UPDATE reports SET status = ?, reviewed_at = ?, reviewer_id = ? WHERE id = ?")
+            .bind(status)
+            .bind(crate::util::now_iso())
+            .bind(&admin.0.account_id)
+            .bind(&id)
+            .execute(&state.pool)
+            .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found());
+    }
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
 pub async fn stats(
     State(state): State<AppState>,
     _admin: AdminUser,

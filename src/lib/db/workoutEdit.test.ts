@@ -57,24 +57,28 @@ describe('softDeleteWorkout — τι παίρνει μαζί του', () => {
     expect(sets.every((s) => s.deleted_at != null)).toBe(true);
   });
 
-  it('σβήνει τα ρεκόρ που γέννησε — αλλιώς το app λέει ψέματα', async () => {
+  it('σβήνει (soft) τα ρεκόρ που γέννησε — αλλιώς το app λέει ψέματα', async () => {
     const w = await loggedWorkout();
     expect((await db.personal_records.toArray()).length).toBeGreaterThan(0);
 
     await softDeleteWorkout(w.id);
 
-    expect(await db.personal_records.toArray()).toHaveLength(0);
+    // SOFT delete (tombstone για sync), όχι hard — αλλά ζωντανά PR δεν μένουν.
+    const live = (await db.personal_records.toArray()).filter((r) => r.deleted_at == null);
+    expect(live).toHaveLength(0);
   });
 
   it('ΔΕΝ αγγίζει ρεκόρ άλλης προπόνησης', async () => {
     const keep = await loggedWorkout();
     const drop = await loggedWorkout();
-    const before = (await db.personal_records.toArray()).filter((r) => r.workout_id === keep.id).length;
-    expect(before).toBeGreaterThan(0);
+    const liveBefore = async () =>
+      (await db.personal_records.toArray()).filter((r) => r.deleted_at == null);
+    expect((await liveBefore()).filter((r) => r.workout_id === keep.id).length).toBeGreaterThan(0);
+    const before = (await liveBefore()).length;
 
     await softDeleteWorkout(drop.id);
 
-    const after = await db.personal_records.toArray();
+    const after = await liveBefore();
     expect(after.every((r) => r.workout_id === keep.id)).toBe(true);
     expect(after).toHaveLength(before);
   });

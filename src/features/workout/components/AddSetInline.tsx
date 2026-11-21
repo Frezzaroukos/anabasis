@@ -22,6 +22,13 @@ function isValidReps(n: number | null): n is number {
   return Math.abs(Math.round(n * 100) - n * 100) < 1e-6;
 }
 
+// Λογικά ανώτατα όρια: ένα «250 reps»/«5000 kg» είναι σχεδόν σίγουρα λάθος
+// πληκτρολόγηση (κολλημένο μηδέν) και μολύνει όγκο/PR/e1RM. Δεν τα
+// απορρίπτουμε σιωπηλά — τα σημαδεύουμε άκυρα ώστε να μη μπορεί να σωθούν.
+const MAX_REPS = 1000;
+const MAX_HOLD_SECONDS = 7200;
+const MAX_WEIGHT_KG = 1000;
+
 /** Ετικέτα ενός set type — builtin μεταφράζεται, custom δείχνεται ως έχει. */
 function setTypeLabel(st: SetType, t: (k: string) => string): string {
   return (BUILTIN_SET_TYPES as readonly string[]).includes(st) ? t(`setType.${st}`) : st;
@@ -120,10 +127,17 @@ export function AddSetInline({
   const allowsBlankReps = setType === 'amrap' || setType === 'failure';
   const repsValid =
     (reps.trim() === '' && allowsBlankReps) ||
-    (reps.trim() !== '' && isValidReps(repsNum));
-  const holdValid = holdNum != null && Number.isSafeInteger(holdNum) && holdNum > 0;
+    (reps.trim() !== '' && isValidReps(repsNum) && repsNum <= MAX_REPS);
+  const holdValid =
+    holdNum != null &&
+    Number.isSafeInteger(holdNum) &&
+    holdNum > 0 &&
+    holdNum <= MAX_HOLD_SECONDS;
+  // Όριο στο display unit: kg → 1000, lb → ≈2205 (ίδιο φυσικό όριο).
+  const maxWeightDisplay = unit === 'lb' ? 2205 : MAX_WEIGHT_KG;
   const weightValid =
-    !weighted || (weightNum != null && Number.isFinite(weightNum) && weightNum >= 0);
+    !weighted ||
+    (weightNum != null && Number.isFinite(weightNum) && weightNum >= 0 && weightNum <= maxWeightDisplay);
   // Hold-based logging όταν ο caller το ζητά (skill/isometric exercise) Ή όταν
   // ο χρήστης διαλέξει set type που μετριέται σε δευτερόλεπτα (isometric/half_hold).
   const holdActive = holdMode || setType === 'isometric' || setType === 'half_hold';

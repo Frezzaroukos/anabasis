@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
@@ -23,6 +23,7 @@ import {
   removeSkillStep,
   undoStep,
   updateSkillStep,
+  deleteSkill,
 } from '@/lib/db/queries';
 import type { SkillStep } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
@@ -83,12 +84,15 @@ function LadderDot({ cx, cy, payload }: LadderDotProps) {
  */
 export function SkillDetailPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { skillId = '' } = useParams();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [weightDraft, setWeightDraft] = useState<Record<string, string>>({});
   const [addingStep, setAddingStep] = useState(false);
   const [editingStep, setEditingStep] = useState<SkillStep | null>(null);
   const [deleteStepId, setDeleteStepId] = useState<string | null>(null);
+  const [deleteSkillOpen, setDeleteSkillOpen] = useState(false);
+  const [deleteSkillBlock, setDeleteSkillBlock] = useState<'in_use' | 'builtin' | null>(null);
 
   const data = useLiveQuery(() => getSkillWithSteps(skillId), [skillId]);
   const steps = data?.steps ?? [];
@@ -111,6 +115,15 @@ export function SkillDetailPage() {
   const stepById = new Map(steps.map((s) => [s.id, s]));
   const unitSuggestions = [...new Set(steps.map((s) => s.target_unit))];
   const masteredSkill = progress?.status === 'mastered';
+
+  const onDeleteSkill = async () => {
+    const result = await deleteSkill(skill.id);
+    if (result.deleted) {
+      navigate('/skills');
+    } else {
+      setDeleteSkillBlock(result.reason);
+    }
+  };
 
   // Η πρόοδος της σκάλας στον χρόνο — πότε πέτυχες κάθε βήμα, με πόσο βάρος.
   // Αυτό είναι ΤΟ chart του skill (owner feedback: progression πρέπει να φαίνεται).
@@ -150,7 +163,26 @@ export function SkillDetailPage() {
               ★ {t('skills.mastered')}
             </span>
           )}
+          {/* Διαγραφή μόνο για ΔΙΚΑ ΣΟΥ skills — τα builtin αρχειοθετούνται. */}
+          {skill.user_id !== null && (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteSkillBlock(null);
+                setDeleteSkillOpen(true);
+              }}
+              aria-label={t('skills.deleteSkill')}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
+        {deleteSkillBlock && (
+          <p className="text-xs text-destructive" role="alert">
+            {t(deleteSkillBlock === 'builtin' ? 'skills.deleteBlockedBuiltin' : 'skills.deleteBlockedInUse')}
+          </p>
+        )}
         {skill.description && (
           <p className="text-sm leading-relaxed text-muted-foreground">{skill.description}</p>
         )}
@@ -477,6 +509,19 @@ export function SkillDetailPage() {
           setDeleteStepId(null);
         }}
         onCancel={() => setDeleteStepId(null)}
+      />
+      <ConfirmDialog
+        open={deleteSkillOpen}
+        title={t('skills.deleteSkillConfirmTitle')}
+        description={t('skills.deleteSkillConfirmDesc')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onConfirm={() => {
+          setDeleteSkillOpen(false);
+          void onDeleteSkill();
+        }}
+        onCancel={() => setDeleteSkillOpen(false)}
       />
     </div>
   );

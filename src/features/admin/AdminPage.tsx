@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, Crown, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Crown, Flag, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/api/auth';
 import {
   api,
   ApiError,
+  type AdminReport,
   type AdminStats,
   type AdminTableBreakdown,
   type AdminUser,
@@ -341,6 +342,8 @@ export function AdminPage() {
         </section>
       )}
 
+      <ReportsPanel />
+
       <ConfirmDialog
         open={confirmToggle != null}
         title={
@@ -371,6 +374,185 @@ export function AdminPage() {
         onCancel={() => setConfirmReset(null)}
       />
     </div>
+  );
+}
+
+type ReportsFilter = 'open' | 'reviewed' | 'all';
+
+/**
+ * Αναφορές χρηστών προς χειροκίνητο έλεγχο (GET /api/admin/reports). Δεν
+ * υπάρχει automated moderation: ο admin βλέπει ποιος/τι/πότε και σημαίνει την
+ * αναφορά ως ελεγμένη. Η λίστα φορτώνεται ανεξάρτητα από τους χρήστες, ώστε
+ * ένα αργό/σπασμένο reports endpoint να μη ρίχνει όλη τη σελίδα.
+ */
+function ReportsPanel() {
+  const { t, i18n } = useTranslation();
+  const [filter, setFilter] = useState<ReportsFilter>('open');
+  const [state, setState] = useState<LoadState>('loading');
+  const [reports, setReports] = useState<AdminReport[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState(false);
+
+  const load = useCallback(async (f: ReportsFilter) => {
+    setState('loading');
+    try {
+      const rows = await api.adminReports(f === 'all' ? undefined : f);
+      setReports(rows);
+      setState('ready');
+    } catch {
+      setState('error');
+    }
+  }, []);
+
+  useEffect(() => {
+    void load(filter);
+  }, [filter, load]);
+
+  const onReview = async (id: string) => {
+    if (busyId) return;
+    setBusyId(id);
+    setActionError(false);
+    try {
+      await api.adminReviewReport(id, 'reviewed');
+      // Τοπική αφαίρεση από την «Ανοιχτές» λίστα ×ωρίς refetch — και refetch
+      // ώστε το «Ελεγμένες» να είναι σίγουρα ενημερωμένο αν αλλάξει το φίλτρο.
+      await load(filter);
+    } catch {
+      setActionError(true);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const locale = i18n.resolvedLanguage;
+  const dateTime = (iso: string) =>
+    new Date(iso).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {t('admin.reportsHeading')}
+        </h2>
+        {state === 'ready' && (
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            {reports.length}
+          </span>
+        )}
+      </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">{t('admin.reportsHint')}</p>
+
+      <div className="flex flex-wrap gap-2">
+        {(['open', 'reviewed', 'all'] as const).map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setFilter(f)}
+            aria-pressed={filter === f}
+            className={cn(
+              'h-9 rounded-full px-3 text-xs font-medium transition-colors duration-150',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+              filter === f
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-elevated text-muted-foreground hover:bg-accent hover:text-foreground',
+            )}
+          >
+            {t(`admin.reportsFilter${f[0]!.toUpperCase()}${f.slice(1)}`)}
+          </button>
+        ))}
+      </div>
+
+      {state === 'error' && (
+        <Card className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-destructive" role="alert">
+            {t('admin.reportsLoadError')}
+          </p>
+          <Button variant="outline" onClick={() => void load(filter)}>
+            {t('common.retry')}
+          </Button>
+        </Card>
+      )}
+
+      {state === 'loading' && (
+        <div className="space-y-2" aria-hidden>
+          <div className="h-24 animate-pulse rounded-xl bg-card" />
+          <div className="h-24 animate-pulse rounded-xl bg-card" />
+        </div>
+      )}
+
+      {actionError && (
+        <p className="text-sm text-destructive" role="alert">
+          {t('admin.reportsReviewError')}
+        </p>
+      )}
+
+      {state === 'ready' && reports.length === 0 && (
+        <Card className="text-center">
+          <p className="text-sm text-muted-foreground">{t('admin.reportsEmpty')}</p>
+        </Card>
+      )}
+
+      {state === 'ready' &&
+        reports.map((r) => (
+          <Card key={r.id}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                <Flag className="h-3 w-3" aria-hidden />
+                {t(`social.profile.reportReasons.${r.reason}`)}
+              </span>
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide',
+                  r.status === 'open'
+                    ? 'bg-destructive/15 text-destructive'
+                    : 'bg-elevated text-muted-foreground',
+                )}
+              >
+                {r.status}
+              </span>
+              {r.reviewed_at && (
+                <span className="text-xs text-muted-foreground">
+                  {t('admin.reportsReviewed')}: {dateTime(r.reviewed_at)}
+                </span>
+              )}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {dateTime(r.created_at)}
+              </span>
+            </div>
+
+            <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Field
+                label={t('admin.reportsReporter')}
+                value={r.reporter_username ?? r.reporter_id}
+              />
+              <Field
+                label={t('admin.reportsTarget')}
+                value={`@${r.target_username}`}
+              />
+            </dl>
+
+            {r.note && (
+              <p className="mt-2 rounded-md bg-elevated px-2.5 py-2 text-xs leading-relaxed text-muted-foreground">
+                <span className="font-semibold text-foreground">{t('admin.reportsNote')}: </span>
+                {r.note}
+              </p>
+            )}
+
+            {r.status === 'open' && (
+              <div className="mt-3">
+                <Button
+                  variant="outline"
+                  disabled={busyId === r.id}
+                  onClick={() => void onReview(r.id)}
+                >
+                  <Check className="h-4 w-4" aria-hidden />
+                  {busyId === r.id ? t('common.loading') : t('admin.reportsMarkReviewed')}
+                </Button>
+              </div>
+            )}
+          </Card>
+        ))}
+    </section>
   );
 }
 

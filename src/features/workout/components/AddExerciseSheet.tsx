@@ -13,11 +13,13 @@ interface AddExerciseSheetProps {
   onClose: () => void;
   onPick: (ex: Exercise) => void;
   excludeIds?: string[];
+  /** Προσαρμοσμένος τίτλος (π.χ. «Μετακίνηση σετ σε…»). Default: «Add exercise». */
+  title?: string;
 }
 
 const CATEGORY_ORDER: ExerciseCategory[] = ['push', 'pull', 'legs', 'core', 'other'];
 
-export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: AddExerciseSheetProps) {
+export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [], title }: AddExerciseSheetProps) {
   const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
@@ -73,7 +75,7 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [] }: Add
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={t('workout.addExercise')}>
+    <BottomSheet open={open} onClose={onClose} title={title ?? t('workout.addExercise')}>
       <div className="px-4 pb-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
