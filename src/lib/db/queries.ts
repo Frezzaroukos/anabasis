@@ -1092,7 +1092,9 @@ export async function listExercises(): Promise<Exercise[]> {
  */
 export async function listSkills(includeArchived = false): Promise<Skill[]> {
   const all = await db.skills.orderBy('display_order').toArray();
-  return all.filter((s) => isVisibleToMe(s) && (includeArchived || !s.is_archived));
+  return all.filter(
+    (s) => s.deleted_at == null && isVisibleToMe(s) && (includeArchived || !s.is_archived),
+  );
 }
 
 /** Ένα skill μαζί με τα βήματά του, ταξινομημένα. */
@@ -1101,7 +1103,8 @@ export async function getSkillWithSteps(skillId: string) {
     db.skills.get(skillId),
     db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number'),
   ]);
-  return skill ? { skill, steps } : null;
+  if (!skill || skill.deleted_at != null) return null;
+  return { skill, steps: steps.filter((s) => s.deleted_at == null) };
 }
 
 /** Τα ολοκληρωμένα βήματα του χρήστη για ένα skill (step_id → completion). */
@@ -1115,17 +1118,20 @@ export async function getStepCompletions(
     .toArray();
   const wanted = new Set(stepIds);
   return new Map(
-    rows.filter((r) => wanted.has(r.skill_step_id)).map((r) => [r.skill_step_id, r]),
+    rows
+      .filter((r) => r.deleted_at == null && wanted.has(r.skill_step_id))
+      .map((r) => [r.skill_step_id, r]),
   );
 }
 
 export async function getSkillProgress(
   skillId: string,
 ): Promise<UserSkillProgress | undefined> {
-  return db.user_skill_progress
+  const row = await db.user_skill_progress
     .where('[user_id+skill_id]')
     .equals([getCurrentUserId(), skillId])
     .first();
+  return row?.deleted_at == null ? row : undefined;
 }
 
 /** Πρόοδος για ΟΛΑ τα skills — για τη λίστα (skill_id → progress). */
@@ -1134,7 +1140,7 @@ export async function getAllSkillProgress(): Promise<Map<string, UserSkillProgre
     .where('user_id')
     .equals(getCurrentUserId())
     .toArray();
-  return new Map(rows.map((r) => [r.skill_id, r]));
+  return new Map(rows.filter((r) => r.deleted_at == null).map((r) => [r.skill_id, r]));
 }
 
 async function upsertProgress(
@@ -1142,9 +1148,18 @@ async function upsertProgress(
   patch: Partial<UserSkillProgress>,
 ): Promise<void> {
   const t = now();
-  const existing = await getSkillProgress(skillId);
+  // Το unique [user_id+skill_id] μπορεί να κρατά TOMBSTONE (π.χ. μετά από
+  // wipe/delete profile) — πρέπει να το αναστήσουμε, όχι να κάνουμε add.
+  const existing = await db.user_skill_progress
+    .where('[user_id+skill_id]')
+    .equals([getCurrentUserId(), skillId])
+    .first();
   if (existing) {
-    await db.user_skill_progress.update(existing.id, { ...patch, updated_at: t });
+    await db.user_skill_progress.update(existing.id, {
+      ...patch,
+      updated_at: t,
+      deleted_at: null,
+    });
     return;
   }
   await db.user_skill_progress.add({
@@ -1173,14 +1188,15 @@ export async function achieveStep(
   addedWeightKg: number | null = null,
 ): Promise<void> {
   const t = now();
-  const steps = await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number');
+  const steps = (await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number'))
+    .filter((s) => s.deleted_at == null);
   const idx = steps.findIndex((s) => s.id === stepId);
   if (idx === -1) return;
 
   const already = await db.user_skill_step_completions
     .where('user_id')
     .equals(getCurrentUserId())
-    .filter((r) => r.skill_step_id === stepId)
+    .filter((r) => r.skill_step_id === stepId && r.deleted_at == null)
     .first();
 
   if (!already) {
@@ -1208,12 +1224,19 @@ export async function achieveStep(
 
 /** Αναίρεση — χρήσιμο όταν μαρκάρεις κατά λάθος. */
 export async function undoStep(skillId: string, stepId: string): Promise<void> {
+  const t = now();
   const rows = await db.user_skill_step_completions
     .where('user_id')
     .equals(getCurrentUserId())
-    .filter((r) => r.skill_step_id === stepId)
+    .filter((r) => r.skill_step_id === stepId && r.deleted_at == null)
     .toArray();
-  await Promise.all(rows.map((r) => db.user_skill_step_completions.delete(r.id)));
+  // Tombstone, όχι hard delete: αλλιώς η αναίρεση δεν φτάνει ποτέ σε άλλη
+  // συσκευή (ο server βλέπει deletion από το deleted_at, βλ. sync.rs).
+  await Promise.all(
+    rows.map((r) =>
+      db.user_skill_step_completions.update(r.id, { deleted_at: t, updated_at: t }),
+    ),
+  );
   await upsertProgress(skillId, {
     current_step_id: stepId,
     status: 'in_progress',
@@ -1253,7 +1276,11 @@ export async function getGamificationInput(): Promise<{
     getTrainingInsights(30),
     getSkillStepStats(),
     getAllSkillProgress(),
-    db.user_skill_step_completions.where('user_id').equals(uid).toArray(),
+    db.user_skill_step_completions
+      .where('user_id')
+      .equals(uid)
+      .filter((c) => c.deleted_at == null)
+      .toArray(),
   ]);
   // Τα sets ανήκουν μέσω workout_id (δεν έχουν δικό τους user_id index) —
   // παίρνουμε μόνο όσα ανήκουν σε ΔΙΚΕΣ σου ολοκληρωμένες προπονήσεις.
@@ -1305,7 +1332,9 @@ export async function getSkillStepStats(): Promise<Map<string, { total: number; 
     db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray(),
   ]);
   const stepToSkill = new Map(
-    steps.filter((s) => visibleSkillIds.has(s.skill_id)).map((s) => [s.id, s.skill_id]),
+    steps
+      .filter((s) => s.deleted_at == null && visibleSkillIds.has(s.skill_id))
+      .map((s) => [s.id, s.skill_id]),
   );
 
   const out = new Map<string, { total: number; done: number }>();
@@ -1315,6 +1344,7 @@ export async function getSkillStepStats(): Promise<Map<string, { total: number; 
     out.set(skillId, cur);
   }
   for (const c of completions) {
+    if (c.deleted_at != null) continue;
     const skillId = stepToSkill.get(c.skill_step_id);
     if (!skillId) continue;
     const cur = out.get(skillId) ?? { total: 0, done: 0 };
@@ -1493,7 +1523,8 @@ export async function saveBodyMetric(
     .equals([getCurrentUserId(), date])
     .first();
   if (existing) {
-    await db.body_metrics.update(existing.id, { ...patch, updated_at: t });
+    // Unique [user_id+date]: ένα tombstone ανασταίνεται αντί να σπάσει το add.
+    await db.body_metrics.update(existing.id, { ...patch, updated_at: t, deleted_at: null });
     return;
   }
   await db.body_metrics.add({
@@ -1516,7 +1547,11 @@ export async function saveBodyMetric(
 }
 
 export async function getBodyMetric(date: string): Promise<BodyMetric | undefined> {
-  return db.body_metrics.where('[user_id+date]').equals([getCurrentUserId(), date]).first();
+  const row = await db.body_metrics
+    .where('[user_id+date]')
+    .equals([getCurrentUserId(), date])
+    .first();
+  return row?.deleted_at == null ? row : undefined;
 }
 
 /**
@@ -1532,7 +1567,7 @@ export async function getLatestBodyweight(onOrBeforeDate?: string): Promise<numb
   const cutoff = onOrBeforeDate ?? localDay();
   const rows = await db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray();
   const candidates = rows
-    .filter((r) => r.weight_kg != null && r.date <= cutoff)
+    .filter((r) => r.deleted_at == null && r.weight_kg != null && r.date <= cutoff)
     .sort((a, b) => b.date.localeCompare(a.date));
   return candidates[0]?.weight_kg ?? null;
 }
@@ -1555,7 +1590,7 @@ export async function importBodyMetrics(
       .equals([uid, date])
       .first();
     if (existing) {
-      await db.body_metrics.update(existing.id, { ...patch, updated_at: t });
+      await db.body_metrics.update(existing.id, { ...patch, updated_at: t, deleted_at: null });
       updated += 1;
     } else {
       await db.body_metrics.add({
@@ -1600,7 +1635,8 @@ export interface BodyPoint {
 export async function getBodyTrend(days = 60): Promise<BodyPoint[]> {
   const since = new Date();
   since.setDate(since.getDate() - (days - 1));
-  const rows = await db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray();
+  const rows = (await db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray())
+    .filter((r) => r.deleted_at == null);
   const byDate = new Map(rows.map((r) => [r.date, r]));
   const out: BodyPoint[] = [];
   for (let i = 0; i < days; i++) {
@@ -1704,7 +1740,11 @@ export async function getCalendar(from: string, to: string): Promise<Map<string,
   const [workouts, allSets, metrics] = await Promise.all([
     db.workouts.where('user_id').equals(getCurrentUserId()).toArray(),
     db.sets.toArray(),
-    db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray(),
+    db.body_metrics
+      .where('user_id')
+      .equals(getCurrentUserId())
+      .filter((m) => m.deleted_at == null)
+      .toArray(),
   ]);
   const setCount = new Map<string, number>();
   for (const s of allSets) {
@@ -2465,7 +2505,7 @@ export interface SkillInput {
 /** Δικό σου skill tree — ο πυρήνας του app παύει να είναι read-only. */
 export async function createSkill(input: SkillInput): Promise<Skill> {
   const t = now();
-  const count = await db.skills.count();
+  const count = (await db.skills.toArray()).filter((s) => s.deleted_at == null).length;
   const name = input.name.trim();
   const s: Skill = {
     id: uuid(),
@@ -2514,19 +2554,23 @@ export async function countSkillUsage(id: string): Promise<{
   goals: number;
   total: number;
 }> {
-  const steps = await db.skill_steps.where('skill_id').equals(id).toArray();
+  const steps = (await db.skill_steps.where('skill_id').equals(id).toArray()).filter(
+    (s) => s.deleted_at == null,
+  );
   const stepIds = new Set(steps.map((s) => s.id));
-  const [progress, completions, goals] = await Promise.all([
-    db.user_skill_progress.where('skill_id').equals(id).count(),
-    db.user_skill_step_completions.toArray().then((rows) =>
-      rows.filter((r) => stepIds.has(r.skill_step_id)).length,
-    ),
+  // Tombstones δεν «κρέμονται» — μετράμε μόνο ζωντανές γραμμές.
+  const [progressRows, completionsRows, goalsRows] = await Promise.all([
+    db.user_skill_progress.where('skill_id').equals(id).toArray(),
+    db.user_skill_step_completions.toArray(),
     // Το goals δεν έχει index στο skill_id (schema.ts: goals index δεν το
     // περιλαμβάνει) — φιλτράρουμε in-memory όπως τα completions.
-    db.goals.toArray().then((rows) =>
-      rows.filter((g) => g.skill_id === id && g.deleted_at == null).length,
-    ),
+    db.goals.toArray(),
   ]);
+  const progress = progressRows.filter((p) => p.deleted_at == null).length;
+  const completions = completionsRows.filter(
+    (r) => r.deleted_at == null && stepIds.has(r.skill_step_id),
+  ).length;
+  const goals = goalsRows.filter((g) => g.skill_id === id && g.deleted_at == null).length;
   return {
     steps: steps.length,
     progress,
@@ -2541,11 +2585,11 @@ export type DeleteSkillResult =
   | { deleted: false; reason: 'builtin' | 'in_use'; usage: Awaited<ReturnType<typeof countSkillUsage>> };
 
 /**
- * Διαγραφή ΔΙΚΟΥ ΣΟΥ skill. Ο `skills` πίνακας ΔΕΝ έχει `deleted_at` (δεν είναι
- * sync-table με tombstones) — γι' αυτό η διαγραφή γίνεται μόνο όταν δεν
- * κρέμεται τίποτα από πάνω (κανένα σκαλί/πρόοδος/ολοκλήρωση/στόχος), ώστε να
- * μη μείνουν ορφανά. Builtin (`user_id === null`) δεν διαγράφονται — μόνο
- * αρχειοθετούνται. Με ιστορικό → `{ deleted: false, reason: 'in_use' }`.
+ * Διαγραφή ΔΙΚΟΥ ΣΟΥ skill. Η διαγραφή γίνεται tombstone (`deleted_at`) ώστε
+ * να ταξιδέψει με sync. Επιτρέπεται μόνο όταν δεν κρέμεται τίποτα από πάνω
+ * (κανένα σκαλί/πρόοδος/ολοκλήρωση/στόχος), ώστε να μη μείνουν ορφανά.
+ * Builtin (`user_id === null`) δεν διαγράφονται — μόνο αρχειοθετούνται.
+ * Με ιστορικό → `{ deleted: false, reason: 'in_use' }`.
  */
 export async function deleteSkill(id: string): Promise<DeleteSkillResult> {
   const skill = await db.skills.get(id);
@@ -2556,7 +2600,8 @@ export async function deleteSkill(id: string): Promise<DeleteSkillResult> {
   if (usage.total > 0) {
     return { deleted: false, reason: 'in_use', usage };
   }
-  await db.skills.delete(id);
+  const t = now();
+  await db.skills.update(id, { deleted_at: t, updated_at: t });
   return { deleted: true };
 }
 
@@ -2579,7 +2624,9 @@ export async function addSkillStep(
   input: SkillStepInput,
 ): Promise<SkillStep> {
   const t = now();
-  const existing = await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number');
+  const existing = (
+    await db.skill_steps.where('skill_id').equals(skillId).sortBy('step_number')
+  ).filter((s) => s.deleted_at == null);
   const prev = existing[existing.length - 1];
   const step: SkillStep = {
     id: uuid(),
@@ -2613,14 +2660,19 @@ export async function updateSkillStep(
  */
 export async function removeSkillStep(id: string): Promise<void> {
   const step = await db.skill_steps.get(id);
-  if (!step) return;
-  await db.user_skill_step_completions.where('skill_step_id').equals(id).delete();
-  await db.skill_steps.delete(id);
-  const rest = await db.skill_steps
-    .where('skill_id')
-    .equals(step.skill_id)
-    .sortBy('step_number');
+  if (!step || step.deleted_at != null) return;
   const t = now();
+  // Soft delete βήματος + ολοκληρώσεών του: tombstones ταξιδεύουν με sync,
+  // αλλιώς η διαγραφή ξαναγυρνούσε από άλλη συσκευή.
+  await db.user_skill_step_completions
+    .where('skill_step_id')
+    .equals(id)
+    .and((r) => r.deleted_at == null)
+    .modify({ deleted_at: t, updated_at: t });
+  await db.skill_steps.update(id, { deleted_at: t, updated_at: t });
+  const rest = (
+    await db.skill_steps.where('skill_id').equals(step.skill_id).sortBy('step_number')
+  ).filter((s) => s.deleted_at == null);
   for (let i = 0; i < rest.length; i++) {
     const prev = i === 0 ? null : rest[i - 1]!;
     await db.skill_steps.update(rest[i]!.id, {
@@ -2783,7 +2835,12 @@ export async function renameProfile(id: string, displayName: string): Promise<vo
  * `program_exercises`) σβήνονται μέσω των γονικών ids — ίδιο μοτίβο ιδιοκτησίας
  * με `exportProfile`/`migrateProfileUserId`. Όλο το σβήσιμο τρέχει σε ΜΙΑ
  * transaction: ή φεύγουν όλα μαζί ή τίποτα — ένα crash στη μέση δεν πρέπει να
- * αφήνει το προφίλ μισοσβησμένο.
+ * αφήνει το προφίλ μισοσβημένο.
+ *
+ * Tombstones: skills, skill_steps, user_skill_progress, user_skill_step_completions
+ * και body_metrics ΔΕΝ διαγράφονται οριστικά — παίρνουν `deleted_at` ώστε το
+ * deletion να συγχρονιστεί (server: `deleted` από `payload.deleted_at`). Τα
+ * υπόλοιπα user-data tables μένουν hard delete (χωρίς tombstone column).
  */
 export async function deleteProfile(id: string): Promise<void> {
   const tables = USER_DATA_TABLES();
@@ -2822,19 +2879,37 @@ export async function deleteProfile(id: string): Promise<void> {
       // Δικά του skills (τα seeded, user_id === null, μένουν κοινά) + τα
       // βήματά τους — αλλιώς ένα skill_step μένει πίσω δείχνοντας σε ένα
       // skill_id που δεν υπάρχει πια.
+      const t = now();
       const skillIds = new Set(
         (await db.skills.where('user_id').equals(id).toArray()).map((s) => s.id),
       );
-      const allSteps = await db.skill_steps.toArray();
-      await db.skill_steps.bulkDelete(
-        allSteps.filter((s) => skillIds.has(s.skill_id)).map((s) => s.id),
-      );
+      if (skillIds.size > 0) {
+        await db.skill_steps
+          .where('skill_id')
+          .anyOf([...skillIds])
+          .modify({ deleted_at: t, updated_at: t });
+      }
 
       // 2) Direct-owner tables (δικό τους `user_id`) — παράγονται από το
       //    USER_DATA_TABLES, άρα ένας νέος πίνακας εκεί σβήνεται αυτόματα εδώ
       //    (εκτός αν είναι child: τότε μπαίνει στο CASCADE_NON_OWNER + handler).
+      //    Οι 4 πίνακες με `deleted_at` κάνουν tombstone, ώστε η διαγραφή να
+      //    μη μπορεί να «αναστηθεί» από pull άλλης συσκευής.
+      const TOMBSTONE_OWNER = new Set([
+        'skills',
+        'user_skill_progress',
+        'user_skill_step_completions',
+        'body_metrics',
+      ]);
       for (const [name, table] of Object.entries(tables)) {
         if (CASCADE_NON_OWNER.has(name)) continue;
+        if (TOMBSTONE_OWNER.has(name)) {
+          await (table as unknown as Table<Record<string, unknown>, string>)
+            .where('user_id')
+            .equals(id)
+            .modify({ deleted_at: t, updated_at: t });
+          continue;
+        }
         await (table as Table<{ user_id: string }, string>)
           .where('user_id')
           .equals(id)
@@ -2884,20 +2959,24 @@ export async function getCurrentProfileDataCounts(): Promise<{
   const deletedWorkoutIds = new Set(
     ownedWorkouts.filter((w) => w.deleted_at != null).map((w) => w.id),
   );
-  const [allSets, prs, steps] = await Promise.all([
+  const [allSets, prs, stepsRows] = await Promise.all([
     db.sets.toArray(),
     db.personal_records
       .where('user_id')
       .equals(uid)
       .filter((r) => r.deleted_at == null)
       .toArray(),
-    db.user_skill_step_completions.where('user_id').equals(uid).count(),
+    db.user_skill_step_completions
+      .where('user_id')
+      .equals(uid)
+      .filter((c) => c.deleted_at == null)
+      .toArray(),
   ]);
   const sets = allSets.filter(
     (s) => s.deleted_at == null && liveWorkoutIds.has(s.workout_id),
   ).length;
   const livePrs = prs.filter((r) => !deletedWorkoutIds.has(r.workout_id)).length;
-  return { workouts: liveWorkoutIds.size, sets, prs: livePrs, steps };
+  return { workouts: liveWorkoutIds.size, sets, prs: livePrs, steps: stepsRows.length };
 }
 
 /**
@@ -3126,7 +3205,7 @@ export async function getActiveLadder(): Promise<ActiveLadder | null> {
   const progress = (
     await db.user_skill_progress.where('user_id').equals(getCurrentUserId()).toArray()
   )
-    .filter((p) => p.status === 'in_progress')
+    .filter((p) => p.deleted_at == null && p.status === 'in_progress')
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   const active = progress[0];

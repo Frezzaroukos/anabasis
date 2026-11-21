@@ -9,6 +9,7 @@ import {
   listProfiles,
   renameProfile,
 } from '@/lib/db/queries';
+import { exportProfile } from '@/lib/db/backup';
 import { getCurrentUserId, setCurrentUserId } from '@/lib/db/session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,10 +75,26 @@ export function ProfilePage() {
     globalThis.location.reload();
   };
 
+  /**
+   * Πριν το μη αναστρέψιμο delete: κατεβάζουμε αυτόματα JSON backup του
+   * συγκεκριμένου προφίλ. Δεν περιμένουμε να θυμηθεί ο χρήστης — η διαγραφή
+   * χωρίς αντίγραφο δεν έχει undo μέσα στην εφαρμογή.
+   */
+  const downloadBackup = (json: string, id: string) => {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `anabasis-profile-${id.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const onDelete = async (id: string) => {
     if (busy) return;
     setBusy(true);
     try {
+      downloadBackup(await exportProfile(id), id);
       await deleteProfile(id);
       setConfirmDelete(null);
       if (id === activeId) {
@@ -203,6 +220,9 @@ export function ProfilePage() {
                       workouts: s?.workouts ?? 0,
                       prs: s?.prs ?? 0,
                     })}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t('profile.deleteBackupNote')}
                   </p>
                   <div className="mt-3 flex gap-2">
                     <Button

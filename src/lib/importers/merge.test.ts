@@ -145,6 +145,58 @@ describe('importWorkouts', () => {
     expect(again.duplicatesSkipped).toBe(3);
   });
 
+  it('no-op import δεν δημιουργεί orphan custom άσκηση (planning χωρίς writes)', async () => {
+    await importWorkouts([fixtureWorkout()]);
+    const before = await db.exercises.count();
+
+    const noop: ImportedWorkout = {
+      key: 'noop',
+      date: '2025-01-15',
+      startedAtIso: new Date(2025, 0, 15, 18).toISOString(),
+      durationSeconds: null,
+      name: null,
+      notes: null,
+      exercises: [
+        // ίδιο σετ με το ήδη εισαγμένο 80×8 → duplicate
+        { name: 'Bench Press', sets: [set({ setNumber: 1, weightKg: 80, reps: 8 })] },
+        // νέα άσκηση χωρίς νέα σετ — ΔΕΝ πρέπει να δημιουργηθεί
+        { name: 'Ghost Lift', sets: [] },
+      ],
+    };
+
+    const res = await importWorkouts([noop]);
+    expect(res).toEqual({
+      workoutsAdded: 0,
+      setsAdded: 0,
+      exercisesCreated: 0,
+      duplicatesSkipped: 1,
+    });
+    expect(await db.exercises.count()).toBe(before);
+    expect((await db.exercises.toArray()).some((e) => e.name === 'Ghost Lift')).toBe(false);
+    expect(await db.workouts.count()).toBe(1);
+  });
+
+  it('δημιουργεί άσκηση μόνο όταν το workout έχει όντως νέο σετ', async () => {
+    const w: ImportedWorkout = {
+      key: 'mixed',
+      date: '2025-02-01',
+      startedAtIso: new Date(2025, 1, 1, 18).toISOString(),
+      durationSeconds: null,
+      name: null,
+      notes: null,
+      exercises: [
+        { name: 'Fresh Lift', sets: [set({ setNumber: 1, weightKg: 40, reps: 10 })] },
+        { name: 'Empty Lift', sets: [] },
+      ],
+    };
+
+    const res = await importWorkouts([w]);
+    expect(res.exercisesCreated).toBe(1);
+    const names = (await db.exercises.toArray()).map((e) => e.name);
+    expect(names).toContain('Fresh Lift');
+    expect(names).not.toContain('Empty Lift');
+  });
+
   it('τα δεδομένα άλλου προφίλ ΔΕΝ μετράνε ως duplicates', async () => {
     setCurrentUserId('other-profile');
     await importWorkouts([fixtureWorkout()]);

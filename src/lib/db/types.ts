@@ -126,6 +126,8 @@ export interface BodyMetric {
   notes: string | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /** Tombstone — το wipe/sync σβήνει soft· οι readers φιλτράρουν `== null`. */
+  deleted_at?: ISOTimestamp | null;
 }
 
 /* ────────────────────────────────────────────────────────────── */
@@ -262,6 +264,8 @@ export interface Skill {
   is_archived: boolean;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /** Tombstone — soft delete, ώστε η διαγραφή να ταξιδεύει με sync. */
+  deleted_at?: ISOTimestamp | null;
 }
 
 export interface SkillStep {
@@ -280,6 +284,8 @@ export interface SkillStep {
   prerequisites: UUID[];
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /** Tombstone — soft delete, ώστε η διαγραφή να ταξιδεύει με sync. */
+  deleted_at?: ISOTimestamp | null;
 }
 
 export interface UserSkillProgress {
@@ -293,6 +299,8 @@ export interface UserSkillProgress {
   notes: string | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /** Tombstone — soft delete, ώστε η διαγραφή να ταξιδεύει με sync. */
+  deleted_at?: ISOTimestamp | null;
 }
 
 export interface UserSkillStepCompletion {
@@ -312,6 +320,8 @@ export interface UserSkillStepCompletion {
    * `created_at` όταν λείπει — αλλιώς οι παλιές ολοκληρώσεις δεν έφευγαν ποτέ.
    */
   updated_at?: ISOTimestamp;
+  /** Tombstone — soft delete, ώστε η διαγραφή να ταξιδεύει με sync. */
+  deleted_at?: ISOTimestamp | null;
 }
 
 /* ───────────────────────── Στόχοι ───────────────────────── */

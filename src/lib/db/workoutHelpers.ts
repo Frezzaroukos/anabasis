@@ -233,7 +233,11 @@ export async function listRecentBodyMetrics(limit = 14): Promise<BodyMetric[]> {
     .equals(getCurrentUserId())
     .toArray();
   return rows
-    .filter((m) => m.weight_kg != null || m.body_fat_pct != null || m.steps != null)
+    .filter(
+      (m) =>
+        m.deleted_at == null &&
+        (m.weight_kg != null || m.body_fat_pct != null || m.steps != null),
+    )
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, limit);
 }

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { setCurrentUserId } from './session';
 import {
+  achieveStep,
   addProgramExercise,
   addSet,
   addSkillStep,
@@ -67,7 +68,8 @@ async function seedProfile(uid: string, label: string): Promise<void> {
   const day = await createProgramDay(program.id, 'Day 1');
   await addProgramExercise(program.id, { exercise_id: ex.id, program_day_id: day.id });
   const skill = await createSkill({ name: `${label} Skill` });
-  await addSkillStep(skill.id, { name: 'Step 1', target_value: 10 });
+  const step = await addSkillStep(skill.id, { name: 'Step 1', target_value: 10 });
+  await achieveStep(skill.id, step.id, 10);
   await createActivity({ label: `${label} Sport` });
   await createGoal({ metric: 'sessions', target: 3, period: 'week' });
   await importBodyMetrics([{ date: '2026-08-15', patch: { calories_in: 2200 } }]);
@@ -118,6 +120,35 @@ describe('deleteCurrentProfileData', () => {
     });
     // Τα δικά του custom activities έφυγαν· το builtin μένει.
     expect((await listActivities()).map((a) => a.label)).not.toContain('Alpha Sport');
+
+    // Skills/steps/progress/completions/body: tombstones, όχι hard delete.
+    const mySkills = await db.skills.where('user_id').equals(A).toArray();
+    expect(mySkills.length).toBeGreaterThan(0);
+    expect(mySkills.every((x) => x.deleted_at != null)).toBe(true);
+    const mySkillIds = new Set(mySkills.map((x) => x.id));
+    const mySteps = (await db.skill_steps.toArray()).filter((x) =>
+      mySkillIds.has(x.skill_id),
+    );
+    expect(mySteps.length).toBeGreaterThan(0);
+    expect(mySteps.every((x) => x.deleted_at != null)).toBe(true);
+    expect(
+      (await db.user_skill_progress.where('user_id').equals(A).toArray()).every(
+        (x) => x.deleted_at != null,
+      ),
+    ).toBe(true);
+    expect(
+      (await db.user_skill_step_completions.where('user_id').equals(A).toArray()).every(
+        (x) => x.deleted_at != null,
+      ),
+    ).toBe(true);
+    expect(
+      (await db.body_metrics.where('user_id').equals(A).toArray()).every(
+        (x) => x.deleted_at != null,
+      ),
+    ).toBe(true);
+    const myPrs = await db.personal_records.where('user_id').equals(A).toArray();
+    expect(myPrs.length).toBeGreaterThan(0);
+    expect(myPrs.every((x) => x.deleted_at != null)).toBe(true);
 
     // Builtin row επιβιώνει.
     expect((await db.activities.get('wipe-builtin-activity'))?.deleted_at).toBeFalsy();
