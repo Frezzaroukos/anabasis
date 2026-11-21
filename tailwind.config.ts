@@ -44,6 +44,10 @@ const config: Config = {
         },
         elevated: 'hsl(var(--elevated))',
         gold: 'hsl(var(--gold))',
+        // gold-strong: ίδια απόχρωση αλλά σκουρότερη στο light (24 90% 36%) — το
+        // σκέτο --gold ως ΚΕΙΜΕΝΟ πάνω σε λευκό έβγαινε 2.88:1 (<4.5:1 WCAG AA).
+        // Για γεμίσματα/badges μένει το gold· για κείμενο χρησιμοποιείται αυτό.
+        'gold-strong': 'hsl(var(--gold-strong))',
         category: {
           push: 'hsl(var(--cat-push))',
           pull: 'hsl(var(--cat-pull))',

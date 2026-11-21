@@ -36,7 +36,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
           <div className="min-w-0 flex-1">
             <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
               <span className="truncate">{skill.name}</span>
-              {mastered && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />}
+              {mastered && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold-strong" aria-hidden />}
               <CategoryBadge category={skill.category} />
               {!isBuiltin && (
                 <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-primary">

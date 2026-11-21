@@ -80,7 +80,7 @@ function CommunityLink() {
       className="group flex items-center justify-between gap-4 rounded-xl bg-card p-4 transition-colors hover:bg-card/80"
     >
       <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-gold/10 text-gold">
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-gold/10 text-gold-strong">
           <Users className="h-5 w-5" />
         </span>
         <div>

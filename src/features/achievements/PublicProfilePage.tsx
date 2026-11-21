@@ -146,7 +146,7 @@ function ProfileActions({
     return (
       <div className="flex flex-wrap items-center justify-center gap-3">
         <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Check className="h-4 w-4 text-[hsl(var(--gold))]" />
+          <Check className="h-4 w-4 text-[hsl(var(--gold-strong))]" />
           {t('social.profile.friends')}
         </span>
         <Button asChild variant="ghost" size="sm">
@@ -293,7 +293,7 @@ function ReportProfileButton({ username }: { username: string }) {
         {sent ? (
           <div className="space-y-4 px-4 pb-6 pt-4" role="status">
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--gold))]" />
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--gold-strong))]" />
               {t('social.profile.reportSuccess')}
             </p>
             <Button className="w-full" onClick={close}>
@@ -450,7 +450,7 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
         {(profile.streak_days > 0 || profile.longest_streak_days > 0) && (
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground tabular-nums">
             {profile.streak_days > 0 && (
-              <span className="flex items-center gap-1 text-[hsl(var(--gold))]">
+              <span className="flex items-center gap-1 text-[hsl(var(--gold-strong))]">
                 <Flame className="h-3.5 w-3.5" />
                 {t('social.profile.streak', { count: profile.streak_days })}
               </span>

@@ -61,7 +61,7 @@ export function CommunityCard() {
                   className={cn(
                     'flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[10px] tabular-nums',
                     i === 0
-                      ? 'bg-[hsl(var(--gold)/0.14)] text-[hsl(var(--gold))]'
+                      ? 'bg-[hsl(var(--gold)/0.14)] text-[hsl(var(--gold-strong))]'
                       : 'bg-elevated text-muted-foreground',
                   )}
                 >
