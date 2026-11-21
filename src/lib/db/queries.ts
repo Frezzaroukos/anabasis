@@ -12,6 +12,7 @@ import { db, SCHEMA_VERSION } from './schema';
 import { getCurrentUserId, setCurrentUserId } from './session';
 import { candidatesFromSet, candidatesFromWorkout, isNewPR } from '../domain/pr';
 import { setVolume } from '../domain/volume';
+import { isWorkingSet } from '../domain/setFilters';
 import { e1rm } from '../domain/e1rm';
 import { BUILTIN_EXERCISE_CATEGORIES } from './types';
 import {
@@ -451,7 +452,7 @@ export async function addSet(input: AddSetInput): Promise<AddSetResult> {
   };
   await db.sets.add(set);
   // Warm-ups δεν μετράνε για PR — αλλιώς κάθε ζέσταμα θα «έσπαγε» ρεκόρ.
-  const newPRs = set.is_warmup ? [] : await detectPRs(set, input.workout_id);
+  const newPRs = isWorkingSet(set) ? await detectPRs(set, input.workout_id) : [];
   return { ...set, newPRs };
 }
 
@@ -574,11 +575,7 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
 
   const live = allSets
     .filter(
-      (s) =>
-        s.deleted_at == null &&
-        !s.is_warmup &&
-        s.set_type !== 'warmup' &&
-        workoutById.get(s.workout_id)?.deleted_at == null,
+      (s) => isWorkingSet(s) && workoutById.get(s.workout_id)?.deleted_at == null,
     )
     .sort((a, b) => {
       const wa = workoutById.get(a.workout_id)?.started_at ?? '';
@@ -986,12 +983,7 @@ export async function getLastPerformance(
   const rows = await db.sets
     .where('exercise_id')
     .equals(exerciseId)
-    .filter(
-      (s) =>
-        s.deleted_at == null &&
-        !s.is_warmup &&
-        visibleWorkoutIds.has(s.workout_id),
-    )
+    .filter((s) => isWorkingSet(s) && visibleWorkoutIds.has(s.workout_id))
     .toArray();
   if (rows.length === 0) return null;
   const last = rows.sort((a, b) => b.created_at.localeCompare(a.created_at))[0]!;
@@ -1032,7 +1024,7 @@ export async function getBodyweightLoads(limit = 5): Promise<BodyweightLoad[]> {
   );
   const sets = (
     await db.sets.where('exercise_id').anyOf([...byId.keys()]).toArray()
-  ).filter((s) => s.deleted_at == null && !s.is_warmup && s.set_type !== 'warmup');
+  ).filter(isWorkingSet);
   const latest = new Map<string, BodyweightLoad>();
   for (const s of sets) {
     const date = dayByWorkout.get(s.workout_id);
@@ -1293,7 +1285,7 @@ export async function getGamificationInput(): Promise<{
   // παίρνουμε μόνο όσα ανήκουν σε ΔΙΚΕΣ σου ολοκληρωμένες προπονήσεις.
   const completedIds = workouts.map((w) => w.id);
   const sets = await db.sets.where('workout_id').anyOf(completedIds).toArray();
-  const totalSets = sets.filter((s) => s.deleted_at == null && !s.is_warmup).length;
+  const totalSets = sets.filter(isWorkingSet).length;
   const masteredSteps = [...skillStats.values()].reduce((sum, s) => sum + s.done, 0);
   const masteredSkills = [...progress.values()].filter((p) => p.status === 'mastered').length;
 
@@ -1306,7 +1298,7 @@ export async function getGamificationInput(): Promise<{
     workouts.filter((w) => inWeek(w.started_at)).map((w) => w.id),
   );
   const weekSets = sets.filter(
-    (s) => weekWorkoutIds.has(s.workout_id) && s.deleted_at == null && !s.is_warmup,
+    (s) => weekWorkoutIds.has(s.workout_id) && isWorkingSet(s),
   ).length;
   const weekPrs = prs.filter((p) => inWeek(p.achieved_at)).length;
   // Ένα βήμα μπορεί να ξανακατακτηθεί μετά από reset· μετρά μία φορά/εβδομάδα.
@@ -1472,11 +1464,7 @@ export async function getVolumeTrend(days = 30): Promise<VolumePoint[]> {
 
   const byId = new Map(workouts.map((w) => [w.id, dayKey(new Date(w.started_at))]));
   const sets = (await db.sets.toArray()).filter(
-    (s) =>
-      s.deleted_at == null &&
-      !s.is_warmup &&
-      s.set_type !== 'warmup' &&
-      byId.has(s.workout_id),
+    (s) => isWorkingSet(s) && byId.has(s.workout_id),
   );
 
   const acc = new Map<string, { volume: number; sets: number }>();
@@ -1696,13 +1684,7 @@ export async function getExerciseProgress(
   );
   const sets = (
     await db.sets.where('exercise_id').equals(exerciseId).toArray()
-  ).filter(
-    (s) =>
-      s.deleted_at == null &&
-      !s.is_warmup &&
-      s.set_type !== 'warmup' &&
-      wDay.has(s.workout_id),
-  );
+  ).filter((s) => isWorkingSet(s) && wDay.has(s.workout_id));
 
   const byDay = new Map<string, ExercisePoint>();
   for (const s of sets) {
@@ -1811,7 +1793,7 @@ export async function listWorkoutSummaries(): Promise<WorkoutSummary[]> {
   const nameById = new Map(exercises.map((e) => [e.id, e.name]));
   const agg = new Map<string, { setCount: number; volume: number; byExercise: Map<string, number> }>();
   for (const s of allSets) {
-    if (s.deleted_at != null || s.is_warmup || s.set_type === 'warmup') continue;
+    if (!isWorkingSet(s)) continue;
     const cur = agg.get(s.workout_id) ?? { setCount: 0, volume: 0, byExercise: new Map() };
     cur.setCount += 1;
     cur.volume += setVolume(s);
@@ -2279,7 +2261,7 @@ export interface LastWorkoutPlanItem {
  */
 async function planFromWorkoutSets(workoutId: string): Promise<LastWorkoutPlanItem[]> {
   const sets = (await db.sets.where('workout_id').equals(workoutId).toArray()).filter(
-    (s) => s.deleted_at == null && s.set_type !== 'warmup',
+    isWorkingSet,
   );
 
   const byExercise = new Map<
@@ -3179,7 +3161,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
     activityLabel: activity?.label ?? workout.activity_kind,
     exercises,
     totalVolume: exercises.reduce((a, e) => a + e.volume, 0),
-    totalSets: live.filter((s) => s.set_type !== 'warmup' && !s.is_warmup).length,
+    totalSets: live.filter(isWorkingSet).length,
     prs: prs.filter((r) => r.workout_id === workoutId && r.deleted_at == null),
   };
 }
