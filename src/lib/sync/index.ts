@@ -47,8 +47,9 @@ interface SyncCursors {
  * cutoff, ώστε τα ήδη υπάρχοντα να προλάβουν.
  *
  * 1 = προστέθηκαν τα `program_days` (η δομή πολλαπλών ημερών).
+ * 2 = προστέθηκαν τα `scheduled_sessions` (planner, v19).
  */
-const PUSH_SCHEMA_VERSION = 1;
+const PUSH_SCHEMA_VERSION = 2;
 
 const DEFAULT_CURSORS: SyncCursors = {
   pullCursor: 0,
@@ -134,7 +135,7 @@ const DIRECT_OWNER_TABLES = [
   'exercises', 'workouts', 'personal_records', 'skills',
   'user_skill_progress', 'user_skill_step_completions', 'app_settings',
   'body_metrics', 'programs', 'activities', 'goals',
-  'custom_trackers', 'custom_tracker_entries',
+  'custom_trackers', 'custom_tracker_entries', 'scheduled_sessions',
 ] as const;
 
 /**

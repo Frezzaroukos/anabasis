@@ -14,6 +14,10 @@ import { candidatesFromSet, candidatesFromWorkout, isNewPR } from '../domain/pr'
 import { setVolume } from '../domain/volume';
 import { e1rm } from '../domain/e1rm';
 import { BUILTIN_EXERCISE_CATEGORIES } from './types';
+import {
+  markScheduledDoneForWorkout,
+  revertScheduledForWorkout,
+} from './scheduledSessionLinks';
 import type {
   Activity,
   ActivityKind,
@@ -129,6 +133,8 @@ export async function endWorkout(
     duration_seconds: duration,
     updated_at: t,
   });
+  // Το planned row που γέννησε αυτή την προπόνηση ολοκληρώθηκε μαζί της.
+  await markScheduledDoneForWorkout(workoutId, t);
   // Ένας δρομέας/κολυμβητής αξίζει το ίδιο PR-tracking με έναν lifter —
   // η απόσταση/διάρκεια μπαίνει ΤΩΡΑ που είναι τελική (distance_km μπορεί
   // να ενημερώθηκε κατά τη διάρκεια μέσω updateWorkoutDistance). Ελέγχουμε
@@ -158,10 +164,9 @@ export async function setWorkoutType(
  * — χειρότερα — τα ρεκόρ που είχε γεννήσει έμεναν στον πίνακα. Έσβηνες μια
  * λάθος καταχώριση και το app συνέχιζε να σου λέει ότι σήκωσες 200kg.
  *
- * Τα PR διαγράφονται οριστικά (δεν είναι δικά σου δεδομένα — είναι *παράγωγα*
- * των σετ· θα ξαναϋπολογιστούν από ό,τι απομένει). Σετ και προπόνηση μένουν
- * σε soft delete, όπως όλα τα υπόλοιπα, ώστε ένα μελλοντικό sync να ξέρει τι
- * συνέβη.
+ * Τα PR είναι *παράγωγα* των σετ: ξαναϋπολογίζονται από ό,τι απομένει
+ * (`recomputePRsForExercise`, με tombstones για το sync). Σετ και προπόνηση
+ * μένουν σε soft delete, ώστε το sync να ξέρει τι συνέβη.
  */
 export async function softDeleteWorkout(workoutId: string): Promise<void> {
   const t = now();
@@ -170,12 +175,14 @@ export async function softDeleteWorkout(workoutId: string): Promise<void> {
   const affectedExercises = new Set(
     sets.filter((s) => s.deleted_at == null).map((s) => s.exercise_id),
   );
-  await db.transaction('rw', db.workouts, db.sets, async () => {
+  await db.transaction('rw', db.workouts, db.sets, db.scheduled_sessions, async () => {
     await db.workouts.update(workoutId, { deleted_at: t, updated_at: t });
     await db.sets
       .where('workout_id')
       .equals(workoutId)
       .modify({ deleted_at: t, updated_at: t });
+    // Μια διαγραμμένη προπόνηση δεν «ολοκλήρωσε» το planned row της.
+    await revertScheduledForWorkout(workoutId, t);
   });
   // Ξαναϋπολόγισε αντί να σβήσεις απλώς τις γραμμές της προπόνησης: αν αυτή
   // κρατούσε το ρεκόρ και ο «δεύτερος» δεν είχε ποτέ γραμμή (δεν ήταν PR τότε),
@@ -1410,6 +1417,7 @@ export const USER_DATA_TABLES = () => ({
   programs: db.programs, program_days: db.program_days, program_exercises: db.program_exercises,
   activities: db.activities, goals: db.goals,
   custom_trackers: db.custom_trackers, custom_tracker_entries: db.custom_tracker_entries,
+  scheduled_sessions: db.scheduled_sessions,
 });
 
 /**
@@ -3005,6 +3013,7 @@ export async function migrateProfileUserId(oldId: string, newId: string): Promis
     db.exercises, db.workouts, db.personal_records, db.skills,
     db.user_skill_progress, db.user_skill_step_completions, db.app_settings,
     db.body_metrics, db.programs, db.activities, db.goals,
+    db.scheduled_sessions,
     // Ετερόκλητα Table<T> — γενικεύουμε τον τύπο ώστε το .modify() να έχει
     // ΜΙΑ συμβατή υπογραφή αντί για union από 11 διαφορετικές.
   ] as unknown as Table<Record<string, unknown>, string>[];

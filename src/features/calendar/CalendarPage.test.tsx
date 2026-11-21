@@ -9,6 +9,7 @@ import { db } from '@/lib/db';
 import { setCurrentUserId } from '@/lib/db/session';
 import { SEED_ACTIVITIES } from '@/lib/db/seeds';
 import { createProgram, createProgramDay, localDay } from '@/lib/db/queries';
+import { createScheduledSession, weeklyDates } from '@/lib/db/scheduledSessions';
 
 /**
  * Το Calendar είναι πλέον το σημείο εκκίνησης καταγραφής (ARCHITECTURE-V4 §1-2):
@@ -46,6 +47,7 @@ beforeEach(async () => {
   await db.program_exercises.clear();
   await db.activities.clear();
   await db.body_metrics.clear();
+  await db.scheduled_sessions.clear();
   await db.activities.bulkAdd(SEED_ACTIVITIES);
 });
 
@@ -189,5 +191,90 @@ describe('CalendarPage — πλέγμα ανά εβδομάδα', () => {
     render(wrap(<CalendarPage />));
     await waitFor(() => expect(screen.getByText('15')).toBeTruthy());
     expect(screen.queryByText(en.calendar.magnitudeHint)).toBeNull();
+  });
+});
+
+/**
+ * Planner (v19): planned sessions στο ημερολόγιο — δημιουργία, εβδομαδιαία
+ * επανάληψη, start→active workout και delete με confirm.
+ */
+describe('CalendarPage — προγραμματισμένες προπονήσεις', () => {
+  const today = localDay(new Date(FIXED_NOW));
+
+  it('δημιουργεί planned session από τη φόρμα και τη δείχνει στη μέρα', async () => {
+    render(wrap(<CalendarPage />));
+    await waitFor(() => expect(screen.getByText(en.calendar.scheduleSession)).toBeTruthy());
+
+    fireEvent.click(screen.getByText(en.calendar.scheduleSession));
+    const title = await screen.findByPlaceholderText(en.calendar.sessionTitlePlaceholder);
+    fireEvent.change(title, { target: { value: 'Planner UI' } });
+    fireEvent.click(screen.getByRole('button', { name: en.common.save }));
+
+    await waitFor(async () => expect(await db.scheduled_sessions.count()).toBe(1));
+    const [row] = await db.scheduled_sessions.toArray();
+    expect(row).toMatchObject({ title: 'Planner UI', date: today, status: 'planned' });
+    expect(await screen.findByText('Planner UI')).toBeTruthy();
+    expect(screen.getAllByTitle(en.calendar.planned).length).toBeGreaterThan(0);
+  });
+
+  it('επαναλαμβάνει εβδομαδιαία για N εβδομάδες (N rows, +7 ημέρες)', async () => {
+    render(wrap(<CalendarPage />));
+    await waitFor(() => expect(screen.getByText(en.calendar.scheduleSession)).toBeTruthy());
+    fireEvent.click(screen.getByText(en.calendar.scheduleSession));
+
+    fireEvent.change(await screen.findByPlaceholderText(en.calendar.sessionTitlePlaceholder), {
+      target: { value: 'Weekly UI' },
+    });
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: en.common.save }));
+
+    await waitFor(async () => expect(await db.scheduled_sessions.count()).toBe(3));
+    const dates = (await db.scheduled_sessions.toArray()).map((s) => s.date).sort();
+    expect(dates).toEqual(weeklyDates(today, 3).sort());
+  });
+
+  it('«Ξεκίνα» δημιουργεί workout, το συνδέει και πλοηγεί στο active', async () => {
+    const scheduled = await createScheduledSession({ date: today, title: 'Start Me' });
+
+    render(wrap(<CalendarPage />));
+    fireEvent.click(await screen.findByLabelText(en.calendar.sessionStart));
+
+    await waitFor(async () => expect(await db.workouts.count()).toBe(1));
+    const [workout] = await db.workouts.toArray();
+    const row = await db.scheduled_sessions.get(scheduled.id);
+    expect(row!.workout_id).toBe(workout!.id);
+    expect(workout!.workout_type).toBe('Start Me');
+    await waitFor(() =>
+      expect(screen.getByTestId('location').textContent).toBe('/workout/active'),
+    );
+  });
+
+  it('το Skip αλλάζει status και εξαφανίζει το planned marker', async () => {
+    const scheduled = await createScheduledSession({ date: today, title: 'Skip Me' });
+
+    render(wrap(<CalendarPage />));
+    fireEvent.click(await screen.findByText('Skip Me'));
+    fireEvent.click(await screen.findByRole('button', { name: en.calendar.sessionSkip }));
+
+    await waitFor(async () => {
+      const row = await db.scheduled_sessions.get(scheduled.id);
+      expect(row!.status).toBe('skipped');
+    });
+    await waitFor(() => expect(screen.queryAllByTitle(en.calendar.planned)).toHaveLength(0));
+  });
+
+  it('το Delete ζητά confirm και αφαιρεί το planned session', async () => {
+    const scheduled = await createScheduledSession({ date: today, title: 'Delete Me' });
+
+    render(wrap(<CalendarPage />));
+    fireEvent.click(await screen.findByText('Delete Me'));
+    fireEvent.click(await screen.findByLabelText(en.calendar.sessionDeleteTitle));
+    fireEvent.click(await screen.findByRole('button', { name: en.common.delete }));
+
+    await waitFor(async () => {
+      const row = await db.scheduled_sessions.get(scheduled.id);
+      expect(row!.deleted_at).not.toBeNull();
+    });
+    await waitFor(() => expect(screen.queryByText('Delete Me')).toBeNull());
   });
 });

@@ -184,6 +184,31 @@ export interface Workout {
   deleted_at: ISOTimestamp | null;
 }
 
+/** v19: μια προγραμματισμένη (όχι ακόμη εκτελεσμένη) προπόνηση στο ημερολόγιο. */
+export type ScheduledSessionStatus = 'planned' | 'done' | 'skipped';
+
+export interface ScheduledSession {
+  id: UUID;
+  user_id: UUID;
+  /** Τοπική ημερομηνία YYYY-MM-DD — ποτέ UTC. */
+  date: string;
+  /** Προαιρετική ώρα HH:MM (τοπική). */
+  time: string | null;
+  title: string;
+  /** Ποιο πρόγραμμα/μέρα θα ξεκινήσει με «Ξεκίνα» (null = ad-hoc). */
+  program_id: UUID | null;
+  program_day_id: UUID | null;
+  /** Ad-hoc άθλημα· null όταν το πρόγραμμα το ορίζει. */
+  activity_kind: ActivityKind | null;
+  notes: string | null;
+  status: ScheduledSessionStatus;
+  /** Το workout που γεννήθηκε από αυτό το planned row (όταν ξεκινήσει). */
+  workout_id: UUID | null;
+  created_at: ISOTimestamp;
+  updated_at: ISOTimestamp;
+  deleted_at: ISOTimestamp | null;
+}
+
 export interface SetEntry {
   id: UUID;
   workout_id: UUID;

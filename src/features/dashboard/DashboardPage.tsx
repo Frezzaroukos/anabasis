@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { FULL_WIDTH, resolveCardOrder, type DashboardCardKey } from './cards';
 import { SkillLadderCard } from './components/SkillLadderCard';
 import { StartWorkoutCta } from './components/StartWorkoutCta';
+import { ScheduledTodayCard } from './components/ScheduledTodayCard';
 import { RecentActivityCard } from './components/RecentActivityCard';
 import { AltitudeCard } from '@/features/achievements/AltitudeCard';
 import { GoalsCard } from './components/GoalsCard';
@@ -70,6 +71,7 @@ const HERO_UNIT_KEY: Record<HeroTier, string> = {
 const CARD_COMPONENTS: Record<DashboardCardKey, React.ComponentType> = {
   skillLadder: SkillLadderCard,
   cta: StartWorkoutCta,
+  scheduled: ScheduledTodayCard,
   community: CommunityCard,
   recentActivity: RecentActivityCard,
   altitude: AltitudeCard,

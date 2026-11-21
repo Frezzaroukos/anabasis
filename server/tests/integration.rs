@@ -2517,6 +2517,57 @@ async fn sync_rejects_program_day_of_another_user() {
     assert_eq!(body["error"], "wrong_user");
 }
 
+/// v19 planner: το `scheduled_sessions` πρέπει να περνά την allowlist και να
+/// κάνει round-trip στο pull — αλλιώς οι προγραμματισμένες προπονήσεις θα
+/// έμεναν μόνο στη συσκευή που τις δημιούργησε.
+#[tokio::test]
+async fn sync_accepts_scheduled_sessions() {
+    let (app, _state, _dir) = test_app(None).await;
+
+    let (_, body) = signup(&app, "planner@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let user_id = body["account"]["id"].as_str().unwrap().to_string();
+
+    let scheduled = json!({
+        "id": "sched-1", "user_id": user_id, "date": "2026-11-21",
+        "time": "18:30", "title": "Upper", "program_id": null,
+        "program_day_id": null, "activity_kind": "strength", "notes": null,
+        "status": "planned", "workout_id": null,
+        "created_at": "2026-11-21T10:00:00Z", "updated_at": "2026-11-21T10:00:00Z",
+        "deleted_at": null
+    });
+
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [{ "tbl": "scheduled_sessions", "rows": [scheduled] }] })),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "το scheduled_sessions πρέπει να γίνεται δεκτό"
+    );
+
+    let (_, pulled) = call(
+        &app,
+        "POST",
+        "/api/sync/pull",
+        Some(&token),
+        Some(json!({ "cursor": 0 })),
+    )
+    .await;
+    let changes = pulled["changes"].as_array().unwrap();
+    let rows = changes
+        .iter()
+        .find(|c| c["tbl"] == "scheduled_sessions")
+        .expect("η δεύτερη συσκευή πρέπει να κατεβάζει το planned session");
+    assert_eq!(rows["rows"][0]["title"], "Upper");
+    assert_eq!(rows["rows"][0]["date"], "2026-11-21");
+}
+
 /* ═══════════════ Magic-link (passwordless email) login ═══════════════ */
 
 fn test_email_config() -> EmailConfig {

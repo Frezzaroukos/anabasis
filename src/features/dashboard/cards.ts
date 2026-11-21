@@ -15,6 +15,7 @@
 export const DASHBOARD_CARD_KEYS = [
   'skillLadder',
   'cta',
+  'scheduled',
   'community',
   'recentActivity',
   'altitude',
@@ -34,6 +35,7 @@ export type DashboardCardKey = (typeof DASHBOARD_CARD_KEYS)[number];
 export const CARD_LABEL: Record<DashboardCardKey, string> = {
   skillLadder: 'dashboard.skillLadder',
   cta: 'dashboard.startCta',
+  scheduled: 'dashboard.scheduledToday',
   community: 'community.cardTitle',
   recentActivity: 'dashboard.recentActivity',
   altitude: 'gami.title',

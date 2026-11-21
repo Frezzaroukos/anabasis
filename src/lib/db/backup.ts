@@ -18,7 +18,7 @@ import { USER_DATA_TABLES } from './queries';
 
 const now = () => new Date().toISOString();
 
-/** Τρέχουσα έκδοση format. v1→8 πίνακες, v2→18 πίνακες, v3→+scope/profile_id. */
+/** Τρέχουσα έκδοση format. v1→8 πίνακες, v2→19 πίνακες (v19 planner), v3→+scope/profile_id. */
 export const BACKUP_VERSION = 3;
 
 export type BackupScope = 'profile' | 'device';
@@ -53,7 +53,7 @@ export async function exportProfile(userId: string = getCurrentUserId()): Promis
     users, exercises, workouts, personal_records, skills,
     user_skill_progress, user_skill_step_completions, app_settings,
     body_metrics, programs, activities, goals,
-    custom_trackers, custom_tracker_entries,
+    custom_trackers, custom_tracker_entries, scheduled_sessions,
   ] = await Promise.all([
     db.users.where('id').equals(userId).toArray(),
     db.exercises.where('user_id').equals(userId).toArray(),
@@ -69,6 +69,7 @@ export async function exportProfile(userId: string = getCurrentUserId()): Promis
     db.goals.where('user_id').equals(userId).toArray(),
     db.custom_trackers.where('user_id').equals(userId).toArray(),
     db.custom_tracker_entries.where('user_id').equals(userId).toArray(),
+    db.scheduled_sessions.where('user_id').equals(userId).toArray(),
   ]);
 
   // Child tables: ανήκουν μέσω parent id, όχι μέσω δικού τους user_id.
@@ -90,7 +91,7 @@ export async function exportProfile(userId: string = getCurrentUserId()): Promis
     users, exercises, workouts, sets, personal_records, skills, skill_steps,
     user_skill_progress, user_skill_step_completions, app_settings, body_metrics,
     programs, program_days, program_exercises, activities, goals,
-    custom_trackers, custom_tracker_entries,
+    custom_trackers, custom_tracker_entries, scheduled_sessions,
   };
   return JSON.stringify(
     {

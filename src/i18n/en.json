@@ -509,7 +509,36 @@
     "pullupBarHint": "Pull-ups · dips · hanging leg raise · L-sit",
     "futureBlocked": "You can’t log a workout in the future. Pick today or a past day.",
     "pasteWorkout": "Paste workout notes",
-    "pasteWorkoutHint": "Paste a full session from Notes/Notion and save it straight to this day."
+    "pasteWorkoutHint": "Paste a full session from Notes/Notion and save it straight to this day.",
+    "planned": "Planned",
+    "noPlanned": "Nothing planned for this day.",
+    "scheduleSession": "Schedule session",
+    "newScheduled": "Schedule a session",
+    "editScheduled": "Edit planned session",
+    "sessionTitle": "Title",
+    "sessionTitlePlaceholder": "e.g. Upper body",
+    "sessionDate": "Date",
+    "sessionTime": "Time",
+    "sessionProgram": "From a program",
+    "sessionNoProgram": "No program (ad-hoc)",
+    "sessionWholeProgram": "{{name}} — whole program",
+    "sessionActivity": "Activity",
+    "sessionNotes": "Notes",
+    "sessionNotesPlaceholder": "Optional notes",
+    "sessionStatusLabel": "Status",
+    "repeatWeeks": "Repeat weekly",
+    "repeatWeeksHint": "Creates {{count}} session, one every 7 days.",
+    "repeatWeeksHint_other": "Creates {{count}} sessions, one every 7 days.",
+    "sessionStart": "Start now",
+    "sessionSkip": "Skip",
+    "sessionUnskip": "Restore",
+    "sessionDeleteTitle": "Delete this planned session?",
+    "sessionDeleteDesc": "It will be removed from the calendar.",
+    "status": {
+      "planned": "Planned",
+      "done": "Done",
+      "skipped": "Skipped"
+    }
   },
   "body": {
     "weight": "Weight",
@@ -645,7 +674,10 @@
     "saveProgressDesc": "Create a free account to back up this device and sync it to your other devices.",
     "saveProgressCta": "Save it",
     "activeThisWeek_one": "{{count}} day trained this week",
-    "activeThisWeek_other": "{{count}} days trained this week"
+    "activeThisWeek_other": "{{count}} days trained this week",
+    "scheduledToday": "Today in your plan",
+    "scheduledMore": "{{count}} more planned",
+    "scheduledMore_other": "{{count}} more planned"
   },
   "setType": {
     "normal": "Normal",

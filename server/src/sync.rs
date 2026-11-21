@@ -12,7 +12,7 @@ use crate::error::AppError;
 use crate::json::AppJson;
 use crate::util::now_iso;
 
-/// 15 backup tables του client — allowlist, βλ. API-CONTRACT.md §SQLite schema.
+/// 19 backup tables του client — allowlist, βλ. API-CONTRACT.md §SQLite schema.
 const ALLOWED_TABLES: &[&str] = &[
     "users",
     "exercises",
@@ -32,6 +32,7 @@ const ALLOWED_TABLES: &[&str] = &[
     "goals",
     "custom_trackers",
     "custom_tracker_entries",
+    "scheduled_sessions",
 ];
 
 const MAX_PUSH_ROWS: usize = 5000;

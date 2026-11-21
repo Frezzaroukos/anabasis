@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowUpFromLine, ChevronLeft, ChevronRight, ClipboardPaste, Flame, House, Plus } from 'lucide-react';
+import { ArrowUpFromLine, ChevronLeft, ChevronRight, ClipboardPaste, Flame, House, Play, Plus } from 'lucide-react';
 import {
   countProgramDaySessions,
   createProgram,
@@ -25,7 +25,16 @@ import { Input } from '@/components/ui/input';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { countProgramDayExercises } from '@/lib/db/schedule';
+import {
+  listScheduledSessions,
+  startScheduledSession,
+} from '@/lib/db/scheduledSessions';
+import type { ScheduledSession } from '@/lib/db/types';
 import { QuickPasteWorkoutSheet } from '@/features/workout/components/QuickPasteWorkoutSheet';
+import {
+  ScheduledSessionSheet,
+  type SchedulableProgram,
+} from './components/ScheduledSessionSheet';
 import { DOT_SIZE_CLASS, dotSizeOf, parseDayKey, weekAdherenceTint } from './calendarMath';
 
 /**
@@ -56,6 +65,8 @@ export function CalendarPage() {
   const [selected, setSelected] = useState<string | null>(today);
   const [addOpen, setAddOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<ScheduledSession | null>(null);
   const [adHocLabel, setAdHocLabel] = useState('');
   // Τα start-helpers γυρνούν null όταν υπάρχει ήδη ενεργή προπόνηση (ένας
   // guard στο queries.ts). Πριν, το πάτημα απλά δεν έκανε ΤΙΠΟΤΑ.
@@ -207,6 +218,40 @@ export function CalendarPage() {
   };
 
   /**
+   * «Ξεκίνα» από planned row: ίδιος δρόμος με το κανονικό start (πρόγραμμα-μέρα
+   * / flat πρόγραμμα / ad-hoc) και σύνδεση του workout με το planned row. Το
+   * status γίνεται `done` μόνο όταν ολοκληρωθεί η προπόνηση (endWorkout).
+   */
+  const onStartScheduled = async (session: ScheduledSession): Promise<boolean> => {
+    if (starting) return false;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const result = await startScheduledSession(session);
+      if (!result) {
+        setStartError(t('calendar.startBlocked'));
+        return false;
+      }
+      setScheduleOpen(false);
+      setEditingSession(null);
+      navigate('/workout/active');
+      return true;
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const openScheduleSheet = (session: ScheduledSession | null) => {
+    setEditingSession(session);
+    setScheduleOpen(true);
+  };
+  const closeScheduleSheet = () => {
+    setScheduleOpen(false);
+    setEditingSession(null);
+    setStartError(null);
+  };
+
+  /**
    * Το BottomSheet cleanup (`useBackToClose`) καλεί `history.back()` ασύγχρονα.
    * Περιμένουμε το `popstate` πριν ανοίξουμε δεύτερο sheet ή πλοηγηθούμε σε
    * άλλο route (ίδιο fix με BottomTabNav — αλλιώς το `history.back()` ακυρώνει
@@ -243,6 +288,39 @@ export function CalendarPage() {
     () => getCalendar(fromKey, toKey),
     [fromKey, toKey],
     new Map<string, DayActivities>(),
+  );
+
+  // Planned sessions του ορατού μήνα — ΔΕΝ είναι workouts· ζουν σε ξεχωριστό
+  // πίνακα και δείχνονται με δικό τους (κούφιο) marker.
+  const scheduled = useLiveQuery(
+    () => listScheduledSessions(fromKey, toKey),
+    [fromKey, toKey],
+    [],
+  );
+  const scheduledByDate = useMemo(() => {
+    const map = new Map<string, ScheduledSession[]>();
+    for (const session of scheduled) {
+      const list = map.get(session.date) ?? [];
+      list.push(session);
+      map.set(session.date, list);
+    }
+    return map;
+  }, [scheduled]);
+  const plannedDates = useMemo(() => {
+    const set = new Set<string>();
+    for (const session of scheduled) {
+      if (session.status === 'planned') set.add(session.date);
+    }
+    return set;
+  }, [scheduled]);
+  const schedulablePrograms = useMemo<SchedulableProgram[]>(
+    () =>
+      (programsWithDays ?? []).map(({ program, days }) => ({
+        id: program.id,
+        name: program.name,
+        days: days.map(({ day }) => ({ id: day.id, name: day.name })),
+      })),
+    [programsWithDays],
   );
 
   // Πλέγμα: ξεκινά Δευτέρα (ευρωπαϊκή εβδομάδα)
@@ -323,6 +401,7 @@ export function CalendarPage() {
   }, [cursor.month, cursor.year]);
 
   const day = selected ? cal.get(selected) : undefined;
+  const dayScheduled = selected ? (scheduledByDate.get(selected) ?? []) : [];
 
   // Σύνοψη ορατού μήνα — δίνει νόημα σε άδεια/γεμάτη σελίδα χωρίς να ανοίξεις μέρα.
   const monthStats = useMemo(() => {
@@ -549,6 +628,12 @@ export function CalendarPage() {
                                 +{ws.length - 3}
                               </span>
                             )}
+                            {plannedDates.has(c.key) && (
+                              <span
+                                title={t('calendar.planned')}
+                                className="h-2 w-2 rounded-full border border-primary bg-transparent"
+                              />
+                            )}
                           </>
                         );
                       })()}
@@ -574,14 +659,27 @@ export function CalendarPage() {
         {/* Οι κουκκίδες μεγαλώνουν με το μέγεθος της συνεδρίας. Ήταν μόνο σε
             `title` — αόρατο σε κάθε συσκευή αφής, δηλαδή εκεί που χρησιμοποιείται
             το app. Ο υπόμνηση μπαίνει μόνο όταν υπάρχει κάτι να εξηγηθεί. */}
-        {monthStats.workouts > 0 && (
-          <div className="mt-2.5 flex items-center justify-center gap-1.5 border-t border-border/40 pt-2.5 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1" aria-hidden>
-              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
-              <span className="h-2 w-2 rounded-full bg-muted-foreground/60" />
-              <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/60" />
-            </span>
-            {t('calendar.magnitudeHint')}
+        {(monthStats.workouts > 0 || plannedDates.size > 0) && (
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border/40 pt-2.5 text-xs text-muted-foreground">
+            {monthStats.workouts > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1" aria-hidden>
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                  <span className="h-2 w-2 rounded-full bg-muted-foreground/60" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/60" />
+                </span>
+                {t('calendar.magnitudeHint')}
+              </span>
+            )}
+            {plannedDates.size > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="h-2 w-2 rounded-full border border-primary bg-transparent"
+                />
+                {t('calendar.planned')}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -607,9 +705,87 @@ export function CalendarPage() {
             </span>
           )}
         </div>
-        {!day || day.workouts.length === 0 ? (
+        {selected && (
+          <div className="mb-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('calendar.planned')}
+              </h3>
+              <button
+                type="button"
+                onClick={() => openScheduleSheet(null)}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:opacity-80"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                {t('calendar.scheduleSession')}
+              </button>
+            </div>
+            {startError && (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
+                {startError}
+              </p>
+            )}
+            {dayScheduled.length === 0 ? (
+              <p className="text-xs text-muted-foreground">{t('calendar.noPlanned')}</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {dayScheduled.map((s) => (
+                  <li
+                    key={s.id}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md px-3 py-2',
+                      s.status === 'skipped' ? 'bg-muted/20' : 'bg-primary/5',
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'h-2 w-2 shrink-0 rounded-full border',
+                        s.status === 'planned'
+                          ? 'border-primary bg-transparent'
+                          : s.status === 'done'
+                            ? 'border-transparent bg-primary'
+                            : 'border-muted-foreground/50 bg-transparent',
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => openScheduleSheet(s)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <span
+                        className={cn(
+                          'block truncate text-sm font-medium',
+                          s.status === 'skipped' && 'text-muted-foreground line-through',
+                        )}
+                      >
+                        {s.title}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {[s.time, t(`calendar.status.${s.status}`)].filter(Boolean).join(' · ')}
+                      </span>
+                    </button>
+                    {s.status === 'planned' && s.date <= today && (
+                      <button
+                        type="button"
+                        onClick={() => void onStartScheduled(s)}
+                        aria-label={t('calendar.sessionStart')}
+                        title={t('calendar.sessionStart')}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                      >
+                        <Play className="h-4 w-4" />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {(!day || day.workouts.length === 0) && dayScheduled.length === 0 && (
           <p className="text-sm text-muted-foreground">{t('calendar.noActivity')}</p>
-        ) : (
+        )}
+        {day && day.workouts.length > 0 && (
           <ul className="space-y-2">
             {/* Κάθε προπόνηση ανοίγει — πριν ήταν αδιέξοδο: έβλεπες ότι κάτι
                 έγινε εκείνη τη μέρα αλλά όχι ΤΙ. */}
@@ -833,6 +1009,18 @@ export function CalendarPage() {
         initialDate={selected ?? today}
         onSaved={(res) => runAfterSheetClose(() => navigate(`/history/${res.workoutId}`))}
       />
+
+      {scheduleOpen && (
+        <ScheduledSessionSheet
+          key={editingSession?.id ?? `new-${selected ?? today}`}
+          onClose={closeScheduleSheet}
+          date={editingSession?.date ?? selected ?? today}
+          session={editingSession}
+          programs={schedulablePrograms}
+          activities={activities}
+          onStart={onStartScheduled}
+        />
+      )}
     </div>
   );
 }
