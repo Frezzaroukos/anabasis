@@ -20,6 +20,7 @@ import {
   saveBodyMetric,
   undoStep,
 } from './queries';
+import { createScheduledSession } from './scheduledSessions';
 
 /**
  * Wave 2 — tombstones. Κάθε διαγραφή σε skills/steps/progress/completions/
@@ -38,6 +39,7 @@ beforeEach(async () => {
     db.user_skill_progress,
     db.user_skill_step_completions,
     db.body_metrics,
+    db.scheduled_sessions,
   ]) {
     await table.clear();
   }
@@ -156,6 +158,7 @@ describe('deleteProfile', () => {
     const step = await addSkillStep(skill.id, { name: 'Wall' });
     await achieveStep(skill.id, step.id, step.target_value);
     await saveBodyMetric('2026-08-02', { weight_kg: 75 });
+    await createScheduledSession({ date: '2026-08-03', title: 'Planned tombstone' });
 
     await deleteProfile(UID);
 
@@ -164,12 +167,15 @@ describe('deleteProfile', () => {
     const progress = await db.user_skill_progress.toArray();
     const completions = await db.user_skill_step_completions.toArray();
     const body = await db.body_metrics.toArray();
+    const scheduled = await db.scheduled_sessions.toArray();
     expect(skills.every((s) => s.deleted_at != null)).toBe(true);
     expect(steps.every((s) => s.deleted_at != null)).toBe(true);
     expect(progress.every((p) => p.deleted_at != null)).toBe(true);
     expect(completions.every((c) => c.deleted_at != null)).toBe(true);
     expect(body.every((m) => m.deleted_at != null)).toBe(true);
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0]!.deleted_at).toBeTruthy();
 
-    expect(await getCurrentProfileDataCounts()).toMatchObject({ steps: 0 });
+    expect(await getCurrentProfileDataCounts()).toMatchObject({ steps: 0, scheduled: 0 });
   });
 });

@@ -84,11 +84,9 @@ export function weeklyDates(startDate: string, weeks: number): string[] {
   );
 }
 
-export async function createScheduledSession(
-  input: ScheduledSessionInput,
-): Promise<ScheduledSession> {
+function buildScheduledRow(input: ScheduledSessionInput): ScheduledSession {
   const t = now();
-  const row: ScheduledSession = {
+  return {
     id: uuid(),
     user_id: getCurrentUserId(),
     date: assertDate(input.date),
@@ -104,20 +102,34 @@ export async function createScheduledSession(
     updated_at: t,
     deleted_at: null,
   };
+}
+
+export async function createScheduledSession(
+  input: ScheduledSessionInput,
+): Promise<ScheduledSession> {
+  const row = buildScheduledRow(input);
   await db.scheduled_sessions.add(row);
   return row;
 }
 
-/** Δημιουργεί την ίδια προπόνηση κάθε εβδομάδα για `weeks` εβδομάδες. */
+/**
+ * Δημιουργεί την ίδια προπόνηση κάθε εβδομάδα για `weeks` εβδομάδες.
+ *
+ * Χτίζει ΟΛΕΣ τις γραμμές πριν γράψει και τις βάζει σε ΜΙΑ transaction:
+ * αλλιώς ένα abort στη μέση άφηνε μισοδημιουργημένη σειρά (π.χ. 6 από 12
+ * εβδομάδες) που ο χρήστης δεν μπορούσε να ξεχωρίσει από πλήρη.
+ */
 export async function createRecurringScheduledSessions(
   input: ScheduledSessionInput,
   weeks: number,
 ): Promise<ScheduledSession[]> {
-  const out: ScheduledSession[] = [];
-  for (const date of weeklyDates(input.date, weeks)) {
-    out.push(await createScheduledSession({ ...input, date }));
-  }
-  return out;
+  const rows = weeklyDates(input.date, weeks).map((date) =>
+    buildScheduledRow({ ...input, date }),
+  );
+  await db.transaction('rw', db.scheduled_sessions, async () => {
+    await db.scheduled_sessions.bulkAdd(rows);
+  });
+  return rows;
 }
 
 export async function updateScheduledSession(

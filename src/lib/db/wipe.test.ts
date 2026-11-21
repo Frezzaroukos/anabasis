@@ -12,12 +12,14 @@ import {
   createProgramDay,
   createSkill,
   getCurrentProfileDataCounts,
+  getProfileStats,
   importBodyMetrics,
   listActivities,
   startWorkout,
 } from './queries';
 import { createGoal } from './goals';
 import { addTrackerEntry, createTracker } from './trackers';
+import { createScheduledSession } from './scheduledSessions';
 import { deleteCurrentProfileData } from './wipe';
 import type { Activity } from './types';
 
@@ -47,6 +49,7 @@ beforeEach(async () => {
     db.body_metrics,
     db.custom_trackers,
     db.custom_tracker_entries,
+    db.scheduled_sessions,
   ]) {
     await table.clear();
   }
@@ -75,6 +78,11 @@ async function seedProfile(uid: string, label: string): Promise<void> {
   await importBodyMetrics([{ date: '2026-08-15', patch: { calories_in: 2200 } }]);
   const tracker = await createTracker(`${label} Tracker`);
   await addTrackerEntry(tracker.id, 1);
+  await createScheduledSession({
+    date: '2026-08-16',
+    title: `${label} Planned`,
+    activity_kind: 'strength',
+  });
 }
 
 async function addBuiltinActivity(): Promise<Activity> {
@@ -105,19 +113,27 @@ describe('deleteCurrentProfileData', () => {
     await seedProfile(B, 'Beta');
 
     setCurrentUserId(A);
-    expect(await getCurrentProfileDataCounts()).toMatchObject({ workouts: 1, sets: 1 });
+    expect(await getCurrentProfileDataCounts()).toMatchObject({
+      workouts: 1,
+      sets: 1,
+      scheduled: 1,
+    });
+    expect((await getProfileStats(A)).scheduled).toBe(1);
 
     const res = await deleteCurrentProfileData();
     expect(res.counts.workouts).toBe(1);
     expect(res.counts.sets).toBe(1);
     expect(res.counts.body_metrics).toBe(1);
+    expect(res.counts.scheduled_sessions).toBe(1);
 
     expect(await getCurrentProfileDataCounts()).toEqual({
       workouts: 0,
       sets: 0,
       prs: 0,
       steps: 0,
+      scheduled: 0,
     });
+    expect((await getProfileStats(A)).scheduled).toBe(0);
     // Τα δικά του custom activities έφυγαν· το builtin μένει.
     expect((await listActivities()).map((a) => a.label)).not.toContain('Alpha Sport');
 
@@ -149,13 +165,20 @@ describe('deleteCurrentProfileData', () => {
     const myPrs = await db.personal_records.where('user_id').equals(A).toArray();
     expect(myPrs.length).toBeGreaterThan(0);
     expect(myPrs.every((x) => x.deleted_at != null)).toBe(true);
+    const myPlanned = await db.scheduled_sessions.where('user_id').equals(A).toArray();
+    expect(myPlanned.length).toBeGreaterThan(0);
+    expect(myPlanned.every((x) => x.deleted_at != null)).toBe(true);
 
     // Builtin row επιβιώνει.
     expect((await db.activities.get('wipe-builtin-activity'))?.deleted_at).toBeFalsy();
 
     // Το άλλο προφίλ παραμένει ανέγγιχτο.
     setCurrentUserId(B);
-    expect(await getCurrentProfileDataCounts()).toMatchObject({ workouts: 1, sets: 1 });
+    expect(await getCurrentProfileDataCounts()).toMatchObject({
+      workouts: 1,
+      sets: 1,
+      scheduled: 1,
+    });
     expect((await listActivities()).map((a) => a.label)).toContain('Beta Sport');
   });
 
