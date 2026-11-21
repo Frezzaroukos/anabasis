@@ -15,9 +15,8 @@ import { SEED_SKILLS } from './seeds';
 
 /**
  * Διαγραφή skill: μόνο ΔΙΚΑ ΣΟΥ, άδεια (χωρίς σκαλιά/πρόοδο/ολοκληρώσεις/
- * στόχους). Builtin → blocked. Με ιστορικό → blocked με λόγο. Ο πίνακας
- * `skills` δεν έχει tombstones, οπότε η διαγραφή είναι πραγματική και
- * επιτρέπεται μόνο όταν δεν κρέμεται τίποτα.
+ * στόχους). Builtin → blocked. Με ιστορικό → blocked με λόγο. Η διαγραφή
+ * είναι tombstone (Wave 2) ώστε να ταξιδεύει με sync.
  */
 
 beforeEach(async () => {
@@ -35,7 +34,7 @@ describe('deleteSkill', () => {
     const result = await deleteSkill(s.id);
 
     expect(result.deleted).toBe(true);
-    expect(await db.skills.get(s.id)).toBeUndefined();
+    expect((await db.skills.get(s.id))?.deleted_at).toBeTruthy();
     expect((await listSkills(true)).some((x) => x.id === s.id)).toBe(false);
   });
 

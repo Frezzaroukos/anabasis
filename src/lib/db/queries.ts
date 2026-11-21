@@ -2554,19 +2554,23 @@ export async function countSkillUsage(id: string): Promise<{
   goals: number;
   total: number;
 }> {
-  const steps = await db.skill_steps.where('skill_id').equals(id).toArray();
+  const steps = (await db.skill_steps.where('skill_id').equals(id).toArray()).filter(
+    (s) => s.deleted_at == null,
+  );
   const stepIds = new Set(steps.map((s) => s.id));
-  const [progress, completions, goals] = await Promise.all([
-    db.user_skill_progress.where('skill_id').equals(id).count(),
-    db.user_skill_step_completions.toArray().then((rows) =>
-      rows.filter((r) => stepIds.has(r.skill_step_id)).length,
-    ),
+  // Tombstones δεν «κρέμονται» — μετράμε μόνο ζωντανές γραμμές.
+  const [progressRows, completionsRows, goalsRows] = await Promise.all([
+    db.user_skill_progress.where('skill_id').equals(id).toArray(),
+    db.user_skill_step_completions.toArray(),
     // Το goals δεν έχει index στο skill_id (schema.ts: goals index δεν το
     // περιλαμβάνει) — φιλτράρουμε in-memory όπως τα completions.
-    db.goals.toArray().then((rows) =>
-      rows.filter((g) => g.skill_id === id && g.deleted_at == null).length,
-    ),
+    db.goals.toArray(),
   ]);
+  const progress = progressRows.filter((p) => p.deleted_at == null).length;
+  const completions = completionsRows.filter(
+    (r) => r.deleted_at == null && stepIds.has(r.skill_step_id),
+  ).length;
+  const goals = goalsRows.filter((g) => g.skill_id === id && g.deleted_at == null).length;
   return {
     steps: steps.length,
     progress,
@@ -2581,11 +2585,11 @@ export type DeleteSkillResult =
   | { deleted: false; reason: 'builtin' | 'in_use'; usage: Awaited<ReturnType<typeof countSkillUsage>> };
 
 /**
- * Διαγραφή ΔΙΚΟΥ ΣΟΥ skill. Ο `skills` πίνακας ΔΕΝ έχει `deleted_at` (δεν είναι
- * sync-table με tombstones) — γι' αυτό η διαγραφή γίνεται μόνο όταν δεν
- * κρέμεται τίποτα από πάνω (κανένα σκαλί/πρόοδος/ολοκλήρωση/στόχος), ώστε να
- * μη μείνουν ορφανά. Builtin (`user_id === null`) δεν διαγράφονται — μόνο
- * αρχειοθετούνται. Με ιστορικό → `{ deleted: false, reason: 'in_use' }`.
+ * Διαγραφή ΔΙΚΟΥ ΣΟΥ skill. Η διαγραφή γίνεται tombstone (`deleted_at`) ώστε
+ * να ταξιδέψει με sync. Επιτρέπεται μόνο όταν δεν κρέμεται τίποτα από πάνω
+ * (κανένα σκαλί/πρόοδος/ολοκλήρωση/στόχος), ώστε να μη μείνουν ορφανά.
+ * Builtin (`user_id === null`) δεν διαγράφονται — μόνο αρχειοθετούνται.
+ * Με ιστορικό → `{ deleted: false, reason: 'in_use' }`.
  */
 export async function deleteSkill(id: string): Promise<DeleteSkillResult> {
   const skill = await db.skills.get(id);
@@ -2596,7 +2600,8 @@ export async function deleteSkill(id: string): Promise<DeleteSkillResult> {
   if (usage.total > 0) {
     return { deleted: false, reason: 'in_use', usage };
   }
-  await db.skills.delete(id);
+  const t = now();
+  await db.skills.update(id, { deleted_at: t, updated_at: t });
   return { deleted: true };
 }
 
