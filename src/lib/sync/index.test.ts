@@ -3,6 +3,7 @@ import { db } from '../db/schema';
 import { bootstrapDB } from '../db/bootstrap';
 import { DEFAULT_USER_ID, setCurrentUserId } from '../db/session';
 import {
+  achieveStep,
   addProgramExercise,
   addSet,
   addSkillStep,
@@ -13,6 +14,7 @@ import {
   deleteProgramDay,
   listProgramDays,
   startWorkout,
+  undoStep,
 } from '../db/queries';
 import { fullResync, syncNow } from './index';
 
@@ -735,5 +737,33 @@ describe('syncNow — legacy skill completion', () => {
     }>;
     const completions = changes.find((c) => c.tbl === 'user_skill_step_completions');
     expect(completions?.rows.some((r) => r.id === 'legacy-completion-1')).toBe(true);
+  });
+});
+
+describe('syncNow — tombstones', () => {
+  it('σπρώχνει τη σβησμένη ολοκλήρωση με deleted_at (όχι σαν ζωντανή)', async () => {
+    const skill = await createSkill({ name: 'Tombstone Push Skill' });
+    const step = await addSkillStep(skill.id, { name: 'Hold', target_value: 5 });
+    await achieveStep(skill.id, step.id, 5);
+    const completion = await db.user_skill_step_completions
+      .where('user_id')
+      .equals(DEFAULT_USER_ID)
+      .filter((c) => c.skill_step_id === step.id)
+      .first();
+    expect(completion).toBeTruthy();
+
+    await undoStep(skill.id, step.id);
+    const { calls } = stubFetch({});
+    await syncNow();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+    const pushed = changes
+      .find((c) => c.tbl === 'user_skill_step_completions')
+      ?.rows.find((r) => r.id === completion!.id);
+    expect(pushed).toBeTruthy();
+    expect(pushed!.deleted_at).toBeTruthy();
   });
 });
