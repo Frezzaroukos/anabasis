@@ -58,6 +58,9 @@ export function CalendarPage() {
   const [monthDirection, setMonthDirection] = useState<'next' | 'prev'>('next');
   const monthStripRef = useRef<HTMLDivElement>(null);
   const monthButtonsRef = useRef<Record<number, HTMLButtonElement | null>>({});
+  // Roving focus για το πλέγμα ημερών (πλήκτρα βέλους): κρατά ref ανά ημέρα
+  // ώστε το βέλος να μετακινεί πραγματικό DOM focus, όχι μόνο επιλογή.
+  const dayButtonsRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -390,6 +393,52 @@ export function CalendarPage() {
     setCursor({ year: cursor.year, month });
   };
 
+  /**
+   * Πλοήγηση πλέγματος με βέλη (APG grid pattern): ←/→ μέρα, ↑/↓ εβδομάδα,
+   * Home/End αρχή/τέλος εβδομάδας. Μετακινεί το focus στο κελί της νέας
+   * ημέρας· αν βγει εκτός μήνα, αλλάζει μήνα και εστιάζει την αντίστοιχη μέρα
+   * μόλις το πλέγμα ξανα-render-άρει.
+   */
+  const onDayKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, key: string) => {
+    const delta =
+      e.key === 'ArrowLeft'
+        ? -1
+        : e.key === 'ArrowRight'
+          ? 1
+          : e.key === 'ArrowUp'
+            ? -7
+            : e.key === 'ArrowDown'
+              ? 7
+              : 0;
+    let targetKey: string | null = null;
+    if (delta !== 0) {
+      const base = parseDayKey(key);
+      base.setDate(base.getDate() + delta);
+      targetKey = localDay(base);
+    } else if (e.key === 'Home' || e.key === 'End') {
+      const base = parseDayKey(key);
+      // Δευτέρα = 0 στη δική μας εβδομάδα (getDay: Κυρ=0 → +6 %7)
+      const weekday = (base.getDay() + 6) % 7;
+      base.setDate(base.getDate() + (e.key === 'Home' ? -weekday : 6 - weekday));
+      targetKey = localDay(base);
+    } else if (e.key === 'PageUp' || e.key === 'PageDown') {
+      e.preventDefault();
+      shift(e.key === 'PageUp' ? -1 : 1);
+      return;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    const target = parseDayKey(targetKey);
+    setSelected(targetKey);
+    if (target.getMonth() !== cursor.month || target.getFullYear() !== cursor.year) {
+      setMonthDirection(target > new Date(cursor.year, cursor.month, 1) ? 'next' : 'prev');
+      setCursor({ year: target.getFullYear(), month: target.getMonth() });
+    }
+    // Το κελί μπορεί να μην υπάρχει ακόμα (αλλαγή μήνα) — εστίασε στο επόμενο frame.
+    requestAnimationFrame(() => dayButtonsRef.current[targetKey!]?.focus());
+  };
+
   useEffect(() => {
     const strip = monthStripRef.current;
     const active = monthButtonsRef.current[cursor.month];
@@ -481,6 +530,7 @@ export function CalendarPage() {
           </div>
           <div
             ref={monthStripRef}
+            role="group"
             className="mt-3 flex snap-x snap-mandatory gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label={t('calendar.title')}
           >
@@ -498,6 +548,11 @@ export function CalendarPage() {
                   type="button"
                   onClick={() => goToMonth(month)}
                   aria-pressed={cursor.month === month}
+                  // Πλήρες όνομα μήνα (όχι «Ιαν») για screen reader.
+                  aria-label={new Date(cursor.year, month, 1).toLocaleDateString(
+                    i18n.resolvedLanguage,
+                    { month: 'long', year: 'numeric' },
+                  )}
                   className={cn(
                     'shrink-0 snap-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                     cursor.month === month
@@ -523,7 +578,7 @@ export function CalendarPage() {
             aria-label={t('calendar.prev')}
             className="flex h-11 w-11 items-center justify-center rounded-l-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
           <button
             onClick={goToday}
@@ -539,7 +594,7 @@ export function CalendarPage() {
             aria-label={t('calendar.next')}
             className="flex h-11 w-11 items-center justify-center rounded-r-lg text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
         </div>
@@ -578,7 +633,22 @@ export function CalendarPage() {
                 ) : (
                   <button
                     key={c.key}
+                    ref={(el) => {
+                      dayButtonsRef.current[c.key] = el;
+                    }}
                     onClick={() => setSelected(c.key)}
+                    onKeyDown={(e) => onDayKeyDown(e, c.key)}
+                    // Πλήρης ημερομηνία για screen reader — το γυμνό «12» θα ήταν
+                    // «δεκαδύο» χωρίς μήνα/έτος. Το aria-current="date" σημαίνει το
+                    // «σήμερα» ξεχωριστά από την τρέχουσα επιλογή (aria-pressed).
+                    aria-label={parseDayKey(c.key).toLocaleDateString(i18n.resolvedLanguage, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                    aria-current={c.key === today ? 'date' : undefined}
+                    aria-pressed={selected === c.key}
                     className={cn(
                       // min-h 48px (≥ WCAG 2.5.5) στο κινητό, πιο άνετο από sm.
                       // Ήταν 56px με gap-1: ένας άδειος μήνας έπιανε ~700px ύψος
