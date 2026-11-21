@@ -288,7 +288,12 @@
     "emptyTitle": "Start mastering skills",
     "emptyHint": "A skill is a progression chain: tuck → straddle → full. Track your steps from easy to hard.",
     "emptyExamples": "E.g. Front Lever, Planche, Muscle-up, Handstand Push-up",
-    "progressNeedMore": "Achieve two steps and your climb shows up here."
+    "progressNeedMore": "Achieve two steps and your climb shows up here.",
+    "deleteSkill": "Delete skill",
+    "deleteSkillConfirmTitle": "Delete this skill?",
+    "deleteSkillConfirmDesc": "The skill and its empty ladder will be removed. This can't be undone.",
+    "deleteBlockedInUse": "This skill has steps, progress or goals attached. Archive it instead of deleting.",
+    "deleteBlockedBuiltin": "Built-in skills cannot be deleted — you can archive them."
   },
   "settings": {
     "title": "Settings",
@@ -1049,7 +1054,23 @@
     "accessCodeHint": "Give this one-time code to a friend. It unlocks Pro for the selected duration, then they need to pay unless you grant again.",
     "createCode": "Create code",
     "codeError": "Could not create the code.",
-    "codeShownOnce": "Shown once — copy it now. The server stores only its hash."
+    "codeShownOnce": "Shown once — copy it now. The server stores only its hash.",
+    "reportsHeading": "Reports",
+    "reportsHint": "Manually reviewed reports from users. Nothing is automated — you decide.",
+    "reportsEmpty": "No reports here.",
+    "reportsLoadError": "Couldn't load reports.",
+    "reportsFilterOpen": "Open",
+    "reportsFilterReviewed": "Reviewed",
+    "reportsFilterAll": "All",
+    "reportsReporter": "Reporter",
+    "reportsTarget": "Reported profile",
+    "reportsReason": "Reason",
+    "reportsNote": "Details",
+    "reportsCreated": "Reported",
+    "reportsReviewed": "Reviewed",
+    "reportsMarkReviewed": "Mark as reviewed",
+    "reportsReviewError": "Couldn't update the report.",
+    "reportsNoNote": "—"
   },
   "templates": {
     "fullBody5x5": {
