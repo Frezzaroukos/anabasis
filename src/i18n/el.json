@@ -704,7 +704,12 @@
     "activeThisWeek_other": "{{count}} μέρες προπόνησης αυτή την εβδομάδα",
     "scheduledToday": "Σήμερα στο πρόγραμμα",
     "scheduledMore": "και {{count}} ακόμη",
-    "scheduledMore_other": "και {{count}} ακόμη"
+    "scheduledMore_other": "και {{count}} ακόμη",
+    "start": "Έναρξη",
+    "continue": "Συνέχεια",
+    "startScheduled": "Έναρξη {{title}}",
+    "continueScheduled": "Συνέχεια: {{title}}",
+    "scheduledStartError": "Δεν ήταν δυνατή η έναρξη αυτής της προπόνησης."
   },
   "setType": {
     "normal": "Κανονικό",
