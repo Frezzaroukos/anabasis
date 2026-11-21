@@ -8,10 +8,10 @@
  *    προφίλ της συσκευής, όχι «δικά σου».
  *
  * Ό,τι έχει `deleted_at` σημαδεύεται (tombstone) ώστε η διαγραφή να φύγει
- * και με sync· ό,τι δεν το έχει στο schema (personal_records, custom skills,
- * skill progress/completions) διαγράφεται οριστικά — είναι παράγωγα ή
- * legacy πίνακες χωρίς tombstone column. Το τελευταίο είναι γνωστός
- * sync-κίνδυνος (βλ. docs/fleet/2026-11-21-D-data.md), όχι κρυφό.
+ * και με sync. Αυτό ισχύει πλέον και για skills/skill_steps,
+ * user_skill_progress, user_skill_step_completions και body_metrics (Wave 2).
+ * Μόνο τα personal_records διαγράφονται οριστικά (παράγωγα, χωρίς tombstone
+ * column — τα χειρίζεται άλλο lane)· γνωστός sync-κίνδυνος, όχι κρυφός.
  *
  * Όλο το σβήσιμο σε ΜΙΑ transaction: ή φεύγουν όλα ή τίποτα.
  */
@@ -95,23 +95,42 @@ export async function deleteCurrentProfileData(): Promise<WipeResult> {
     if (skillIds.length > 0) {
       bump(
         'skill_steps',
-        await db.skill_steps.where('skill_id').anyOf(skillIds).delete(),
+        await db.skill_steps
+          .where('skill_id')
+          .anyOf(skillIds)
+          .and((s) => s.deleted_at == null)
+          .modify({ deleted_at: t, updated_at: t }),
       );
-      bump('skills', await db.skills.where('user_id').equals(uid).delete());
     }
+    bump(
+      'skills',
+      await db.skills
+        .where('user_id')
+        .equals(uid)
+        .and((s) => s.deleted_at == null)
+        .modify({ deleted_at: t, updated_at: t }),
+    );
 
-    // 3) Παράγωγα/legacy χωρίς tombstone column.
+    // 3) Παράγωγα χωρίς tombstone column — οριστική διαγραφή.
     bump(
       'personal_records',
       await db.personal_records.where('user_id').equals(uid).delete(),
     );
     bump(
       'user_skill_progress',
-      await db.user_skill_progress.where('user_id').equals(uid).delete(),
+      await db.user_skill_progress
+        .where('user_id')
+        .equals(uid)
+        .and((p) => p.deleted_at == null)
+        .modify({ deleted_at: t, updated_at: t }),
     );
     bump(
       'user_skill_step_completions',
-      await db.user_skill_step_completions.where('user_id').equals(uid).delete(),
+      await db.user_skill_step_completions
+        .where('user_id')
+        .equals(uid)
+        .and((c) => c.deleted_at == null)
+        .modify({ deleted_at: t, updated_at: t }),
     );
 
     // 4) Υπόλοιποι direct-owner πίνακες με soft delete.
@@ -139,8 +158,14 @@ export async function deleteCurrentProfileData(): Promise<WipeResult> {
         .and((g) => g.deleted_at == null)
         .modify({ deleted_at: t, updated_at: t }),
     );
-    // BodyMetric δεν έχει deleted_at (v7 schema) — hard delete.
-    bump('body_metrics', await db.body_metrics.where('user_id').equals(uid).delete());
+    bump(
+      'body_metrics',
+      await db.body_metrics
+        .where('user_id')
+        .equals(uid)
+        .and((m) => m.deleted_at == null)
+        .modify({ deleted_at: t, updated_at: t }),
+    );
     bump(
       'custom_tracker_entries',
       await db.custom_tracker_entries
