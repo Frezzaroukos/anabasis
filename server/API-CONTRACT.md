@@ -118,10 +118,11 @@ gc_graveyard(                -- migration 0007· anti-resurrection ίχνος
 
 Ο server ΔΕΝ καταλαβαίνει τα σχήματα των rows — γενικό replicated row store.
 Μελλοντικές αλλαγές στο client schema δεν χρειάζονται server migration.
-Επιτρεπτά `tbl`: τα 15 backup tables του client (allowlist — reject άγνωστα):
+Επιτρεπτά `tbl`: τα 19 backup tables του client (allowlist — reject άγνωστα):
 users, exercises, workouts, sets, personal_records, skills, skill_steps,
 user_skill_progress, user_skill_step_completions, app_settings, body_metrics,
-programs, program_exercises, activities, goals.
+programs, program_days, program_exercises, activities, goals, custom_trackers,
+custom_tracker_entries, scheduled_sessions.
 
 ## Endpoints
 
