@@ -19,6 +19,7 @@ import {
   startWorkout,
 } from './queries';
 import { createGoal } from './goals';
+import { createScheduledSession } from './scheduledSessions';
 import { getCurrentUserId } from './session';
 
 /**
@@ -37,6 +38,7 @@ const TABLES_WIPED = [
   'skills',
   'skill_steps',
   'exercises',
+  'scheduled_sessions',
 ] as const;
 
 beforeEach(async () => {
@@ -53,6 +55,7 @@ describe('backup round-trip', () => {
     await importBodyMetrics([{ date: '2026-08-01', patch: { calories_in: 2500 } }]);
     await createActivity({ label: 'Παρκούρ' });
     await createSkill({ name: 'One-arm Hang' });
+    await createScheduledSession({ date: '2026-08-02', time: '18:00', title: 'Planner Backup' });
 
     const json = await exportAll();
     for (const name of TABLES_WIPED) await db.table(name).clear();
@@ -68,6 +71,7 @@ describe('backup round-trip', () => {
     expect((await db.activities.toArray()).some((a) => a.label === 'Παρκούρ')).toBe(true);
     expect((await db.skills.toArray()).some((s) => s.name === 'One-arm Hang')).toBe(true);
     expect((await db.exercises.toArray()).some((e) => e.name === 'Zercher Squat')).toBe(true);
+    expect((await db.scheduled_sessions.toArray()).some((s) => s.title === 'Planner Backup')).toBe(true);
   });
 
   it('rolls back atomically when a row in the file is unusable', async () => {
@@ -119,7 +123,7 @@ describe('backup round-trip', () => {
 describe('exportProfile (current-profile scope)', () => {
   const SCOPED = [
     'users', 'exercises', 'workouts', 'sets', 'skills', 'skill_steps',
-    'programs', 'program_days', 'program_exercises', 'goals',
+    'programs', 'program_days', 'program_exercises', 'goals', 'scheduled_sessions',
   ] as const;
 
   async function seedProfile(name: string) {
@@ -134,6 +138,7 @@ describe('exportProfile (current-profile scope)', () => {
     const skill = await createSkill({ name: `${name} Lever` });
     await addSkillStep(skill.id, { name: 'tuck' });
     await createGoal({ metric: 'sessions', target: 3, period: 'week' });
+    await createScheduledSession({ date: '2026-08-10', title: `${name} Plan` });
     return profile.id;
   }
 
@@ -164,6 +169,8 @@ describe('exportProfile (current-profile scope)', () => {
     expect(parsed.data.program_days.length).toBe(1);
     expect(parsed.data.program_exercises.length).toBe(1);
     expect(parsed.data.skill_steps.length).toBe(1);
+    expect(parsed.data.scheduled_sessions.length).toBe(1);
+    expect(parsed.data.scheduled_sessions[0].user_id).toBe(idA);
 
     // Beta must not appear ANYWHERE in the serialized backup.
     const blob = JSON.stringify(parsed.data);

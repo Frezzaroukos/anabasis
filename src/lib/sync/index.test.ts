@@ -12,8 +12,10 @@ import {
   createSkill,
   deleteProgramDay,
   listProgramDays,
+  localDay,
   startWorkout,
 } from '../db/queries';
+import { createScheduledSession } from '../db/scheduledSessions';
 import { fullResync, syncNow } from './index';
 
 /**
@@ -129,6 +131,31 @@ describe('syncNow — push', () => {
         else expect(row.user_id).toBe(DEFAULT_USER_ID);
       }
     }
+  });
+
+  it('στέλνει τα scheduled_sessions στον server (planner v19)', async () => {
+    const scheduled = await createScheduledSession({
+      date: localDay(),
+      time: '18:30',
+      title: 'Planner sync',
+    });
+    const { calls } = stubFetch({});
+
+    await syncNow();
+
+    const changes = body(calls.find((c) => c.url.includes('/sync/push'))!).changes as Array<{
+      tbl: string;
+      rows: Array<Record<string, unknown>>;
+    }>;
+    const synced = changes
+      .find((change) => change.tbl === 'scheduled_sessions')
+      ?.rows.find((row) => row.id === scheduled.id);
+    expect(synced).toMatchObject({
+      title: 'Planner sync',
+      date: localDay(),
+      status: 'planned',
+      user_id: DEFAULT_USER_ID,
+    });
   });
 
   it('μεταφέρει τα rest-pause mini-sets μέσα στο set row', async () => {
@@ -292,6 +319,11 @@ describe('backfill νέου πίνακα στο push set', () => {
     const day = await createProgramDay(program.id, 'Old Upper');
     // Μέρα φτιαγμένη ΠΡΙΝ από το τελευταίο push — με σκέτο cutoff δεν θα έφευγε ποτέ.
     await db.program_days.update(day.id, { updated_at: '2020-01-01T00:00:00.000Z' });
+    // Ίδιο σενάριο για τον νέο πίνακα του v19 (planner).
+    const scheduled = await createScheduledSession({ date: '2026-01-02', title: 'Old Plan' });
+    await db.scheduled_sessions.update(scheduled.id, {
+      updated_at: '2020-01-01T00:00:00.000Z',
+    });
     localStorage.setItem(
       'anabasis.sync',
       JSON.stringify({ pullCursor: 0, lastPushAt: '2026-01-01T00:00:00.000Z', epoch: null }),
@@ -306,6 +338,8 @@ describe('backfill νέου πίνακα στο push set', () => {
     }>;
     const days = changes.find((c) => c.tbl === 'program_days');
     expect(days!.rows.some((r) => r.id === day.id)).toBe(true);
+    const planned = changes.find((c) => c.tbl === 'scheduled_sessions');
+    expect(planned!.rows.some((r) => r.id === scheduled.id)).toBe(true);
 
     // Δεύτερο sync: το backfill έγινε, γυρνάμε σε incremental.
     const second = stubFetch({});
@@ -314,6 +348,8 @@ describe('backfill νέου πίνακα στο push set', () => {
       .changes as Array<{ tbl: string; rows: Array<Record<string, unknown>> }>;
     const secondDays = secondChanges.find((c) => c.tbl === 'program_days');
     expect(secondDays?.rows.some((r) => r.id === day.id) ?? false).toBe(false);
+    const secondPlanned = secondChanges.find((c) => c.tbl === 'scheduled_sessions');
+    expect(secondPlanned?.rows.some((r) => r.id === scheduled.id) ?? false).toBe(false);
   });
 });
 
@@ -551,7 +587,8 @@ describe('gc_floor reset (Codex §3 — παλιές offline συσκευές)',
     await db.exercises.update(ghost.id, { updated_at: '2000-01-01T00:00:00.000Z' });
 
     // boundary = lastPushAt μεταγενέστερο του ghost → το ghost μετρά ως synced
-    // (παλιό), ΟΧΙ ως γνήσια νέα γραμμή. pushSchemaVersion:1 → χωρίς backfill,
+    // (παλιό), ΟΧΙ ως γνήσια νέα γραμμή. pushSchemaVersion:2 (τρέχουσα) → χωρίς
+    // backfill,
     // ώστε το αρχικό push να σέβεται το cutoff και να ΜΗΝ στείλει το παλιό ghost.
     localStorage.setItem(
       'anabasis.sync',
@@ -559,7 +596,7 @@ describe('gc_floor reset (Codex §3 — παλιές offline συσκευές)',
         pullCursor: 5,
         epoch: 'e1',
         lastPushAt: '2001-01-01T00:00:00.000Z',
-        pushSchemaVersion: 1,
+        pushSchemaVersion: 2,
       }),
     );
 
@@ -615,7 +652,7 @@ describe('gc_floor reset ΑΠΟ το push (push→pull order — Grok probe)', (
         pullCursor: 5, // > 0 → ο client το στέλνει, ο server το κρίνει πίσω από floor
         epoch: 'e1',
         lastPushAt: '2001-01-01T00:00:00.000Z', // boundary: ghost παλιό, fresh νέο
-        pushSchemaVersion: 1, // χωρίς backfill → το push σέβεται το cutoff
+        pushSchemaVersion: 2, // τρέχουσα → χωρίς backfill, το push σέβεται το cutoff
       }),
     );
 
