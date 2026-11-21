@@ -736,6 +736,7 @@ export async function achieveStep(
       workout_id: null,
       notes: null,
       created_at: t,
+      updated_at: t,
     });
   }
 
@@ -2049,7 +2050,9 @@ export async function removeSkillStep(id: string): Promise<void> {
 export async function listActivities(includeArchived = false): Promise<Activity[]> {
   const all = await db.activities.toArray();
   return all
-    .filter((a) => isVisibleToMe(a) && (includeArchived || !a.is_archived))
+    .filter(
+      (a) => a.deleted_at == null && isVisibleToMe(a) && (includeArchived || !a.is_archived),
+    )
     .sort((a, b) => a.display_order - b.display_order);
 }
 
@@ -2281,16 +2284,26 @@ export async function getCurrentProfileDataCounts(): Promise<{
   steps: number;
 }> {
   const uid = getCurrentUserId();
-  const workoutIds = new Set(
-    (await db.workouts.where('user_id').equals(uid).toArray()).map((w) => w.id),
+  const ownedWorkouts = await db.workouts.where('user_id').equals(uid).toArray();
+  // Τα soft-deleted δεν είναι «δεδομένα σου» — πριν, μια σβησμένη προπόνηση
+  // (και τα σετ της) συνέχιζε να μετράει στο «Τα δεδομένα σου», σε αντίφαση
+  // με το Ιστορικό/Ημερολόγιο που τη κρύβουν.
+  const liveWorkoutIds = new Set(
+    ownedWorkouts.filter((w) => w.deleted_at == null).map((w) => w.id),
+  );
+  const deletedWorkoutIds = new Set(
+    ownedWorkouts.filter((w) => w.deleted_at != null).map((w) => w.id),
   );
   const [allSets, prs, steps] = await Promise.all([
     db.sets.toArray(),
-    db.personal_records.where('user_id').equals(uid).count(),
+    db.personal_records.where('user_id').equals(uid).toArray(),
     db.user_skill_step_completions.where('user_id').equals(uid).count(),
   ]);
-  const sets = allSets.filter((s) => workoutIds.has(s.workout_id)).length;
-  return { workouts: workoutIds.size, sets, prs, steps };
+  const sets = allSets.filter(
+    (s) => s.deleted_at == null && liveWorkoutIds.has(s.workout_id),
+  ).length;
+  const livePrs = prs.filter((r) => !deletedWorkoutIds.has(r.workout_id)).length;
+  return { workouts: liveWorkoutIds.size, sets, prs: livePrs, steps };
 }
 
 /**
