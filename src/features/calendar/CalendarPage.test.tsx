@@ -278,3 +278,65 @@ describe('CalendarPage — προγραμματισμένες προπονήσε
     await waitFor(() => expect(screen.queryByText('Delete Me')).toBeNull());
   });
 });
+
+describe('CalendarPage — accessibility (πλέγμα ημερών)', () => {
+  it('κάθε κελί ημέρας έχει πλήρες aria-label ημερομηνίας', async () => {
+    render(wrap(<CalendarPage />));
+    // 15/08/2026 = Σάββατο· το «σήμερα» έχει γεμάτο όνομα ημέρας/μήνα/έτους.
+    const cell = await screen.findByRole('button', {
+      name: /Saturday, August 15, 2026/i,
+    });
+    expect(cell).toBeTruthy();
+  });
+
+  it('η σημερινή μέρα φέρει aria-current="date" και μόνο αυτή', async () => {
+    render(wrap(<CalendarPage />));
+    const todayCell = await screen.findByRole('button', {
+      name: /Saturday, August 15, 2026/i,
+    });
+    expect(todayCell.getAttribute('aria-current')).toBe('date');
+    const others = screen
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-current') === 'date');
+    expect(others).toHaveLength(1);
+  });
+
+  it('το επιλεγμένο κελί φέρει aria-pressed', async () => {
+    render(wrap(<CalendarPage />));
+    const todayCell = await screen.findByRole('button', {
+      name: /Saturday, August 15, 2026/i,
+    });
+    expect(todayCell.getAttribute('aria-pressed')).toBe('true');
+
+    const first = await screen.findByRole('button', { name: /Saturday, August 1, 2026/i });
+    fireEvent.click(first);
+    await waitFor(() => expect(first.getAttribute('aria-pressed')).toBe('true'));
+    expect(todayCell.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('βέλος δεξιά μετακινεί την επιλογή στην επόμενη μέρα (keyboard)', async () => {
+    render(wrap(<CalendarPage />));
+    const todayCell = await screen.findByRole('button', {
+      name: /Saturday, August 15, 2026/i,
+    });
+    fireEvent.keyDown(todayCell, { key: 'ArrowRight' });
+    const next = await screen.findByRole('button', { name: /Sunday, August 16, 2026/i });
+    await waitFor(() => expect(next.getAttribute('aria-pressed')).toBe('true'));
+  });
+
+  it('το πλήκτρο Home πάει στη Δευτέρα της εβδομάδας', async () => {
+    render(wrap(<CalendarPage />));
+    const todayCell = await screen.findByRole('button', {
+      name: /Saturday, August 15, 2026/i,
+    });
+    fireEvent.keyDown(todayCell, { key: 'Home' });
+    const monday = await screen.findByRole('button', { name: /Monday, August 10, 2026/i });
+    await waitFor(() => expect(monday.getAttribute('aria-pressed')).toBe('true'));
+  });
+
+  it('τα βελάκια μήνα (prev/next) έχουν προσβάσιμο όνομα', async () => {
+    render(wrap(<CalendarPage />));
+    expect(await screen.findByRole('button', { name: en.calendar.prev })).toBeTruthy();
+    expect(screen.getByRole('button', { name: en.calendar.next })).toBeTruthy();
+  });
+});
