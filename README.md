@@ -41,6 +41,11 @@ pistol squats) **and** skill progressions.
 | **Calendar-centric** | The calendar is the home of logging: pick a program day (*upper*, *legs & core*, …) or start an ad-hoc session on any date. Set-by-set logging with buttons — separate bodyweight + added weight, RPE/RIR/tempo, warm-up and failure flags, quick-log parsing (`80 5,4,3,2`). |
 | **Goals in your own terms** | Sessions · volume · sets · reps · distance · duration, plus **skill mastery**, a **target weight** ("70 kg weighted pull-up"), and **custom trackers** you invent on the spot ("cold showers 30/week") — windowed or milestone, wired to programs, exercises, skills and live progress. |
 | **PR tracking** | 8 PR types across strength and non-set activities (distance, duration, pace). Warm-ups excluded. e1RM via Epley/Brzycki. |
+| **Plan ahead** | Schedule sessions on any day with a time, a program day or ad-hoc activity, and an optional weekly repeat. **Start** creates the linked workout; done/skipped states keep the calendar honest about what actually happened. |
+| **Load analytics** | Weekly volume (bodyweight + added load), session frequency, sets per category, a cumulative PR timeline, and per-exercise e1RM/volume charts. Export any exercise to CSV. |
+| **Safe to delete** | Soft deletes with a workout Undo, repeat/recreate, JSON export/import, and a built-in local integrity check that can repair tombstones instead of losing rows. |
+| **Admin & moderation** | Admins can review user reports and inspect per-user data; privacy rules stay enforced server-side. |
+| **Accessible by default** | Labelled charts, focus-trapped dialogs, keyboard-reachable controls, 44px touch targets, and layouts that hold at 320px. |
 | **Sync when you want it** | Local-first by default. Create an account and your training follows you to any device and to the desktop app — row-level last-write-wins sync over a Rust backend, including multi-day program structure. Full JSON export/import stays; nothing is locked in. |
 | **Friends & leaderboards** | Opt-in. Pick a handle, add friends by username, and climb a friends **or** global leaderboard ranked by XP/altitude — with a shareable public profile at `/u/:username`. Privacy is SQL-enforced server-side and only aggregate stats are ever published; raw training data never leaves your account. |
 | **Customisable home** | Hide and reorder every card. A hidden card never mounts and never queries. |
@@ -58,7 +63,7 @@ protects against restore-desync. Auth is argon2id + opaque bearer tokens in a
 session table (not JWTs — revocation matters; not cookies — the Tauri
 production-cookie trap).
 
-**Schema migrations, v1 → v18.** Each version ships its own `.upgrade()` with
+**Schema migrations, v1 → v19.** Each version ships its own `.upgrade()` with
 backfills; all additive, no data loss. v9 backfilled existing goals to *rolling*
 windows because that is how they were already counting — migrating them to
 *calendar* would have silently changed the meaning of a goal already set. v12–13
@@ -68,11 +73,14 @@ added first-class custom trackers (append-only entries, so a manual counter
 syncs cleanly instead of losing increments to last-write-wins). v15 added
 local-only friends/leaderboard caches for offline social; v16 an opt-in
 `coach_enabled` flag (default off); v17 rest-pause mini-sets on the parent set; v18
-composite strength goals (sets × reps @ weight, total/added load).
+composite strength goals (sets × reps @ weight, total/added load); v19 added the
+planner (`scheduled_sessions`: planned/done/skipped, linked to a program day or
+workout).
 
-**Components never touch `db.*`.** All access goes through `lib/db/queries.ts`
-and `lib/db/goals.ts`. `lib/domain/` is pure functions (e1rm, pr, volume) with
-no DB or UI dependency, which is why they are the easiest things to test.
+**Components never touch `db.*`.** All access goes through the `lib/db/*` query
+modules (`queries.ts`, `goals.ts`, `trackers.ts`, `scheduledSessions.ts`, …).
+`lib/domain/` is pure functions (e1rm, pr, volume) with no DB or UI dependency,
+which is why they are the easiest things to test.
 
 **No invented data.** Cards return `null` rather than render zeros; a stat with
 no measurement behind it is misleading, not neutral. No default goals are

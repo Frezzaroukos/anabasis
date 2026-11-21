@@ -28,7 +28,9 @@ export async function markScheduledDoneForWorkout(
 /**
  * Αν η προπόνηση διαγραφεί (λάθος καταχώριση), η προγραμματισμένη εγγραφή δεν
  * πρέπει να μείνει «done» για μια προπόνηση που δεν υπάρχει — επιστρέφει σε
- * `planned` και αποσυνδέεται, ώστε να ξαναξεκινήσει.
+ * `planned`. Το `workout_id` ΔΕΝ καθαρίζεται: είναι η μόνη απόδειξη της
+ * σύνδεσης, ώστε το Undo (`restoreWorkout`) να μπορεί να την επαναφέρει σε
+ * `done` χωρίς να μαντέψει ποιο planned row ανήκε σε ποια προπόνηση.
  */
 export async function revertScheduledForWorkout(
   workoutId: string,
@@ -38,5 +40,23 @@ export async function revertScheduledForWorkout(
     .where('user_id')
     .equals(getCurrentUserId())
     .filter((s) => s.workout_id === workoutId && s.deleted_at == null)
-    .modify({ workout_id: null, status: 'planned', updated_at: updatedAt });
+    .modify({ status: 'planned', updated_at: updatedAt });
+}
+
+/**
+ * Undo διαγραφής προπόνησης: ό,τι planned row είχε αυτό το `workout_id` (πριν
+ * ή μετά το revert) ξαναγίνεται `done` — ή `planned` αν η προπόνηση δεν είχε
+ * ολοκληρωθεί πριν διαγραφεί. Το status δίνεται από τον caller ώστε να
+ * ταιριάζει με την πραγματική κατάσταση του workout (`ended_at`).
+ */
+export async function relinkScheduledForWorkout(
+  workoutId: string,
+  updatedAt: string,
+  status: 'planned' | 'done' = 'done',
+): Promise<void> {
+  await db.scheduled_sessions
+    .where('user_id')
+    .equals(getCurrentUserId())
+    .filter((s) => s.workout_id === workoutId && s.deleted_at == null)
+    .modify({ status, updated_at: updatedAt });
 }

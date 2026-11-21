@@ -139,6 +139,8 @@ Materialized-view-style. Ξαναϋπολογίζεται σε set save/delete. 
   set_id: UUID | null
   created_at: ISOTimestamp
   updated_at: ISOTimestamp
+  /** Προαιρετικό tombstone — soft delete που ταξιδεύει με sync (μη-indexed). */
+  deleted_at?: ISOTimestamp | null
 }
 ```
 **Index:** `id, user_id, exercise_id, activity_kind, type, achieved_at, [user_id+exercise_id+type], [user_id+activity_kind+type]`
@@ -160,6 +162,8 @@ System-seeded (`user_id: null`) + από v6 και user-owned (ώστε το δ�
   is_archived: boolean
   created_at: ISOTimestamp
   updated_at: ISOTimestamp
+  /** Προαιρετικό tombstone — soft delete που ταξιδεύει με sync (μη-indexed). */
+  deleted_at?: ISOTimestamp | null
 }
 ```
 **Index:** `id, user_id, short_code, category, display_order, is_archived`
@@ -181,6 +185,8 @@ System-seeded.
   prerequisites: UUID[]              // ids άλλων skill_steps
   created_at: ISOTimestamp
   updated_at: ISOTimestamp
+  /** Προαιρετικό tombstone — soft delete που ταξιδεύει με sync (μη-indexed). */
+  deleted_at?: ISOTimestamp | null
 }
 ```
 **Index:** `id, skill_id, step_number, [skill_id+step_number]`
@@ -200,6 +206,8 @@ System-seeded.
   notes: string | null
   created_at: ISOTimestamp
   updated_at: ISOTimestamp
+  /** Προαιρετικό tombstone — soft delete που ταξιδεύει με sync (μη-indexed). */
+  deleted_at?: ISOTimestamp | null
 }
 ```
 **Index:** `id, user_id, skill_id, status, &[user_id+skill_id]` (`&` = unique)
@@ -217,6 +225,8 @@ Log κάθε φορά που χτυπήθηκε ένα βήμα. Πολλαπλ�
   workout_id: UUID | null
   notes: string | null
   created_at: ISOTimestamp
+  /** Προαιρετικό tombstone — soft delete που ταξιδεύει με sync (μη-indexed). */
+  deleted_at?: ISOTimestamp | null
 }
 ```
 **Index:** `id, user_id, skill_step_id, achieved_at, workout_id`
@@ -262,6 +272,8 @@ Log κάθε φορά που χτυπήθηκε ένα βήμα. Πολλαπλ�
   notes: string | null
   created_at: ISOTimestamp
   updated_at: ISOTimestamp
+  /** Προαιρετικό tombstone — soft delete που ταξιδεύει με sync (μη-indexed). */
+  deleted_at?: ISOTimestamp | null
 }
 ```
 **Index:** `id, user_id, date, &[user_id+date]` (`&` = unique — ένα record/μέρα)
@@ -416,7 +428,7 @@ Cross-app bridge (π.χ. calorie tracker). **Υπάρχει από v1.**
 | **v9** | `goals.period_anchor` (ημερολογιακή vs κυλιόμενη περίοδος) | backfill `period_anchor ??= 'rolling'` — **όχι** `'calendar'`, γιατί έτσι μετρούσαν ήδη οι υπάρχοντες στόχοι· ένα σιωπηλό backfill σε `calendar` θα άλλαζε νόημα χωρίς να το ζητήσει κανείς |
 | **v10** | `app_settings.auto_start_rest_timer` (auto-start rest timer μετά από σετ) | backfill `??= true` — ίδιο pattern με v4 `notify_rest_timer` |
 | **v11–v18** | Additive πεδία/πίνακες: body steps, program_days, custom trackers, coach flag, rest-pause reps, composite goals — βλ. `schema.ts` για το κάθε block | `??=` backfills, κανένα destructive rewrite |
-| **v19** | Νέος πίνακας `scheduled_sessions` (planner: planned/done/skipped, τοπική ημερομηνία, link σε program day/workout) | — (μόνο νέος πίνακας) |
+| **v19** | Νέος πίνακας `scheduled_sessions` (planner: planned/done/skipped, τοπική ημερομηνία, link σε program day/workout)· τεκμηρίωση προαιρετικών tombstone `deleted_at?` σε personal_records/skills/skill_steps/user_skill_progress/user_skill_step_completions/body_metrics (μη-indexed — χωρίς bump) | — (μόνο νέος πίνακας) |
 
 ---
 
