@@ -28,6 +28,7 @@ import type {
   UserSkillStepCompletion,
   Goal,
   Workout,
+  ScheduledSession,
 } from './types';
 // Social cache: LOCAL-ONLY (ΠΟΤΕ στο USER_DATA_TABLES/ALLOWED_TABLES) — καθρεφτίζει
 // τα /api/social reads ώστε το leaderboard/friends να δείχνουν last-known offline.
@@ -39,7 +40,7 @@ export interface LeaderboardCacheRow {
   updated_at: string;
 }
 
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 
 export class AnabasisDB extends Dexie {
   users!: Table<User, string>;
@@ -58,6 +59,7 @@ export class AnabasisDB extends Dexie {
   program_exercises!: Table<ProgramExercise, string>;
   activities!: Table<Activity, string>;
   goals!: Table<Goal, string>;
+  scheduled_sessions!: Table<ScheduledSession, string>;
   custom_trackers!: Table<CustomTracker, string>;
   custom_tracker_entries!: Table<CustomTrackerEntry, string>;
   events_outgoing!: Table<OutgoingEvent, string>;
@@ -404,6 +406,17 @@ export class AnabasisDB extends Dexie {
         g.target_reps ??= null;
         g.load_mode ??= null;
       });
+    });
+
+    /**
+     * v19 — «Προγραμματισμένες προπονήσεις»: το ημερολόγιο έδειχνε μόνο ό,τι
+     * είχε ήδη γίνει. Ο νέος πίνακας κρατά planned/done/skipped sessions με
+     * τοπική ημερομηνία· προαιρετικό link σε πρόγραμμα/μέρα ώστε το «Ξεκίνα»
+     * να χρησιμοποιεί το ίδιο pre-filled plan με το κανονικό start.
+     * Μόνο νέος πίνακας — καμία migration δεδομένων.
+     */
+    this.version(19).stores({
+      scheduled_sessions: 'id, user_id, date, status, deleted_at, [user_id+date]',
     });
   }
 }

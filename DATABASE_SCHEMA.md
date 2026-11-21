@@ -5,8 +5,9 @@
 > ενημέρωσε αυτό το αρχείο, όχι το αντίστροφο.
 >
 > **Σήμερα:** IndexedDB (Dexie 4) τοπικά + optional sync με το **δικό μας Rust/Axum
-> backend** (self-hosted, όχι Supabase). `SCHEMA_VERSION = 18` στο `schema.ts`.
-> Το v17 προσθέτει rest-pause mini-sets στο γονικό set· το v18 composite strength goals.
+> backend** (self-hosted, όχι Supabase). `SCHEMA_VERSION = 19` στο `schema.ts`.
+> Το v17 προσθέτει rest-pause mini-sets στο γονικό set· το v18 composite strength goals·
+> το v19 τον πίνακα `scheduled_sessions` (planner).
 > Το `sets.hold_seconds` είναι απλό μη-indexed πεδίο — ΔΕΝ πήρε version block
 > (το Dexie δεν απαιτεί δήλωση μη-indexed πεδίων, δεν υπάρχει backfill).
 
@@ -352,6 +353,33 @@ Log κάθε φορά που χτυπήθηκε ένα βήμα. Πολλαπλ�
 ```
 **Index:** `id, user_id, metric, period, activity_key, exercise_id, display_order, is_archived, deleted_at, [user_id+is_archived]`
 
+### `scheduled_sessions`
+Προγραμματισμένες προπονήσεις (planner) — το ημερολόγιο δείχνει πλέον και ό,τι
+ΔΕΝ έχει γίνει ακόμη. **Υπάρχει από v19.**
+
+```typescript
+{
+  id: UUID
+  user_id: UUID
+  date: string                         // τοπική ημερομηνία YYYY-MM-DD (ποτέ UTC)
+  time: string | null                  // HH:MM τοπική ώρα
+  title: string
+  program_id: UUID | null              // τι θα ξεκινήσει το «Ξεκίνα»
+  program_day_id: UUID | null
+  activity_kind: ActivityKind | null   // ad-hoc· null όταν το ορίζει το πρόγραμμα
+  notes: string | null
+  status: 'planned' | 'done' | 'skipped'
+  workout_id: UUID | null              // γεμίζει όταν ξεκινήσει η προπόνηση
+  created_at: ISOTimestamp
+  updated_at: ISOTimestamp
+  deleted_at: ISOTimestamp | null
+}
+```
+**Index:** `id, user_id, date, status, deleted_at, [user_id+date]`
+
+Το `done` γράφεται από το `endWorkout` (μέσω `workout_id`)· αν η προπόνηση
+διαγραφεί, η εγγραφή επιστρέφει σε `planned` και αποσυνδέεται.
+
 ### `events_outgoing`
 Cross-app bridge (π.χ. calorie tracker). **Υπάρχει από v1.**
 
@@ -387,6 +415,8 @@ Cross-app bridge (π.χ. calorie tracker). **Υπάρχει από v1.**
 | **v8** | Στόχοι: νέος πίνακας `goals`· `app_settings.dashboard_cards` | backfill `dashboard_cards ??= []` (κενό = καμία προτίμηση, όχι invented) |
 | **v9** | `goals.period_anchor` (ημερολογιακή vs κυλιόμενη περίοδος) | backfill `period_anchor ??= 'rolling'` — **όχι** `'calendar'`, γιατί έτσι μετρούσαν ήδη οι υπάρχοντες στόχοι· ένα σιωπηλό backfill σε `calendar` θα άλλαζε νόημα χωρίς να το ζητήσει κανείς |
 | **v10** | `app_settings.auto_start_rest_timer` (auto-start rest timer μετά από σετ) | backfill `??= true` — ίδιο pattern με v4 `notify_rest_timer` |
+| **v11–v18** | Additive πεδία/πίνακες: body steps, program_days, custom trackers, coach flag, rest-pause reps, composite goals — βλ. `schema.ts` για το κάθε block | `??=` backfills, κανένα destructive rewrite |
+| **v19** | Νέος πίνακας `scheduled_sessions` (planner: planned/done/skipped, τοπική ημερομηνία, link σε program day/workout) | — (μόνο νέος πίνακας) |
 
 ---
 

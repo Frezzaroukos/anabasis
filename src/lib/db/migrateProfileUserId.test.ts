@@ -15,6 +15,7 @@ import {
   startWorkout,
 } from './queries';
 import { createGoal } from './goals';
+import { createScheduledSession } from './scheduledSessions';
 
 /**
  * migrateProfileUserId() δένει ένα τοπικό προφίλ σε account.id κατά το
@@ -52,6 +53,7 @@ describe('migrateProfileUserId', () => {
     const step = await addSkillStep(skill.id, { name: 'Step 1' });
 
     await createGoal({ metric: 'sessions', target: 3, period: 'week' });
+    const planned = await createScheduledSession({ date: '2026-08-20', title: 'Migration Plan' });
 
     const oldId = profile.id;
     const accountId = 'account-0000-0000-0000-000000000001';
@@ -69,6 +71,8 @@ describe('migrateProfileUserId', () => {
     expect(await db.programs.where('user_id').equals(accountId).count()).toBe(1);
     expect(await db.skills.where('user_id').equals(accountId).count()).toBe(1);
     expect((await db.goals.where('user_id').equals(accountId).toArray()).length).toBe(1);
+    expect((await db.scheduled_sessions.get(planned.id))?.user_id).toBe(accountId);
+    expect(await db.scheduled_sessions.where('user_id').equals(oldId).count()).toBe(0);
 
     // παιδικοί πίνακες χωρίς δικό τους user_id — ακολουθούν μέσω γονέα, δεν
     // μετακινούνται οι ίδιοι αλλά παραμένουν προσβάσιμοι κανονικά
