@@ -689,7 +689,12 @@
     "activeThisWeek_other": "{{count}} days trained this week",
     "scheduledToday": "Today in your plan",
     "scheduledMore": "{{count}} more planned",
-    "scheduledMore_other": "{{count}} more planned"
+    "scheduledMore_other": "{{count}} more planned",
+    "start": "Start",
+    "continue": "Continue",
+    "startScheduled": "Start {{title}}",
+    "continueScheduled": "Continue {{title}}",
+    "scheduledStartError": "Couldn't start this session."
   },
   "setType": {
     "normal": "Normal",
