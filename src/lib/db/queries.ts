@@ -571,7 +571,7 @@ export async function getBodyweightLoads(limit = 5): Promise<BodyweightLoad[]> {
   );
   const sets = (
     await db.sets.where('exercise_id').anyOf([...byId.keys()]).toArray()
-  ).filter((s) => s.deleted_at == null && s.set_type !== 'warmup');
+  ).filter((s) => s.deleted_at == null && !s.is_warmup && s.set_type !== 'warmup');
   const latest = new Map<string, BodyweightLoad>();
   for (const s of sets) {
     const date = dayByWorkout.get(s.workout_id);
@@ -971,7 +971,11 @@ export async function getVolumeTrend(days = 30): Promise<VolumePoint[]> {
 
   const byId = new Map(workouts.map((w) => [w.id, dayKey(new Date(w.started_at))]));
   const sets = (await db.sets.toArray()).filter(
-    (s) => s.deleted_at == null && !s.is_warmup && byId.has(s.workout_id),
+    (s) =>
+      s.deleted_at == null &&
+      !s.is_warmup &&
+      s.set_type !== 'warmup' &&
+      byId.has(s.workout_id),
   );
 
   const acc = new Map<string, { volume: number; sets: number }>();
@@ -1185,7 +1189,13 @@ export async function getExerciseProgress(
   );
   const sets = (
     await db.sets.where('exercise_id').equals(exerciseId).toArray()
-  ).filter((s) => s.deleted_at == null && s.set_type !== 'warmup' && wDay.has(s.workout_id));
+  ).filter(
+    (s) =>
+      s.deleted_at == null &&
+      !s.is_warmup &&
+      s.set_type !== 'warmup' &&
+      wDay.has(s.workout_id),
+  );
 
   const byDay = new Map<string, ExercisePoint>();
   for (const s of sets) {

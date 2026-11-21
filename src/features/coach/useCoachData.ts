@@ -53,7 +53,13 @@ export function useCoachData(enabled: boolean): CoachData {
 
       const cutoff = new Date(Date.now() - RECENT_DAYS * 86_400_000).toISOString();
       const recentSets = await db.sets
-        .filter((s) => s.deleted_at == null && !s.is_warmup && s.created_at >= cutoff)
+        .filter(
+          (s) =>
+            s.deleted_at == null &&
+            !s.is_warmup &&
+            s.set_type !== 'warmup' &&
+            s.created_at >= cutoff,
+        )
         .toArray();
       const exercises = await db.exercises.toArray();
       const exById = new Map(exercises.map((e) => [e.id, e]));
@@ -142,11 +148,17 @@ export function useCoachData(enabled: boolean): CoachData {
       }
 
       // Deload risk από volume + συνεχόμενες μέρες + μέσο RPE.
+      // Το getVolumeTrend επιστρέφει ΑΥΞΟΥΣΕΣ ημερομηνίες: οι τελευταίες 7
+      // μέρες είναι το slice(7), όχι το slice(0,7). Το ανάποδο σύγκρινε την
+      // ΠΡΟΗΓΟΥΜΕΝΗ εβδομάδα ως «τρέχουσα» και έκρυβε κάθε πραγματική άνοδο.
       const vol = await getVolumeTrend(14);
-      const thisWeekVol = vol.slice(0, 7).reduce((a, d) => a + d.volume, 0);
-      const lastWeekVol = vol.slice(7, 14).reduce((a, d) => a + d.volume, 0);
+      const thisWeek = vol.slice(7);
+      const thisWeekVol = thisWeek.reduce((a, d) => a + d.volume, 0);
+      const lastWeekVol = vol.slice(0, 7).reduce((a, d) => a + d.volume, 0);
+      // Μετράμε πίσω από ΣΗΜΕΡΑ: το τελευταίο στοιχείο του thisWeek είναι το
+      // σήμερα — γι' αυτό αντίστροφα.
       let consecutiveDays = 0;
-      for (const d of vol.slice(0, 7)) {
+      for (const d of [...thisWeek].reverse()) {
         if (d.volume > 0) consecutiveDays++;
         else break;
       }

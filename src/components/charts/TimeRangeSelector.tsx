@@ -14,7 +14,7 @@ export function TimeRangeSelector({
 }) {
   const { t } = useTranslation();
   return (
-    <div className={cn('flex gap-1', className)} role="group">
+    <div className={cn('flex gap-1', className)} role="group" aria-label={t('progress.rangeLabel')}>
       {CHART_RANGE_KEYS.map((key) => (
         <button
           key={key}

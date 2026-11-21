@@ -51,7 +51,8 @@ export default function ExerciseProgressChartBody({
 }) {
   const { t } = useTranslation();
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <div role="img" aria-label={t(labelKey)} className="h-full w-full">
+      <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
         <ChartGradientDefs />
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
@@ -96,6 +97,7 @@ export default function ExerciseProgressChartBody({
           connectNulls
         />
       </AreaChart>
-    </ResponsiveContainer>
+      </ResponsiveContainer>
+    </div>
   );
 }
