@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { db } from './index';
 import { setCurrentUserId } from './session';
 import {
@@ -89,6 +89,25 @@ describe('scheduledSessions', () => {
     expect(rows.map((r) => r.date)).toEqual(['2026-03-28', '2026-04-04', '2026-04-11']);
     expect(rows.every((r) => r.status === 'planned')).toBe(true);
     expect(await listScheduledSessions('2026-03-01', '2026-04-30')).toHaveLength(3);
+  });
+
+  it('recurring είναι atomic: αποτυχία εγγραφής δεν αφήνει μισή σειρά', async () => {
+    const uid = 'planner-recurring-atomic';
+    setCurrentUserId(uid);
+    const before = await db.scheduled_sessions.where('user_id').equals(uid).count();
+    const spy = vi
+      .spyOn(db.scheduled_sessions, 'bulkAdd')
+      .mockRejectedValueOnce(new Error('quota'));
+
+    await expect(
+      createRecurringScheduledSessions(
+        { date: '2026-05-01', title: 'Atomic Weekly' },
+        12,
+      ),
+    ).rejects.toThrow('quota');
+    spy.mockRestore();
+
+    expect(await db.scheduled_sessions.where('user_id').equals(uid).count()).toBe(before);
   });
 
   it('start ad-hoc → workout linked, endWorkout → done, διαγραφή workout → πίσω σε planned', async () => {

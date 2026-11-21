@@ -186,6 +186,16 @@ export async function deleteCurrentProfileData(): Promise<WipeResult> {
         .and((x) => x.deleted_at == null)
         .modify({ deleted_at: t, updated_at: t }),
     );
+    // Planned sessions είναι user data όπως τα workouts — χωρίς αυτό έμεναν
+    // ορατές στο ημερολόγιο μετά το «Διαγραφή όλων» και ξανασυγχρονίζονταν.
+    bump(
+      'scheduled_sessions',
+      await db.scheduled_sessions
+        .where('user_id')
+        .equals(uid)
+        .and((s) => s.deleted_at == null)
+        .modify({ deleted_at: t, updated_at: t }),
+    );
   });
 
   return { counts };

@@ -7,7 +7,9 @@
  * χρήστη και αγγίζει μόνο rows που δεν φαίνονται πουθενά στην εφαρμογή:
  *  - παιδιά με λείποντα/σβησμένο γονέα → soft delete (tombstone, sync-safe),
  *  - personal_records χωρίς προπόνηση → soft delete (tombstone, sync-safe),
- *  - skill_steps χωρίς skill → soft delete (tombstone, sync-safe).
+ *  - skill_steps χωρίς skill → soft delete (tombstone, sync-safe),
+ *  - scheduled_sessions με σβησμένο/ανύπαρκτο πρόγραμμα, μέρα ή workout →
+ *    unlink ΜΟΝΟ του σπασμένου πεδίου (ποτέ delete του planned row).
  */
 import { db } from './schema';
 
@@ -21,7 +23,10 @@ export type IntegrityCode =
   | 'programExercisesWithoutProgram'
   | 'programExercisesWithoutDay'
   | 'trackerEntriesWithoutTracker'
-  | 'trackerEntriesOfDeletedTracker';
+  | 'trackerEntriesOfDeletedTracker'
+  | 'scheduledWithoutProgram'
+  | 'scheduledWithoutDay'
+  | 'scheduledWithoutWorkout';
 
 export interface IntegrityIssue {
   code: IntegrityCode;
@@ -46,7 +51,7 @@ interface FoundIssue {
 const now = () => new Date().toISOString();
 
 async function analyze(): Promise<FoundIssue[]> {
-  const [workouts, sets, prs, skills, skillSteps, programs, programDays, programExercises, trackers, trackerEntries] =
+  const [workouts, sets, prs, skills, skillSteps, programs, programDays, programExercises, trackers, trackerEntries, scheduled] =
     await Promise.all([
       db.workouts.toArray(),
       db.sets.toArray(),
@@ -58,6 +63,7 @@ async function analyze(): Promise<FoundIssue[]> {
       db.program_exercises.toArray(),
       db.custom_trackers.toArray(),
       db.custom_tracker_entries.toArray(),
+      db.scheduled_sessions.toArray(),
     ]);
 
   const workoutById = new Map(workouts.map((w) => [w.id, w]));
@@ -66,6 +72,20 @@ async function analyze(): Promise<FoundIssue[]> {
   const programById = new Map(programs.map((p) => [p.id, p]));
   const dayById = new Map(programDays.map((d) => [d.id, d]));
   const trackerById = new Map(trackers.map((t) => [t.id, t]));
+  // «Ζωντανός γονέας» = υπάρχει ΚΑΙ δεν είναι tombstone. Ένα planned session
+  // με σβησμένο πρόγραμμα/μέρα/workout θα έδειχνε «Ξεκίνα» που δεν κάνει τίποτα.
+  const liveWorkoutIds = new Set(
+    workouts.filter((w) => w.deleted_at == null).map((w) => w.id),
+  );
+  const liveProgramIds = new Set(
+    programs.filter((p) => p.deleted_at == null).map((p) => p.id),
+  );
+  const liveDayIds = new Set(
+    programDays
+      .filter((d) => d.deleted_at == null && liveProgramIds.has(d.program_id))
+      .map((d) => d.id),
+  );
+  const liveScheduled = scheduled.filter((s) => s.deleted_at == null);
 
   const found: FoundIssue[] = [];
   const push = (code: IntegrityCode, table: string, ids: string[]) => {
@@ -167,6 +187,27 @@ async function analyze(): Promise<FoundIssue[]> {
       })
       .map((e) => e.id),
   );
+  push(
+    'scheduledWithoutProgram',
+    'scheduled_sessions',
+    liveScheduled
+      .filter((s) => s.program_id != null && !liveProgramIds.has(s.program_id))
+      .map((s) => s.id),
+  );
+  push(
+    'scheduledWithoutDay',
+    'scheduled_sessions',
+    liveScheduled
+      .filter((s) => s.program_day_id != null && !liveDayIds.has(s.program_day_id))
+      .map((s) => s.id),
+  );
+  push(
+    'scheduledWithoutWorkout',
+    'scheduled_sessions',
+    liveScheduled
+      .filter((s) => s.workout_id != null && !liveWorkoutIds.has(s.workout_id))
+      .map((s) => s.id),
+  );
 
   return found;
 }
@@ -202,6 +243,7 @@ export async function repairDataIntegrity(): Promise<RepairResult> {
       db.program_days,
       db.program_exercises,
       db.custom_tracker_entries,
+      db.scheduled_sessions,
     ],
     async () => {
       for (const issue of found) {
@@ -240,6 +282,32 @@ export async function repairDataIntegrity(): Promise<RepairResult> {
             repaired[issue.code] =
               (repaired[issue.code] ?? 0) +
               (await db.custom_tracker_entries.where('id').anyOf(ids).modify(soft()));
+            break;
+          // Το planned session ΔΕΝ διαγράφεται — μόνο το σπασμένο link
+          // καθαρίζεται, ώστε ο χρήστης να το ξανασυνδέσει/αλλάξει.
+          case 'scheduledWithoutProgram':
+            repaired[issue.code] =
+              (repaired[issue.code] ?? 0) +
+              (await db.scheduled_sessions
+                .where('id')
+                .anyOf(ids)
+                .modify({ program_id: null, updated_at: t }));
+            break;
+          case 'scheduledWithoutDay':
+            repaired[issue.code] =
+              (repaired[issue.code] ?? 0) +
+              (await db.scheduled_sessions
+                .where('id')
+                .anyOf(ids)
+                .modify({ program_day_id: null, updated_at: t }));
+            break;
+          case 'scheduledWithoutWorkout':
+            repaired[issue.code] =
+              (repaired[issue.code] ?? 0) +
+              (await db.scheduled_sessions
+                .where('id')
+                .anyOf(ids)
+                .modify({ workout_id: null, updated_at: t }));
             break;
         }
       }

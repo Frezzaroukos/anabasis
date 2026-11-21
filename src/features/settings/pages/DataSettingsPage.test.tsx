@@ -49,6 +49,7 @@ describe('DataSettingsPage — delete all data', () => {
     expect(ex.id).toBeTruthy();
 
     renderPage();
+    expect(await screen.findByText('planned')).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: 'Delete all data' }));
 
     // Πρώτο confirm: εξήγηση, καμία διαγραφή ακόμα.

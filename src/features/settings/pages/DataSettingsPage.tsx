@@ -54,6 +54,7 @@ export function DataSettingsPage() {
     sets: 0,
     prs: 0,
     steps: 0,
+    scheduled: 0,
   });
 
   const download = (content: string, name: string, type: string) => {
@@ -190,13 +191,14 @@ export function DataSettingsPage() {
       <Card>
         <SectionTitle>{t('settings.yourData')}</SectionTitle>
         <p className="-mt-2 text-xs text-muted-foreground">{t('settings.dataOfProfile')}</p>
-        <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
+        <dl className="mt-3 grid grid-cols-3 gap-2 text-center sm:grid-cols-5">
           {(
             [
               ['workouts', stats.workouts],
               ['sets', stats.sets],
               ['prs', stats.prs],
               ['skillSteps', stats.steps],
+              ['planned', stats.scheduled],
             ] as const
           ).map(([k, v]) => (
             <div key={k} className="rounded-md bg-elevated py-2">

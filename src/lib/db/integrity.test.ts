@@ -10,6 +10,7 @@ import {
   startWorkout,
 } from './queries';
 import { addTrackerEntry, createTracker } from './trackers';
+import { createScheduledSession } from './scheduledSessions';
 import { checkDataIntegrity, repairDataIntegrity } from './integrity';
 
 /**
@@ -33,6 +34,7 @@ beforeEach(async () => {
     db.skill_steps,
     db.custom_trackers,
     db.custom_tracker_entries,
+    db.scheduled_sessions,
   ]) {
     await table.clear();
   }
@@ -124,6 +126,69 @@ describe('checkDataIntegrity', () => {
 
     await repairDataIntegrity();
     expect((await db.program_exercises.get(pe.id))?.deleted_at).toBeTruthy();
+  });
+
+  it('planned session με σβησμένο πρόγραμμα: unlink program/day, όχι delete', async () => {
+    const program = await createProgram('Broken Parent');
+    const day = await createProgramDay(program.id, 'Day A');
+    const session = await createScheduledSession({
+      date: '2026-09-01',
+      title: 'Planned with dead program',
+      program_id: program.id,
+      program_day_id: day.id,
+    });
+    await db.programs.update(program.id, { deleted_at: new Date().toISOString() });
+
+    const report = await checkDataIntegrity();
+    expect(report.issues.find((i) => i.code === 'scheduledWithoutProgram')?.count).toBe(1);
+    expect(report.issues.find((i) => i.code === 'scheduledWithoutDay')?.count).toBe(1);
+
+    await repairDataIntegrity();
+    const row = await db.scheduled_sessions.get(session.id);
+    expect(row).toBeTruthy();
+    expect(row!.deleted_at).toBeNull();
+    expect(row!.program_id).toBeNull();
+    expect(row!.program_day_id).toBeNull();
+    expect((await checkDataIntegrity()).ok).toBe(true);
+  });
+
+  it('planned session με σβησμένη μέρα προγράμματος: unlink μόνο το day', async () => {
+    const program = await createProgram('Live Parent');
+    const day = await createProgramDay(program.id, 'Day B');
+    const session = await createScheduledSession({
+      date: '2026-09-02',
+      title: 'Planned with dead day',
+      program_id: program.id,
+      program_day_id: day.id,
+    });
+    await db.program_days.update(day.id, { deleted_at: new Date().toISOString() });
+
+    const report = await checkDataIntegrity();
+    expect(report.issues.find((i) => i.code === 'scheduledWithoutDay')?.count).toBe(1);
+
+    await repairDataIntegrity();
+    const row = await db.scheduled_sessions.get(session.id);
+    expect(row!.deleted_at).toBeNull();
+    expect(row!.program_id).toBe(program.id);
+    expect(row!.program_day_id).toBeNull();
+  });
+
+  it('planned session με σβησμένη προπόνηση: unlink workout_id, κρατά το planned', async () => {
+    const session = await createScheduledSession({
+      date: '2026-09-03',
+      title: 'Planned with dead workout',
+    });
+    const w = await startWorkout('strength');
+    await db.scheduled_sessions.update(session.id, { workout_id: w.id });
+    await db.workouts.update(w.id, { deleted_at: new Date().toISOString() });
+
+    const report = await checkDataIntegrity();
+    expect(report.issues.find((i) => i.code === 'scheduledWithoutWorkout')?.count).toBe(1);
+
+    await repairDataIntegrity();
+    const row = await db.scheduled_sessions.get(session.id);
+    expect(row!.deleted_at).toBeNull();
+    expect(row!.workout_id).toBeNull();
   });
 
   it('βρίσκει καταχώρηση tracker χωρίς tracker', async () => {

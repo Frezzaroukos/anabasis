@@ -2947,6 +2947,7 @@ export async function deleteProfile(id: string): Promise<void> {
         'user_skill_progress',
         'user_skill_step_completions',
         'body_metrics',
+        'scheduled_sessions',
       ]);
       for (const [name, table] of Object.entries(tables)) {
         if (CASCADE_NON_OWNER.has(name)) continue;
@@ -2972,7 +2973,7 @@ export async function deleteProfile(id: string): Promise<void> {
 
 /** Πόσα δεδομένα κρέμονται από ένα προφίλ — για να ξέρει ΤΙ σβήνει. */
 export async function getProfileStats(id: string) {
-  const [workouts, prs, programs] = await Promise.all([
+  const [workouts, prs, programs, scheduled] = await Promise.all([
     db.workouts.where('user_id').equals(id).count(),
     db.personal_records
       .where('user_id')
@@ -2980,8 +2981,13 @@ export async function getProfileStats(id: string) {
       .filter((r) => r.deleted_at == null)
       .count(),
     db.programs.where('user_id').equals(id).count(),
+    db.scheduled_sessions
+      .where('user_id')
+      .equals(id)
+      .filter((s) => s.deleted_at == null)
+      .count(),
   ]);
-  return { workouts, prs, programs };
+  return { workouts, prs, programs, scheduled };
 }
 
 /**
@@ -2994,6 +3000,7 @@ export async function getCurrentProfileDataCounts(): Promise<{
   sets: number;
   prs: number;
   steps: number;
+  scheduled: number;
 }> {
   const uid = getCurrentUserId();
   const ownedWorkouts = await db.workouts.where('user_id').equals(uid).toArray();
@@ -3006,7 +3013,7 @@ export async function getCurrentProfileDataCounts(): Promise<{
   const deletedWorkoutIds = new Set(
     ownedWorkouts.filter((w) => w.deleted_at != null).map((w) => w.id),
   );
-  const [allSets, prs, stepsRows] = await Promise.all([
+  const [allSets, prs, stepsRows, scheduledRows] = await Promise.all([
     db.sets.toArray(),
     db.personal_records
       .where('user_id')
@@ -3018,12 +3025,23 @@ export async function getCurrentProfileDataCounts(): Promise<{
       .equals(uid)
       .filter((c) => c.deleted_at == null)
       .toArray(),
+    db.scheduled_sessions
+      .where('user_id')
+      .equals(uid)
+      .filter((s) => s.deleted_at == null)
+      .toArray(),
   ]);
   const sets = allSets.filter(
     (s) => s.deleted_at == null && liveWorkoutIds.has(s.workout_id),
   ).length;
   const livePrs = prs.filter((r) => !deletedWorkoutIds.has(r.workout_id)).length;
-  return { workouts: liveWorkoutIds.size, sets, prs: livePrs, steps: stepsRows.length };
+  return {
+    workouts: liveWorkoutIds.size,
+    sets,
+    prs: livePrs,
+    steps: stepsRows.length,
+    scheduled: scheduledRows.length,
+  };
 }
 
 /**
