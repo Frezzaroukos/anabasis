@@ -123,27 +123,48 @@ function contextOptions(width, height) {
   };
 }
 
-async function addWorkout(page) {
+async function startAdHocWorkout(page, title) {
   await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
   await skipOnboarding(page);
   await checkOverflow(page, 'calendar');
   await page.getByRole('button', { name: 'Add workout', exact: true }).click();
   const sheet = page.getByRole('dialog');
-  await sheet.getByPlaceholder('leg day, push A...').fill('E2E Smoke');
+  await sheet.getByPlaceholder('leg day, push A...').fill(title);
   await sheet.getByRole('button', { name: 'Start', exact: true }).click();
   await page.waitForURL('**/workout/active');
+}
 
+async function addExercise(page, name) {
   await page.getByRole('button', { name: 'Add exercise', exact: true }).click();
   const addSheet = page.getByRole('dialog');
-  await addSheet.getByPlaceholder('Search or type any exercise…').fill('Back Squat');
-  await addSheet.getByRole('button', { name: 'Back Squat', exact: true }).click();
+  await addSheet.getByPlaceholder('Search or type any exercise…').fill(name);
+  const create = addSheet.getByRole('button', { name: `Use "${name}"`, exact: true });
+  if (await create.isVisible().catch(() => false)) {
+    await create.click();
+  } else {
+    await addSheet.getByRole('button', { name, exact: true }).click();
+  }
   await addSheet.waitFor({ state: 'detached' });
+}
 
-  // Two sets on the one exercise.
-  await page.getByLabel('Weight (kg)').fill('60');
-  await page.getByLabel('Reps').fill('5');
+async function logSet(page, weight, reps) {
+  await page.getByLabel(/^Weight/).fill(String(weight));
+  await page.getByLabel('Reps').fill(String(reps));
   await page.getByRole('button', { name: 'Add set', exact: true }).click();
-  await expectText(page, '60kg × 5');
+  await expectText(page, `${weight}kg × ${reps}`);
+}
+
+async function finishWorkout(page) {
+  await page.getByRole('button', { name: 'Save workout', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Save workout', exact: true }).click();
+  await page.waitForURL(/\/history\/[^/]+$/);
+}
+
+async function addWorkout(page) {
+  await startAdHocWorkout(page, 'E2E Smoke');
+  await addExercise(page, 'Back Squat');
+  await logSet(page, 60, 5);
   await page.getByLabel('Reps').fill('5');
   await page.getByRole('button', { name: 'Add set', exact: true }).click();
   await page.locator('text=60kg × 5').nth(1).waitFor({ state: 'visible', timeout: 8000 });
@@ -152,10 +173,7 @@ async function addWorkout(page) {
 
 async function flow1(page) {
   await addWorkout(page);
-  await page.getByRole('button', { name: 'Save workout', exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Save workout', exact: true }).click();
-  await page.waitForURL(/\/history\/[^/]+$/);
+  await finishWorkout(page);
   await page.goto(`${baseUrl}/history`, { waitUntil: 'networkidle' });
   await expectText(page, 'E2E Smoke');
   await checkOverflow(page, 'history');
@@ -226,9 +244,10 @@ async function flow4(page) {
 
 async function flow5(page) {
   await page.goto(`${baseUrl}/settings/data`, { waitUntil: 'networkidle' });
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Workouts (CSV)', exact: true }).click();
-  const download = await downloadPromise;
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Workouts (CSV)', exact: true }).click(),
+  ]);
   const file = await download.path();
   const text = readFileSync(file, 'utf8');
   if (!text.replace(/^\uFEFF/, '').startsWith('date,workout,activity')) {
@@ -260,6 +279,209 @@ async function flow6(page) {
   await expectGone(page, 'E2E Archery');
   await checkOverflow(page, 'activities');
   return 'custom activity created and deleted';
+}
+
+async function flow7(page) {
+  await openDetail(page);
+  const before = await page.getByRole('button', { name: 'Delete', exact: true }).count();
+  await page.getByRole('button', { name: 'Delete', exact: true }).last().click();
+  const status = page.getByRole('status');
+  await status.getByText('Set deleted', { exact: false }).waitFor({ state: 'visible' });
+  await status.getByRole('button', { name: 'Undo', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Delete', exact: true })
+    .nth(before - 1)
+    .waitFor({ state: 'visible' });
+
+  await page.getByRole('button', { name: 'Remove exercise', exact: true }).first().click();
+  const confirm = page.getByRole('dialog');
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+  const toast = page.getByRole('status');
+  await toast.getByText('Exercise removed', { exact: false }).waitFor({ state: 'visible' });
+  await toast.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expectText(page, 'Back Squat');
+  return 'set delete + undo; exercise delete + undo';
+}
+
+async function flow8(page) {
+  const tomorrow = await page.evaluate(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return {
+      iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+      day: d.getDate(),
+      month: d.getMonth(),
+    };
+  });
+  const today = await page.evaluate(() => {
+    const d = new Date();
+    return {
+      iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+      day: d.getDate(),
+      month: d.getMonth(),
+      year: d.getFullYear(),
+    };
+  });
+
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
+  await skipOnboarding(page);
+  await page.getByRole('button', { name: 'Schedule session', exact: true }).click();
+  let sheet = page.getByRole('dialog');
+  await sheet.getByLabel('Title').fill('Plan Tomorrow');
+  await sheet.getByLabel('Date').fill(tomorrow.iso);
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await sheet.waitFor({ state: 'detached' });
+
+  const now = new Date();
+  if (tomorrow.month !== now.getMonth()) {
+    await page.getByRole('button', { name: 'Next month', exact: true }).click();
+  }
+  if (!(await page.locator('[title="Planned"]').first().isVisible().catch(() => false))) {
+    throw new Error('planned marker did not appear on the calendar');
+  }
+  await page.locator('button').filter({ hasText: new RegExp(`^${tomorrow.day}$`) }).first().click();
+  await page.getByText('Plan Tomorrow', { exact: false }).first().click();
+  sheet = page.getByRole('dialog');
+  await sheet.getByLabel('Title').fill('Plan Tomorrow Edited');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await sheet.waitFor({ state: 'detached' });
+  await expectText(page, 'Plan Tomorrow Edited');
+
+  await page.getByText('Plan Tomorrow Edited', { exact: false }).first().click();
+  sheet = page.getByRole('dialog');
+  await sheet.getByRole('button', { name: 'Delete this planned session?', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Delete', exact: true }).click();
+  await sheet.waitFor({ state: 'detached' });
+  await expectGone(page, 'Plan Tomorrow Edited');
+  await checkOverflow(page, 'calendar planner');
+
+  // Σημερινό planned → κάρτα «Today in your plan» → Start → Save → done.
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Schedule session', exact: true }).click();
+  sheet = page.getByRole('dialog');
+  await sheet.getByLabel('Title').fill('Plan Today');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await sheet.waitFor({ state: 'detached' });
+
+  await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
+  await expectText(page, 'Today in your plan');
+  await expectText(page, 'Plan Today');
+  await checkOverflow(page, 'dashboard');
+
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
+  await page.locator('button').filter({ hasText: new RegExp(`^${today.day}$`) }).first().click();
+  await page.getByRole('button', { name: 'Start now', exact: true }).click();
+  await page.waitForURL('**/workout/active');
+  await addExercise(page, 'Back Squat');
+  await logSet(page, 50, 5);
+  await finishWorkout(page);
+  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
+  const row = page.getByText('Plan Today', { exact: false }).first().locator('xpath=ancestor::li');
+  await row.getByText('Done', { exact: false }).waitFor({ state: 'visible' });
+  return 'tomorrow planned created/edited/deleted; today planned started and done';
+}
+
+async function flow9(page) {
+  await page.goto(`${baseUrl}/goals`, { waitUntil: 'networkidle' });
+  await checkOverflow(page, 'goals');
+  await page.getByRole('button', { name: 'New goal', exact: true }).click();
+  const sheet = page.getByRole('dialog');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await sheet.waitFor({ state: 'detached' });
+  await expectText(page, '4 sessions');
+
+  await page.getByRole('button', { name: 'Archive', exact: true }).click();
+  await page.getByRole('button', { name: /Show archived \(1\)/ }).click();
+  await page.getByRole('button', { name: 'Unarchive', exact: true }).click();
+  await page.getByRole('button', { name: 'Archive', exact: true }).waitFor({ state: 'visible' });
+  return 'created → archived → shown → unarchived';
+}
+
+async function flow10(page) {
+  await page.goto(`${baseUrl}/programs`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'New program', exact: true }).click();
+  await page.getByLabel('Name').fill('E2E Program');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.waitForURL(/\/programs\/[^/]+$/);
+  await expectText(page, 'E2E Program');
+
+  await page.getByRole('button', { name: /Add description/ }).click();
+  await page.getByLabel('Description').fill('Built by the D4 e2e smoke.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expectText(page, 'Built by the D4 e2e smoke.');
+
+  await page.goto(`${baseUrl}/programs`, { waitUntil: 'networkidle' });
+  await checkOverflow(page, 'programs');
+  const row = page.getByText('E2E Program', { exact: false }).first().locator('xpath=ancestor::li');
+  await row.getByRole('button', { name: 'Duplicate', exact: true }).click();
+  await page.waitForURL(/\/programs\/[^/]+$/);
+  await expectText(page, 'E2E Program (2)');
+  return 'created, description edited, duplicated';
+}
+
+async function flow11(page) {
+  await page.goto(`${baseUrl}/exercises`, { waitUntil: 'networkidle' });
+  await checkOverflow(page, 'exercises');
+  await page.getByRole('button', { name: 'New exercise', exact: true }).click();
+  let sheet = page.getByRole('dialog');
+  await sheet.getByLabel('Name').fill('E2E Temp Exercise');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await sheet.waitFor({ state: 'detached' });
+  await expectText(page, 'E2E Temp Exercise');
+
+  let row = page
+    .getByText('E2E Temp Exercise', { exact: false })
+    .first()
+    .locator('xpath=ancestor::li');
+  await row.getByRole('button', { name: 'Edit exercise', exact: true }).click();
+  sheet = page.getByRole('dialog');
+  await sheet.getByRole('button', { name: 'Delete exercise', exact: true }).click();
+  let confirm = page.getByRole('dialog', { name: 'Delete this exercise?' });
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+  await confirm.waitFor({ state: 'detached' });
+  await expectGone(page, 'E2E Temp Exercise');
+
+  // Με ιστορικό: το delete πρέπει να μπλοκάρεται με εξήγηση.
+  await page.getByRole('button', { name: 'New exercise', exact: true }).click();
+  sheet = page.getByRole('dialog');
+  await sheet.getByLabel('Name').fill('E2E History Lift');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await sheet.waitFor({ state: 'detached' });
+
+  await startAdHocWorkout(page, 'E2E History Workout');
+  await addExercise(page, 'E2E History Lift');
+  await logSet(page, 40, 5);
+  await finishWorkout(page);
+
+  await page.goto(`${baseUrl}/exercises`, { waitUntil: 'networkidle' });
+  row = page.getByText('E2E History Lift', { exact: false }).first().locator('xpath=ancestor::li');
+  await row.getByRole('button', { name: 'Edit exercise', exact: true }).click();
+  sheet = page.getByRole('dialog');
+  await sheet.getByRole('button', { name: 'Delete exercise', exact: true }).click();
+  confirm = page.getByRole('dialog', { name: 'Delete this exercise?' });
+  await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expectText(page, 'used in your history');
+  await expectText(page, 'E2E History Lift');
+  return 'no-history delete confirmed; history delete blocked';
+}
+
+async function flow12(page) {
+  await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.keyboard.press('Tab');
+  await page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el) throw new Error('no focus after Tab');
+    if (!el.textContent?.includes('Skip to main content')) {
+      throw new Error(`first Tab focused ${el.tagName}: ${el.textContent?.slice(0, 60)}`);
+    }
+  });
+  await page.keyboard.press('Enter');
+  const id = await page.evaluate(() => document.activeElement?.id ?? '');
+  if (id !== 'main') throw new Error(`Enter on skip link focused #${id || '(none)'} instead of #main`);
+  return 'skip link is first tab stop and moves focus to main';
 }
 
 let baseUrl = '';
@@ -304,6 +526,12 @@ try {
     ['4. body add → edit → delete', flow4],
     ['5. CSV export + integrity check', flow5],
     ['6. custom activity create → delete', flow6],
+    ['7. set/exercise delete + undo', flow7],
+    ['8. planner create/edit/delete + done', flow8],
+    ['9. goals archive/unarchive', flow9],
+    ['10. programs create/edit/duplicate', flow10],
+    ['11. exercise delete + blocked', flow11],
+    ['12. keyboard skip link', flow12],
   ];
 
   for (const viewport of VIEWPORTS) {
@@ -350,7 +578,7 @@ console.log('\nflow | viewport | result');
 for (const result of results) {
   console.log(`${result.flow} | ${result.viewport} | ${result.ok ? 'PASS' : 'FAIL'}`);
 }
-if (failures.length === 0 && results.length === VIEWPORTS.length * 6) {
+if (failures.length === 0 && results.length === VIEWPORTS.length * 12) {
   console.log('\nE2E smoke: PASS');
   process.exitCode = 0;
 } else {
