@@ -236,7 +236,17 @@ export async function listRecentBodyMetrics(limit = 14): Promise<BodyMetric[]> {
     .filter(
       (m) =>
         m.deleted_at == null &&
-        (m.weight_kg != null || m.body_fat_pct != null || m.steps != null),
+        (m.weight_kg != null ||
+          m.body_fat_pct != null ||
+          m.steps != null ||
+          m.waist_cm != null ||
+          m.chest_cm != null ||
+          m.hips_cm != null ||
+          m.arm_cm != null ||
+          m.forearm_cm != null ||
+          m.thigh_cm != null ||
+          m.calf_cm != null ||
+          m.neck_cm != null),
     )
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, limit);
@@ -248,5 +258,13 @@ export async function clearBodyMetric(date: string): Promise<void> {
     weight_kg: null,
     body_fat_pct: null,
     steps: null,
+    waist_cm: null,
+    chest_cm: null,
+    hips_cm: null,
+    arm_cm: null,
+    forearm_cm: null,
+    thigh_cm: null,
+    calf_cm: null,
+    neck_cm: null,
   });
 }

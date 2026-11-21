@@ -123,6 +123,23 @@ export interface BodyMetric {
   body_fat_pct: number | null;
   /** v11: χειροκίνητα βήματα ημέρας (δεν διαβάζουμε HealthKit — ο χρήστης τα περνά) */
   steps: number | null;
+  /**
+   * Περιφέρειες σώματος (cm, ΠΑΝΤΑ αποθηκευμένες σε cm) — Wave 4.
+   *
+   * Non-indexed σκόπιμα: το Dexie δεν απαιτεί δήλωση, άρα ΔΕΝ χρειάζεται
+   * schema version bump. `optional` + `null` ώστε παλιά rows (που δεν τα έχουν
+   * καθόλου) να διαβάζονται ως `null` παντού — οι readers κάνουν normalize με
+   * `?? null`. Ο server τα σερβίρει μέσα στο JSON payload χωρίς αλλαγή.
+   */
+  waist_cm?: number | null;
+  chest_cm?: number | null;
+  hips_cm?: number | null;
+  /** δεξί μπράτσο */
+  arm_cm?: number | null;
+  forearm_cm?: number | null;
+  thigh_cm?: number | null;
+  calf_cm?: number | null;
+  neck_cm?: number | null;
   notes: string | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;

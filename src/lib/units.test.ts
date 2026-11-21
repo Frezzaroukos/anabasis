@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cmToIn,
+  formatLength,
   formatWeight,
+  inToCm,
   kgToLb,
   lbToKg,
+  lengthUnitFor,
+  parseLengthToCm,
   parseWeightToKg,
+  toDisplayLength,
   toDisplayWeight,
 } from './units';
 import type { WeightUnit } from './db/types';
@@ -91,4 +97,37 @@ describe('round-trip: format→parse δεν «γλιστράει» παραπέ�
       expect(displayedThirdTime).toBe(displayed);
     });
   }
+});
+
+describe('περιφέρειες — cm ↔ in', () => {
+  it('cmToIn / inToCm χρησιμοποιούν 2.54', () => {
+    expect(cmToIn(2.54)).toBeCloseTo(1, 9);
+    expect(inToCm(1)).toBeCloseTo(2.54, 9);
+    expect(cmToIn(30.48)).toBeCloseTo(12, 6);
+  });
+
+  it('λίστα → 12 in → cm κύκλος επιστρέφει ~30.48', () => {
+    expect(parseLengthToCm(12, 'in')).toBeCloseTo(30.48, 2);
+  });
+
+  it('lengthUnitFor: kg→cm, lb→in', () => {
+    expect(lengthUnitFor('kg')).toBe('cm');
+    expect(lengthUnitFor('lb')).toBe('in');
+  });
+
+  it('toDisplayLength: cm μένει, in μετατρέπεται με 1 δεκαδικό', () => {
+    expect(toDisplayLength(82.5, 'cm')).toBe(82.5);
+    // 82.5cm = 32.48in → 32.5
+    expect(toDisplayLength(82.5, 'in')).toBe(32.5);
+  });
+
+  it('parseLengthToCm: cm ως έχει, in → cm με 2 δεκαδικά', () => {
+    expect(parseLengthToCm(82.5, 'cm')).toBe(82.5);
+    expect(parseLengthToCm(32.5, 'in')).toBeCloseTo(82.55, 2);
+  });
+
+  it('formatLength: προσθέτει μονάδα εκτός αν withUnit:false', () => {
+    expect(formatLength(82.5, 'cm')).toBe('82.5 cm');
+    expect(formatLength(82.5, 'cm', { withUnit: false })).toBe('82.5');
+  });
 });

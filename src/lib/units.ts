@@ -73,3 +73,47 @@ export function parseWeightToKg(value: number, unit: WeightUnit): number {
   const kg = unit === 'lb' ? lbToKg(value) : value;
   return Math.round(kg * 100) / 100;
 }
+
+/**
+ * Μονάδα περιφέρειας σώματος που βλέπει ο χρήστης. Το storage είναι ΠΑΝΤΑ cm·
+ * αν η ρύθμιση βάρους είναι lb, δείχνουμε ίντσες (αγγλοσαξονικό κοινό), αλλιώς cm.
+ * Δεν υπάρχει ξεχωριστή «μονάδα μήκους» ρύθμιση — κρατάμε μία πηγή (weight_unit).
+ */
+export type LengthUnit = 'cm' | 'in';
+
+export function lengthUnitFor(weightUnit: WeightUnit): LengthUnit {
+  return weightUnit === 'lb' ? 'in' : 'cm';
+}
+
+const CM_PER_IN = 2.54;
+
+export function cmToIn(cm: number): number {
+  return cm / CM_PER_IN;
+}
+
+export function inToCm(inches: number): number {
+  return inches * CM_PER_IN;
+}
+
+/** cm → τιμή στη μονάδα εμφάνισης (ένας δεκαδικός), με float cleanup. */
+export function toDisplayLength(cm: number, unit: LengthUnit): number {
+  const raw = unit === 'in' ? cmToIn(cm) : cm;
+  return Math.round(raw * 10) / 10;
+}
+
+/** Είσοδος χρήστη (στη μονάδα του) → cm για αποθήκευση (2 δεκαδικά). */
+export function parseLengthToCm(value: number, unit: LengthUnit): number {
+  const cm = unit === 'in' ? inToCm(value) : value;
+  return Math.round(cm * 100) / 100;
+}
+
+/** Format περιφέρειας αποθηκευμένης σε cm, στη μονάδα του χρήστη (π.χ. «82.5 cm»). */
+export function formatLength(
+  cm: number,
+  unit: LengthUnit,
+  opts: { withUnit?: boolean } = {},
+): string {
+  const { withUnit = true } = opts;
+  const value = toDisplayLength(cm, unit);
+  return withUnit ? `${value} ${unit}` : String(value);
+}

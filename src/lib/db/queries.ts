@@ -1540,6 +1540,14 @@ export async function saveBodyMetric(
     carbs_g: null,
     fat_g: null,
     body_fat_pct: null,
+    waist_cm: null,
+    chest_cm: null,
+    hips_cm: null,
+    arm_cm: null,
+    forearm_cm: null,
+    thigh_cm: null,
+    calf_cm: null,
+    neck_cm: null,
     notes: null,
     created_at: t,
     updated_at: t,
@@ -1552,7 +1560,26 @@ export async function getBodyMetric(date: string): Promise<BodyMetric | undefine
     .where('[user_id+date]')
     .equals([getCurrentUserId(), date])
     .first();
-  return row?.deleted_at == null ? row : undefined;
+  return row && row.deleted_at == null ? normalizeBodyMetric(row) : undefined;
+}
+
+/**
+ * Περιφέρειες Wave 4 — normalize σε `null` όπου το row είναι παλιό (δεν είχε
+ * καθόλου τα πεδία). Χωρίς αυτό, ένα row χωρίς `waist_cm` δίνει `undefined` και
+ * το UI (input value, chart) βλέπει «σπασμένη» τιμή αντί για «κενό».
+ */
+function normalizeBodyMetric(row: BodyMetric): BodyMetric {
+  return {
+    ...row,
+    waist_cm: row.waist_cm ?? null,
+    chest_cm: row.chest_cm ?? null,
+    hips_cm: row.hips_cm ?? null,
+    arm_cm: row.arm_cm ?? null,
+    forearm_cm: row.forearm_cm ?? null,
+    thigh_cm: row.thigh_cm ?? null,
+    calf_cm: row.calf_cm ?? null,
+    neck_cm: row.neck_cm ?? null,
+  };
 }
 
 /**
@@ -1606,6 +1633,14 @@ export async function importBodyMetrics(
         carbs_g: null,
         fat_g: null,
         body_fat_pct: null,
+        waist_cm: null,
+        chest_cm: null,
+        hips_cm: null,
+        arm_cm: null,
+        forearm_cm: null,
+        thigh_cm: null,
+        calf_cm: null,
+        neck_cm: null,
         notes: null,
         created_at: t,
         updated_at: t,
@@ -1627,6 +1662,15 @@ export interface BodyPoint {
   proteinG: number | null;
   bodyFatPct: number | null;
   steps: number | null;
+  /** Περιφέρειες (cm αποθηκευμένα) — null όταν δεν καταγράφηκαν. */
+  waistCm: number | null;
+  chestCm: number | null;
+  hipsCm: number | null;
+  armCm: number | null;
+  forearmCm: number | null;
+  thighCm: number | null;
+  calfCm: number | null;
+  neckCm: number | null;
 }
 
 /**
@@ -1656,6 +1700,14 @@ export async function getBodyTrend(days = 60): Promise<BodyPoint[]> {
       proteinG: r?.protein_g ?? null,
       bodyFatPct: r?.body_fat_pct ?? null,
       steps: r?.steps ?? null,
+      waistCm: r?.waist_cm ?? null,
+      chestCm: r?.chest_cm ?? null,
+      hipsCm: r?.hips_cm ?? null,
+      armCm: r?.arm_cm ?? null,
+      forearmCm: r?.forearm_cm ?? null,
+      thighCm: r?.thigh_cm ?? null,
+      calfCm: r?.calf_cm ?? null,
+      neckCm: r?.neck_cm ?? null,
     });
   }
   return out;
