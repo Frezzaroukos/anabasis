@@ -42,16 +42,21 @@ describe('TrainingAnalytics', () => {
 
     render(wrap(<TrainingAnalytics />));
 
+    // Τέσσερα ανεξάρτητα useLiveQuery (volume/frequency/categories/PRs)
+    // επιλύονται σε διαφορετικές microtask στιγμές. Το heading εμφανίζεται
+    // μόλις επιστρέψει ΤΟ ΠΡΩΤΟ — οι υπόλοιπες ενότητες μπορεί να μην έχουν
+    // ακόμη render-αριστεί. Γι' αυτό κάθε ενότητα περιμένει με findBy (όχι
+    // σύγχρονο getBy), αλλιώς ο έλεγχος είναι flaky.
     expect(await screen.findByText('Training analytics')).toBeTruthy();
-    expect(screen.getByText('Weekly volume')).toBeTruthy();
-    expect(screen.getByText('Sessions per week')).toBeTruthy();
-    expect(screen.getByText('Sets per category')).toBeTruthy();
-    expect(screen.getByText('PR timeline')).toBeTruthy();
+    expect(await screen.findByText('Weekly volume')).toBeTruthy();
+    expect(await screen.findByText('Sessions per week')).toBeTruthy();
+    expect(await screen.findByText('Sets per category')).toBeTruthy();
+    expect(await screen.findByText('PR timeline')).toBeTruthy();
 
     // Κάθε γράφημα έχει προσβάσιμη σύνοψη (role=img + aria-label).
     expect(await screen.findByRole('img', { name: /Weekly training volume/ })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /Sessions per week/ })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /Working sets per category/ })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /Cumulative personal records/ })).toBeTruthy();
+    expect(await screen.findByRole('img', { name: /Sessions per week/ })).toBeTruthy();
+    expect(await screen.findByRole('img', { name: /Working sets per category/ })).toBeTruthy();
+    expect(await screen.findByRole('img', { name: /Cumulative personal records/ })).toBeTruthy();
   });
 });
