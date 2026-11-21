@@ -45,6 +45,15 @@ export function AppShell() {
        * Χωρίς αυτό, σε οθόνη 1440px το app ήταν μια λωρίδα 448px σε μαύρο κενό.
        */}
       <div className="flex min-h-full bg-background">
+        {/* Skip link: πρώτο focusable στοιχείο. Αόρατο μέχρι να πάρει focus
+            (Tab), ώστε χρήστης πληκτρολογίου/screen-reader να πηδήξει τη nav
+            και να πάει κατευθείαν στο <main>. id δέχεται το href="#main". */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-elevated"
+        >
+          {t('common.skipToContent')}
+        </a>
         <ScrollProgress />
         <SideNav />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -56,7 +65,11 @@ export function AppShell() {
             indicator είναι ψηλότερο από 6rem — σκέτο pb-24 έκρυβε την τελευταία
             γραμμή κάθε σελίδας.
           */}
-          <main className="mx-auto w-full max-w-md flex-1 px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl">
+          <main
+            id="main"
+            tabIndex={-1}
+            className="mx-auto w-full max-w-md flex-1 px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 outline-hidden md:max-w-4xl md:px-8 md:pb-10 lg:max-w-5xl"
+          >
             <div className="mb-4 empty:mb-0">
               <OfflineBanner />
             </div>

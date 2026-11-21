@@ -614,8 +614,12 @@ function AddFriend({
             className="pl-9"
           />
         </div>
-        <Button type="submit" disabled={busy || username.trim().length < 3}>
-          <UserPlus className="h-4 w-4" />
+        <Button
+          type="submit"
+          disabled={busy || username.trim().length < 3}
+          aria-label={t('social.add.submitLabel')}
+        >
+          <UserPlus className="h-4 w-4" aria-hidden />
         </Button>
       </form>
 
@@ -881,7 +885,7 @@ function Leaderboard({
           {selfIndex >= 0 &&
             selfRank > 1 &&
             xpOf(rows[selfRank - 2]!) > xpOf(rows[selfIndex]!) && (
-              <p className="mt-3 text-center text-xs text-[hsl(var(--gold))] tabular-nums">
+              <p className="mt-3 text-center text-xs text-[hsl(var(--gold-strong))] tabular-nums">
                 {t('social.board.behind', {
                   xp: (xpOf(rows[selfRank - 2]!) - xpOf(rows[selfIndex]!)).toLocaleString(),
                   rank: selfRank - 1,
@@ -1017,7 +1021,7 @@ function Avatar({
     .toUpperCase();
   const dims = size === 'lg' ? 'h-12 w-12 text-sm' : 'h-8 w-8 text-[10px]';
   const tone = highlight
-    ? 'bg-[hsl(var(--gold)/0.14)] text-[hsl(var(--gold))]'
+    ? 'bg-[hsl(var(--gold)/0.14)] text-[hsl(var(--gold-strong))]'
     : self
       ? 'bg-elevated text-foreground ring-1 ring-[hsl(var(--gold)/0.45)]'
       : 'bg-elevated text-muted-foreground';
@@ -1100,7 +1104,7 @@ function Flair({ streakDays, badges }: { streakDays: number; badges: string }) {
   return (
     <span className="flex items-center gap-1.5 tabular-nums">
       {streakDays > 0 && (
-        <span className="flex items-center gap-0.5 text-[hsl(var(--gold))]">
+        <span className="flex items-center gap-0.5 text-[hsl(var(--gold-strong))]">
           <Flame className="h-3 w-3" />
           {streakDays}
         </span>

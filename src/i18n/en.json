@@ -449,7 +449,8 @@
     "off": "Off",
     "offline": "You're offline",
     "offlineHint": "Logging works as usual — your changes sync when you reconnect.",
-    "saveError": "Couldn’t save. Try again."
+    "saveError": "Couldn’t save. Try again.",
+    "skipToContent": "Skip to main content"
   },
   "activity": {
     "strength": "Strength",
@@ -1313,7 +1314,8 @@
         "already_friends": "You're already friends.",
         "offline": "You're offline — try again when connected.",
         "generic": "Couldn't send the request."
-      }
+      },
+      "submitLabel": "Send friend request"
     },
     "requests": {
       "title": "Friend requests",

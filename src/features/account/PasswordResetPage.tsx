@@ -92,6 +92,8 @@ export function PasswordResetPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={busy || !token}
+              aria-invalid={error != null}
+              aria-describedby={error != null ? 'reset-password-error' : undefined}
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -104,9 +106,15 @@ export function PasswordResetPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               disabled={busy || !token}
+              aria-invalid={error != null}
+              aria-describedby={error != null ? 'reset-password-error' : undefined}
             />
           </label>
-          {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+          {error && (
+            <p id="reset-password-error" className="text-xs text-destructive" role="alert">
+              {error}
+            </p>
+          )}
           <Button type="submit" className="w-full" loading={busy} disabled={!token}>
             {t('resetPassword.submit')}
           </Button>

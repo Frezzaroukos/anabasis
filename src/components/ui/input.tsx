@@ -22,6 +22,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         'placeholder:text-muted-foreground',
         'hover:border-border/70',
         'focus-visible:border-ring/40 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-4 sm:focus-visible:ring-2 sm:focus-visible:ring-offset-2',
+        // aria-invalid: οπτικό σήμα (κόκκινο περίγραμμα) πάνω από το aria·
+        // το κείμενο του σφάλματος μένει η κύρια ένδειξη (δεν βασιζόμαστε ΜΟΝΟ
+        // στο χρώμα — WCAG 1.4.1).
+        'aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:ring-destructive',
         'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
