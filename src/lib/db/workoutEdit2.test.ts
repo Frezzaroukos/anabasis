@@ -5,6 +5,8 @@ import {
   addSet,
   endWorkout,
   getActivityPRs,
+  getPRsByExercise,
+  getRecentPRs,
   getWorkoutDetail,
   moveSetToExercise,
   recomputePRsForExercise,
@@ -52,9 +54,14 @@ async function completedWorkout(exerciseId: string, weight: number, reps: number
   return { w, s };
 }
 
-function bestPR(rows: { type: string; value: number }[], type: string): number | null {
-  const match = rows.filter((r) => r.type === type);
+function bestPR(rows: { type: string; value: number; deleted_at?: string | null }[], type: string): number | null {
+  const match = rows.filter((r) => r.type === type && r.deleted_at == null);
   return match.length ? Math.max(...match.map((r) => r.value)) : null;
+}
+
+/** Μόνο οι ΖΩΝΤΑΝΕΣ γραμμές (το recompute αφήνει tombstones για το sync). */
+async function livePRs() {
+  return (await db.personal_records.toArray()).filter((r) => r.deleted_at == null);
 }
 
 describe('PR recompute after edit / delete', () => {
@@ -101,7 +108,7 @@ describe('PR recompute after edit / delete', () => {
     });
     await endWorkout(w.id);
     await recomputePRsForExercise(squat.id);
-    expect(await db.personal_records.toArray()).toHaveLength(0);
+    expect(await livePRs()).toHaveLength(0);
   });
 });
 
@@ -110,7 +117,7 @@ describe('restoreWorkout — undo διαγραφής', () => {
     const { w } = await completedWorkout(squat.id, 100, 5);
     await softDeleteWorkout(w.id);
     expect(await getWorkoutDetail(w.id)).toBeNull();
-    expect(await db.personal_records.toArray()).toHaveLength(0);
+    expect(await livePRs()).toHaveLength(0);
 
     await restoreWorkout(w.id);
 
@@ -133,9 +140,9 @@ describe('removeExerciseFromWorkout — σβήνει όλη την άσκηση'
     const detail = await getWorkoutDetail(w.id);
     expect(detail!.exercises.map((e) => e.exerciseId)).toEqual([bench.id]);
     // το bench PR επιβιώνει
-    const benchPRs = (await db.personal_records.toArray()).filter((r) => r.exercise_id === bench.id);
+    const benchPRs = (await livePRs()).filter((r) => r.exercise_id === bench.id);
     expect(benchPRs.length).toBeGreaterThan(0);
-    const squatPRs = (await db.personal_records.toArray()).filter((r) => r.exercise_id === squat.id);
+    const squatPRs = (await livePRs()).filter((r) => r.exercise_id === squat.id);
     expect(squatPRs).toHaveLength(0);
   });
 });
@@ -155,10 +162,10 @@ describe('moveSetToExercise — λάθος άσκηση', () => {
     expect(moved.exercise_id).toBe(bench.id);
     // Έγινε το #2 στο bench
     expect(moved.set_number).toBe(2);
-    // Το squat έχει τώρα 0 ρεκόρ· το bench κέρδισε max_weight 100
-    const squatPRs = (await db.personal_records.toArray()).filter((r) => r.exercise_id === squat.id);
+    // Το squat έχει τώρα 0 ζωντανά ρεκόρ· το bench κέρδισε max_weight 100
+    const squatPRs = (await livePRs()).filter((r) => r.exercise_id === squat.id);
     expect(squatPRs).toHaveLength(0);
-    const benchPRs = (await db.personal_records.toArray()).filter((r) => r.exercise_id === bench.id);
+    const benchPRs = (await livePRs()).filter((r) => r.exercise_id === bench.id);
     expect(bestPR(benchPRs, 'max_weight')).toBe(100);
   });
 });
@@ -250,5 +257,53 @@ describe('activity PR recompute', () => {
     await setWorkoutDuration(w.id, 900); // 15 λεπτά — διόρθωση προς τα κάτω
     prs = await getActivityPRs('run');
     expect(prs.get('longest_duration')?.value).toBe(900);
+  });
+});
+
+describe('PR soft-delete (sync tombstones) — ΔΕΝ γίνεται hard delete', () => {
+  it('μετά από recompute, τα παλιά λάθος rows μένουν ως tombstones (deleted_at≠null)', async () => {
+    const { s } = await completedWorkout(squat.id, 110, 5);
+    const beforeIds = (await db.personal_records.toArray()).map((r) => r.id);
+    expect(beforeIds.length).toBeGreaterThan(0);
+
+    await updateSet(s.id, { weight_kg: 100 });
+
+    const all = await db.personal_records.toArray();
+    // Κάθε παλιό row υπάρχει ακόμη (δεν διαγράφηκε φυσικά)…
+    for (const id of beforeIds) {
+      const row = all.find((r) => r.id === id);
+      expect(row).toBeTruthy();
+    }
+    const maxWeight = all.filter((r) => r.type === 'max_weight');
+    // …και το παλιό 110 είναι πλέον tombstone, ενώ υπάρχει ζωντανό 100.
+    expect(maxWeight.some((r) => r.value === 110 && r.deleted_at != null)).toBe(true);
+    expect(maxWeight.some((r) => r.value === 100 && r.deleted_at == null)).toBe(true);
+  });
+
+  it('κανένας reader δεν επιστρέφει tombstoned PR', async () => {
+    const { s } = await completedWorkout(squat.id, 110, 5);
+    await updateSet(s.id, { weight_kg: 100 });
+
+    const byEx = await getPRsByExercise();
+    const squatPrs = byEx.get(squat.id) ?? [];
+    expect(squatPrs.every((r) => r.deleted_at == null)).toBe(true);
+    expect(Math.max(...squatPrs.filter((r) => r.type === 'max_weight').map((r) => r.value))).toBe(100);
+
+    const recent = await getRecentPRs(50);
+    expect(recent.every((r) => r.deleted_at == null)).toBe(true);
+    expect(recent.some((r) => r.type === 'max_weight' && r.value === 110)).toBe(false);
+
+    const detail = await getWorkoutDetail(s.workout_id);
+    expect((detail!.prs ?? []).every((r) => r.deleted_at == null)).toBe(true);
+  });
+
+  it('recompute που δεν αλλάζει τίποτα δεν αλλάζει τα ids (δεν φουσκώνει server)', async () => {
+    await completedWorkout(squat.id, 100, 5);
+    const before = (await livePRs()).map((r) => r.id).sort();
+    await recomputePRsForExercise(squat.id);
+    const after = (await livePRs()).map((r) => r.id).sort();
+    expect(after).toEqual(before);
+    // Κανένα νέο tombstone (όλα τα rows παρέμειναν ζωντανά).
+    expect((await db.personal_records.toArray()).every((r) => r.deleted_at == null)).toBe(true);
   });
 });

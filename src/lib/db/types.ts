@@ -237,6 +237,15 @@ export interface PersonalRecord {
   set_id: UUID | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /**
+   * Soft-delete tombstone (όπως σε όλους τους user-data πίνακες).
+   *
+   * Μη-indexed σκόπιμα: το Dexie δεν απαιτεί δήλωση γι' αυτό, άρα ΔΕΝ χρειάζεται
+   * schema version bump. Χρειάζεται όμως γιατί το sync είναι incremental με
+   * tombstones — ένα HARD delete δεν παράγει tombstone, οπότε ο server θα
+   * κρατούσε για πάντα τα παλιά (λάθος) PR rows και θα επέστρεφαν σε full pull.
+   */
+  deleted_at?: ISOTimestamp | null;
 }
 
 export interface Skill {

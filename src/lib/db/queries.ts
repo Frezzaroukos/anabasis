@@ -462,7 +462,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
   const existing = await db.personal_records
     .where('user_id')
     .equals(getCurrentUserId())
-    .filter((r) => r.exercise_id === set.exercise_id)
+    .filter((r) => r.exercise_id === set.exercise_id && r.deleted_at == null)
     .toArray();
 
   // Πρώτο σετ ΠΟΤΕ σε αυτή την άσκηση δεν «γιορτάζεται» ως PR — αλλιώς κάθε
@@ -506,7 +506,7 @@ async function detectActivityPRs(workout: Workout): Promise<void> {
   const records = await db.personal_records
     .where('user_id')
     .equals(getCurrentUserId())
-    .filter((r) => r.activity_kind === workout.activity_kind)
+    .filter((r) => r.activity_kind === workout.activity_kind && r.deleted_at == null)
     .toArray();
 
   // Exclude records whose backing workout is soft-deleted
@@ -545,9 +545,13 @@ async function detectActivityPRs(workout: Workout): Promise<void> {
  * Γιατί χρειάζεται: το `detectPRs` τρέχει μόνο όταν ΠΡΟΣΘΕΤΕΙΣ σετ — γράφει
  * μια γραμμή κάθε φορά που ξεπερνάς το τρέχον ρεκόρ. Αν όμως διορθώσεις ένα
  * σετ προς τα κάτω (π.χ. είχες γράψει 110, ήταν 100) ή το σβήσεις, η γραμμή
- * «110» έμενε και το app συνέχιζε να λέει ψέματα. Εδώ σβήνουμε τις γραμμές
- * της άσκησης και τις ξαναπαράγουμε με την ΙΔΙΑ λογική (candidatesFromSet +
- * isNewPR), με χρονολογική σειρά, ώστε το τελικό «καλύτερο» να είναι αληθινό.
+ * «110» έμενε και το app συνέχιζε να λέει ψέματα. Εδώ ξαναπαράγουμε τις
+ * γραμμές με την ΙΔΙΑ λογική (candidatesFromSet + isNewPR), με χρονολογική
+ * σειρά, ώστε το τελικό «καλύτερο» να είναι αληθινό.
+ *
+ * ⚠️ SOFT delete, όχι hard — βλ. `reconcilePRs`: το sync είναι incremental με
+ * tombstones μέσω `deleted_at`. Hard delete δεν στέλνει tombstone → ο server
+ * κρατά για πάντα τα παλιά λάθος PR και τα ξαναφέρνει σε full pull.
  *
  * Η σειρά ακολουθεί `workout.started_at` (πότε έγινε), ώστε το history των
  * PR rows να έχει νόημα ακόμα και με backdated καταχωρίσεις. Η τιμή-ρεκόρ
@@ -579,38 +583,37 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
       );
     });
 
-  await db.transaction('rw', db.personal_records, async () => {
-    await db.personal_records
-      .where('user_id')
-      .equals(uid)
-      .and((r) => r.exercise_id === exerciseId)
-      .delete();
-
-    const best = new Map<PRType, PersonalRecord>();
-    for (const set of live) {
-      for (const c of candidatesFromSet(set)) {
-        const current = best.get(c.type) ?? null;
-        if (!isNewPR(c, current)) continue;
-        const row: PersonalRecord = {
-          id: uuid(),
-          user_id: uid,
-          exercise_id: exerciseId,
-          activity_kind: null,
-          type: c.type,
-          value: c.value,
-          reps: c.reps,
-          weight_kg: c.weight_kg,
-          achieved_at: set.created_at,
-          workout_id: set.workout_id,
-          set_id: set.id,
-          created_at: set.created_at,
-          updated_at: now(),
-        };
-        await db.personal_records.add(row);
-        best.set(c.type, row);
-      }
+  const desired: DesiredPR[] = [];
+  const best = new Map<PRType, PersonalRecord>();
+  for (const set of live) {
+    for (const c of candidatesFromSet(set)) {
+      const current = best.get(c.type) ?? null;
+      if (!isNewPR(c, current)) continue;
+      const row: PersonalRecord = {
+        id: uuid(),
+        user_id: uid,
+        exercise_id: exerciseId,
+        activity_kind: null,
+        type: c.type,
+        value: c.value,
+        reps: c.reps,
+        weight_kg: c.weight_kg,
+        achieved_at: set.created_at,
+        workout_id: set.workout_id,
+        set_id: set.id,
+        created_at: set.created_at,
+        updated_at: now(),
+      };
+      desired.push(row);
+      best.set(c.type, row);
     }
-  });
+  }
+
+  await reconcilePRs(
+    uid,
+    (r) => r.exercise_id === exerciseId && r.activity_kind == null,
+    desired,
+  );
 }
 
 /**
@@ -639,36 +642,93 @@ export async function recomputeActivityPRs(activityKind: ActivityKind): Promise<
     )
     .sort((a, b) => a.started_at.localeCompare(b.started_at));
 
+  const desired: DesiredPR[] = [];
+  const best = new Map<PRType, PersonalRecord>();
+  for (const w of workouts) {
+    for (const c of candidatesFromWorkout(w)) {
+      const current = best.get(c.type) ?? null;
+      if (!isNewPR(c, current)) continue;
+      const row: PersonalRecord = {
+        id: uuid(),
+        user_id: uid,
+        exercise_id: null,
+        activity_kind: activityKind,
+        type: c.type,
+        value: c.value,
+        reps: c.reps,
+        weight_kg: c.weight_kg,
+        achieved_at: w.ended_at ?? w.started_at,
+        workout_id: w.id,
+        set_id: null,
+        created_at: now(),
+        updated_at: now(),
+      };
+      desired.push(row);
+      best.set(c.type, row);
+    }
+  }
+
+  await reconcilePRs(
+    uid,
+    (r) => r.activity_kind === activityKind && r.exercise_id == null,
+    desired,
+  );
+}
+
+/** Ένα «πρέπει να υπάρχει» PR row (το id αποφασίζεται στο reconcile). */
+type DesiredPR = PersonalRecord;
+
+/**
+ * Συγχρονίζει τις ζωντανές PR γραμμές ενός scope με το «επιθυμητό» σύνολο.
+ *
+ * - Ό,τι υπάρχει ζωντανό και ταυτίζεται (type+set_id+value) ΚΡΑΤΙΕΤΑΙ (ίδιο
+ *   id → δεν αλλάζει το wire row, δεν φουσκώνει ο server).
+ * - Ό,τι ζωντανό δεν ταυτίζεται πια → SOFT delete (`deleted_at`) ώστε να φύγει
+ *   tombstone στο sync και να μη ξαναζωντανέψει σε full pull. Ένα HARD delete
+ *   δεν θα έστελνε tombstone και ο server θα κρατούσε τα παλιά λάθος PR για
+ *   πάντα — θα επέστρεφαν σε νέα συσκευή/re-login.
+ * - Ό,τι λείπει → add με νέο id.
+ */
+async function reconcilePRs(
+  uid: string,
+  scope: (r: PersonalRecord) => boolean,
+  desired: DesiredPR[],
+): Promise<void> {
+  const t = now();
   await db.transaction('rw', db.personal_records, async () => {
-    await db.personal_records
+    const existingLive = await db.personal_records
       .where('user_id')
       .equals(uid)
-      .and((r) => r.activity_kind === activityKind)
-      .delete();
+      .and((r) => r.deleted_at == null && scope(r))
+      .toArray();
 
-    const best = new Map<PRType, PersonalRecord>();
-    for (const w of workouts) {
-      for (const c of candidatesFromWorkout(w)) {
-        const current = best.get(c.type) ?? null;
-        if (!isNewPR(c, current)) continue;
-        const row: PersonalRecord = {
-          id: uuid(),
-          user_id: uid,
-          exercise_id: null,
-          activity_kind: activityKind,
-          type: c.type,
-          value: c.value,
-          reps: c.reps,
-          weight_kg: c.weight_kg,
-          achieved_at: w.ended_at ?? w.started_at,
-          workout_id: w.id,
-          set_id: null,
-          created_at: now(),
-          updated_at: now(),
-        };
-        await db.personal_records.add(row);
-        best.set(c.type, row);
+    // Ουρές ανά ταυτότητα, ώστε κάθε επιθυμητό να «καταναλώσει» το πολύ ένα
+    // υπάρχον — άμυνα απέναντι σε διπλότυπα.
+    const keyOf = (r: { type: PRType; set_id: string | null; value: number }) =>
+      `${r.type}|${r.set_id ?? ''}|${r.value}`;
+    const byKey = new Map<string, PersonalRecord[]>();
+    for (const r of existingLive) {
+      const arr = byKey.get(keyOf(r)) ?? [];
+      arr.push(r);
+      byKey.set(keyOf(r), arr);
+    }
+
+    const keptIds = new Set<string>();
+    const toAdd: DesiredPR[] = [];
+    for (const row of desired) {
+      const queue = byKey.get(keyOf(row));
+      const match = queue?.shift();
+      if (match) keptIds.add(match.id);
+      else toAdd.push(row);
+    }
+
+    for (const r of existingLive) {
+      if (!keptIds.has(r.id)) {
+        await db.personal_records.update(r.id, { deleted_at: t, updated_at: t });
       }
+    }
+    for (const row of toAdd) {
+      await db.personal_records.add(row);
     }
   });
 }
@@ -681,7 +741,7 @@ export async function getPRsByExercise(): Promise<Map<string, PersonalRecord[]>>
     .toArray();
   const m = new Map<string, PersonalRecord[]>();
   for (const r of rows) {
-    if (r.exercise_id == null) continue;
+    if (r.deleted_at != null || r.exercise_id == null) continue;
     const arr = m.get(r.exercise_id) ?? [];
     arr.push(r);
     m.set(r.exercise_id, arr);
@@ -700,7 +760,7 @@ export async function getActivityPRs(activityKind: string): Promise<Map<PRType, 
     await db.personal_records
       .where('user_id')
       .equals(getCurrentUserId())
-      .filter((r) => r.activity_kind === activityKind)
+      .filter((r) => r.activity_kind === activityKind && r.deleted_at == null)
       .toArray()
   ).sort((a, b) => a.achieved_at.localeCompare(b.achieved_at));
   const m = new Map<PRType, PersonalRecord>();
@@ -710,10 +770,12 @@ export async function getActivityPRs(activityKind: string): Promise<Map<PRType, 
 
 /** Τα πιο πρόσφατα PRs, ταξινομημένα (για History/Dashboard). */
 export async function getRecentPRs(limit = 20): Promise<PersonalRecord[]> {
-  const rows = await db.personal_records
-    .where('user_id')
-    .equals(getCurrentUserId())
-    .toArray();
+  const rows = (
+    await db.personal_records
+      .where('user_id')
+      .equals(getCurrentUserId())
+      .toArray()
+  ).filter((r) => r.deleted_at == null);
   return rows
     .sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
     .slice(0, limit);
@@ -1182,7 +1244,11 @@ export async function getGamificationInput(): Promise<{
   const uid = getCurrentUserId();
   const [workouts, prs, insights, skillStats, progress, completions] = await Promise.all([
     listCompletedWorkouts(),
-    db.personal_records.where('user_id').equals(uid).toArray(),
+    db.personal_records
+      .where('user_id')
+      .equals(uid)
+      .filter((r) => r.deleted_at == null)
+      .toArray(),
     getTrainingInsights(30),
     getSkillStepStats(),
     getAllSkillProgress(),
@@ -2661,7 +2727,11 @@ export async function deleteProfile(id: string): Promise<void> {
 export async function getProfileStats(id: string) {
   const [workouts, prs, programs] = await Promise.all([
     db.workouts.where('user_id').equals(id).count(),
-    db.personal_records.where('user_id').equals(id).count(),
+    db.personal_records
+      .where('user_id')
+      .equals(id)
+      .filter((r) => r.deleted_at == null)
+      .count(),
     db.programs.where('user_id').equals(id).count(),
   ]);
   return { workouts, prs, programs };
@@ -2684,7 +2754,11 @@ export async function getCurrentProfileDataCounts(): Promise<{
   );
   const [allSets, prs, steps] = await Promise.all([
     db.sets.toArray(),
-    db.personal_records.where('user_id').equals(uid).count(),
+    db.personal_records
+      .where('user_id')
+      .equals(uid)
+      .filter((r) => r.deleted_at == null)
+      .count(),
     db.user_skill_step_completions.where('user_id').equals(uid).count(),
   ]);
   const sets = allSets.filter((s) => workoutIds.has(s.workout_id)).length;
@@ -2883,7 +2957,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
     exercises,
     totalVolume: exercises.reduce((a, e) => a + e.volume, 0),
     totalSets: live.filter((s) => s.set_type !== 'warmup' && !s.is_warmup).length,
-    prs: prs.filter((r) => r.workout_id === workoutId),
+    prs: prs.filter((r) => r.workout_id === workoutId && r.deleted_at == null),
   };
 }
 
@@ -3021,6 +3095,7 @@ export async function getTrainingInsights(days = 30): Promise<TrainingInsights> 
   const prs = await db.personal_records
     .where('user_id')
     .equals(getCurrentUserId())
+    .filter((r) => r.deleted_at == null)
     .toArray();
   const prsThisPeriod = prs.filter(
     (r) => new Date(r.achieved_at).getTime() >= windowStart,
@@ -3075,6 +3150,7 @@ export async function getTrainingHeat(days = 91): Promise<HeatCell[]> {
   const prs = await db.personal_records
     .where('user_id')
     .equals(getCurrentUserId())
+    .filter((r) => r.deleted_at == null)
     .toArray();
   const prDays = new Set(prs.map((r) => localDay(new Date(r.achieved_at))));
 
