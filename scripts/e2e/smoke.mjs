@@ -313,16 +313,6 @@ async function flow8(page) {
       month: d.getMonth(),
     };
   });
-  const today = await page.evaluate(() => {
-    const d = new Date();
-    return {
-      iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-      day: d.getDate(),
-      month: d.getMonth(),
-      year: d.getFullYear(),
-    };
-  });
-
   await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
   await skipOnboarding(page);
   await page.getByRole('button', { name: 'Schedule session', exact: true }).click();
@@ -368,9 +358,9 @@ async function flow8(page) {
   await expectText(page, 'Plan Today');
   await checkOverflow(page, 'dashboard');
 
-  await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
-  await page.locator('button').filter({ hasText: new RegExp(`^${today.day}$`) }).first().click();
-  await page.getByRole('button', { name: 'Start now', exact: true }).click();
+  // Start κατευθείαν από την κάρτα «Σήμερα στο πρόγραμμα» (D4 finding) —
+  // ίδια ροή με το calendar sheet, χωρίς δεύτερη πλοήγηση.
+  await page.getByRole('button', { name: 'Start Plan Today', exact: true }).click();
   await page.waitForURL('**/workout/active');
   await addExercise(page, 'Back Squat');
   await logSet(page, 50, 5);
