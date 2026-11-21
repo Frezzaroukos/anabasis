@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -113,6 +113,14 @@ export function AddSetInline({
   // Μετά το save ξαναπαίρνει focus το reps/hold πεδίο — γρήγορη σειριακή
   // καταγραφή σετ-σετ χωρίς tap στο πληκτρολόγιο κάθε φορά.
   const primaryInputRef = useRef<HTMLInputElement>(null);
+  // Σταθερά ids για aria-describedby — ώστε το σφάλμα να «κολλάει» στο πεδίο
+  // που το προκάλεσε (screen reader ακούει τον λόγο όταν εστιάζει το input).
+  const errorBaseId = useId();
+  const weightErrId = `${errorBaseId}-weight-err`;
+  const repsErrId = `${errorBaseId}-reps-err`;
+  const holdErrId = `${errorBaseId}-hold-err`;
+  const rpeErrId = `${errorBaseId}-rpe-err`;
+  const rirErrId = `${errorBaseId}-rir-err`;
 
   const numOrNull = (s: string) => {
     const cleaned = s.trim().replace(',', '.');
@@ -308,10 +316,16 @@ export function AddSetInline({
               className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
               aria-invalid={weight.trim() !== '' && !weightValid}
+              aria-describedby={weight.trim() !== '' && !weightValid ? weightErrId : undefined}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') { e.preventDefault(); primaryInputRef.current?.focus(); }
               }}
             />
+            {weight.trim() !== '' && !weightValid && (
+              <span id={weightErrId} role="alert" className="text-xs text-destructive">
+                {t('workout.invalidWeight')}
+              </span>
+            )}
           </label>
         )}
         {holdActive ? (
@@ -330,10 +344,16 @@ export function AddSetInline({
               className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={t('workout.holdSeconds')}
               aria-invalid={hold.trim() !== '' && !holdValid}
+              aria-describedby={hold.trim() !== '' && !holdValid ? holdErrId : undefined}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') { e.preventDefault(); void submit(); }
               }}
             />
+            {hold.trim() !== '' && !holdValid && (
+              <span id={holdErrId} role="alert" className="text-xs text-destructive">
+                {t('workout.invalidHold')}
+              </span>
+            )}
           </label>
         ) : (
           <label className="flex min-w-0 flex-1 flex-col gap-1">
@@ -352,10 +372,16 @@ export function AddSetInline({
               className="h-11 min-w-0 font-mono tabular-nums"
               aria-label={t('workout.reps')}
               aria-invalid={reps.trim() !== '' && !repsValid}
+              aria-describedby={reps.trim() !== '' && !repsValid ? repsErrId : undefined}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') { e.preventDefault(); void submit(); }
               }}
             />
+            {reps.trim() !== '' && !repsValid && (
+              <span id={repsErrId} role="alert" className="text-xs text-destructive">
+                {t('workout.invalidReps')}
+              </span>
+            )}
           </label>
         )}
         <Button
@@ -437,7 +463,13 @@ export function AddSetInline({
                 className="h-11 min-w-0 font-mono tabular-nums"
                 aria-label={t('workout.rpe')}
                 aria-invalid={rpe.trim() !== '' && (rpeNum == null || rpeNum < 1 || rpeNum > 10)}
+                aria-describedby={rpe.trim() !== '' && (rpeNum == null || rpeNum < 1 || rpeNum > 10) ? rpeErrId : undefined}
               />
+              {rpe.trim() !== '' && (rpeNum == null || rpeNum < 1 || rpeNum > 10) && (
+                <span id={rpeErrId} role="alert" className="text-xs text-destructive">
+                  {t('workout.invalidRpe')}
+                </span>
+              )}
             </label>
             <label className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -453,7 +485,13 @@ export function AddSetInline({
                 className="h-11 min-w-0 font-mono tabular-nums"
                 aria-label={t('workout.rir')}
                 aria-invalid={rir.trim() !== '' && (rirNum == null || !Number.isSafeInteger(rirNum) || rirNum < 0)}
+                aria-describedby={rir.trim() !== '' && (rirNum == null || !Number.isSafeInteger(rirNum) || rirNum < 0) ? rirErrId : undefined}
               />
+              {rir.trim() !== '' && (rirNum == null || !Number.isSafeInteger(rirNum) || rirNum < 0) && (
+                <span id={rirErrId} role="alert" className="text-xs text-destructive">
+                  {t('workout.invalidRir')}
+                </span>
+              )}
             </label>
             <label className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="text-xs uppercase tracking-wide text-muted-foreground">

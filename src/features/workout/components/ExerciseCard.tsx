@@ -240,8 +240,9 @@ export function ExerciseCard({
           {coachHint && <CoachProgressionHint hint={coachHint} />}
           {prCount > 0 && (
             <span
-              className="flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold"
+              className="flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold-strong"
               role="status"
+              aria-live="polite"
             >
               🏆 {prCount > 1 ? `${prCount} ${t('workout.prs')}` : t('workout.pr')}
             </span>
