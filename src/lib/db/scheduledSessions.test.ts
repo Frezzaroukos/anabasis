@@ -6,6 +6,7 @@ import {
   createProgramDay,
   endWorkout,
   localDay,
+  restoreWorkout,
   softDeleteWorkout,
 } from './queries';
 import {
@@ -121,7 +122,30 @@ describe('scheduledSessions', () => {
     await softDeleteWorkout(res!.workoutId);
     row = (await listScheduledForDay(s.date))[0]!;
     expect(row!.status).toBe('planned');
-    expect(row!.workout_id).toBeNull();
+    // Το id διατηρείται ως απόδειξη σύνδεσης για το Undo.
+    expect(row!.workout_id).toBe(res!.workoutId);
+  });
+
+  it('undo μετά από delete ξανασυνδέει το planned session ως done (ίδιο workout_id)', async () => {
+    setCurrentUserId('planner-undo');
+    const s = await createScheduledSession({ date: localDay(), title: 'Undo plan' });
+    const res = await startScheduledSession(s);
+    expect(res).not.toBeNull();
+    await endWorkout(res!.workoutId);
+
+    let row = (await listScheduledForDay(s.date))[0]!;
+    expect(row.status).toBe('done');
+
+    await softDeleteWorkout(res!.workoutId);
+    row = (await listScheduledForDay(s.date))[0]!;
+    expect(row.status).toBe('planned');
+    expect(row.workout_id).toBe(res!.workoutId);
+
+    await restoreWorkout(res!.workoutId);
+    row = (await listScheduledForDay(s.date))[0]!;
+    expect(row.status).toBe('done');
+    expect(row.workout_id).toBe(res!.workoutId);
+    expect((await db.workouts.get(res!.workoutId))?.deleted_at).toBeNull();
   });
 
   it('start από program day κρατά program_id/program_day_id στο workout', async () => {

@@ -16,6 +16,7 @@ import { e1rm } from '../domain/e1rm';
 import { BUILTIN_EXERCISE_CATEGORIES } from './types';
 import {
   markScheduledDoneForWorkout,
+  relinkScheduledForWorkout,
   revertScheduledForWorkout,
 } from './scheduledSessionLinks';
 import type {
@@ -206,9 +207,13 @@ export async function restoreWorkout(workoutId: string): Promise<void> {
   if (!workout || workout.deleted_at == null) return;
   const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
   const affectedExercises = new Set(sets.map((s) => s.exercise_id));
-  await db.transaction('rw', db.workouts, db.sets, async () => {
+  await db.transaction('rw', db.workouts, db.sets, db.scheduled_sessions, async () => {
     await db.workouts.update(workoutId, { deleted_at: null, updated_at: t });
     await db.sets.where('workout_id').equals(workoutId).modify({ deleted_at: null, updated_at: t });
+    // Το softDeleteWorkout το είχε γυρίσει σε planned. Το Undo πρέπει να
+    // ξανασυνδέσει το ίδιο planned row — done αν η προπόνηση είχε τελειώσει,
+    // planned αν είχε διαγραφεί ενώ ήταν ακόμη ενεργή.
+    await relinkScheduledForWorkout(workoutId, t, workout.ended_at != null ? 'done' : 'planned');
   });
   for (const exerciseId of affectedExercises) {
     await recomputePRsForExercise(exerciseId);
