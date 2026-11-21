@@ -585,7 +585,22 @@
     "editEntry": "Edit entry",
     "deleteEntryTitle": "Delete this measurement?",
     "deleteEntryDesc": "This clears weight, body fat and steps for {{date}}. It cannot be undone.",
-    "saved": "Saved"
+    "saved": "Saved",
+    "measurements": "Measurements",
+    "measurementsHint": "Circumference in {{unit}}. Log any — leave the rest empty.",
+    "waist": "Waist",
+    "chest": "Chest",
+    "hips": "Hips",
+    "arm": "Arm (right)",
+    "forearm": "Forearm",
+    "thigh": "Thigh",
+    "calf": "Calf",
+    "neck": "Neck",
+    "measurementTrend": "{{name}} trend",
+    "selectMeasurement": "Measurement",
+    "sinceFirst": "since first entry",
+    "noMeasurementData": "No measurements yet.",
+    "invalidMeasurement": "Enter a value between 0 and 300 cm"
   },
   "progress": {
     "title": "Exercise progress",

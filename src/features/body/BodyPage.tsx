@@ -6,13 +6,21 @@ import { Link } from 'react-router-dom';
 import { getBodyMetric, getBodyTrend, getBodyweightLoads, localDay, saveBodyMetric } from '@/lib/db/queries';
 import { clearBodyMetric, listRecentBodyMetrics } from '@/lib/db/workoutHelpers';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { formatWeight, parseWeightToKg, toDisplayWeight } from '@/lib/units';
+import { formatLength, formatWeight, lengthUnitFor, parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useCountUp } from '@/hooks/useCountUp';
 import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
 import { cn } from '@/lib/utils';
+import { MeasurementsForm, MeasurementsSummary } from './BodyMeasurements';
+import {
+  MEASUREMENT_FIELDS,
+  emptyMeasurements,
+  measurementDelta,
+  measurementSeries,
+  type MeasurementField,
+} from './bodyMeasurements';
 
 const BodyTrendChart = lazy(() => import('./BodyTrendChart'));
 
@@ -40,12 +48,19 @@ export function BodyPage() {
   const [w, setW] = useState('');
   const [bf, setBf] = useState('');
   const [steps, setSteps] = useState('');
+  const lengthUnit = lengthUnitFor(unit);
+  const [measurements, setMeasurements] = useState<Record<MeasurementField, number | null>>(
+    emptyMeasurements,
+  );
+  // Ποια μέτρηση δείχνει το trend chart.
+  const [chartMetric, setChartMetric] = useState<MeasurementField>('waist_cm');
 
   useEffect(() => {
     if (!selectedMetric) {
       setW('');
       setBf('');
       setSteps('');
+      setMeasurements(emptyMeasurements());
       return;
     }
     setW(
@@ -55,6 +70,9 @@ export function BodyPage() {
     );
     setBf(selectedMetric.body_fat_pct?.toString() ?? '');
     setSteps(selectedMetric.steps?.toString() ?? '');
+    const next = emptyMeasurements();
+    for (const { key } of MEASUREMENT_FIELDS) next[key] = selectedMetric[key] ?? null;
+    setMeasurements(next);
   }, [selectedMetric, selectedDate, unit]);
 
   const num = (s: string) => {
@@ -70,6 +88,7 @@ export function BodyPage() {
       weight_kg: weightInUnit != null ? parseWeightToKg(weightInUnit, unit) : null,
       body_fat_pct: num(bf),
       steps: num(steps),
+      ...measurements,
     });
     setJustSaved(true);
     globalThis.setTimeout(() => setJustSaved(false), 1800);
@@ -101,6 +120,21 @@ export function BodyPage() {
     stepPoints.length > 0
       ? Math.round(stepPoints.reduce((s, p) => s + (p.steps ?? 0), 0) / stepPoints.length)
       : null;
+
+  // Περιφέρειες: ποια έχουν δεδομένα + σειρά για το chart της επιλεγμένης.
+  const chartConfig = MEASUREMENT_FIELDS.find((f) => f.key === chartMetric) ?? MEASUREMENT_FIELDS[0]!;
+  const chartPoints = trend
+    .map((p) => p[chartConfig.pointKey as keyof typeof p] as number | null)
+    .filter((v): v is number => v != null);
+  const measurementDeltaLabel = measurementDelta(chartPoints, lengthUnit);
+  const measurementData = measurementSeries(
+    trend as unknown as Array<Record<string, unknown>>,
+    chartConfig.pointKey,
+    lengthUnit,
+  );
+  const hasAnyMeasurement = MEASUREMENT_FIELDS.some((f) =>
+    trend.some((p) => (p[f.pointKey as keyof typeof p] as number | null) != null),
+  );
 
   return (
     <div className="space-y-6">
@@ -190,6 +224,20 @@ export function BodyPage() {
             </label>
           ))}
         </div>
+        <div className="mt-4 border-t border-border/60 pt-3">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <p className="text-sm font-medium">{t('body.measurements')}</p>
+            <span className="text-xs text-muted-foreground">
+              {t('body.measurementsHint', { unit: lengthUnit })}
+            </span>
+          </div>
+          <MeasurementsForm
+            key={selectedDate}
+            values={measurements}
+            weightUnit={unit}
+            onChange={setMeasurements}
+          />
+        </div>
         <div className="mt-3 flex items-center gap-2">
           <Button className="h-9 tap:min-h-11" onClick={() => void save()}>
             {t('body.save')}
@@ -242,6 +290,9 @@ export function BodyPage() {
                       {entry.steps.toLocaleString()} {t('body.steps').toLowerCase()}
                     </span>
                   )}
+                  <span className="w-full">
+                    <MeasurementsSummary entry={entry} weightUnit={unit} />
+                  </span>
                 </button>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
@@ -346,6 +397,71 @@ export function BodyPage() {
               />
             </Suspense>
           </div>
+        </section>
+      )}
+
+      {/* Περιφέρειες — επιλογέας μέτρησης + trend + διαφορά από την πρώτη */}
+      {hasAnyMeasurement && (
+        <section className="rounded-xl bg-card p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-medium">{t('body.measurements')}</h2>
+            <select
+              value={chartMetric}
+              onChange={(e) => setChartMetric(e.target.value as MeasurementField)}
+              aria-label={t('body.selectMeasurement')}
+              className="h-9 max-w-full rounded-md border border-input bg-background px-2 text-xs text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {MEASUREMENT_FIELDS.map((f) => (
+                <option key={f.key} value={f.key}>
+                  {t(f.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <p className="font-display text-2xl font-semibold leading-none tabular-nums">
+              {chartPoints.length > 0
+                ? formatLength(chartPoints[chartPoints.length - 1]!, lengthUnit)
+                : '—'}
+            </p>
+            {measurementDeltaLabel && (
+              <span
+                className={cn(
+                  'flex items-center gap-0.5 font-mono text-xs tabular-nums',
+                  measurementDeltaLabel.value > 0 ? 'text-gold-strong' : 'text-muted-foreground',
+                )}
+                title={t('body.sinceFirst')}
+              >
+                {measurementDeltaLabel.value > 0 ? (
+                  <ArrowUp className="h-3 w-3" aria-hidden />
+                ) : (
+                  <ArrowDown className="h-3 w-3" aria-hidden />
+                )}
+                {measurementDeltaLabel.label}
+              </span>
+            )}
+          </div>
+          {chartPoints.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t('body.noMeasurementData')}
+            </p>
+          ) : (
+            <div className="h-40 w-full">
+              <Suspense fallback={<ChartSkeleton />}>
+                <BodyTrendChart
+                  variant="measurement"
+                  data={measurementData}
+                  days={days}
+                  unit={unit}
+                  measurement={{
+                    dataKey: chartMetric,
+                    label: t(chartConfig.labelKey),
+                    unitLabel: lengthUnit,
+                  }}
+                />
+              </Suspense>
+            </div>
+          )}
         </section>
       )}
 

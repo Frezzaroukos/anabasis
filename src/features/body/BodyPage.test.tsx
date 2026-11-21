@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18next from 'i18next';
@@ -75,7 +75,10 @@ describe('BodyPage — με βάρος/λίπος/βήματα καταγεγρ�
     fireEvent.click(screen.getAllByLabelText('Edit entry')[2]!);
 
     await waitFor(() => {
-      const values = (screen.getAllByRole('spinbutton') as HTMLInputElement[]).map((i) => i.value);
+      // Τα πρώτα 3 spinbuttons είναι βάρος/λίπος/βήματα· τα υπόλοιπα είναι περιφέρειες.
+      const values = (screen.getAllByRole('spinbutton') as HTMLInputElement[])
+        .slice(0, 3)
+        .map((i) => i.value);
       expect(values).toEqual(['79', '18', '8000']);
     });
     expect(screen.getByText(/Log for/)).toBeTruthy();
@@ -96,5 +99,47 @@ describe('BodyPage — με βάρος/λίπος/βήματα καταγεγρ�
     fireEvent.click(screen.getAllByLabelText('Clear entry')[2]!);
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('79 kg')).toBeNull());
+  });
+});
+
+describe('BodyPage — περιφέρειες (Wave 4)', () => {
+  beforeEach(async () => {
+    // Καθαρή κατάσταση ανά test: μόνο περιφέρειες, για να μετράμε το chart τους.
+    const { db } = await import('@/lib/db');
+    await db.body_metrics.clear();
+    await saveBodyMetric(daysAgo(4), { waist_cm: 84, chest_cm: 100 });
+    await saveBodyMetric(daysAgo(2), { waist_cm: 83 });
+    await saveBodyMetric(localDay(), { waist_cm: 82 });
+  });
+
+  it('αποθηκεύει περιφέρεια από τη φόρμα (cm) και τη βλέπει στην τάση', async () => {
+    render(wrap(<BodyPage />));
+    // Η φόρμα έχει label «Waist (cm)» — γράφουμε νέα τιμή και Save.
+    const waist = await screen.findByLabelText('Waist (cm)');
+    fireEvent.change(waist, { target: { value: '81' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(async () => {
+      const { getBodyMetric } = await import('@/lib/db/queries');
+      const today = await getBodyMetric(localDay());
+      expect(today?.waist_cm).toBe(81);
+    });
+  });
+
+  it('δείχνει chart τάσης μέτρησης με επιλογέα και διαφορά από την πρώτη', async () => {
+    render(wrap(<BodyPage />));
+    // Ο επιλογέας μέτρησης + το chart είναι παρόντα (hasAnyMeasurement).
+    const select = await screen.findByLabelText('Measurement');
+    expect(select).toBeTruthy();
+    // Η διαφορά 84 → 82 φαίνεται ως −2 cm (πρόσημο).
+    await waitFor(() => expect(screen.getByText(/−2 cm/)).toBeTruthy());
+  });
+
+  it('δείχνει validation error για τιμή εκτός ορίων (>300cm)', async () => {
+    render(wrap(<BodyPage />));
+    const waist = await screen.findByLabelText('Waist (cm)');
+    fireEvent.change(waist, { target: { value: '9999' } });
+    expect(waist.getAttribute('aria-invalid')).toBe('true');
+    expect(await screen.findByText('Enter a value between 0 and 300 cm')).toBeTruthy();
   });
 });
