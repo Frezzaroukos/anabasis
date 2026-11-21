@@ -2038,6 +2038,64 @@ export async function setSkillArchived(id: string, archived: boolean): Promise<v
   await db.skills.update(id, { is_archived: archived, updated_at: now() });
 }
 
+/**
+ * Πόσα «κρέμονται» από ένα skill: σκαλιά, πρόοδος, ολοκληρώσεις βημάτων,
+ * στόχοι. Ίδιο pattern με το `countExerciseUsage` — η διαγραφή μπλοκάρεται αν
+ * υπάρχει ιστορικό, ώστε η πρόοδος του χρήστη να μη σβηστεί σιωπηλά.
+ */
+export async function countSkillUsage(id: string): Promise<{
+  steps: number;
+  progress: number;
+  completions: number;
+  goals: number;
+  total: number;
+}> {
+  const steps = await db.skill_steps.where('skill_id').equals(id).toArray();
+  const stepIds = new Set(steps.map((s) => s.id));
+  const [progress, completions, goals] = await Promise.all([
+    db.user_skill_progress.where('skill_id').equals(id).count(),
+    db.user_skill_step_completions.toArray().then((rows) =>
+      rows.filter((r) => stepIds.has(r.skill_step_id)).length,
+    ),
+    // Το goals δεν έχει index στο skill_id (schema.ts: goals index δεν το
+    // περιλαμβάνει) — φιλτράρουμε in-memory όπως τα completions.
+    db.goals.toArray().then((rows) =>
+      rows.filter((g) => g.skill_id === id && g.deleted_at == null).length,
+    ),
+  ]);
+  return {
+    steps: steps.length,
+    progress,
+    completions,
+    goals,
+    total: steps.length + progress + completions + goals,
+  };
+}
+
+export type DeleteSkillResult =
+  | { deleted: true }
+  | { deleted: false; reason: 'builtin' | 'in_use'; usage: Awaited<ReturnType<typeof countSkillUsage>> };
+
+/**
+ * Διαγραφή ΔΙΚΟΥ ΣΟΥ skill. Ο `skills` πίνακας ΔΕΝ έχει `deleted_at` (δεν είναι
+ * sync-table με tombstones) — γι' αυτό η διαγραφή γίνεται μόνο όταν δεν
+ * κρέμεται τίποτα από πάνω (κανένα σκαλί/πρόοδος/ολοκλήρωση/στόχος), ώστε να
+ * μη μείνουν ορφανά. Builtin (`user_id === null`) δεν διαγράφονται — μόνο
+ * αρχειοθετούνται. Με ιστορικό → `{ deleted: false, reason: 'in_use' }`.
+ */
+export async function deleteSkill(id: string): Promise<DeleteSkillResult> {
+  const skill = await db.skills.get(id);
+  if (!skill || skill.user_id === null) {
+    return { deleted: false, reason: 'builtin', usage: await countSkillUsage(id) };
+  }
+  const usage = await countSkillUsage(id);
+  if (usage.total > 0) {
+    return { deleted: false, reason: 'in_use', usage };
+  }
+  await db.skills.delete(id);
+  return { deleted: true };
+}
+
 export interface SkillStepInput {
   added_weight_kg?: number | null;
   name: string;

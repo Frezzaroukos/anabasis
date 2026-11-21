@@ -288,7 +288,12 @@
     "emptyTitle": "Ξεκίνα κατακτώντας skills",
     "emptyHint": "Ένα skill είναι αλυσίδα προόδου: tuck → straddle → full. Παρακολούθησε τα βήματά σου από εύκολο σε δύσκολο.",
     "emptyExamples": "π.χ. Front Lever, Planche, Muscle-up, Handstand Push-up",
-    "progressNeedMore": "Κατάκτησε δύο σκαλιά και η ανάβασή σου εμφανίζεται εδώ."
+    "progressNeedMore": "Κατάκτησε δύο σκαλιά και η ανάβασή σου εμφανίζεται εδώ.",
+    "deleteSkill": "Διαγραφή skill",
+    "deleteSkillConfirmTitle": "Διαγραφή αυτού του skill;",
+    "deleteSkillConfirmDesc": "Το skill και η (κενή) σκάλα του θα αφαιρεθούν. Δεν αναιρείται.",
+    "deleteBlockedInUse": "Το skill έχει βήματα, πρόοδο ή στόχους. Αρχειοθέτησέ το αντί να το διαγράψεις.",
+    "deleteBlockedBuiltin": "Τα built-in skills δεν διαγράφονται — μπορείς να τα αρχειοθετήσεις."
   },
   "settings": {
     "title": "Ρυθμίσεις",
@@ -1113,7 +1118,23 @@
     "accessCodeHint": "Δώσε αυτόν τον one-time κωδικό σε φίλο. Ενεργοποιεί Pro για την επιλεγμένη διάρκεια· μετά χρειάζεται πληρωμή εκτός αν δώσεις ξανά.",
     "createCode": "Δημιουργία κωδικού",
     "codeError": "Ο κωδικός δεν δημιουργήθηκε.",
-    "codeShownOnce": "Εμφανίζεται μία φορά — αντίγραψέ τον τώρα. Ο server κρατά μόνο το hash."
+    "codeShownOnce": "Εμφανίζεται μία φορά — αντίγραψέ τον τώρα. Ο server κρατά μόνο το hash.",
+    "reportsHeading": "Αναφορές",
+    "reportsHint": "Αναφορές χρηστών για χειροκίνητο έλεγχο. Τίποτα δεν είναι αυτόματο — αποφασίζεις εσύ.",
+    "reportsEmpty": "Καμία αναφορά εδώ.",
+    "reportsLoadError": "Δεν φορτώθηκαν οι αναφορές.",
+    "reportsFilterOpen": "Ανοιχτές",
+    "reportsFilterReviewed": "Ελεγμένες",
+    "reportsFilterAll": "Όλες",
+    "reportsReporter": "Αναφέρων",
+    "reportsTarget": "Αναφερόμενο προφίλ",
+    "reportsReason": "Λόγος",
+    "reportsNote": "Λεπτομέρειες",
+    "reportsCreated": "Αναφέρθηκε",
+    "reportsReviewed": "Ελέγχθηκε",
+    "reportsMarkReviewed": "Σήμανση ως ελεγμένη",
+    "reportsReviewError": "Δεν ενημερώθηκε η αναφορά.",
+    "reportsNoNote": "—"
   },
   "templates": {
     "fullBody5x5": {

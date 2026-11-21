@@ -323,6 +323,7 @@ pub fn router(state: AppState) -> Router {
         .route("/users/{id}/plan", post(admin::set_plan))
         .route("/users/{id}/rows", get(admin::user_rows))
         .route("/reports", get(admin::reports))
+        .route("/reports/{id}/review", post(admin::review_report))
         .route("/comp_codes", post(admin::create_comp_code))
         .route("/stats", get(admin::stats))
         .route("/gc", post(admin::gc));

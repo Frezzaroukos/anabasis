@@ -245,6 +245,7 @@ payload (που ήδη κουβαλά deleted_at).
   (δώρα/support)· το `pro` επεκτείνεται από την τρέχουσα λήξη αν είναι ενεργή· `indefinite` δίνει Pro χωρίς expiry και revoke γίνεται με `{ plan: "free" }`.
 - POST /api/admin/comp_codes body `{ days?: 1..3650, indefinite?: boolean }` → 200 `{ id, code, code_prefix, days, indefinite, max_uses:1 }`. Το πλήρες `code` εμφανίζεται **μία φορά**· η DB κρατά μόνο SHA-256. Admin-only.
 - GET  /api/admin/reports?status=open|reviewed|dismissed|all → `[ { id, reporter_id, reporter_username, target_account_id, target_username, reason, note, status, created_at, reviewed_at, reviewer_id } ]`. Χωρίς φίλτρο: πρόσφατα με τα `open` πρώτα (max 200). 400 `invalid_status`.
+- POST /api/admin/reports/:id/review body `{ status?: "reviewed"|"dismissed" }` (default `reviewed`) → 200 `{ ok: true }`. Γράφει `reviewed_at` + `reviewer_id`. Idempotent (ξανα-σήμανση OK). Άγνωστο id → 404 `not_found`. 400 `invalid_status`. Δεν υπάρχει automation — καταγράφει ότι άνθρωπος admin κοίταξε την αναφορά.
 - GET  /api/admin/stats → `{ accounts, active_accounts, disabled_accounts, admins, pro_accounts, sessions, rows, db_size_bytes, uptime_seconds }`
 
 ### Billing  (Stripe monthly + lifetime)
