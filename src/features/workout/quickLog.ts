@@ -110,7 +110,8 @@ function makeSet(weightKg: number | null, tok: ParsedRepToken): QuickSet {
   return set;
 }
 
-const EXPLICIT_WEIGHT_RE = /(\d+(?:[.,]\d+)?)\s*(kg|lbs?|κιλ[αά]?)\b/gi;
+// Το \b της JS δεν βλέπει τα ελληνικά ως γράμματα — lookahead αντί για \b.
+const EXPLICIT_WEIGHT_RE = /(\d+(?:[.,]\d+)?)\s*(kgs?|lbs?|κιλ[αάόο]?|kilos?)(?![\p{L}\d])/giu;
 
 function normalizeExplicitUnit(u: string): 'kg' | 'lb' {
   return u.toLowerCase().startsWith('lb') ? 'lb' : 'kg';
@@ -128,6 +129,20 @@ function parsePlainChunk(chunk: string, weighted: boolean, unit: WeightUnit): Qu
 
   // Detect explicit weight markers like "80kg 1 + 90kg 1 + 100kg 1 + 80kg 6" or "18kg 4xmax".
   const matches = [...raw.matchAll(EXPLICIT_WEIGHT_RE)];
+  // «3x15 20kg»: τα reps γράφτηκαν ΠΡΙΝ το βάρος (ένα βάρος, τίποτα μετά).
+  if (matches.length === 1) {
+    const m = matches[0]!;
+    const before = raw.slice(0, m.index ?? 0).trim();
+    const after = raw.slice((m.index ?? 0) + m[0].length).trim();
+    if (before && !after) {
+      const weightVal = Number(m[1]!.replace(',', '.'));
+      const reps = parseRepTokens(before);
+      if (Number.isFinite(weightVal) && weightVal >= 0 && reps.length > 0) {
+        const wKg = unitToKg(weightVal, normalizeExplicitUnit(m[2]!), unit);
+        return reps.map((tok) => makeSet(wKg, tok));
+      }
+    }
+  }
   if (matches.length > 0) {
     const out: QuickSet[] = [];
     for (let i = 0; i < matches.length; i++) {
@@ -148,15 +163,36 @@ function parsePlainChunk(chunk: string, weighted: boolean, unit: WeightUnit): Qu
   // No explicit kg/lb unit written.
   const lower = raw.toLowerCase();
 
+  // «100x3x2» = βάρος × reps × σετ.
+  const wxrxs = lower.match(/^(\d+(?:[.,]\d+)?)\s*[×x]\s*(\d+(?:\.\d+)?)\s*[×x]\s*(\d+)$/);
+  if (wxrxs && weighted) {
+    const wVal = Number(wxrxs[1]!.replace(',', '.'));
+    const reps = round2(Number(wxrxs[2]));
+    const count = Math.min(MAX_MULTIPLIER_SETS, Number(wxrxs[3]));
+    if (wVal > 0 && reps > 0 && count > 0) {
+      return Array.from({ length: count }, () => makeSet(parseWeightToKg(wVal, unit), { reps }));
+    }
+  }
+
   // Single-token "80x5" in weighted mode → 80(unit) × 5 (backward-compatible).
   const compactWeightReps = lower.match(/^(\d+(?:[.,]\d+)?)\s*[×x]\s*(\d+(?:\.\d+)?|max|amrap)$/);
-  if (compactWeightReps && weighted) {
+  // «3x8»/«4x10» χωρίς μονάδα: ακέραιο ≤6 μπροστά από το «x» είναι ο ΑΡΙΘΜΟΣ ΣΕΤ
+  // (ποιος σηκώνει 4kg;), όχι βάρος — πέφτει παρακάτω στον πολλαπλασιαστή σετ.
+  const aSmallSetCount =
+    compactWeightReps != null && /^[1-6]$/.test(compactWeightReps[1]!) && compactWeightReps[2] !== undefined;
+  if (compactWeightReps && weighted && !aSmallSetCount) {
     const wVal = Number(compactWeightReps[1]!.replace(',', '.'));
     if (Number.isFinite(wVal) && wVal > 0) {
       const wKg = parseWeightToKg(wVal, unit);
       const repToks = parseRepTokens(compactWeightReps[2]!);
       return repToks.map((tok) => makeSet(wKg, tok));
     }
+  }
+
+  // «3x8» σε weighted mode: πολλαπλασιαστής σετ χωρίς βάρος (bodyweight σετ).
+  if (aSmallSetCount) {
+    const reps = parseRepTokens(lower);
+    if (reps.length > 0) return reps.map((tok) => makeSet(null, tok));
   }
 
   // Whitespace separates weight from reps when weighted (e.g. "80 5,4,3,2", "84,4 5", "80 3x5").
