@@ -143,7 +143,9 @@ async function waitForSetForm(page, card, expectedWeight) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const weight = await card.getByLabel('Weight (kg)').inputValue().catch(() => null);
     const reps = await card.getByLabel('Reps').inputValue().catch(() => null);
-    if (weight === String(expectedWeight) && reps === '') return;
+    // Από το E-entry οι reps ΜΕΝΟΥΝ μετά το save (1-tap «ίδιο σετ»)· άρα
+    // περιμένουμε μόνο το βάρος να «κάτσει» και τις reps να υπάρχουν/αδειάσουν.
+    if (weight === String(expectedWeight) && reps !== null) return;
     await page.waitForTimeout(30);
   }
   throw new Error(`add-set form did not reset to ${expectedWeight}kg`);
