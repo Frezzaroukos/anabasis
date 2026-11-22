@@ -1434,6 +1434,101 @@
       "remove": "Remove"
     }
   },
+  "guide": {
+      "eyebrow": "Guide",
+      "title": "User guide",
+      "subtitle": "How to log, correct and use your data — with the same buttons you see in the app.",
+      "searchLabel": "Search the guide",
+      "searchPlaceholder": "Try “paste”, “undo”, “backup”…",
+      "noResults": "Nothing matches. Try another word.",
+      "buttonsHeading": "Buttons you will see",
+      "quickExamples": "Quick log — one line",
+      "pasteExamples": "Paste notes — one exercise per line",
+      "sections": {
+        "record": {
+          "title": "Log a workout",
+          "intro": "Start from the calendar. Everything is saved on this device, so you can log offline.",
+          "step1": "Open Calendar, pick a day (today or earlier), then tap “Add workout”.",
+          "step2": "Choose a program day, or type a free name for an ad-hoc session, then tap “Start”.",
+          "step3": "Tap “Add exercise”, pick from the library or type a new name. Set weight and reps and tap “Add set” for each set.",
+          "step4": "Tap “Quick log” on an exercise to log the whole thing in one line.",
+          "step5": "Tap “Paste notes” to add many exercises from lines such as “Bench Press: 80kg 5+5” or “Pull-ups: bw 8+6+5”. Review the preview, then save.",
+          "step6": "Tap “Save workout” and confirm. The session opens in History.",
+          "note": "Sets marked as warm-up do not count toward PRs. Leaving a session with no sets does not create a workout."
+        },
+        "correct": {
+          "title": "Fix or delete a finished workout",
+          "intro": "History is editable; changes rewrite PRs from the remaining sets.",
+          "step1": "Open History and tap the workout.",
+          "step2": "Tap “Edit” on a set to change weight, reps, RPE/RIR, tempo or notes; tap “Save”.",
+          "step3": "“Repeat set” copies the last set, and the bin removes a set. A “Set deleted” toast offers Undo.",
+          "step4": "To remove a whole exercise, tap “Remove exercise” and confirm. The toast offers Undo.",
+          "step5": "“Edit workout” changes name, date, start/end time, duration or notes. To delete: “Delete this workout” + confirm; “Undo” in the toast restores it.",
+          "note": "Deleting a workout also hides its sets and recomputes the PRs of the exercises it touched."
+        },
+        "library": {
+          "title": "Exercises, programs, goals and skills",
+          "intro": "Set up your library once; the logger uses it every day.",
+          "step1": "Exercises: “New exercise”, set category/equipment and Weighted or Bodyweight. Archive hides it from the picker without breaking history; delete works only when it has no history.",
+          "step2": "Programs: “New program”, add days and exercises with target sets/reps/weight. “Duplicate” forks a program; start it from its page or from Calendar.",
+          "step3": "Goals: “New goal” and pick what to count (sessions, volume, sets, reps, distance, duration, skill steps, target weight or a custom tracker), amount and period.",
+          "step4": "Skills: “New skill”, add ordered steps with targets and tap “Mark achieved” when you clear one. Archive instead of deleting a skill that has progress.",
+          "step5": "Use Archive/Restore wherever you want to hide something without losing history."
+        },
+        "body": {
+          "title": "Body measurements",
+          "intro": "Weight, body fat and steps are one entry per local day; weight counts as load in bodyweight exercises.",
+          "step1": "Open Body, choose a date (today or earlier), fill Weight / Body fat / Steps and tap “Save”.",
+          "step2": "Recent entries are listed below; tap “Edit entry” to load that day into the form and save corrections.",
+          "step3": "“Clear entry” removes that day's values; confirm “Delete this measurement?”.",
+          "step4": "“Weight trend”, “Body fat trend” and “Steps” charts appear once there is enough data."
+        },
+        "planner": {
+          "title": "Plan sessions on the calendar",
+          "intro": "Planned sessions live next to logged workouts; they do not create a workout until you start them.",
+          "step1": "In Calendar pick a day and tap “Schedule session”. Add a title, optional time/program and save.",
+          "step2": "“Repeat weekly” creates the same session for several weeks at once.",
+          "step3": "Tap a planned session to edit it, “Skip” it, or delete it with confirmation.",
+          "step4": "For today, “Start now” opens the logger; saving turns the planned session into Done. “Today in your plan” on Home lists today's planned sessions."
+        },
+        "charts": {
+          "title": "What the charts mean",
+          "intro": "Charts are built only from live sets and workouts; deleted rows are excluded.",
+          "step1": "Progress per exercise: “Top set” is the heaviest working set, “Est. 1RM” estimates a one-rep max from weight and reps, and “Volume” is weight × reps. Reps are shown per session.",
+          "step2": "Training analytics: “Weekly volume” sums working sets (bodyweight counts as load), “Sessions per week” counts completed workouts, “Sets per category” splits working sets by category, and “PR timeline” adds records cumulatively.",
+          "step3": "History shows volume trends and recent PRs; feel is logged per session.",
+          "step4": "Body charts cover weight, body fat and steps; choose a range (1M/3M/6M/1Y/All) to change the window.",
+          "note": "A chart needs at least two sessions for the exercise to show a trend."
+        },
+        "prs": {
+          "title": "Personal records",
+          "intro": "A PR is a best-ever mark for one exercise, compared with what you had before.",
+          "step1": "Strength PRs: Max weight, Max reps, Max volume, Est. 1RM and Max hold. Without sets, activities track Longest distance, Longest duration and Fastest pace.",
+          "step2": "Warm-up sets never count. The very first set of a new exercise is not celebrated as a PR because there was no previous mark.",
+          "step3": "For bodyweight exercises, volume counts bodyweight + added weight; Max weight and Est. 1RM count only the added weight. A set with no added weight can still set volume or rep records.",
+          "step4": "After you edit, repeat or delete sets (or delete a workout), PRs are recomputed from the remaining live sets, so old wrong marks do not stick."
+        },
+        "sync": {
+          "title": "Offline and sync",
+          "intro": "Anabasis is local-first: everything works without an account. Sync is optional.",
+          "step1": "Your data lives in this browser's IndexedDB on this device. Closing the tab does not erase it.",
+          "step2": "When offline, logging and edits keep working; the offline banner reminds you and changes sync after reconnect.",
+          "step3": "To sync the active device profile, sign in from “Account & Sync”. Device profiles are local sets of data, not accounts.",
+          "step4": "Each device profile has its own settings and data; switching profiles changes what you see."
+        },
+        "backup": {
+          "title": "Backup, import, CSV and deletion",
+          "intro": "Take your data with you, restore a backup, or remove it deliberately.",
+          "step1": "Settings → Data & backups shows counts for the active profile.",
+          "step2": "“Export this profile” downloads a JSON backup of the active profile; “Export all profiles on this device” includes every profile on the device.",
+          "step3": "“Workouts (CSV)” and “Sets (CSV)” are for spreadsheets; CSV is for analysis, not for restoring.",
+          "step4": "“Import backup” shows a preview of what will be added/updated before anything is written. Importing merges; it does not wipe first.",
+          "step5": "“Check now” finds orphan rows and “Repair” fixes them without deleting planned sessions.",
+          "step6": "“Delete all data” removes the active profile's data after two confirmations. Export a backup first.",
+          "note": "Deleting a device profile also offers a JSON backup before deletion in Profiles."
+        }
+      }
+    },
   "help": {
     "title": "Help & FAQ",
     "desc": "Answers to the questions people ask most.",

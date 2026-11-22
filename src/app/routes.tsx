@@ -44,6 +44,7 @@ const CommunityPage = lazyPage(() => import('@/features/community/CommunityPage'
 const PublicProfilePage = lazyPage(() => import('@/features/achievements/PublicProfilePage'), 'PublicProfilePage');
 const LegalPage = lazyPage(() => import('@/features/legal/LegalPage'), 'LegalPage');
 const HelpPage = lazyPage(() => import('@/features/support/HelpPage'), 'HelpPage');
+const GuidePage = lazyPage(() => import('@/features/guide/GuidePage'), 'GuidePage');
 const ChangelogPage = lazyPage(() => import('@/features/support/ChangelogPage'), 'ChangelogPage');
 const FeedbackPage = lazyPage(() => import('@/features/support/FeedbackPage'), 'FeedbackPage');
 
@@ -100,6 +101,7 @@ export const router = createBrowserRouter(
       { path: 'branding', element: <BrandingPage /> },
       { path: 'legal/:doc', element: <LegalPage /> },
       { path: 'help', element: <HelpPage /> },
+      { path: 'guide', element: <GuidePage /> },
       { path: 'whats-new', element: <ChangelogPage /> },
       { path: 'feedback', element: <FeedbackPage /> },
       { path: '*', element: <Navigate to="/" replace /> },

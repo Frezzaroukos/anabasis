@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  BookOpen,
   Cloud,
   CornerDownLeft,
   Database,
@@ -115,6 +116,14 @@ const ACTION_ENTRIES: CommandEntry[] = [
     Icon: Download,
     group: 'actions',
     keywords: 'import backup restore notion strong hevy εισαγωγη αντιγραφο',
+  },
+  {
+    id: 'action-guide',
+    to: '/guide',
+    labelKey: 'guide.title',
+    Icon: BookOpen,
+    group: 'actions',
+    keywords: 'guide how to manual usage οδηγος χρηση πως',
   },
   {
     id: 'action-help',
