@@ -45,11 +45,12 @@ export function WeekStrip() {
             aria-label={fullLabel}
             className="flex flex-col items-center justify-center gap-1 rounded-lg py-1.5 ring-offset-background transition-all duration-150 hover:bg-elevated active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 tap:min-h-11"
           >
-            <span className="text-xs uppercase leading-none text-muted-foreground">{weekdayLabel}</span>
+            <span aria-hidden className="text-xs uppercase leading-none text-muted-foreground">{weekdayLabel}</span>
             {trained === undefined ? (
               <span className="h-7 w-7 animate-pulse rounded-full bg-muted/40" />
             ) : (
               <span
+                aria-hidden
                 className={cn(
                   'flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-medium tabular-nums transition-colors',
                   trained ? 'bg-primary/15 text-primary' : 'text-muted-foreground',
