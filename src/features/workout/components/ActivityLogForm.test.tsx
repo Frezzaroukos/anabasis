@@ -1,10 +1,11 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
 import { ActivityLogForm } from './ActivityLogForm';
 import { formatDurationInput, parseDurationInput } from '@/features/activities/duration';
+import { readStopwatchSeconds } from '@/hooks/useManualStopwatch';
 import { db } from '@/lib/db';
 import { startWorkout } from '@/lib/db/queries';
 
@@ -103,6 +104,29 @@ describe('ActivityLogForm', () => {
       expect(updated?.duration_seconds).toBe(1500);
     });
     expect(screen.getByText('5:00/km')).toBeTruthy();
+  });
+
+  it('γράφει το manual duration στο stopwatch key που διαβάζει το Save', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+      key: () => null,
+      length: 0,
+    });
+    try {
+      const run = await startWorkout('run');
+      render(wrap(<ActivityLogForm workout={run} />));
+      const duration = screen.getByLabelText('Duration');
+      fireEvent.change(duration, { target: { value: '25:30' } });
+      fireEvent.blur(duration);
+
+      await waitFor(() => expect(readStopwatchSeconds(run.id)).toBe(25 * 60 + 30));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('αρνείται αρνητική/μηδενική απόσταση και άκυρη διάρκεια', async () => {
