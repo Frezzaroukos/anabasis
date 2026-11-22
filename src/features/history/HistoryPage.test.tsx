@@ -33,8 +33,12 @@ describe('PR detection end-to-end', () => {
       reps: 5,
       hold_seconds: null,
     });
-    const afterWorking = await getRecentPRs(50);
+    // Ο πίνακας κρατά τα baseline rows (για σύγκριση)· οι readers δεν τα μετρούν.
+    const rawPRs = async () =>
+      (await db.personal_records.toArray()).filter((r) => r.deleted_at == null);
+    const afterWorking = await rawPRs();
     expect(afterWorking.length).toBeGreaterThan(0);
+    expect(await getRecentPRs(50)).toHaveLength(0); // πρώτο σετ ποτέ ≠ PR
 
     // warm-up με τερατώδες βάρος → ΔΕΝ πρέπει να γράψει PR
     const before = afterWorking.length;
@@ -47,9 +51,23 @@ describe('PR detection end-to-end', () => {
       hold_seconds: null,
       is_warmup: true,
     });
-    expect((await getRecentPRs(50)).length).toBe(before);
+    expect((await rawPRs()).length).toBe(before);
 
     await endWorkout(w.id);
+
+    // Επόμενη προπόνηση, βαρύτερο σετ → ΠΡΑΓΜΑΤΙΚΟ PR.
+    await new Promise((r) => setTimeout(r, 5));
+    const w2 = await startWorkout();
+    await addSet({
+      workout_id: w2.id,
+      exercise_id: bench.id,
+      weight_kg: 90,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    expect((await getRecentPRs(50)).length).toBeGreaterThan(0);
+    await endWorkout(w2.id);
   });
 });
 

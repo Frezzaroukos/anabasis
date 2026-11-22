@@ -79,6 +79,15 @@ describe('F06 — PRs για δραστηριότητες χωρίς σετ', ()
   });
 
   it('τα activity PRs εμφανίζονται στο getRecentPRs μαζί με τα strength', async () => {
+    // Το πρώτο ρεκόρ είναι baseline (όχι PR)· χρειάζεται προηγούμενη προπόνηση να ξεπεραστεί.
+    const w0 = await startWorkout('strength');
+    await addSet({
+      workout_id: w0.id, exercise_id: bench().id, weight_kg: 90,
+      bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(w0.id);
+    await runOf(5, 1500);
+    await new Promise((r) => setTimeout(r, 5));
     const w = await startWorkout('strength');
     await addSet({
       workout_id: w.id, exercise_id: bench().id, weight_kg: 100,

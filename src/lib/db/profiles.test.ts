@@ -79,7 +79,9 @@ describe('προφίλ — δημιουργία & εναλλαγή', () => {
 
 describe('απομόνωση δεδομένων μεταξύ προφίλ', () => {
   it('οι προπονήσεις του ενός δεν φαίνονται στο άλλο', async () => {
-    await logAWorkout(100);
+    await logAWorkout(90); // baseline
+    await new Promise((r) => setTimeout(r, 5));
+    await logAWorkout(100); // σπάει ρεκόρ προηγούμενης προπόνησης
     const mine = await getRecentPRs(50);
     expect(mine.length).toBeGreaterThan(0);
 
