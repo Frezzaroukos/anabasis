@@ -11,7 +11,7 @@ import {
   setGoalArchived,
   reorderGoals,
 } from './goals';
-import { addSet, endWorkout, startWorkout } from './queries';
+import { addSet, endWorkout, softDeleteSet, softDeleteWorkout, startWorkout } from './queries';
 import { SEED_EXERCISES } from './seeds';
 import { createTracker, addTrackerEntry } from './trackers';
 
@@ -458,4 +458,74 @@ describe('custom goals (tracker + windowed entries)', () => {
     expect((await getGoalProgress(weekly)).current).toBe(10);
     expect((await getGoalProgress(monthly)).current).toBe(10);
   });
-})
+});
+
+describe('reps goal — rest-pause mini-reps (audit #12)', () => {
+  it('τα rest_pause_reps μετράνε στο σύνολο επαναλήψεων, ίδιος ορισμός με τον όγκο', async () => {
+    const w = await startWorkout('strength');
+    // Σετ rest-pause 5 κύριες + 3+2 mini = 10 συνολικές επαναλήψεις.
+    await addSet({
+      workout_id: w.id,
+      exercise_id: squat.id,
+      weight_kg: 60,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+      set_type: 'rest_pause',
+      rest_pause_reps: [3, 2],
+    });
+    await endWorkout(w.id);
+
+    const repsGoal = await createGoal({ metric: 'reps', target: 100, period: 'week' });
+    expect((await getGoalProgress(repsGoal)).current).toBe(10); // ΟΧΙ 5
+
+    // Ίδιος αριθμός reps χρησιμοποιείται και στον όγκο (60kg × 10 = 600).
+    const volGoal = await createGoal({ metric: 'volume_kg', target: 1000, period: 'week' });
+    expect((await getGoalProgress(volGoal)).current).toBe(600);
+  });
+});
+
+describe('γενικοί κανόνες στόχων (audit checks)', () => {
+  it('σβησμένη προπόνηση δεν μετράει (ούτε τα σετ της)', async () => {
+    const w = await startWorkout('strength');
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+    await softDeleteWorkout(w.id);
+
+    const g = await createGoal({ metric: 'reps', target: 50, period: 'week' });
+    expect((await getGoalProgress(g)).current).toBe(0);
+  });
+
+  it('σβησμένο σετ δεν μετράει', async () => {
+    const w = await startWorkout('strength');
+    const s1 = await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 3, hold_seconds: null });
+    await endWorkout(w.id);
+    await softDeleteSet(s1.id);
+
+    const g = await createGoal({ metric: 'reps', target: 50, period: 'week' });
+    expect((await getGoalProgress(g)).current).toBe(3);
+  });
+
+  it('warm-up σετ δεν μετράνε σε reps/volume/sets', async () => {
+    const w = await startWorkout('strength');
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 60, bodyweight_kg: null, reps: 10, hold_seconds: null, set_type: 'warmup', is_warmup: true });
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+
+    expect((await getGoalProgress(await createGoal({ metric: 'reps', target: 50, period: 'week' }))).current).toBe(5);
+    expect((await getGoalProgress(await createGoal({ metric: 'sets', target: 10, period: 'week' }))).current).toBe(1);
+    expect((await getGoalProgress(await createGoal({ metric: 'volume_kg', target: 1000, period: 'week' }))).current).toBe(500);
+  });
+
+  it('η εβδομάδα ξεκινά Δευτέρα σε τοπική ώρα — προπόνηση Κυριακής ΔΕΝ μετρά στην επόμενη', async () => {
+    // Δευτέρα 12/1/2026, 09:00 τοπική· η εβδομάδα άνοιξε τα μεσάνυχτα της Δευτέρας.
+    const monday = new Date(2026, 0, 12, 9, 0);
+    const w = await startWorkout('strength', '2026-01-11'); // Κυριακή (προηγούμενη εβδομάδα)
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+
+    const g = await createGoal({ metric: 'sessions', target: 4, period: 'week', period_anchor: 'calendar' });
+    expect((await getGoalProgress(g, monday)).current).toBe(0);
+  });
+});
