@@ -11,19 +11,43 @@
  * είχε πέσει όταν το σετ είχε σβηστεί.
  */
 import { db } from './schema';
-import { recomputePRsForExercise } from './queries';
+import { recomputePRsForExercise, renumberSetsForExercise } from './queries';
 
 const now = () => new Date().toISOString();
 
 /**
  * Επαναφέρει ένα soft-deleted σετ (undo του `softDeleteSet`).
  * No-op αν το σετ δεν υπάρχει ή δεν είναι διαγραμμένο.
+ *
+ * ⚠️ Σύγκρουση με το renumber: το `softDeleteSet` ξαναριθμεί τα υπόλοιπα σετ
+ * 1..N, οπότε το σετ επιστρέφει με το ΠΑΛΙΟ του `set_number` και θα συγκρουστεί
+ * (π.χ. #1,#2,#3 → σβήνω #2 → μένουν #1,#2 → undo → #1,#2,#2). Άρα πριν την
+ * επαναφορά σπρώχνουμε +1 όλα τα ζωντανά σετ της ίδιας άσκησης/προπόνησης με
+ * `set_number >= του αποκατεστημένου`, ώστε να ανοίξει «θέση», και μετά
+ * ξαναριθμούμε 1..N.
  */
 export async function restoreSet(setId: string): Promise<void> {
   const set = await db.sets.get(setId);
   if (!set || set.deleted_at == null) return;
   const t = now();
-  await db.sets.update(setId, { deleted_at: null, updated_at: t });
+  await db.transaction('rw', db.sets, async () => {
+    await db.sets
+      .where('workout_id')
+      .equals(set.workout_id)
+      .and(
+        (s) =>
+          s.id !== setId &&
+          s.exercise_id === set.exercise_id &&
+          s.deleted_at == null &&
+          s.set_number >= set.set_number,
+      )
+      .modify((s) => {
+        s.set_number += 1;
+        s.updated_at = t;
+      });
+    await db.sets.update(setId, { deleted_at: null, updated_at: t });
+    await renumberSetsForExercise(set.workout_id, set.exercise_id);
+  });
   await recomputePRsForExercise(set.exercise_id);
 }
 
@@ -43,11 +67,16 @@ export async function restoreExerciseInWorkout(
     .toArray();
   if (sets.length === 0) return 0;
   const t = now();
-  await db.sets
-    .where('workout_id')
-    .equals(workoutId)
-    .and((s) => s.exercise_id === exerciseId && s.deleted_at != null)
-    .modify({ deleted_at: null, updated_at: t });
+  await db.transaction('rw', db.sets, async () => {
+    await db.sets
+      .where('workout_id')
+      .equals(workoutId)
+      .and((s) => s.exercise_id === exerciseId && s.deleted_at != null)
+      .modify({ deleted_at: null, updated_at: t });
+    // Όλα επιστρέφουν ταυτόχρονα· το renumber εγγυάται πυκνή 1..N σειρά ακόμη
+    // κι αν υπάρχουν ήδη ζωντανά σετ της ίδιας άσκησης (π.χ. μερικό delete).
+    await renumberSetsForExercise(workoutId, exerciseId);
+  });
   await recomputePRsForExercise(exerciseId);
   return sets.length;
 }

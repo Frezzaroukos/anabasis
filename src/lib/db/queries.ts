@@ -913,9 +913,15 @@ export async function duplicateWorkoutToDate(
     await db.sets.where('workout_id').equals(sourceWorkoutId).toArray()
   )
     .filter((s) => s.deleted_at == null)
-    .sort((a, b) => a.set_number - b.set_number);
+    // Η ΣΕΙΡΑ ΑΣΚΗΣΕΩΝ στο detail βγαίνει από το created_at του πρώτου σετ κάθε
+    // άσκησης (βλ. getWorkoutDetail/reorderWorkoutExercises). Γι' αυτό ταξινομούμε
+    // κατά created_at (όχι μόνο set_number) και μοιράζουμε created_at = t + i ms.
+    .sort(
+      (a, b) => a.created_at.localeCompare(b.created_at) || a.set_number - b.set_number,
+    );
 
   const t = now();
+  const tBase = Date.parse(t);
   const started = localNoon(targetDate);
   // Διατήρησε τη διάρκεια της πηγής· το ended_at = started + duration ώστε να
   // «κλείσει» και να μετράει στο ιστορικό χωρίς να παριστάνει ζωντανή συνεδρία.
@@ -941,7 +947,12 @@ export async function duplicateWorkoutToDate(
       updated_at: t,
       deleted_at: null,
     });
-    for (const s of sourceSets) {
+    for (let i = 0; i < sourceSets.length; i++) {
+      const s = sourceSets[i]!;
+      // Διατήρησε τη σειρά ασκήσεων: κάθε σετ παίρνει created_at = t + i ms με
+      // τη σειρά της πηγής (ταξινομημένη κατά created_at). Χωρίς αυτό όλα είχαν
+      // το ίδιο t → η σειρά ασκήσεων χανόταν στο αντίγραφο.
+      const setCreatedAt = new Date(tBase + i).toISOString();
       await db.sets.add({
         id: uuid(),
         workout_id: newId,
@@ -961,7 +972,7 @@ export async function duplicateWorkoutToDate(
         group_id: s.group_id,
         notes: s.notes,
         rest_seconds: s.rest_seconds,
-        created_at: t,
+        created_at: setCreatedAt,
         updated_at: t,
         deleted_at: null,
       });
@@ -1040,7 +1051,7 @@ export async function reorderWorkoutExercises(
  * σετ από μια άσκηση μένει «κενό» (π.χ. #1, #3) — μοιάζει σαν να χάθηκε σετ.
  * Επιστρέφει τα ids που άλλαξαν (για recompute PR αν χρειάζεται).
  */
-async function renumberSetsForExercise(
+export async function renumberSetsForExercise(
   workoutId: string,
   exerciseId: string,
 ): Promise<string[]> {

@@ -14,6 +14,7 @@ import {
   startWorkout,
 } from './queries';
 import { createScheduledSession, listScheduledSessions } from './scheduledSessions';
+import { restoreSet } from './workoutRestore';
 import { SEED_EXERCISES } from './seeds';
 
 /**
@@ -94,6 +95,43 @@ describe('softDeleteSet — κλείνει το κενό', () => {
   });
 });
 
+describe('restoreSet — undo χωρίς διπλό set_number', () => {
+  it('delete #2 → undo → πυκνή σειρά #1,#2,#3 με το σετ πίσω στη θέση 2', async () => {
+    const w = await startWorkout('strength');
+    const s1 = await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    const s2 = await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 105, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    const s3 = await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 110, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+
+    await softDeleteSet(s2.id);
+    // Μετά τη διαγραφή: #1 (s1), #2 (s3).
+    expect(await setNumbers(w.id, squat.id)).toEqual([1, 2]);
+    expect((await db.sets.get(s3.id))!.set_number).toBe(2);
+
+    await restoreSet(s2.id);
+
+    // Πυκνή 1..3 χωρίς διπλό, και το s2 ξανά στη θέση #2.
+    expect(await setNumbers(w.id, squat.id)).toEqual([1, 2, 3]);
+    expect((await db.sets.get(s2.id))!.set_number).toBe(2);
+    expect((await db.sets.get(s3.id))!.set_number).toBe(3);
+    expect((await db.sets.get(s1.id))!.set_number).toBe(1);
+  });
+
+  it('undo του ΠΡΩΤΟΥ σετ σπρώχνει τα υπόλοιπα κάτω', async () => {
+    const w = await startWorkout('strength');
+    const s1 = await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 105, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+
+    await softDeleteSet(s1.id);
+    expect(await setNumbers(w.id, squat.id)).toEqual([1]);
+
+    await restoreSet(s1.id);
+    expect(await setNumbers(w.id, squat.id)).toEqual([1, 2]);
+    expect((await db.sets.get(s1.id))!.set_number).toBe(1);
+  });
+});
+
 describe('adjustExerciseSetWeights — batch αλλαγή βάρους', () => {
   it('προσθέτει delta σε όλα τα weighted working σετ και ξαναϋπολογίζει PR', async () => {
     const w = await startWorkout('strength');
@@ -171,6 +209,27 @@ describe('duplicateWorkoutToDate — αντιγραφή σε άλλη μέρα',
 
   it('επιστρέφει null για ανύπαρκτη ή διαγραμμένη πηγή', async () => {
     expect(await duplicateWorkoutToDate('nope', '2026-11-01')).toBeNull();
+  });
+
+  it('διατηρεί τη ΣΕΙΡΑ ΑΣΚΗΣΕΩΝ του αντιγράφου (μέσω created_at)', async () => {
+    // Πηγή: τρεις ασκήσεις σε σειρά C (Incline), A (Bench), B (Back Squat).
+    const incline = SEED_EXERCISES.find((e) => e.name === 'Incline Bench Press')!;
+    const w = await startWorkout('strength', '2026-11-10', null, null, 'Mixed');
+    const si = await addSet({ workout_id: w.id, exercise_id: incline.id, weight_kg: 60, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    const sb = await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 80, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    const sq = await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+    // Σταθερή, ρητή σειρά created_at (τα τρία addSet μπορεί να πέσουν στο ίδιο ms).
+    await db.sets.update(si.id, { created_at: '2026-11-10T10:00:00.000Z' });
+    await db.sets.update(sb.id, { created_at: '2026-11-10T10:01:00.000Z' });
+    await db.sets.update(sq.id, { created_at: '2026-11-10T10:02:00.000Z' });
+
+    const sourceOrder = (await getWorkoutDetail(w.id))!.exercises.map((e) => e.exerciseId);
+    expect(sourceOrder).toEqual([incline.id, bench.id, squat.id]);
+
+    const newId = await duplicateWorkoutToDate(w.id, '2026-11-09');
+    const copyOrder = (await getWorkoutDetail(newId!))!.exercises.map((e) => e.exerciseId);
+    expect(copyOrder).toEqual(sourceOrder);
   });
 });
 
