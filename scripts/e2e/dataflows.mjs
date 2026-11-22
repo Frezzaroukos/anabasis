@@ -143,9 +143,13 @@ async function waitForSetForm(page, card, expectedWeight) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const weight = await card.getByLabel('Weight (kg)').inputValue().catch(() => null);
     const reps = await card.getByLabel('Reps').inputValue().catch(() => null);
+    // Όσο το σετ αποθηκεύεται η φόρμα είναι <fieldset disabled aria-busy>· ένα
+    // fill τότε χάνεται (το input αγνοεί την τιμή). Το βάρος ταιριάζει ήδη αφού
+    // το γράψαμε εμείς, άρα χωρίς αυτόν τον έλεγχο γράφαμε μέσα στο busy παράθυρο.
+    const busy = await card.locator('fieldset[aria-busy="true"]').count().catch(() => 1);
     // Από το E-entry οι reps ΜΕΝΟΥΝ μετά το save (1-tap «ίδιο σετ»)· άρα
     // περιμένουμε μόνο το βάρος να «κάτσει» και τις reps να υπάρχουν/αδειάσουν.
-    if (weight === String(expectedWeight) && reps !== null) return;
+    if (busy === 0 && weight === String(expectedWeight) && reps !== null) return;
     await page.waitForTimeout(30);
   }
   throw new Error(`add-set form did not reset to ${expectedWeight}kg`);
@@ -158,6 +162,10 @@ async function logSets(page, exercise, sets) {
     const [weight, reps] = sets[index];
     await card.getByLabel('Weight (kg)').fill(String(weight));
     await card.getByLabel('Reps').fill(String(reps));
+    // Ρυθμός ανθρώπου: fill+click στο ίδιο ms (αδύνατο με δάχτυλο) έγραφε
+    // περιστασιακά το ΠΡΟΗΓΟΥΜΕΝΟ βάρος υπό φόρτο· με 400ms κενό 21/21 και το
+    // input δεν ξαναστήνεται (probe 23/11). Αιτία στο app δεν αποδείχθηκε.
+    await page.waitForTimeout(150);
     await card.getByRole('button', { name: 'Add set', exact: true }).click();
     await expectText(page, `${weight}kg × ${reps}`);
     if (index < sets.length - 1) await waitForSetForm(page, card, weight);
