@@ -1610,18 +1610,34 @@ export async function getSkillStepStats(): Promise<Map<string, { total: number; 
  * θέλεις μόνο το squat σου σε στήλες.
  */
 export async function exportExerciseCsv(exerciseId: string): Promise<string> {
-  const rows = (
+  const sets = (
     await db.sets.where('exercise_id').equals(exerciseId).toArray()
-  )
-    .filter((s) => s.deleted_at == null)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  ).filter((s) => s.deleted_at == null);
+
+  // Το date column ΔΕΝ είναι η UTC μέρα του set.created_at: ένα backdated
+  // workout (ή ένα σετ στις 01:30 τοπική) έδειχνε λάθος μέρα. Χρησιμοποιούμε
+  // τη μέρα του WORKOUT (started_at), ίδια σύμβαση με το ημερολόγιο.
+  const workoutIds = [...new Set(sets.map((s) => s.workout_id))];
+  const workouts = workoutIds.length
+    ? await db.workouts.where('id').anyOf(workoutIds).toArray()
+    : [];
+  const workoutById = new Map(workouts.map((w) => [w.id, w]));
+  const dayOf = (s: SetEntry) => {
+    const workout = workoutById.get(s.workout_id);
+    return localDay(new Date(workout?.started_at ?? s.created_at));
+  };
+  const sortKey = (s: SetEntry) =>
+    workoutById.get(s.workout_id)?.started_at ?? s.created_at;
+  const rows = sets.sort(
+    (a, b) => sortKey(a).localeCompare(sortKey(b)) || a.set_number - b.set_number,
+  );
 
   const header = 'date,set_number,weight_kg,reps,hold_seconds,rpe,rir,e1rm,volume';
   const csv = (v: number | string | null) => (v == null ? '' : String(v));
   const lines = rows.map((s) => {
     const est = s.weight_kg != null && s.reps != null ? Math.round(e1rm(s.weight_kg, s.reps) * 10) / 10 : null;
     return [
-      s.created_at.slice(0, 10),
+      dayOf(s),
       s.set_number,
       csv(s.weight_kg),
       csv(s.reps),
