@@ -166,7 +166,10 @@
       "sets_one": "{{count}} set",
       "sets_other": "{{count}} sets"
     },
-    "recent": "Recent"
+    "recent": "Recent",
+    "pasteNotesEditSets": "Sets (edit if wrong)",
+    "pasteNotesUnreadable": "Couldn't read any valid set — fix the numbers or untick this line.",
+    "pasteNotesFuzzy": "Exercise guessed — check the match above."
   },
   "programs": {
     "title": "Programs",

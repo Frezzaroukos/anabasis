@@ -10,7 +10,13 @@ import { localDay } from '@/lib/db/queries';
 import { savePastedWorkout, type SavePastedWorkoutResult } from '@/lib/db/workoutHelpers';
 import { formatWeight } from '@/lib/units';
 import { cn } from '@/lib/utils';
-import { parseWorkoutNotes } from '../parseWorkoutNotes';
+import {
+  hasSuspectSets,
+  parseSetsForExercise,
+  parseWorkoutNotes,
+  type ParsedWorkoutLine,
+} from '../parseWorkoutNotes';
+import { loadPasteMemory, rememberPasteMatch } from '../pasteMemory';
 
 const CREATE_SENTINEL = '__create__';
 
@@ -42,6 +48,9 @@ export function QuickPasteWorkoutSheet({
   const [date, setDate] = useState(initialDate ?? today);
   const [workoutName, setWorkoutName] = useState('');
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  // Inline διόρθωση αριθμών ανά γραμμή (κείμενο σετ, π.χ. «80kg 5+4+3»).
+  const [setsEdits, setSetsEdits] = useState<Record<string, string>>({});
+  const [memory, setMemory] = useState(loadPasteMemory);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -50,15 +59,45 @@ export function QuickPasteWorkoutSheet({
     if (!open) return;
     setDate(initialDate ?? localDay());
     setError(false);
+    setMemory(loadPasteMemory());
   }, [open, initialDate]);
 
+  const baseLines = useMemo(
+    () => parseWorkoutNotes(text, exercises, unit, memory),
+    [text, exercises, unit, memory],
+  );
+
+  // Η «ισχύουσα» εικόνα κάθε γραμμής: άσκηση (αυτόματη ή διορθωμένη) + σετ
+  // ξαναδιαβασμένα για ΑΥΤΗΝ την άσκηση (π.χ. hold ⇒ δευτερόλεπτα) + inline edit.
   const parsedLines = useMemo(
-    () => parseWorkoutNotes(text, exercises, unit),
-    [text, exercises, unit],
+    () =>
+      baseLines.map((line): ParsedWorkoutLine => {
+        const chosen = overrides[line.id];
+        const exId = chosen === CREATE_SENTINEL ? null : (chosen ?? line.matchedExerciseId);
+        const ex = exId ? (exercises.find((e) => e.id === exId) ?? null) : null;
+        const edited = setsEdits[line.id];
+        if (chosen === undefined && edited === undefined) return line;
+        const isHold = ex?.default_unit === 'sec';
+        const sets = parseSetsForExercise(
+          edited ?? line.setsText,
+          ex,
+          unit,
+          /\b(?:bw|bodyweight)\b/i.test(line.rawName),
+        );
+        return {
+          ...line,
+          setsText: edited ?? line.setsText,
+          sets,
+          isHold,
+          unreadable: sets.length === 0,
+          hasSuspectValues: hasSuspectSets(sets, isHold),
+        };
+      }),
+    [baseLines, overrides, setsEdits, exercises, unit],
   );
 
   const selectedLines = useMemo(
-    () => parsedLines.filter((l) => !excluded.has(l.id)),
+    () => parsedLines.filter((l) => !excluded.has(l.id) && l.sets.length > 0),
     [parsedLines, excluded],
   );
 
@@ -80,6 +119,7 @@ export function QuickPasteWorkoutSheet({
     setText('');
     setWorkoutName('');
     setOverrides({});
+    setSetsEdits({});
     setExcluded(new Set());
     setError(false);
     onClose();
@@ -116,6 +156,14 @@ export function QuickPasteWorkoutSheet({
 
       // Καλούμε πρώτα onSaved ώστε αν ο caller ακούει popstate για navigation,
       // να προλάβει το history.back() που πυροδοτεί το resetAndClose().
+      // Θυμήσου τις διορθώσεις του χρήστη για το επόμενο paste.
+      for (const line of selectedLines) {
+        const chosen = overrides[line.id];
+        const original = baseLines.find((b) => b.id === line.id)?.matchedExerciseId ?? null;
+        if (chosen && chosen !== CREATE_SENTINEL && chosen !== original) {
+          rememberPasteMatch(line.rawName, chosen);
+        }
+      }
       onSaved?.(res);
       resetAndClose();
     } catch {
@@ -223,7 +271,7 @@ export function QuickPasteWorkoutSheet({
                         s.weightKg != null
                           ? formatWeight(s.weightKg, unit, { withUnit: true })
                           : 'BW';
-                      const reps = s.reps != null ? String(s.reps) : 'max';
+                      const reps = s.reps != null ? `${s.reps}${line.isHold ? 's' : ''}` : 'max';
                       const isDrop = s.setType === 'dropset';
                       const isAmrap = s.setType === 'amrap';
                       return (
@@ -238,7 +286,7 @@ export function QuickPasteWorkoutSheet({
                                 : 'bg-muted/60 text-foreground',
                           )}
                         >
-                          {load} × {reps}
+                          {line.isHold ? reps : `${load} × ${reps}`}
                           {isDrop && (
                             <span className="font-sans text-[10px] font-semibold uppercase text-amber-500">
                               drop
@@ -254,12 +302,35 @@ export function QuickPasteWorkoutSheet({
                     })}
                   </div>
 
-                  {line.hasSuspectValues && (
+                  <label className="flex flex-col gap-1 pl-7">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {t('workout.pasteNotesEditSets')}
+                    </span>
+                    <Input
+                      value={line.setsText}
+                      onChange={(e) =>
+                        setSetsEdits((cur) => ({ ...cur, [line.id]: e.target.value }))
+                      }
+                      aria-label={t('workout.pasteNotesEditSets')}
+                      className="h-9 font-mono text-sm tabular-nums"
+                    />
+                  </label>
+
+                  {line.unreadable ? (
+                    <p className="flex items-center gap-1.5 pl-7 text-xs text-destructive" role="alert">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      {t('workout.pasteNotesUnreadable')}
+                    </p>
+                  ) : line.hasSuspectValues ? (
                     <p className="flex items-center gap-1.5 pl-7 text-xs text-amber-500">
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       {t('workout.pasteNotesSuspect')}
                     </p>
-                  )}
+                  ) : line.confidence === 'fuzzy' && overrides[line.id] === undefined ? (
+                    <p className="pl-7 text-xs text-muted-foreground">
+                      {t('workout.pasteNotesFuzzy')}
+                    </p>
+                  ) : null}
                 </li>
               );
             })}

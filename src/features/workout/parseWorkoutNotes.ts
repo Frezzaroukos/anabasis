@@ -11,7 +11,7 @@
 import type { Exercise, WeightUnit } from '@/lib/db/types';
 import { parseQuickSets, type QuickSet } from './quickLog';
 
-export type MatchConfidence = 'exact' | 'alias' | 'fuzzy' | 'none';
+export type MatchConfidence = 'exact' | 'alias' | 'fuzzy' | 'memory' | 'none';
 
 export interface ParsedWorkoutLine {
   id: string;
@@ -26,10 +26,18 @@ export interface ParsedWorkoutLine {
   noteHint: string | null;
   /** Ασυνήθιστη τιμή (π.χ. 1100kg από χαμένο «+») — σημαδεύεται στο preview για έλεγχο. */
   hasSuspectValues: boolean;
+  /** Βρέθηκαν αριθμοί αλλά κανένα έγκυρο σετ (π.χ. «80kg 0») — δείχνεται για διόρθωση, δεν αποθηκεύεται. */
+  unreadable: boolean;
+  /** Η άσκηση είναι hold (τα «reps» είναι δευτερόλεπτα). */
+  isHold: boolean;
 }
+
+/** Μνήμη αντιστοιχίσεων: normalized όνομα σημείωσης → exercise id (από παλιότερες διορθώσεις). */
+export type ExerciseMemory = Record<string, string>;
 
 const SUSPECT_WEIGHT_KG = 350;
 const SUSPECT_REPS = 100;
+const SUSPECT_HOLD_SECONDS = 600;
 
 /** Κανονικοποίηση για σύγκριση: πεζά, χωρίς τόνους (Ελληνικά/Λατινικά), χωρίς σημεία στίξης. */
 export function normalizeExerciseText(input: string): string {
@@ -37,6 +45,7 @@ export function normalizeExerciseText(input: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    .replace(/ς/g, 'σ')
     .replace(/[._/\\–—-]+/g, ' ')
     .replace(/[^a-z0-9\u0370-\u03ff\u1f00-\u1fff\s]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -48,7 +57,7 @@ export function normalizeExerciseText(input: string): string {
  * Τα κλειδιά είναι ήδη normalized. Το ταίριασμα ελέγχεται ενάντια στη βιβλιοθήκη
  * του χρήστη (seeded + custom) — ποτέ δεν «εφευρίσκει» ID που δεν υπάρχει.
  */
-const ALIAS_RULES: Array<{ patterns: RegExp[]; targets: string[] }> = [
+const ALIAS_RULES_SRC: Array<{ patterns: RegExp[]; targets: string[] }> = [
   {
     patterns: [/\bmu\b/, /\bmuscle\s*ups?\b/, /\bμασλ\s*απ/],
     targets: ['muscle up'],
@@ -58,12 +67,12 @@ const ALIAS_RULES: Array<{ patterns: RegExp[]; targets: string[] }> = [
       /\bw\s*pull\s*ups?\b/,
       /\bwpu\b/,
       /\bweighted\s*pull\s*ups?\b/,
-      /\bελξεις\s*με\s*βαρος/,
+      /\bελξεισ\s*με\s*βαροσ/,
     ],
     targets: ['weighted pull ups', 'pull ups'],
   },
   {
-    patterns: [/\bpull\s*ups?\b/, /\bμονοζυγο/, /\bελξεις\b/],
+    patterns: [/\bpull\s*ups?\b/, /\bμονοζυγο/, /\bελξεισ\b/],
     targets: ['pull ups', 'weighted pull ups'],
   },
   {
@@ -172,6 +181,17 @@ const ALIAS_RULES: Array<{ patterns: RegExp[]; targets: string[] }> = [
   },
 ];
 
+/**
+ * Το `\b` της JS θεωρεί «γράμματα» μόνο τα ASCII — στα ελληνικά δεν ταιριάζει
+ * ποτέ (έτσι οι ελληνικοί κανόνες παραπάνω δεν δούλευαν). Το αντικαθιστούμε με
+ * Unicode όριο λέξης (lookarounds πάνω σε \p{L}\p{N}).
+ */
+const UNI_B = '(?:(?<![\\p{L}\\p{N}])(?=[\\p{L}\\p{N}])|(?<=[\\p{L}\\p{N}])(?![\\p{L}\\p{N}]))';
+const ALIAS_RULES = ALIAS_RULES_SRC.map((rule) => ({
+  targets: rule.targets,
+  patterns: rule.patterns.map((re) => new RegExp(re.source.replace(/\\b/g, UNI_B).replace(/ς/g, 'σ'), 'u')),
+}));
+
 function stripOuterWrapper(line: string): string {
   let s = line.trim();
   // Strip bullet/numbering prefixes like "- ", "• ", "1. ", "(." from pasted notes.
@@ -186,10 +206,43 @@ function stripOuterWrapper(line: string): string {
 }
 
 /**
+ * Προ-επεξεργασία γραμμής: φέρνει τις πολλές «ανθρώπινες» γραφές στη μορφή που
+ * καταλαβαίνει ο quickLog parser. Δεν αγγίζει το όνομα της άσκησης.
+ *   «15″ 12″ 10″» / «3x20s» → δευτερόλεπτα ως απλοί αριθμοί
+ *   «80 κιλά» → 80kg · «4×8» → 4x8 · «5/5/4» → 5,5,4
+ *   «3x5 @80» → 80kg 3x5 · «+20kg» → 20kg · «BW+10» → 10kg
+ *   «3 sets of 8» / «3 σετ των 8» → 3x8 · «3x6 bw» → bw 3x6
+ *   «… each / ανά πλευρά» → αφαιρείται
+ */
+export function normalizeNoteLine(line: string): string {
+  let s = line;
+  s = s.replace(/[×✕✖]/g, 'x');
+  s = s.replace(/(\d)\s*(?:″|”|“|"|''|′′)/g, '$1');
+  s = s.replace(/(\d)\s*(?:secs?|sec\.|seconds?|δευτ(?:ερόλεπτα|\.)?|s)(?![\p{L}\d])/giu, '$1');
+  s = s.replace(/(\d+(?:[.,]\d+)?)\s*(?:κιλά|κιλα|κιλό|κιλο|κ\.)(?![\p{L}\d])/giu, '$1kg');
+  s = s.replace(/(\d)\s*kgs?\b/gi, '$1kg').replace(/(\d)\s*kilos?\b/gi, '$1kg');
+  // 3x5 @80  →  80kg 3x5
+  s = s.replace(/(\d+\s*x\s*\d+(?:[.,]\d+)?)\s*@\s*(\d+(?:[.,]\d+)?)(?:\s*(kg|lbs?))?/gi, (_m, sets: string, w: string, u?: string) => `${w}${u ?? 'kg'} ${sets}`);
+  // BW+10 / bw +10kg → 10kg ·  +20kg → 20kg
+  s = s.replace(/\b(?:bw|bodyweight)\s*\+\s*(\d+(?:[.,]\d+)?)(?:\s*(kg|lbs?))?/gi, (_m, w: string, u?: string) => `${w}${u ?? 'kg'}`);
+  s = s.replace(/(^|\s)\+\s*(\d+(?:[.,]\d+)?\s*(?:kg|lbs?))/gi, '$1$2');
+  // «3 sets of 8»
+  s = s.replace(/(\d+)\s*(?:sets?|σετ)\s*(?:of|x|των|με)\s*(\d+(?:[.,]\d+)?)/giu, '$1x$2');
+  // 5/5/4 → 5,5,4 (όχι ημερομηνίες/κλάσματα με κενά)
+  s = s.replace(/(?<![\d/])(\d+(?:\/\d+){1,})(?![\d/])/g, (m) => m.replace(/\//g, ','));
+  // each / per side
+  s = s.replace(/\s+(?:each|per\s+side|ανά\s+πλευρά|ανα\s+πλευρα|\/side)\s*$/giu, '');
+  // «… 3x6 bw» → «bw 3x6»
+  s = s.replace(/^(.*?)\s+((?:\d+x)?\d[\d.,+x\s]*?)\s+(bw|bodyweight)\s*$/i, '$1 $3 $2');
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Χωρίζει μια γραμμή σε «όνομα άσκησης» + «σετ».
  * Ψάχνει το πρώτο `:` ή `;` έξω από παρενθέσεις (ώστε παρενθετικά σχόλια στο
  * όνομα όπως «Rows machine για sat(καλησθενικη άσκηση ):18kg 4xmax» να μένουν
- * στο όνομα). Αν δεν υπάρχει `:`, `;`, `—`, χωρίζει πριν το πρώτο βάρος (π.χ. «Bench 80kg 5+5»).
+ * στο όνομα). Αλλιώς χωρίζει στον πρώτο «αριθμητικό» όρο που ξεκινά μετά από
+ * κενό (π.χ. «Bench 80kg 5+5», «Squat 100 5,5,5», «Έλξεις 4x8»).
  */
 function splitNameAndSets(line: string): { rawName: string; setsText: string } | null {
   let depth = 0;
@@ -204,27 +257,29 @@ function splitNameAndSets(line: string): { rawName: string; setsText: string } |
     }
   }
 
-  // Fallback: split on " — " / " – "
   const dashMatch = line.match(/^(.+?)\s+[–—]\s+(.+)$/);
   if (dashMatch && dashMatch[1] && dashMatch[2]) {
     return { rawName: dashMatch[1].trim(), setsText: dashMatch[2].trim() };
   }
 
-  // Fallback: split right before the first numeric weight/reps token (e.g. "Bench 80kg 5+4+3").
-  const numStart = line.search(/\s+\d+(?:[.,]\d+)?(?:\s*(?:kg|lbs?|x|×|\+|,))/i);
-  if (numStart > 1) {
-    return {
-      rawName: line.slice(0, numStart).trim(),
-      setsText: line.slice(numStart).trim(),
-    };
+  // Πρώτος αριθμός που ξεκινά token (μετά από κενό) έξω από παρένθεση.
+  depth = 0;
+  for (let i = 1; i < line.length; i++) {
+    const ch = line[i]!;
+    if (ch === '(') depth++;
+    else if (ch === ')' && depth > 0) depth--;
+    else if (depth === 0 && /\d/.test(ch) && /\s/.test(line[i - 1]!)) {
+      const name = line.slice(0, i).trim();
+      if (name.length > 1) return { rawName: name, setsText: line.slice(i).trim() };
+    }
   }
-
   return null;
 }
 
 export function matchExerciseName(
   rawName: string,
   exercises: Exercise[],
+  memory: ExerciseMemory = {},
 ): { exercise: Exercise | null; confidence: MatchConfidence; forceBodyweight: boolean } {
   const norm = normalizeExerciseText(rawName);
   const forceBodyweight = /\b(?:bw|bodyweight)\b/.test(norm);
@@ -236,6 +291,13 @@ export function matchExerciseName(
     norm: normalizeExerciseText(ex.name),
     tokens: normalizeExerciseText(ex.name).split(' ').filter(Boolean),
   }));
+
+  // 0. Ό,τι έχει διορθώσει ο ίδιος ο χρήστης σε προηγούμενο paste.
+  const remembered = memory[norm];
+  if (remembered) {
+    const hit = indexed.find((item) => item.ex.id === remembered);
+    if (hit) return { exercise: hit.ex, confidence: 'memory', forceBodyweight };
+  }
 
   // 1. Exact normalized match
   const exact = indexed.find((item) => item.norm === norm);
@@ -288,10 +350,39 @@ function cleanSuggestedName(rawName: string): string {
     .trim();
 }
 
+/** Διαβάζει «σετ» για συγκεκριμένη άσκηση (ή null = άγνωστη) — κοινό για parse και inline διόρθωση. */
+export function parseSetsForExercise(
+  setsText: string,
+  exercise: Exercise | null,
+  unit: WeightUnit,
+  forceBodyweight = false,
+): QuickSet[] {
+  const isHold = exercise?.default_unit === 'sec';
+  const weighted = forceBodyweight || isHold
+    ? false
+    : exercise
+      ? !exercise.is_bodyweight || exercise.is_weighted
+      : true;
+  return parseQuickSets(forceBodyweight ? `bw ${setsText}` : setsText, weighted, unit);
+}
+
+/** Ύποπτα σετ: τεράστιο βάρος/reps/hold (χαμένο «+», κολλημένο ψηφίο) ή κανένα σετ. */
+export function hasSuspectSets(sets: QuickSet[], isHold: boolean): boolean {
+  return (
+    sets.length === 0 ||
+    sets.some(
+      (s) =>
+        (s.weightKg != null && s.weightKg > SUSPECT_WEIGHT_KG) ||
+        (s.reps != null && s.reps > (isHold ? SUSPECT_HOLD_SECONDS : SUSPECT_REPS)),
+    )
+  );
+}
+
 export function parseWorkoutNotes(
   text: string,
   exercises: Exercise[],
   unit: WeightUnit = 'kg',
+  memory: ExerciseMemory = {},
 ): ParsedWorkoutLine[] {
   const lines = text
     .split(/\r?\n/)
@@ -300,23 +391,18 @@ export function parseWorkoutNotes(
 
   const out: ParsedWorkoutLine[] = [];
 
-  lines.forEach((line, idx) => {
+  lines.forEach((rawLine, idx) => {
+    const line = normalizeNoteLine(rawLine);
     const split = splitNameAndSets(line);
     if (!split) return;
     const { rawName, setsText } = split;
-    const match = matchExerciseName(rawName, exercises);
+    const match = matchExerciseName(rawName, exercises, memory);
+    const isHold = match.exercise?.default_unit === 'sec';
 
-    const defaultWeighted = match.forceBodyweight
-      ? false
-      : match.exercise
-        ? !match.exercise.is_bodyweight || match.exercise.is_weighted
-        : true;
-    const sets = parseQuickSets(
-      match.forceBodyweight ? `bw ${setsText}` : setsText,
-      defaultWeighted,
-      unit,
-    );
-    if (sets.length === 0) return;
+    // Hold ασκήσεις μετρούν δευτερόλεπτα· «15 12 10» δεν είναι βάρος 15kg.
+    const sets = parseSetsForExercise(setsText, match.exercise, unit, match.forceBodyweight);
+    const looksNumeric = /\d/.test(setsText);
+    if (sets.length === 0 && !looksNumeric) return;
 
     const cleanedName = cleanSuggestedName(rawName);
     const hasExtraContext =
@@ -324,15 +410,11 @@ export function parseWorkoutNotes(
       normalizeExerciseText(cleanedName) !== normalizeExerciseText(match.exercise.name) &&
       cleanedName.length >= 12;
 
-    const hasSuspectValues = sets.some(
-      (s) =>
-        (s.weightKg != null && s.weightKg > SUSPECT_WEIGHT_KG) ||
-        (s.reps != null && s.reps > SUSPECT_REPS),
-    );
+    const hasSuspectValues = hasSuspectSets(sets, isHold);
 
     out.push({
       id: `line-${idx}`,
-      rawLine: line,
+      rawLine,
       rawName,
       setsText,
       matchedExerciseId: match.exercise?.id ?? null,
@@ -341,6 +423,8 @@ export function parseWorkoutNotes(
       sets,
       noteHint: hasExtraContext ? cleanedName : null,
       hasSuspectValues,
+      unreadable: sets.length === 0,
+      isHold,
     });
   });
 
