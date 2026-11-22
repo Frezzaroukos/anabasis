@@ -527,6 +527,12 @@ async fn handle_checkout_completed(
         if session["status"].as_str() != Some("complete") {
             return Ok(());
         }
+        // Delayed methods fire checkout.session.completed while payment_status
+        // is still unpaid. Granting here would open Pro before the charge.
+        let payment_status = session["payment_status"].as_str().unwrap_or("");
+        if payment_status != "paid" && payment_status != "no_payment_required" {
+            return Ok(());
+        }
         let subscription_id = session["subscription"].as_str().unwrap_or_default();
         let period_end = subscription_period_end(state, cfg, subscription_id).await;
         let expires_at = period_end

@@ -306,7 +306,7 @@ describe('soft delete δομής προγράμματος — η διαγραφ�
       pull: () =>
         jsonResponse({
           changes: [{ tbl: 'program_days', rows: [{ ...upper, user_id: DEFAULT_USER_ID,
-            deleted_at: '2026-02-01T00:00:00.000Z', updated_at: '2026-02-01T00:00:00.000Z' }] }],
+            deleted_at: '2099-02-01T00:00:00.000Z', updated_at: '2099-02-01T00:00:00.000Z' }] }],
           cursor: 9, has_more: false,
         }),
     });
@@ -636,6 +636,66 @@ describe('gc_floor reset (Codex §3 — παλιές offline συσκευές)',
  * ο client κάνει ΠΡΩΤΑ destructive reset (όχι κανονικό pull), μετά ξαναστέλνει
  * μόνο γνήσια νέα. Έλεγχος: ghost δεν ανασταίνεται + γνήσιες αλλαγές δεν χάνονται.
  */
+describe('destructiveReset compares instants, not ISO text', () => {
+  it('ξαναστέλνει τοπικό row που είναι νεότερο μόνο σε milliseconds', async () => {
+    const user = 'frac-reset-user';
+    setCurrentUserId(user);
+    const exercise = await createExercise({ name: 'Local Precise' });
+    await db.exercises.update(exercise.id, {
+      name: 'Local Precise',
+      updated_at: '2026-11-22T10:00:05.950Z',
+    });
+    localStorage.setItem(
+      'anabasis.sync',
+      JSON.stringify({
+        pullCursor: 5,
+        epoch: 'e1',
+        lastPushAt: '2026-11-22T09:00:00.000Z',
+        pushSchemaVersion: 2,
+      }),
+    );
+
+    let pushCount = 0;
+    const pushBodies: string[] = [];
+    stubFetch({
+      push: (call) => {
+        pushCount += 1;
+        pushBodies.push(String(call.init?.body));
+        return pushCount === 1
+          ? jsonResponse({ cursor: 5, reset_required: true })
+          : jsonResponse({ cursor: 9, reset_required: false });
+      },
+      pull: () =>
+        jsonResponse({
+          changes: [
+            {
+              tbl: 'exercises',
+              rows: [
+                {
+                  id: exercise.id,
+                  user_id: user,
+                  name: 'Server Short',
+                  updated_at: '2026-11-22T10:00:05.9Z',
+                  deleted_at: null,
+                },
+              ],
+            },
+          ],
+          cursor: 3,
+          has_more: false,
+          epoch: 'e1',
+        }),
+    });
+
+    await syncNow();
+
+    expect((await db.exercises.get(exercise.id))!.name).toBe('Local Precise');
+    const replay = pushBodies.slice(1).join('\n');
+    expect(replay).toContain('Local Precise');
+    setCurrentUserId(DEFAULT_USER_ID);
+  });
+});
+
 describe('gc_floor reset ΑΠΟ το push (push→pull order — Grok probe)', () => {
   it('reset_required στο push: destructive reset — ghost purged, γνήσιο row σώζεται', async () => {
     const probeUser = 'push-reset-probe-user';
@@ -704,6 +764,68 @@ describe('gc_floor reset ΑΠΟ το push (push→pull order — Grok probe)', (
     expect(sync.lastSyncAt).not.toBeNull();
 
     setCurrentUserId(DEFAULT_USER_ID);
+  });
+});
+
+describe('pull does not clobber a newer local row', () => {
+  it('κρατά το νεότερο τοπικό row και το ξαναστέλνει στο επόμενο push', async () => {
+    let exerciseId = '';
+    let phase: 'warmup' | 'attack' | 'again' = 'warmup';
+    const againNames: string[] = [];
+    stubFetch({
+      push: (call) => {
+        if (phase === 'again') {
+          const changes = (body(call).changes ?? []) as {
+            tbl: string;
+            rows: { id?: string; name?: string }[];
+          }[];
+          for (const change of changes) {
+            if (change.tbl !== 'exercises') continue;
+            for (const row of change.rows) {
+              if (row.name) againNames.push(row.name);
+            }
+          }
+        }
+        return jsonResponse({ cursor: 2, reset_required: false });
+      },
+      pull: () => {
+        if (phase === 'warmup') {
+          return jsonResponse({ changes: [], cursor: 1, has_more: false, epoch: 'e-lww' });
+        }
+        return jsonResponse({
+          changes: [
+            {
+              tbl: 'exercises',
+              rows: [
+                {
+                  id: exerciseId,
+                  user_id: DEFAULT_USER_ID,
+                  name: 'Server Older',
+                  updated_at: '2020-01-01T00:00:00.000Z',
+                  deleted_at: null,
+                },
+              ],
+            },
+          ],
+          cursor: 4,
+          has_more: false,
+          epoch: 'e-lww',
+        });
+      },
+    });
+
+    await syncNow();
+    const created = await createExercise({ name: 'Local Newer' });
+    exerciseId = created.id;
+    phase = 'attack';
+    await syncNow();
+
+    expect((await db.exercises.get(exerciseId))!.name).toBe('Local Newer');
+
+    phase = 'again';
+    await syncNow();
+    expect(againNames).toContain('Local Newer');
+    expect((await db.exercises.get(exerciseId))!.name).toBe('Local Newer');
   });
 });
 

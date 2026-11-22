@@ -14,7 +14,7 @@ import '@fontsource-variable/manrope';
 import '@fontsource-variable/jetbrains-mono';
 import '@/styles/globals.css';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
-import { reloadOnServiceWorkerUpdate } from '@/lib/pwa';
+import { reloadOnServiceWorkerUpdate, showVersionRefreshToast } from '@/lib/pwa';
 import { initSession } from '@/lib/db/session';
 
 const root = document.getElementById('root');
@@ -33,14 +33,21 @@ initSession();
 navigator.storage?.persist?.().catch(() => {});
 
 /*
- * PWA auto-refresh: όταν ανέβει νέα έκδοση (deploy), ο service worker του
- * vite-plugin-pwa (autoUpdate) κάνει skipWaiting και «αναλαμβάνει». Χωρίς
- * reload, ο χρήστης έβλεπε ΠΑΛΙΑ έκδοση μέχρι να ξανανοίξει — τον ενοχλούσε.
- * Κάνουμε ΕΝΑ reload μόλις ο νέος SW αναλάβει (τα δεδομένα είναι στο
- * IndexedDB, δεν χάνεται τίποτα).
+ * PWA auto-refresh: το workbox skipWaiting/clientsClaim (vite.config) αναλαμβάνει
+ * αμέσως. Χωρίς reload η ανοιχτή σελίδα κρατάει τα παλιά JS στη μνήμη.
+ * Ένα reload είναι ασφαλές όταν δεν υπάρχει ανοιχτή προπόνηση — τα σετ είναι
+ * ήδη στο IndexedDB. Με ανοιχτή προπόνηση δεν κόβουμε τη φόρμα· μένει ένα
+ * κουμπί ανανέωσης.
  */
 if ('serviceWorker' in navigator) {
-  reloadOnServiceWorkerUpdate(navigator.serviceWorker, () => globalThis.location.reload());
+  const reload = () => globalThis.location.reload();
+  reloadOnServiceWorkerUpdate(navigator.serviceWorker, reload, {
+    shouldReload: async () => {
+      const { getActiveWorkout } = await import('@/lib/db/queries');
+      return (await getActiveWorkout()) == null;
+    },
+    onDefer: () => showVersionRefreshToast(reload),
+  });
 }
 
 createRoot(root).render(

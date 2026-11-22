@@ -4,6 +4,7 @@ import { setCurrentUserId } from './session';
 import {
   createProgram,
   createProgramDay,
+  getProgramWithExercises,
   listProgramDays,
   renameProgramDay,
   reorderProgramDays,
@@ -11,7 +12,9 @@ import {
   addProgramExercise,
   duplicateProgram,
   getProgramDayWithExercises,
+  startWorkoutFromProgram,
   startWorkoutFromProgramDay,
+  softDeleteProgram,
   startAdHocWorkout,
   countProgramDaySessions,
   createExercise,
@@ -29,6 +32,36 @@ beforeEach(async () => {
   await db.program_exercises.clear();
   await db.workouts.clear();
   await db.exercises.clear();
+});
+
+describe('softDeleteProgram', () => {
+  it('βάζει tombstone σε μέρες και ασκήσεις και δεν ξεκινάει προπόνηση', async () => {
+    const p = await createProgram('Gone');
+    const day = await createProgramDay(p.id, 'Upper');
+    const ex = await createExercise({ name: 'Row' });
+    await addProgramExercise(p.id, { exercise_id: ex.id, program_day_id: day.id });
+
+    await softDeleteProgram(p.id);
+
+    expect(await listProgramDays(p.id)).toEqual([]);
+    expect(await getProgramWithExercises(p.id)).toBeNull();
+    expect((await db.program_days.get(day.id))!.deleted_at).toBeTruthy();
+    const rows = await db.program_exercises.where('program_id').equals(p.id).toArray();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.deleted_at != null)).toBe(true);
+    expect(await startWorkoutFromProgram(p.id)).toBeNull();
+    expect(await startWorkoutFromProgramDay(day.id)).toBeNull();
+  });
+
+  it('αρνείται εκκίνηση μέρας που έμεινε ζωντανή κάτω από σβησμένο πρόγραμμα', async () => {
+    const p = await createProgram('Legacy');
+    const day = await createProgramDay(p.id, 'Lower');
+    const t = new Date().toISOString();
+    await db.programs.update(p.id, { deleted_at: t, updated_at: t });
+
+    expect(await startWorkoutFromProgramDay(day.id)).toBeNull();
+    expect(await db.workouts.count()).toBe(0);
+  });
 });
 
 describe('program days', () => {

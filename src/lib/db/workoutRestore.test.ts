@@ -6,7 +6,9 @@ import {
   endWorkout,
   getWorkoutDetail,
   removeExerciseFromWorkout,
+  restoreWorkout,
   softDeleteSet,
+  softDeleteWorkout,
   startWorkout,
 } from './queries';
 import { restoreExerciseInWorkout, restoreSet } from './workoutRestore';
@@ -118,5 +120,51 @@ describe('restoreExerciseInWorkout', () => {
     await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
     await endWorkout(w.id);
     expect(await restoreExerciseInWorkout(w.id, squat.id)).toBe(0);
+  });
+
+  it('δεν επαναφέρει σετ που είχε σβηστεί πριν αφαιρεθεί η άσκηση', async () => {
+    const w = await startWorkout('strength');
+    const early = await addSet({
+      workout_id: w.id, exercise_id: squat.id, weight_kg: 80, bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    const later = await addSet({
+      workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(w.id);
+    await softDeleteSet(early.id);
+    const earlyStamp = (await db.sets.get(early.id))!.deleted_at;
+
+    await removeExerciseFromWorkout(w.id, squat.id);
+    expect((await db.sets.get(early.id))!.deleted_at).toBe(earlyStamp);
+
+    const restored = await restoreExerciseInWorkout(w.id, squat.id);
+
+    expect(restored).toBe(1);
+    expect((await db.sets.get(early.id))!.deleted_at).toBe(earlyStamp);
+    expect((await db.sets.get(later.id))!.deleted_at).toBeNull();
+  });
+});
+
+describe('restoreWorkout — προηγούμενα tombstones', () => {
+  it('κρατά σβησμένο το σετ που είχε φύγει πριν τη διαγραφή της προπόνησης', async () => {
+    const w = await startWorkout('strength');
+    const early = await addSet({
+      workout_id: w.id, exercise_id: squat.id, weight_kg: 80, bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    const later = await addSet({
+      workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(w.id);
+    await softDeleteSet(early.id);
+    const earlyStamp = (await db.sets.get(early.id))!.deleted_at;
+
+    await softDeleteWorkout(w.id);
+    expect((await db.sets.get(early.id))!.deleted_at).toBe(earlyStamp);
+
+    await restoreWorkout(w.id);
+
+    expect((await db.sets.get(early.id))!.deleted_at).toBe(earlyStamp);
+    expect((await db.sets.get(later.id))!.deleted_at).toBeNull();
+    expect((await db.workouts.get(w.id))!.deleted_at).toBeNull();
   });
 });

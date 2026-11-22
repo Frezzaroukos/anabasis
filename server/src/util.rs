@@ -22,6 +22,47 @@ pub fn parse_iso(s: &str) -> Option<OffsetDateTime> {
     OffsetDateTime::parse(s, &Rfc3339).ok()
 }
 
+/// Always `YYYY-MM-DDTHH:MM:SS.mmmZ`, including trailing zeros.
+/// RFC3339 from the `time` crate drops them, and text order then disagrees
+/// with time order (`.950Z` sorts before `.9Z`).
+pub fn format_iso_millis(t: OffsetDateTime) -> String {
+    let utc = t.to_offset(time::UtcOffset::UTC);
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
+        utc.year(),
+        u8::from(utc.month()),
+        utc.day(),
+        utc.hour(),
+        utc.minute(),
+        utc.second(),
+        utc.millisecond(),
+    )
+}
+
+/// Last-write-wins on instants. `Some(canonical)` when the incoming write
+/// should be stored; `None` when the existing row is newer or the same instant.
+/// A timestamp ahead of `now` is clamped to `now` before the comparison.
+pub fn lww_store_timestamp(incoming: &str, existing: Option<&str>, now: &str) -> Option<String> {
+    let now_i = parse_iso(now).unwrap_or(OffsetDateTime::UNIX_EPOCH);
+    let Some(incoming_i) = parse_iso(incoming) else {
+        // Legacy/malformed `updated_at`: never overwrite an existing row, and
+        // never invent a 1970 timestamp for a new one — keep it as sent.
+        return existing.is_none().then(|| incoming.to_string());
+    };
+    let clamped = if incoming_i > now_i {
+        now_i
+    } else {
+        incoming_i
+    };
+    if let Some(existing) = existing {
+        let existing_i = parse_iso(existing).unwrap_or(OffsetDateTime::UNIX_EPOCH);
+        if clamped <= existing_i {
+            return None;
+        }
+    }
+    Some(format_iso_millis(clamped))
+}
+
 pub fn iso_in(duration: Duration) -> String {
     format_iso(now() + duration)
 }

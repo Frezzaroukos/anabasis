@@ -299,13 +299,39 @@ const UNIQUE_DUP_FINDER: Record<
     t.where('[user_id+date]').equals([r.user_id, r.date] as [string, string]).first(),
 };
 
+/** Milliseconds since epoch. Invalid or empty timestamps sort as 0. */
+export function updatedAtMs(value: unknown): number {
+  const ms = new Date(String(value ?? '')).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 function incomingWins(incoming: SyncRow, existing: SyncRow): boolean {
-  // Parse timestamps to milliseconds; invalid/empty dates become 0.
-  const iTime = new Date(String(incoming.updated_at ?? '')).getTime() || 0;
-  const eTime = new Date(String(existing.updated_at ?? '')).getTime() || 0;
-  // Compare numeric timestamps; if equal, use id as stable tiebreaker.
+  const iTime = updatedAtMs(incoming.updated_at);
+  const eTime = updatedAtMs(existing.updated_at);
+  // Compare instants, not the raw ISO text. Equal time keeps the smaller id
+  // only when the ids differ; the same id is a tie and the local row stays.
   if (iTime !== eTime) return iTime > eTime;
   return String(incoming.id) < String(existing.id);
+}
+
+/** Drop pulled rows that are older than (or the same instant as) the local copy. */
+async function rowsNewerThanLocal(table: AnyTable, rows: SyncRow[]): Promise<SyncRow[]> {
+  // Ένα bulkGet αντί για ένα get ανά row: το πρώτο pull σε νέα συσκευή
+  // φέρνει χιλιάδες σετ.
+  const ids = rows.map((r) => (typeof r.id === 'string' ? r.id : null));
+  const lookup = ids.filter((id): id is string => id != null);
+  const found = (await table.bulkGet(lookup)) as (SyncRow | undefined)[];
+  const local = new Map<string, SyncRow>();
+  lookup.forEach((id, i) => {
+    const row = found[i];
+    if (row) local.set(id, row);
+  });
+  return rows.filter((incoming, i) => {
+    const id = ids[i];
+    if (id == null) return true;
+    const existing = local.get(id);
+    return !existing || incomingWins(incoming, existing);
+  });
 }
 
 async function putResolvingUnique(
@@ -322,7 +348,7 @@ async function putResolvingUnique(
         await table.put(incoming);
       }
       // αλλιώς ο τοπικός νικά — μην γράψεις το incoming (θα έσπαγε τον index).
-    } else {
+    } else if (!existing || incomingWins(incoming, existing)) {
       await table.put(incoming);
     }
   }
@@ -352,10 +378,12 @@ async function applyPulledChanges(changes: SyncChange[]): Promise<void> {
             }))
           : (rows as SyncRow[]);
       const findDup = UNIQUE_DUP_FINDER[tbl];
+      const winning = await rowsNewerThanLocal(table, compatibleRows as SyncRow[]);
+      if (winning.length === 0) continue;
       if (findDup) {
-        await putResolvingUnique(table, compatibleRows as SyncRow[], findDup);
+        await putResolvingUnique(table, winning, findDup);
       } else {
-        await table.bulkPut(compatibleRows as SyncRow[]);
+        await table.bulkPut(winning);
       }
     }
   });
@@ -500,14 +528,14 @@ async function destructiveReset(): Promise<void> {
       const sv = serverVer?.get(id);
 
       if (sv === undefined) {
-        if (!tombstoned && upd > boundary) {
+        if (!tombstoned && updatedAtMs(upd) > updatedAtMs(boundary)) {
           // Γνήσια νέα τοπική γραμμή (ο server δεν την έχει) → κράτα & σπρώξε.
           toPush.push(toWireRow(tbl, raw, uid));
         } else if (!NEVER_PURGE.has(tbl)) {
           // Ghost (παλιό synced row GC-αρισμένο) ή stale tombstone → σβήσε, ΜΗ σπρώξεις.
           toDelete.push(id);
         }
-      } else if (!tombstoned && upd > sv) {
+      } else if (!tombstoned && updatedAtMs(upd) > updatedAtMs(sv)) {
         // Υπάρχει στον server· το bulkPut έγραψε τη server έκδοση. Το τοπικό edit
         // είναι νεότερο → επανάφερέ το τοπικά και σπρώξ' το (LWW).
         await table.put(raw as Record<string, unknown>);

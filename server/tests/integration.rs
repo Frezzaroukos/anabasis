@@ -699,6 +699,53 @@ async fn push_stale_updated_at_does_not_clobber_newer_row() {
     );
 }
 
+/// `.950Z` (950ms) is later than `.9Z` (900ms) but sorts earlier as text
+/// because `'5' < 'Z'`. The stored form is always millisecond precision.
+#[tokio::test]
+async fn push_later_millis_beats_shorter_rfc3339_fraction() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    let earlier = json!({
+        "id": "goal-frac", "user_id": user_id, "title": "short fraction",
+        "updated_at": "2026-11-22T10:00:05.9Z",
+    });
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ earlier ] } ] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let later = json!({
+        "id": "goal-frac", "user_id": user_id, "title": "millis",
+        "updated_at": "2026-11-22T10:00:05.950Z",
+    });
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ later ] } ] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let stored_payload: String = sqlx::query_scalar(
+        "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'goal-frac'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    let stored: Value = serde_json::from_str(&stored_payload).unwrap();
+    assert_eq!(stored["title"], "millis");
+    assert_eq!(stored["updated_at"], "2026-11-22T10:00:05.950Z");
+}
+
 /// Ισοπαλία στο updated_at → κρατάμε ό,τι υπάρχει ήδη (deterministic, ίδιο
 /// σε κάθε retry· δεν υπάρχει έννοια «id tiebreak» εδώ αφού το row_id είναι
 /// το ίδιο και στις δύο πλευρές).
@@ -4029,6 +4076,80 @@ async fn stripe_lifetime_refund_revokes_only_the_latest_payment() {
     assert_eq!(me["plan"], "free");
     assert_eq!(me["plan_source"], "refund");
     assert_eq!(me["plan_active"], false);
+}
+
+#[tokio::test]
+async fn stripe_subscription_unpaid_does_not_grant_pro() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let (_, body) = signup(&app, "sub-unpaid@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let account_id = body["account"]["id"].as_str().unwrap().to_string();
+    let timestamp = anabasis_api::util::now().unix_timestamp();
+
+    let payload = serde_json::to_vec(&json!({
+        "id": "evt_sub_unpaid",
+        "type": "checkout.session.completed",
+        "data": { "object": {
+            "id": "cs_sub_unpaid",
+            "client_reference_id": account_id,
+            "mode": "subscription",
+            "status": "complete",
+            "payment_status": "unpaid",
+            "subscription": "sub_unpaid",
+            "metadata": { "account_id": account_id, "plan": "monthly" }
+        }}
+    }))
+    .unwrap();
+    let signature = sign_stripe("whsec_test", timestamp, &payload);
+    assert_eq!(
+        post_stripe_webhook(&app, timestamp, &signature, &payload).await,
+        StatusCode::OK
+    );
+
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(me["plan"], "free");
+    assert_eq!(me["plan_active"], false);
+}
+
+#[tokio::test]
+async fn stripe_subscription_paid_or_no_payment_required_grants_pro() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let timestamp = anabasis_api::util::now().unix_timestamp();
+
+    for (event_id, payment_status) in [
+        ("evt_sub_paid", "paid"),
+        ("evt_sub_nopay", "no_payment_required"),
+    ] {
+        let (_, body) = signup(
+            &app,
+            &format!("{event_id}@example.com"),
+            "correcthorsebattery",
+        )
+        .await;
+        let token = body["token"].as_str().unwrap().to_string();
+        let account_id = body["account"]["id"].as_str().unwrap().to_string();
+        let payload = serde_json::to_vec(&json!({
+            "id": event_id,
+            "type": "checkout.session.completed",
+            "data": { "object": {
+                "id": format!("cs_{event_id}"),
+                "client_reference_id": account_id,
+                "mode": "subscription",
+                "status": "complete",
+                "payment_status": payment_status,
+                "subscription": format!("sub_{event_id}"),
+                "metadata": { "account_id": account_id, "plan": "monthly" }
+            }}
+        }))
+        .unwrap();
+        let signature = sign_stripe("whsec_test", timestamp, &payload);
+        assert_eq!(
+            post_stripe_webhook(&app, timestamp, &signature, &payload).await,
+            StatusCode::OK
+        );
+        let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+        assert_eq!(me["plan_active"], true, "{payment_status} should grant");
+    }
 }
 
 #[tokio::test]

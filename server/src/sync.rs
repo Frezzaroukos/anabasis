@@ -10,7 +10,7 @@ use crate::app::AppState;
 use crate::auth::AuthUser;
 use crate::error::AppError;
 use crate::json::AppJson;
-use crate::util::now_iso;
+use crate::util::{lww_store_timestamp, now_iso};
 
 /// 19 backup tables του client — allowlist, βλ. API-CONTRACT.md §SQLite schema.
 const ALLOWED_TABLES: &[&str] = &[
@@ -192,37 +192,12 @@ pub async fn push(
                 continue;
             }
 
-            // Clock-skew guard (4b): το LWW συγκρίνει client `updated_at`, οπότε
-            // μια συσκευή με μπροστά ρολόι θα «κέρδιζε» πάντα με μελλοντικό
-            // timestamp — κι ένα νεότερο (αλλά σωστό) edit άλλης συσκευής θα
-            // έχανε. Κόβουμε (clamp) ό,τι είναι μπροστά από το ρολόι του server
-            // (η ΜΙΑ κοινή αναφορά) ΚΑΙ στη σύγκριση ΚΑΙ στο αποθηκευμένο
-            // payload, ώστε να μην ξανα-«φουσκώσει» σε επόμενο pull/σύγκριση.
+            // Clock-skew guard: σύγκριση instants, όχι λεξικογραφική. Το RFC3339
+            // του `time` κόβει τα μηδενικά (`.9Z`) ενώ ο client στέλνει πάντα
+            // millis (`.950Z`)· ως κείμενο το νεότερο μπορεί να «χάνει». Ό,τι
+            // είναι μπροστά από το ρολόι του server κόβεται στο now και
+            // αποθηκεύεται πάντα ως millis+Z.
             let raw_updated_at = row.get("updated_at").and_then(Value::as_str).unwrap_or("");
-            let (incoming_updated_at, payload) = if raw_updated_at > now.as_str() {
-                let mut clamped = row.clone();
-                if let Some(obj) = clamped.as_object_mut() {
-                    obj.insert("updated_at".to_string(), Value::String(now.clone()));
-                }
-                let p = serde_json::to_string(&clamped)
-                    .map_err(|_| AppError::internal("Αποτυχία σειριοποίησης row."))?;
-                (now.clone(), p)
-            } else {
-                let p = serde_json::to_string(row)
-                    .map_err(|_| AppError::internal("Αποτυχία σειριοποίησης row."))?;
-                (raw_updated_at.to_string(), p)
-            };
-
-            // Πραγματικό last-WRITE-wins: πριν το χτύπησε δεδομένα ταξιδιού
-            // από παλιότερο push (π.χ. συσκευή offline που ξαναβγαίνει
-            // online αργότερα), συγκρίνουμε το `updated_at` του incoming
-            // row με ό,τι είναι ήδη αποθηκευμένο — ΟΧΙ σειρά άφιξης. Χωρίς
-            // αυτό, ένα stale push θα μπορούσε να διαγράψει σιωπηλά μια
-            // νεότερη αλλαγή από άλλη συσκευή (lost update). Ίδια σύμβαση
-            // με το client-side incomingWins (src/lib/sync/index.ts):
-            // νεότερο updated_at κερδίζει· ισοπαλία κρατά ό,τι υπάρχει ήδη
-            // (χωρίς tiebreak by id — εδώ το row_id είναι το ΙΔΙΟ και στις
-            // δύο πλευρές, δεν είναι σύγκρουση δύο διαφορετικών ids).
             let existing_payload: Option<String> = sqlx::query_scalar(
                 "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = ? AND row_id = ?",
             )
@@ -231,27 +206,26 @@ pub async fn push(
             .bind(row_id)
             .fetch_optional(&mut *tx)
             .await?;
-
-            let incoming_wins = match &existing_payload {
-                None => true,
-                Some(existing_payload) => {
-                    let existing_updated_at = serde_json::from_str::<Value>(existing_payload)
-                        .ok()
-                        .and_then(|v| {
-                            v.get("updated_at")
-                                .and_then(Value::as_str)
-                                .map(str::to_owned)
-                        })
-                        .unwrap_or_default();
-                    incoming_updated_at.as_str() > existing_updated_at.as_str()
-                }
-            };
-
-            if !incoming_wins {
+            let existing_updated_at = existing_payload.as_deref().and_then(|payload| {
+                serde_json::from_str::<Value>(payload).ok().and_then(|v| {
+                    v.get("updated_at")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned)
+                })
+            });
+            let Some(canonical) =
+                lww_store_timestamp(raw_updated_at, existing_updated_at.as_deref(), &now)
+            else {
                 // Stale push — το ήδη αποθηκευμένο row είναι νεότερο (ή ίδιας
                 // στιγμής). Δεν γράφουμε τίποτα, δεν καταναλώνουμε seq.
                 continue;
+            };
+            let mut stored = row.clone();
+            if let Some(obj) = stored.as_object_mut() {
+                obj.insert("updated_at".to_string(), Value::String(canonical));
             }
+            let payload = serde_json::to_string(&stored)
+                .map_err(|_| AppError::internal("Αποτυχία σειριοποίησης row."))?;
 
             // Νέο row_id (δεν υπάρχει payload) → μετράει στο quota growth. Updates
             // σε υπαρκτά rows δεν αυξάνουν το πλήθος, άρα δεν φρενάρονται εδώ.

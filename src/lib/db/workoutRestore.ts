@@ -66,17 +66,25 @@ export async function restoreExerciseInWorkout(
     .and((s) => s.exercise_id === exerciseId && s.deleted_at != null)
     .toArray();
   if (sets.length === 0) return 0;
+  // Το undo της αφαίρεσης άσκησης σφραγίζει όλα τα ζωντανά σετ με το ίδιο
+  // timestamp. Παλιότερα tombstones (μεμονωμένο delete) μένουν σβησμένα.
+  const stamp = sets.reduce(
+    (latest, set) => ((set.deleted_at ?? '') > latest ? set.deleted_at! : latest),
+    sets[0]!.deleted_at ?? '',
+  );
+  const cohort = sets.filter((s) => s.deleted_at === stamp);
   const t = now();
   await db.transaction('rw', db.sets, async () => {
+    // Μόνο το cohort της τελευταίας αφαίρεσης· παλιότερα tombstones μένουν.
     await db.sets
       .where('workout_id')
       .equals(workoutId)
-      .and((s) => s.exercise_id === exerciseId && s.deleted_at != null)
+      .and((s) => s.exercise_id === exerciseId && s.deleted_at === stamp)
       .modify({ deleted_at: null, updated_at: t });
-    // Όλα επιστρέφουν ταυτόχρονα· το renumber εγγυάται πυκνή 1..N σειρά ακόμη
-    // κι αν υπάρχουν ήδη ζωντανά σετ της ίδιας άσκησης (π.χ. μερικό delete).
+    // Το renumber εγγυάται πυκνή 1..N σειρά ακόμη κι αν υπάρχουν ήδη ζωντανά
+    // σετ της ίδιας άσκησης (π.χ. μερικό delete).
     await renumberSetsForExercise(workoutId, exerciseId);
   });
   await recomputePRsForExercise(exerciseId);
-  return sets.length;
+  return cohort.length;
 }
