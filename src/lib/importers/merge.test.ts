@@ -145,6 +145,50 @@ describe('importWorkouts', () => {
     expect(again.duplicatesSkipped).toBe(3);
   });
 
+  it('warm-up και working set ίδιου βάρους/reps ΔΕΝ συγχωνεύονται (audit #15)', async () => {
+    // Υπάρχει ήδη working 100×5 εκείνη τη μέρα (χειροκίνητη καταγραφή).
+    const manual = await startWorkout('strength', '2025-01-15');
+    await addSet({
+      workout_id: manual.id,
+      exercise_id: bench.id,
+      weight_kg: 100,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+
+    const imported: ImportedWorkout = {
+      key: 'warmup-vs-working',
+      date: '2025-01-15',
+      startedAtIso: new Date(2025, 0, 15, 18).toISOString(),
+      durationSeconds: null,
+      name: null,
+      notes: null,
+      exercises: [
+        {
+          name: 'Bench Press',
+          sets: [
+            // Σειρά Hevy/Strong: πρώτα warmup, μετά working — ίδια νούμερα.
+            set({ setNumber: 1, weightKg: 100, reps: 5, isWarmup: true, setType: 'warmup' }),
+            set({ setNumber: 2, weightKg: 100, reps: 5 }),
+          ],
+        },
+      ],
+    };
+
+    const res = await importWorkouts([imported]);
+    expect(res.setsAdded).toBe(1); // το warmup
+    expect(res.duplicatesSkipped).toBe(1); // το working υπάρχει ήδη
+    const sets = await db.sets.where('exercise_id').equals(bench.id).toArray();
+    expect(sets.filter((s) => s.is_warmup)).toHaveLength(1);
+    expect(sets.filter((s) => !s.is_warmup)).toHaveLength(1);
+
+    // Re-import = no-op (το warmup δεν ξαναμπαίνει ως working).
+    const again = await importWorkouts([imported]);
+    expect(again.setsAdded).toBe(0);
+    expect(again.duplicatesSkipped).toBe(2);
+  });
+
   it('no-op import δεν δημιουργεί orphan custom άσκηση (planning χωρίς writes)', async () => {
     await importWorkouts([fixtureWorkout()]);
     const before = await db.exercises.count();

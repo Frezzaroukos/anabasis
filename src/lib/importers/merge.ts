@@ -45,8 +45,17 @@ function setSignature(
   weightKg: number | null,
   reps: number | null,
   holdSeconds: number | null,
+  isWarmup: boolean,
+  setType: string | null | undefined,
 ): string {
-  return `${day}|${exerciseId}|${weightKg ?? ''}|${reps ?? ''}|${holdSeconds ?? ''}`;
+  // Warm-up και working set είναι ΔΙΑΦΟΡΕΤΙΚΑ σετ ακόμη κι αν έχουν ίδιο
+  // βάρος/reps. Χωρίς το kind, ένα warm-up 100×5 «έτρωγε» το υπάρχον working
+  // 100×5 και το working περνούσε ως δεύτερο working (audit #15).
+  // Τα υπόλοιπα set types (dropset/failure/…) μένουν διακριτά· το warm-up
+  // κανονικοποιείται ώστε legacy is_warmup/set_type αποκλίσεις να μη
+  // δημιουργούν διπλό.
+  const kind = isWarmup || setType === 'warmup' ? 'warmup' : (setType || 'normal');
+  return `${day}|${exerciseId}|${weightKg ?? ''}|${reps ?? ''}|${holdSeconds ?? ''}|${kind}`;
 }
 
 /** Πλήθος υπαρχόντων σετ ανά υπογραφή, για όλο το προφίλ. */
@@ -67,7 +76,15 @@ async function existingSignatures(): Promise<Map<string, number>> {
     .toArray();
   for (const s of sets) {
     const day = dayByWorkout.get(s.workout_id)!;
-    const sig = setSignature(day, s.exercise_id, s.weight_kg, s.reps, s.hold_seconds);
+    const sig = setSignature(
+      day,
+      s.exercise_id,
+      s.weight_kg,
+      s.reps,
+      s.hold_seconds,
+      s.is_warmup,
+      s.set_type,
+    );
     sigs.set(sig, (sigs.get(sig) ?? 0) + 1);
   }
   return sigs;
@@ -161,6 +178,8 @@ export async function importWorkouts(
           s.weightKg,
           s.reps,
           s.holdSeconds,
+          s.isWarmup,
+          s.setType,
         );
         const available = sigs.get(sig) ?? 0;
         if (available > 0) {
