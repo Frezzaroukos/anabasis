@@ -534,12 +534,15 @@ function HistoryExerciseCard({
           className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
+          {/* Στο 320px τα 4–5 icon actions (44px touch) αφήνουν ελάχιστο χώρο·
+              volume + chevron συμπίεζαν το ΟΝΟΜΑ της άσκησης σε 0px. Κρύβονται
+              μόνο στο κινητό — το volume φαίνεται στα stats/σετ, το link μένει. */}
           {volume > 0 && (
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline">
               {formatWeight(volume, unit, { granularity: 'plate' })}
             </span>
           )}
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronRight className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
         </Link>
         {onRemovePending && sets.length === 0 && (
           <button

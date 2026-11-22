@@ -345,7 +345,7 @@ async function flow8(page) {
   await expectGone(page, 'Plan Tomorrow Edited');
   await checkOverflow(page, 'calendar planner');
 
-  // Σημερινό planned → κάρτα «Today in your plan» → Start → Save → done.
+  // Σημερινό planned → κύριο CTA «Start Plan Today» → Save → done.
   await page.goto(`${baseUrl}/calendar`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Schedule session', exact: true }).click();
   sheet = page.getByRole('dialog');
@@ -354,13 +354,14 @@ async function flow8(page) {
   await sheet.waitFor({ state: 'detached' });
 
   await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' });
-  await expectText(page, 'Today in your plan');
-  await expectText(page, 'Plan Today');
+  // Η Αρχική έχει πλέον ΕΝΑ κύριο CTA που ξεκινά το σημερινό planned
+  // (StartWorkoutCta) — η παλιά κάρτα «Today in your plan» κρύβεται όταν
+  // υπάρχει ένα μόνο planned.
+  await expectText(page, 'Start Plan Today');
+  await expectText(page, 'The session you planned for today');
   await checkOverflow(page, 'dashboard');
 
-  // Start κατευθείαν από την κάρτα «Σήμερα στο πρόγραμμα» (D4 finding) —
-  // ίδια ροή με το calendar sheet, χωρίς δεύτερη πλοήγηση.
-  await page.getByRole('button', { name: 'Start Plan Today', exact: true }).click();
+  await page.getByRole('button', { name: /^Start Plan Today/ }).click();
   await page.waitForURL('**/workout/active');
   await addExercise(page, 'Back Squat');
   await logSet(page, 50, 5);

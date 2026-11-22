@@ -74,6 +74,15 @@ describe('ActivitiesPage — διαγραφή custom δραστηριότητα�
     expect((await db.activities.get(custom.id))?.deleted_at).toBeNull();
   });
 
+  it('στο 320px η γραμμή κάνει wrap και το όνομα κρατά ελάχιστο πλάτος', async () => {
+    renderPage();
+    const label = await screen.findByText('Run');
+    const row = label.closest('li') as HTMLElement;
+    // Χωρίς αυτά τα 5–6 icon actions συμπιέζουν το όνομα σε «R…»/0px στο 320.
+    expect(row.className).toContain('flex-wrap');
+    expect(label.className).toContain('min-w-[5rem]');
+  });
+
   it('ξεκινά τρέξιμο απευθείας από τη δραστηριότητα (χωρίς πρόγραμμα)', async () => {
     renderPage();
     const runRow = (await screen.findByText('Run')).closest('li') as HTMLElement;

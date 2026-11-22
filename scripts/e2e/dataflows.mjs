@@ -133,14 +133,32 @@ async function addExercise(page, name) {
   await sheet.waitFor({ state: 'detached' });
 }
 
+/**
+ * Μετά από κάθε Add set, το AddSetInline ξαναγεμίζει το weight με το βάρος του
+ * τελευταίου σετ και αδειάζει το reps. Αν το επόμενο fill τρέξει πριν από
+ * αυτό το reset, το reset γράφει από πάνω του και το επόμενο σετ αποθηκεύεται
+ * με λάθος βάρος (flaky run). Περίμενε το form να «κάτσει» πριν το επόμενο.
+ */
+async function waitForSetForm(page, card, expectedWeight) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const weight = await card.getByLabel('Weight (kg)').inputValue().catch(() => null);
+    const reps = await card.getByLabel('Reps').inputValue().catch(() => null);
+    if (weight === String(expectedWeight) && reps === '') return;
+    await page.waitForTimeout(30);
+  }
+  throw new Error(`add-set form did not reset to ${expectedWeight}kg`);
+}
+
 async function logSets(page, exercise, sets) {
   const card = page.getByRole('article').filter({ hasText: exercise });
   await card.waitFor({ state: 'visible', timeout: 8000 });
-  for (const [weight, reps] of sets) {
+  for (let index = 0; index < sets.length; index += 1) {
+    const [weight, reps] = sets[index];
     await card.getByLabel('Weight (kg)').fill(String(weight));
     await card.getByLabel('Reps').fill(String(reps));
     await card.getByRole('button', { name: 'Add set', exact: true }).click();
     await expectText(page, `${weight}kg × ${reps}`);
+    if (index < sets.length - 1) await waitForSetForm(page, card, weight);
   }
 }
 
@@ -263,9 +281,11 @@ async function flowPlanner(page) {
   await sheet.waitFor({ state: 'detached' });
 
   await goto(page, '/');
-  await expectText(page, 'Today in your plan');
-  await expectText(page, 'Flow Plan');
-  await page.getByRole('button', { name: 'Start Flow Plan', exact: true }).click();
+  // Η Αρχική δείχνει το σημερινό planned στο κύριο CTA (StartWorkoutCta)·
+  // η παλιά κάρτα «Today in your plan» κρύβεται όταν υπάρχει ένα planned.
+  await expectText(page, 'Start Flow Plan');
+  await expectText(page, 'The session you planned for today');
+  await page.getByRole('button', { name: /^Start Flow Plan/ }).click();
   await page.waitForURL('**/workout/active');
 
   await addExercise(page, 'Back Squat');

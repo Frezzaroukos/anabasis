@@ -96,20 +96,22 @@ export function ActivitiesPage() {
         <EmptyState icon={ActivityGlyph} title={t('activities.empty')} />
       ) : (
         /* Μία λίστα με hairlines αντί για 8 ξεχωριστές κάρτες — ίδια γλώσσα με
-           Skills/Settings· τα 4 controls ανά γραμμή στα 44px, χωρίς να φουσκώνει
-           η γραμμή (py-1 + τα κουμπιά ορίζουν το ύψος). */
+           Skills/Settings· τα controls ανά γραμμή στα 44px. Στο 320px τα 5–6
+           κουμπιά δεν χωρούν δίπλα στο όνομα: η γραμμή κάνει wrap και τα
+           actions πάνε δεξιά στη δεύτερη σειρά, ώστε το όνομα να μένει
+           αναγνώσιμο (πριν συμπιεζόταν σε «R…» / 0px). */
         <ul className="stagger divide-y divide-border/50 overflow-hidden rounded-xl bg-card">
           {active.map((a, index) => (
             <li
               key={a.id}
-              className="flex min-h-[3.25rem] items-center gap-3 py-1 pl-4 pr-1"
+              className="flex min-h-[3.25rem] flex-wrap items-center gap-3 gap-y-1 py-1 pl-4 pr-1"
             >
               {/* Το χρώμα ΕΙΝΑΙ η ταυτότητα της δραστηριότητας — ίδιο σημάδι με
                   το ημερολόγιο και τα chips. Το παλιό σύμβολο (⬛ ◆ ▲) έμενε
                   μόνο εδώ και έσπαγε τη συνέπεια. */}
               <ActivityIcon activity={a} className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.label}</span>
-              <div className="flex shrink-0 items-center">
+              <span className="min-w-[5rem] flex-1 truncate text-sm font-medium">{a.label}</span>
+              <div className="ml-auto flex shrink-0 items-center">
                 <button
                   type="button"
                   onClick={() => void move(index, -1)}
@@ -191,7 +193,7 @@ export function ActivitiesPage() {
                   className="flex min-h-[3.25rem] items-center gap-3 py-1 pl-4 pr-1"
                 >
                   <ActivityIcon activity={a} className="h-4 w-4 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{a.label}</span>
+                  <span className="min-w-[5rem] flex-1 truncate text-sm font-medium">{a.label}</span>
                   <button
                     type="button"
                     onClick={() => void setArchived(a.id, false)}
