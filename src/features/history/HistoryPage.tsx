@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { CalendarPlus, Clock, Dumbbell, Layers, Trophy } from 'lucide-react';
+import { CalendarPlus, Clock, Dumbbell, Layers, Search, Trophy, X } from 'lucide-react';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import {
   getRecentPRs,
@@ -15,18 +15,33 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
 import type { PRType } from '@/lib/db/types';
 import { SectionTitle } from '@/components/ui/Section';
+import { Input } from '@/components/ui/input';
 import { VolumeChart } from './components/VolumeChart';
 import { FeelChart } from './components/FeelChart';
 import { ProgressHistoryTabs } from './components/ProgressHistoryTabs';
 import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 /** PR types που είναι βάρος (kg storage) — τα υπόλοιπα δεν μετατρέπονται. */
 const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
 const VIRTUALIZE_THRESHOLD = 50;
 
+type GroupMode = 'month' | 'week';
+
 type HistoryRow =
-  | { type: 'month'; key: string }
+  | { type: 'group'; key: string; label: string; count: number; volume: number }
   | { type: 'workout'; summary: WorkoutSummary };
+
+/** Δευτέρα της εβδομάδας μιας τοπικής ημέρας YYYY-MM-DD. */
+function weekStartOf(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+  const offset = (date.getDay() + 6) % 7; // 0 = Δευτέρα
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - offset);
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(
+    monday.getDate(),
+  ).padStart(2, '0')}`;
+}
 
 export function HistoryPage() {
   const { t, i18n } = useTranslation();
@@ -37,25 +52,78 @@ export function HistoryPage() {
   const completed = useLiveQuery(() => listWorkoutSummaries(), []);
   const list = useMemo(() => completed ?? [], [completed]);
 
-  // Ομαδοποίηση ανά μήνα — ένα μεγάλο αδιάσπαστο feed χάνει τον χρόνο.
-  const months = useMemo(() => {
-    const groups = new Map<string, WorkoutSummary[]>();
-    for (const s of list) {
-      const key = s.workout.started_at.slice(0, 7); // YYYY-MM
-      const arr = groups.get(key) ?? [];
-      arr.push(s);
-      groups.set(key, arr);
-    }
-    return [...groups.entries()];
-  }, [list]);
-  const historyRows = useMemo<HistoryRow[]>(
-    () => months.flatMap(([key, items]) => [
-      { type: 'month' as const, key },
-      ...items.map((summary) => ({ type: 'workout' as const, summary })),
-    ]),
-    [months],
+  // ── Φίλτρα: ελεύθερο κείμενο, άσκηση, εύρος ημερομηνιών ──
+  const [query, setQuery] = useState('');
+  const [exerciseFilter, setExerciseFilter] = useState<string>('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [groupMode, setGroupMode] = useState<GroupMode>('month');
+
+  const activityLabels = useLiveQuery(
+    async () => new Map((await listActivities(true)).map((a) => [a.key, a.label])),
+    [],
+    new Map<string, string>(),
   );
-  const virtualized = list.length > VIRTUALIZE_THRESHOLD;
+  const exerciseOptions = useLiveQuery(
+    async () => (await listAllExercises()).map((e) => ({ id: e.id, name: e.name })),
+    [],
+    [] as Array<{ id: string; name: string }>,
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const labelOf = (s: WorkoutSummary) =>
+      (s.workout.workout_type ?? activityLabels.get(s.workout.activity_kind) ?? s.workout.activity_kind).toLowerCase();
+    return list.filter((s) => {
+      const day = s.workout.started_at.slice(0, 10);
+      if (fromDate && day < fromDate) return false;
+      if (toDate && day > toDate) return false;
+      if (exerciseFilter && !s.exerciseIds.includes(exerciseFilter)) return false;
+      if (q && !labelOf(s).includes(q) && !(s.topExercise ?? '').toLowerCase().includes(q)) {
+        return false;
+      }
+      return true;
+    });
+  }, [list, query, exerciseFilter, fromDate, toDate, activityLabels]);
+
+  // Ομαδοποίηση ανά μήνα ή εβδομάδα, με σύνοψη (πλήθος + όγκος) ανά ομάδα.
+  const groups = useMemo(() => {
+    const map = new Map<string, WorkoutSummary[]>();
+    for (const s of filtered) {
+      const key =
+        groupMode === 'month'
+          ? s.workout.started_at.slice(0, 7)
+          : weekStartOf(s.workout.started_at.slice(0, 10));
+      const arr = map.get(key) ?? [];
+      arr.push(s);
+      map.set(key, arr);
+    }
+    return [...map.entries()];
+  }, [filtered, groupMode]);
+  const groupLabel = (key: string): string =>
+    groupMode === 'month'
+      ? new Date(`${key}-01T12:00:00`).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+      : `${t('history.groupWeek')} · ${new Date(`${key}T12:00:00`).toLocaleDateString(locale, {
+          day: 'numeric',
+          month: 'short',
+        })}`;
+  const historyRows = useMemo<HistoryRow[]>(
+    () =>
+      groups.flatMap(([key, items]) => [
+        {
+          type: 'group' as const,
+          key,
+          label: groupMode === 'month'
+            ? new Date(`${key}-01T12:00:00`).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+            : new Date(`${key}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short' }),
+          count: items.length,
+          volume: items.reduce((a, s) => a + s.volume, 0),
+        },
+        ...items.map((summary) => ({ type: 'workout' as const, summary })),
+      ]),
+    [groups, groupMode, locale],
+  );
+  const virtualized = filtered.length > VIRTUALIZE_THRESHOLD;
   const virtualListRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   useLayoutEffect(() => {
@@ -77,7 +145,7 @@ export function HistoryPage() {
   }, [virtualized, historyRows.length]);
   const rowVirtualizer = useWindowVirtualizer({
     count: virtualized ? historyRows.length : 0,
-    estimateSize: (index) => historyRows[index]?.type === 'month' ? 42 : 104,
+    estimateSize: (index) => historyRows[index]?.type === 'group' ? 52 : 104,
     overscan: 6,
     scrollMargin,
   });
@@ -89,11 +157,6 @@ export function HistoryPage() {
   // αρχειοθέτησες.
   const exerciseNames = useLiveQuery(
     async () => new Map((await listAllExercises()).map((e) => [e.id, e.name])),
-    [],
-    new Map<string, string>(),
-  );
-  const activityLabels = useLiveQuery(
-    async () => new Map((await listActivities(true)).map((a) => [a.key, a.label])),
     [],
     new Map<string, string>(),
   );
@@ -137,6 +200,97 @@ export function HistoryPage() {
 
       <VolumeChart />
       <FeelChart />
+
+      {list.length > 0 && (
+        <section className="space-y-2" aria-label={t('history.filtersLabel')}>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('history.searchPlaceholder')}
+              aria-label={t('history.searchPlaceholder')}
+              className="h-10 pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={exerciseFilter}
+              onChange={(e) => setExerciseFilter(e.target.value)}
+              aria-label={t('history.filterByExercise')}
+              className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">{t('history.filterByExercise')}</option>
+              {exerciseOptions.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name}
+                </option>
+              ))}
+            </select>
+            <div role="group" aria-label={t('history.groupBy')} className="flex rounded-md bg-elevated p-0.5 text-xs font-medium">
+              <button
+                type="button"
+                aria-pressed={groupMode === 'month'}
+                onClick={() => setGroupMode('month')}
+                className={cn(
+                  'rounded px-2.5 py-1 transition-colors',
+                  groupMode === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {t('history.groupMonth')}
+              </button>
+              <button
+                type="button"
+                aria-pressed={groupMode === 'week'}
+                onClick={() => setGroupMode('week')}
+                className={cn(
+                  'rounded px-2.5 py-1 transition-colors',
+                  groupMode === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {t('history.groupWeek')}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              {t('history.filterDateFrom')}
+              <input
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs tabular-nums"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              {t('history.filterDateTo')}
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => setToDate(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs tabular-nums"
+              />
+            </label>
+            {(query || exerciseFilter || fromDate || toDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  setExerciseFilter('');
+                  setFromDate('');
+                  setToDate('');
+                }}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" aria-hidden />
+                {t('history.clearFilters')}
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       {uniquePrs.length > 0 && (
         <section>
@@ -185,6 +339,10 @@ export function HistoryPage() {
             {t('history.logFirst')}
           </Link>
         </div>
+      ) : filtered.length === 0 ? (
+        <p className="rounded-xl bg-card px-6 py-8 text-center text-sm text-muted-foreground">
+          {t('history.noResults')}
+        </p>
       ) : virtualized ? (
         <div
           ref={virtualListRef}
@@ -204,13 +362,8 @@ export function HistoryPage() {
                 className="absolute left-0 top-0 w-full"
                 style={{ transform: `translateY(${virtualRow.start - scrollMargin}px)` }}
               >
-                {row.type === 'month' ? (
-                  <h2 className="px-1 pb-2 pt-5 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                    {new Date(`${row.key}-01T12:00:00`).toLocaleDateString(locale, {
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </h2>
+                {row.type === 'group' ? (
+                  <GroupHeader label={row.label} count={row.count} volume={row.volume} unit={unit} t={t} />
                 ) : (
                   <div className="pb-2" role="listitem">
                     <WorkoutHistoryCard
@@ -227,14 +380,15 @@ export function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {months.map(([key, items]) => (
+          {groups.map(([key, items]) => (
             <section key={key}>
-              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {new Date(`${key}-01T12:00:00`).toLocaleDateString(locale, {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </h2>
+              <GroupHeader
+                label={groupLabel(key)}
+                count={items.length}
+                volume={items.reduce((a, s) => a + s.volume, 0)}
+                unit={unit}
+                t={t}
+              />
               <ul className="stagger space-y-2">
                 {items.map((summary) => (
                   <li key={summary.workout.id}>
@@ -251,6 +405,34 @@ export function HistoryPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function GroupHeader({
+  label,
+  count,
+  volume,
+  unit,
+  t,
+}: {
+  label: string;
+  count: number;
+  volume: number;
+  unit: 'kg' | 'lb';
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div className="mb-2 flex items-baseline justify-between gap-2 px-1 pt-5 first:pt-0">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </h2>
+      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+        {t('history.rangeSummary', {
+          count,
+          volume: volume > 0 ? formatWeight(volume, unit, { granularity: 'plate' }) : '—',
+        })}
+      </span>
     </div>
   );
 }

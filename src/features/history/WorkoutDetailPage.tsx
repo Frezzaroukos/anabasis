@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, ChevronDown, ChevronRight, ChevronUp, ClipboardPaste, Pencil, Plus, Repeat, Trophy, Trash2, X, Zap } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ChevronUp, ClipboardPaste, Copy, Pencil, Plus, Repeat, SlidersHorizontal, Trophy, Trash2, X, Zap } from 'lucide-react';
 import {
   addSet,
   getLatestBodyweight,
@@ -31,6 +31,8 @@ import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast-context';
 import { EditWorkoutSheet } from './components/EditWorkoutSheet';
+import { BatchWeightSheet } from './components/BatchWeightSheet';
+import { DuplicateWorkoutSheet } from './components/DuplicateWorkoutSheet';
 import { LoadingState } from '@/components/ui/loading-state';
 import { cn } from '@/lib/utils';
 
@@ -59,6 +61,9 @@ export function WorkoutDetailPage() {
   const [moveSetId, setMoveSetId] = useState<string | null>(null);
   // «Αφαίρεση άσκησης» — κρατά το exercise id για το confirm dialog.
   const [removeExerciseId, setRemoveExerciseId] = useState<string | null>(null);
+  // «Αλλαγή βάρους σε όλα τα σετ» της άσκησης.
+  const [batchWeightExercise, setBatchWeightExercise] = useState<{ id: string; name: string } | null>(null);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
 
   const detail = useLiveQuery(
     () => (workoutId ? getWorkoutDetail(workoutId) : Promise.resolve(null)),
@@ -187,6 +192,14 @@ export function WorkoutDetailPage() {
               <Repeat className="h-4 w-4" />
             </button>
             <button
+              onClick={() => setDuplicateOpen(true)}
+              aria-label={t('history.duplicateWorkout')}
+              title={t('history.duplicateWorkout')}
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+            <button
               onClick={() => setEditOpen(true)}
               aria-label={t('history.editWorkout')}
               className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -267,6 +280,7 @@ export function WorkoutDetailPage() {
                 bodyweightKg={bodyweightKg}
                 onMoveSet={(setId) => setMoveSetId(setId)}
                 onRemoveExercise={() => setRemoveExerciseId(ex.exerciseId)}
+                onBatchWeight={() => setBatchWeightExercise({ id: ex.exerciseId, name: ex.name })}
                 canMoveUp={idx > 0}
                 canMoveDown={idx < exercises.length - 1}
                 onMoveExercise={(dir) => void moveExercise(ex.exerciseId, dir)}
@@ -360,6 +374,32 @@ export function WorkoutDetailPage() {
         title={t('workout.moveSetTitle')}
         onPick={(ex) => void confirmMoveSet(ex)}
       />
+
+      {batchWeightExercise && (
+        <BatchWeightSheet
+          open={batchWeightExercise != null}
+          onClose={() => setBatchWeightExercise(null)}
+          workoutId={workout.id}
+          exerciseId={batchWeightExercise.id}
+          exerciseName={batchWeightExercise.name}
+          unit={unit}
+          onApplied={(count) => {
+            showToast({
+              message:
+                count > 0
+                  ? t('history.batchWeightDone', { count })
+                  : t('history.batchWeightNone'),
+            });
+          }}
+        />
+      )}
+
+      <DuplicateWorkoutSheet
+        open={duplicateOpen}
+        onClose={() => setDuplicateOpen(false)}
+        workoutId={workout.id}
+        onCopied={() => showToast({ message: t('history.duplicateDone') })}
+      />
     </div>
   );
 }
@@ -379,6 +419,8 @@ interface HistoryExerciseCardProps {
   onMoveSet?: (setId: string) => void;
   /** Αφαίρεση ΟΛΗΣ της άσκησης (όλα τα σετ) — ζητά confirm στον γονιό. */
   onRemoveExercise?: () => void;
+  /** Αλλαγή βάρους σε όλα τα working σετ της άσκησης (batch). */
+  onBatchWeight?: () => void;
   /** Αναδιάταξη ασκήσεων (πάνω/κάτω). */
   canMoveUp?: boolean;
   canMoveDown?: boolean;
@@ -398,6 +440,7 @@ function HistoryExerciseCard({
   onRemovePending,
   onMoveSet,
   onRemoveExercise,
+  onBatchWeight,
   canMoveUp = false,
   canMoveDown = false,
   onMoveExercise,
@@ -541,6 +584,17 @@ function HistoryExerciseCard({
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+        {onBatchWeight && sets.some((s) => s.weight_kg != null) && (
+          <button
+            type="button"
+            onClick={onBatchWeight}
+            aria-label={t('history.batchWeight')}
+            title={t('history.batchWeight')}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
           </button>
         )}
       </div>
