@@ -263,13 +263,24 @@ export async function setWorkoutDate(workoutId: string, isoDay: string): Promise
   const moved = new Date(started);
   moved.setFullYear(y, m - 1, d);
 
-  const patch: Partial<Workout> = { started_at: moved.toISOString(), updated_at: now() };
+  const t = now();
+  const patch: Partial<Workout> = { started_at: moved.toISOString(), updated_at: t };
   // Το ended_at μετακινείται μαζί, ώστε η διάρκεια να μείνει ίδια.
   if (w.ended_at) {
     const delta = moved.getTime() - started.getTime();
     patch.ended_at = new Date(new Date(w.ended_at).getTime() + delta).toISOString();
   }
-  await db.workouts.update(workoutId, patch);
+  await db.transaction('rw', db.workouts, db.scheduled_sessions, async () => {
+    await db.workouts.update(workoutId, patch);
+    // Αν η προπόνηση ήταν δεμένη σε scheduled_session, το planned row πρέπει να
+    // μετακινηθεί στην ίδια μέρα — αλλιώς το ημερολόγιο θα έδειχνε το planned
+    // στη μία μέρα και το done workout στην άλλη. Κρατά συνέπεια date↔workout.
+    await db.scheduled_sessions
+      .where('user_id')
+      .equals(getCurrentUserId())
+      .filter((s) => s.workout_id === workoutId && s.deleted_at == null)
+      .modify({ date: isoDay, updated_at: t });
+  });
 }
 
 /**
@@ -881,6 +892,91 @@ export async function startWorkoutFromCompleted(
 }
 
 /**
+ * Αντιγράφει μια ΟΛΟΚΛΗΡΩΜΕΝΗ προπόνηση σε άλλη ημερομηνία, με ΟΛΑ της τα σετ
+ * — «ξέχασα να την καταγράψω χθες». Το αντίγραφο είναι ολοκληρωμένο workout
+ * (ended_at = started + διάρκεια της πηγής, ώστε να μείνει στη σωστή μέρα και
+ * να έχει σωστή διάρκεια). Νέα ids παντού, ίδιο περιεχόμενο· recompute PR για
+ * τις ασκήσεις.
+ * Δεν κρατά το πρόγραμμα/day link (είναι αντίγραφο, όχι νέο session προγράμματος).
+ * Επιστρέφει το νέο workout id.
+ */
+export async function duplicateWorkoutToDate(
+  sourceWorkoutId: string,
+  targetDate: string,
+): Promise<string | null> {
+  const source = await db.workouts.get(sourceWorkoutId);
+  if (!source || source.deleted_at != null) return null;
+  const [y, m, d] = targetDate.split('-').map(Number);
+  if (!y || !m || !d) return null;
+
+  const sourceSets = (
+    await db.sets.where('workout_id').equals(sourceWorkoutId).toArray()
+  )
+    .filter((s) => s.deleted_at == null)
+    .sort((a, b) => a.set_number - b.set_number);
+
+  const t = now();
+  const started = localNoon(targetDate);
+  // Διατήρησε τη διάρκεια της πηγής· το ended_at = started + duration ώστε να
+  // «κλείσει» και να μετράει στο ιστορικό χωρίς να παριστάνει ζωντανή συνεδρία.
+  const duration = source.duration_seconds ?? 0;
+  const ended = new Date(started.getTime() + Math.max(0, duration) * 1000);
+
+  const newId = uuid();
+  await db.transaction('rw', db.workouts, db.sets, async () => {
+    await db.workouts.add({
+      id: newId,
+      user_id: getCurrentUserId(),
+      started_at: started.toISOString(),
+      ended_at: ended.toISOString(),
+      duration_seconds: source.duration_seconds,
+      notes: source.notes,
+      workout_type: source.workout_type,
+      activity_kind: source.activity_kind,
+      program_id: null,
+      program_day_id: null,
+      distance_km: source.distance_km,
+      feel: source.feel,
+      created_at: t,
+      updated_at: t,
+      deleted_at: null,
+    });
+    for (const s of sourceSets) {
+      await db.sets.add({
+        id: uuid(),
+        workout_id: newId,
+        exercise_id: s.exercise_id,
+        set_number: s.set_number,
+        weight_kg: s.weight_kg,
+        bodyweight_kg: s.bodyweight_kg,
+        reps: s.reps,
+        rest_pause_reps: s.rest_pause_reps ?? [],
+        hold_seconds: s.hold_seconds,
+        rpe: s.rpe,
+        rir: s.rir,
+        tempo: s.tempo,
+        is_warmup: s.is_warmup,
+        is_failure: s.is_failure,
+        set_type: s.set_type,
+        group_id: s.group_id,
+        notes: s.notes,
+        rest_seconds: s.rest_seconds,
+        created_at: t,
+        updated_at: t,
+        deleted_at: null,
+      });
+    }
+  });
+  // Νέα σετ = νέες υποψηφιότητες PR στην ημερομηνία του αντιγράφου.
+  const exerciseIds = new Set(sourceSets.map((s) => s.exercise_id));
+  for (const exerciseId of exerciseIds) {
+    await recomputePRsForExercise(exerciseId);
+  }
+  await recomputeActivityPRs(source.activity_kind);
+  return newId;
+}
+
+/**
  * Αναδιατάσσει τις ασκήσεις ΜΙΑΣ προπόνησης.
  *
  * Δεν υπάρχει πεδίο θέσης ανά άσκηση-σε-workout (και δεν προσθέτουμε schema):
@@ -939,30 +1035,104 @@ export async function reorderWorkoutExercises(
 }
 
 /**
+ * Ξαναριθμεί τα ΖΩΝΤΑΝΑ σετ μιας άσκησης σε 1..N με βάση την τρέχουσα σειρά
+ * τους (set_number, με created_at tiebreak). Χωρίς αυτό, όταν φεύγει/μπαίνει
+ * σετ από μια άσκηση μένει «κενό» (π.χ. #1, #3) — μοιάζει σαν να χάθηκε σετ.
+ * Επιστρέφει τα ids που άλλαξαν (για recompute PR αν χρειάζεται).
+ */
+async function renumberSetsForExercise(
+  workoutId: string,
+  exerciseId: string,
+): Promise<string[]> {
+  const live = (
+    await db.sets
+      .where('workout_id')
+      .equals(workoutId)
+      .and((s) => s.exercise_id === exerciseId && s.deleted_at == null)
+      .toArray()
+  ).sort((a, b) => a.set_number - b.set_number || a.created_at.localeCompare(b.created_at));
+
+  const changed: string[] = [];
+  for (let i = 0; i < live.length; i++) {
+    const want = i + 1;
+    if (live[i]!.set_number !== want) {
+      await db.sets.update(live[i]!.id, { set_number: want, updated_at: now() });
+      changed.push(live[i]!.id);
+    }
+  }
+  return changed;
+}
+
+/**
  * Μεταφέρει ένα σετ σε άλλη άσκηση — «το έγραψα σε λάθος άσκηση».
  *
- * Ο set_number ξαναϋπολογίζεται ώστε να μπει στο τέλος της νέας άσκησης
- * (όχι να κρατήσει π.χ. #2 και να μοιάζει σαν να έλειπε το #1). Τα ρεκόρ
- * και των ΔΥΟ ασκήσεων ξαναχτίζονται: η παλιά μπορεί να χάνει ρεκόρ, η νέα
- * μπορεί να κερδίζει.
+ * Ο set_number ξαναϋπολογίζεται ώστε να μπει στο τέλος της νέας άσκησης, και
+ * ΞΑΝΑΡΙΘΜΟΥΝΤΑΙ και οι δύο ασκήσεις (Bug L1: πριν έμενε κενό στην αρχική,
+ * π.χ. #1,#3). Τα ρεκόρ και των ΔΥΟ ασκήσεων ξαναχτίζονται.
  */
 export async function moveSetToExercise(setId: string, exerciseId: string): Promise<void> {
   const set = await db.sets.get(setId);
   if (!set || set.exercise_id === exerciseId) return;
   const previousExerciseId = set.exercise_id;
+  const workoutId = set.workout_id;
   const targetSets = await db.sets
     .where('workout_id')
-    .equals(set.workout_id)
+    .equals(workoutId)
     .and((s) => s.exercise_id === exerciseId && s.deleted_at == null && s.id !== setId)
     .toArray();
   const nextNumber = targetSets.reduce((max, s) => Math.max(max, s.set_number), 0) + 1;
-  await db.sets.update(setId, {
-    exercise_id: exerciseId,
-    set_number: nextNumber,
-    updated_at: now(),
+  await db.transaction('rw', db.sets, async () => {
+    await db.sets.update(setId, {
+      exercise_id: exerciseId,
+      set_number: nextNumber,
+      updated_at: now(),
+    });
+    // Bug L1: η αρχική άσκηση θα είχε κενό (π.χ. μετά το #2 έμενε #1, #3).
+    // Ξαναρίθμησε ΚΑΙ τις δύο ώστε η σειρά να είναι πυκνή 1..N.
+    await renumberSetsForExercise(workoutId, previousExerciseId);
+    await renumberSetsForExercise(workoutId, exerciseId);
   });
   await recomputePRsForExercise(previousExerciseId);
   await recomputePRsForExercise(exerciseId);
+}
+
+/**
+ * Αλλάζει το βάρος (προστιθέμενο kg) σε ΟΛΑ τα ζωντανά σετ μιας άσκησης σε μια
+ * προπόνηση — «ήταν 20kg, όχι 25». Χρήσιμο όταν γράφτηκε λάθος βάρος σε όλη τη
+ * σειρά. Το `deltaKg` προστίθεται (θετικό/αρνητικό)· `absoluteKg` θέτει σταθερό
+ * βάρος. Αγνοεί warm-ups (δεν θέλεις να αλλάξεις το ζέσταμα) και σετ χωρίς
+ * βάρος. Ξαναϋπολογίζει PR μετά.
+ */
+export async function adjustExerciseSetWeights(
+  workoutId: string,
+  exerciseId: string,
+  change: { deltaKg?: number; absoluteKg?: number },
+): Promise<{ updated: number }> {
+  const t = now();
+  const sets = await db.sets
+    .where('workout_id')
+    .equals(workoutId)
+    .and((s) => s.exercise_id === exerciseId && s.deleted_at == null)
+    .toArray();
+  const targets = sets.filter((s) => isWorkingSet(s) && s.weight_kg != null);
+  if (targets.length === 0) return { updated: 0 };
+
+  let updated = 0;
+  await db.transaction('rw', db.sets, async () => {
+    for (const s of targets) {
+      const base = s.weight_kg!;
+      const next =
+        change.absoluteKg != null
+          ? change.absoluteKg
+          : base + (change.deltaKg ?? 0);
+      const clamped = Math.max(0, Math.round(next * 100) / 100);
+      if (clamped === base) continue;
+      await db.sets.update(s.id, { weight_kg: clamped, updated_at: t });
+      updated += 1;
+    }
+  });
+  if (updated > 0) await recomputePRsForExercise(exerciseId);
+  return { updated };
 }
 
 /**
@@ -1073,6 +1243,8 @@ export async function softDeleteSet(setId: string): Promise<void> {
   const t = now();
   const set = await db.sets.get(setId);
   await db.sets.update(setId, { deleted_at: t, updated_at: t });
+  // Σβήσιμο σετ αφήνει κενό στη σειρά (#1, #3) — ξαναρίθμησε τα υπόλοιπα.
+  if (set) await renumberSetsForExercise(set.workout_id, set.exercise_id);
   // Σβήσιμο σετ μπορεί να αφαιρεί το μόνο σετ που είχε σπάσει ένα ρεκόρ —
   // τα PR πρέπει να πέσουν πίσω στο αληθινό καλύτερο, όχι να μείνουν.
   if (set) await recomputePRsForExercise(set.exercise_id);
@@ -1834,6 +2006,8 @@ export interface WorkoutSummary {
   volume: number;
   /** Η άσκηση με τα περισσότερα σετ — δίνει μια «ματιά» στη σύνθεση. */
   topExercise: string | null;
+  /** Όλες οι ασκήσεις που εμφανίστηκαν — για φίλτρο ιστορικού ανά άσκηση. */
+  exerciseIds: string[];
 }
 
 /**
@@ -1872,6 +2046,7 @@ export async function listWorkoutSummaries(): Promise<WorkoutSummary[]> {
         setCount: a?.setCount ?? 0,
         volume: Math.round(a?.volume ?? 0),
         topExercise,
+        exerciseIds: a ? [...a.byExercise.keys()] : [],
       };
     });
 }
