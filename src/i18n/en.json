@@ -1505,7 +1505,7 @@
           "intro": "A PR is a best-ever mark for one exercise, compared with what you had before.",
           "step1": "Strength PRs: Max weight, Max reps, Max volume, Est. 1RM and Max hold. Without sets, activities track Longest distance, Longest duration and Fastest pace.",
           "step2": "Warm-up sets never count. The very first set of a new exercise is not celebrated as a PR because there was no previous mark.",
-          "step3": "Bodyweight load counts as bodyweight + added weight; a bodyweight set can still set volume or rep records.",
+          "step3": "For bodyweight exercises, volume counts bodyweight + added weight; Max weight and Est. 1RM count only the added weight. A set with no added weight can still set volume or rep records.",
           "step4": "After you edit, repeat or delete sets (or delete a workout), PRs are recomputed from the remaining live sets, so old wrong marks do not stick."
         },
         "sync": {

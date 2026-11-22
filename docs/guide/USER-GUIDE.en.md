@@ -107,8 +107,9 @@ A chart needs at least two sessions of an exercise to show a trend.
   duration** and **Fastest pace**.
 - Warm-up sets never count. The first ever set of a new exercise is not
   celebrated as a PR because there was no previous mark.
-- Bodyweight load = bodyweight + added weight; a bodyweight set can still set
-  volume or rep records.
+- For bodyweight exercises, volume counts bodyweight + added weight; **Max
+  weight** and **Est. 1RM** count only the added weight. A set with no added
+  weight can still set volume or rep records.
 - After editing, repeating or deleting sets (or deleting a workout), PRs are
   recomputed from the remaining live sets, so wrong old marks do not stick.
 
