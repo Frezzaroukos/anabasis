@@ -699,6 +699,53 @@ async fn push_stale_updated_at_does_not_clobber_newer_row() {
     );
 }
 
+/// `.950Z` (950ms) is later than `.9Z` (900ms) but sorts earlier as text
+/// because `'5' < 'Z'`. The stored form is always millisecond precision.
+#[tokio::test]
+async fn push_later_millis_beats_shorter_rfc3339_fraction() {
+    let (app, state, _dir) = test_app(None).await;
+    let (token, user_id) = signed_in_user(&app).await;
+
+    let earlier = json!({
+        "id": "goal-frac", "user_id": user_id, "title": "short fraction",
+        "updated_at": "2026-11-22T10:00:05.9Z",
+    });
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ earlier ] } ] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let later = json!({
+        "id": "goal-frac", "user_id": user_id, "title": "millis",
+        "updated_at": "2026-11-22T10:00:05.950Z",
+    });
+    let (status, _) = call(
+        &app,
+        "POST",
+        "/api/sync/push",
+        Some(&token),
+        Some(json!({ "changes": [ { "tbl": "goals", "rows": [ later ] } ] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let stored_payload: String = sqlx::query_scalar(
+        "SELECT payload FROM sync_rows WHERE account_id = ? AND tbl = 'goals' AND row_id = 'goal-frac'",
+    )
+    .bind(&user_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    let stored: Value = serde_json::from_str(&stored_payload).unwrap();
+    assert_eq!(stored["title"], "millis");
+    assert_eq!(stored["updated_at"], "2026-11-22T10:00:05.950Z");
+}
+
 /// Ισοπαλία στο updated_at → κρατάμε ό,τι υπάρχει ήδη (deterministic, ίδιο
 /// σε κάθε retry· δεν υπάρχει έννοια «id tiebreak» εδώ αφού το row_id είναι
 /// το ίδιο και στις δύο πλευρές).

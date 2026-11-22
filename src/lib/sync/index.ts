@@ -524,14 +524,14 @@ async function destructiveReset(): Promise<void> {
       const sv = serverVer?.get(id);
 
       if (sv === undefined) {
-        if (!tombstoned && upd > boundary) {
+        if (!tombstoned && updatedAtMs(upd) > updatedAtMs(boundary)) {
           // Γνήσια νέα τοπική γραμμή (ο server δεν την έχει) → κράτα & σπρώξε.
           toPush.push(toWireRow(tbl, raw, uid));
         } else if (!NEVER_PURGE.has(tbl)) {
           // Ghost (παλιό synced row GC-αρισμένο) ή stale tombstone → σβήσε, ΜΗ σπρώξεις.
           toDelete.push(id);
         }
-      } else if (!tombstoned && upd > sv) {
+      } else if (!tombstoned && updatedAtMs(upd) > updatedAtMs(sv)) {
         // Υπάρχει στον server· το bulkPut έγραψε τη server έκδοση. Το τοπικό edit
         // είναι νεότερο → επανάφερέ το τοπικά και σπρώξ' το (LWW).
         await table.put(raw as Record<string, unknown>);
