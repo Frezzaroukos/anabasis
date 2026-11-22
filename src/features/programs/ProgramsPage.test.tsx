@@ -105,4 +105,28 @@ describe('ProgramsPage', () => {
     expect(workouts[0]!.program_day_id).toBe(PROGRAM_DAY.id);
     expect(workouts[0]!.workout_type).toBe('Upper #1');
   });
+
+  it('τα βελάκια αναδιατάσσουν τα προγράμματα (display_order)', async () => {
+    // Ξεχωριστά προγράμματα ώστε το τεστ να μη μπλέκει με το seeded του beforeAll.
+    await db.programs.clear();
+    await db.program_exercises.clear();
+    const make = (id: string, name: string, order: number): Program => ({
+      ...PROGRAM, id, name, display_order: order,
+    });
+    await db.programs.bulkAdd([make('ord-a', 'Order A', 0), make('ord-b', 'Order B', 1)]);
+
+    render(wrap(<ProgramsPage />));
+    await waitFor(() => expect(screen.getByText('Order A')).toBeTruthy());
+
+    // Πρώτο πρόγραμμα (Order A) «κάτω» → γίνεται 2ο.
+    const downs = screen.getAllByRole('button', { name: en.programs.moveDown });
+    fireEvent.click(downs[0]!);
+
+    await waitFor(async () => {
+      const a = await db.programs.get('ord-a');
+      const b = await db.programs.get('ord-b');
+      expect(a!.display_order).toBe(1);
+      expect(b!.display_order).toBe(0);
+    });
+  });
 });
