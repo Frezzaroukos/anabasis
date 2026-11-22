@@ -684,6 +684,7 @@ export function CalendarPage() {
                     )}
                   >
                     <span
+                      aria-hidden
                       className={cn(
                         'flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs tabular-nums transition-colors',
                         c.key === today
@@ -694,8 +695,10 @@ export function CalendarPage() {
                       {c.day}
                     </span>
                     {/* Σταθερό ύψος: αλλιώς οι μέρες με κουκκίδες ήταν ψηλότερες
-                        από τις κενές και η γραμμή «κουνιόταν». */}
-                    <span className="flex h-2.5 flex-wrap items-center justify-center gap-0.5">
+                        από τις κενές και η γραμμή «κουνιόταν». Στο κινητό (320px)
+                        το ΠΑΤΗΜΑ είναι ολόκληρο το κελί (button, min-h-12=48px)· το
+                        h-6/h-7 είναι διακοσμητικός κύκλος, όχι ο στόχος αφής. */}
+                    <span aria-hidden className="flex h-2.5 flex-wrap items-center justify-center gap-0.5">
                       {(() => {
                         const ws = cal.get(c.key)?.workouts ?? [];
                         const overflow = ws.length > 4;

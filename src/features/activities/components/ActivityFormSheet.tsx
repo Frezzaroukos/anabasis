@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { createActivity, updateActivity } from '@/lib/db/queries';
 import type { Activity } from '@/lib/db/types';
 import { ACTIVITY_ICONS, ACTIVITY_ICON_NAMES } from '@/components/activityIcons';
-import { ACTIVITY_DOT_COLORS } from '../utils';
+import { ACTIVITY_COLOR_NAME_KEY, ACTIVITY_DOT_COLORS } from '../utils';
 
 interface ActivityFormSheetProps {
   open: boolean;
@@ -137,14 +137,18 @@ export function ActivityFormSheet({ open, onClose, activity = null }: ActivityFo
                 type="button"
                 role="radio"
                 aria-checked={dotClass === c}
-                aria-label={c}
+                aria-label={t(ACTIVITY_COLOR_NAME_KEY[c] ?? c)}
                 onClick={() => setDotClass(c)}
-                className={cn(
-                  'h-7 w-7 rounded-full ring-offset-2 ring-offset-card transition-shadow',
-                  c,
-                  dotClass === c && 'ring-2 ring-foreground',
-                )}
-              />
+                className="flex h-11 w-11 items-center justify-center rounded-full"
+              >
+                <span
+                  className={cn(
+                    'block h-7 w-7 rounded-full ring-offset-2 ring-offset-card transition-shadow',
+                    c,
+                    dotClass === c && 'ring-2 ring-foreground',
+                  )}
+                />
+              </button>
             ))}
           </div>
         </div>
