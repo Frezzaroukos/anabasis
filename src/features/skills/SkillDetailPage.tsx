@@ -24,7 +24,9 @@ import {
   undoStep,
   updateSkillStep,
   deleteSkill,
+  localDay,
 } from '@/lib/db/queries';
+import { localNoon } from '@/components/charts/timeRange';
 import type { SkillStep } from '@/lib/db/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -148,7 +150,8 @@ export function SkillDetailPage() {
       const c = completions.get(step.id);
       if (!c) return null;
       return {
-        date: c.achieved_at.slice(0, 10),
+        // ΤΟΠΙΚΗ μέρα — το slice του ISO έδινε τη χθεσινή UTC μέρα για 00:00–03:00.
+        date: localDay(new Date(c.achieved_at)),
         stepNumber: step.step_number,
         stepName: step.name,
         value: c.achieved_value,
@@ -487,7 +490,7 @@ export function SkillDetailPage() {
                   />
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
-                    labelFormatter={(d: string) => new Date(d).toLocaleDateString(i18n.resolvedLanguage)}
+                    labelFormatter={(d: string) => localNoon(d).toLocaleDateString(i18n.resolvedLanguage)}
                     formatter={(_value: number, _name: string, entry: { payload?: LadderPoint }) => {
                       const p = entry.payload;
                       if (!p) return ['', ''];
