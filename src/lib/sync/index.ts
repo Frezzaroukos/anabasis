@@ -299,13 +299,35 @@ const UNIQUE_DUP_FINDER: Record<
     t.where('[user_id+date]').equals([r.user_id, r.date] as [string, string]).first(),
 };
 
+/** Milliseconds since epoch. Invalid or empty timestamps sort as 0. */
+export function updatedAtMs(value: unknown): number {
+  const ms = new Date(String(value ?? '')).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 function incomingWins(incoming: SyncRow, existing: SyncRow): boolean {
-  // Parse timestamps to milliseconds; invalid/empty dates become 0.
-  const iTime = new Date(String(incoming.updated_at ?? '')).getTime() || 0;
-  const eTime = new Date(String(existing.updated_at ?? '')).getTime() || 0;
-  // Compare numeric timestamps; if equal, use id as stable tiebreaker.
+  const iTime = updatedAtMs(incoming.updated_at);
+  const eTime = updatedAtMs(existing.updated_at);
+  // Compare instants, not the raw ISO text. Equal time keeps the smaller id
+  // only when the ids differ; the same id is a tie and the local row stays.
   if (iTime !== eTime) return iTime > eTime;
   return String(incoming.id) < String(existing.id);
+}
+
+/** Drop pulled rows that are older than (or the same instant as) the local copy. */
+async function rowsNewerThanLocal(table: AnyTable, rows: SyncRow[]): Promise<SyncRow[]> {
+  const winners: SyncRow[] = [];
+  for (const incoming of rows) {
+    const id = incoming.id;
+    if (typeof id !== 'string') {
+      winners.push(incoming);
+      continue;
+    }
+    const existing = (await table.get(id)) as SyncRow | undefined;
+    if (existing && !incomingWins(incoming, existing)) continue;
+    winners.push(incoming);
+  }
+  return winners;
 }
 
 async function putResolvingUnique(
@@ -322,7 +344,7 @@ async function putResolvingUnique(
         await table.put(incoming);
       }
       // αλλιώς ο τοπικός νικά — μην γράψεις το incoming (θα έσπαγε τον index).
-    } else {
+    } else if (!existing || incomingWins(incoming, existing)) {
       await table.put(incoming);
     }
   }
@@ -352,10 +374,12 @@ async function applyPulledChanges(changes: SyncChange[]): Promise<void> {
             }))
           : (rows as SyncRow[]);
       const findDup = UNIQUE_DUP_FINDER[tbl];
+      const winning = await rowsNewerThanLocal(table, compatibleRows as SyncRow[]);
+      if (winning.length === 0) continue;
       if (findDup) {
-        await putResolvingUnique(table, compatibleRows as SyncRow[], findDup);
+        await putResolvingUnique(table, winning, findDup);
       } else {
-        await table.bulkPut(compatibleRows as SyncRow[]);
+        await table.bulkPut(winning);
       }
     }
   });

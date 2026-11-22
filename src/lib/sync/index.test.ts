@@ -306,7 +306,7 @@ describe('soft delete δομής προγράμματος — η διαγραφ�
       pull: () =>
         jsonResponse({
           changes: [{ tbl: 'program_days', rows: [{ ...upper, user_id: DEFAULT_USER_ID,
-            deleted_at: '2026-02-01T00:00:00.000Z', updated_at: '2026-02-01T00:00:00.000Z' }] }],
+            deleted_at: '2099-02-01T00:00:00.000Z', updated_at: '2099-02-01T00:00:00.000Z' }] }],
           cursor: 9, has_more: false,
         }),
     });
@@ -704,6 +704,68 @@ describe('gc_floor reset ΑΠΟ το push (push→pull order — Grok probe)', (
     expect(sync.lastSyncAt).not.toBeNull();
 
     setCurrentUserId(DEFAULT_USER_ID);
+  });
+});
+
+describe('pull does not clobber a newer local row', () => {
+  it('κρατά το νεότερο τοπικό row και το ξαναστέλνει στο επόμενο push', async () => {
+    let exerciseId = '';
+    let phase: 'warmup' | 'attack' | 'again' = 'warmup';
+    const againNames: string[] = [];
+    stubFetch({
+      push: (call) => {
+        if (phase === 'again') {
+          const changes = (body(call).changes ?? []) as {
+            tbl: string;
+            rows: { id?: string; name?: string }[];
+          }[];
+          for (const change of changes) {
+            if (change.tbl !== 'exercises') continue;
+            for (const row of change.rows) {
+              if (row.name) againNames.push(row.name);
+            }
+          }
+        }
+        return jsonResponse({ cursor: 2, reset_required: false });
+      },
+      pull: () => {
+        if (phase === 'warmup') {
+          return jsonResponse({ changes: [], cursor: 1, has_more: false, epoch: 'e-lww' });
+        }
+        return jsonResponse({
+          changes: [
+            {
+              tbl: 'exercises',
+              rows: [
+                {
+                  id: exerciseId,
+                  user_id: DEFAULT_USER_ID,
+                  name: 'Server Older',
+                  updated_at: '2020-01-01T00:00:00.000Z',
+                  deleted_at: null,
+                },
+              ],
+            },
+          ],
+          cursor: 4,
+          has_more: false,
+          epoch: 'e-lww',
+        });
+      },
+    });
+
+    await syncNow();
+    const created = await createExercise({ name: 'Local Newer' });
+    exerciseId = created.id;
+    phase = 'attack';
+    await syncNow();
+
+    expect((await db.exercises.get(exerciseId))!.name).toBe('Local Newer');
+
+    phase = 'again';
+    await syncNow();
+    expect(againNames).toContain('Local Newer');
+    expect((await db.exercises.get(exerciseId))!.name).toBe('Local Newer');
   });
 });
 
