@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useAppSettings } from '@/hooks/useAppSettings';
@@ -6,12 +6,16 @@ import { toDisplayWeight } from '@/lib/units';
 import {
   getCategoryDistribution,
   getPRTimeline,
+  getSkillStepTimeline,
+  getTrainingHeatmap,
+  getWeeklyCategorySets,
   getWeeklyFrequencySeries,
   getWeeklyVolumeSeries,
 } from '@/lib/db/analyticsQueries';
-import { Card, SectionTitle } from '@/components/ui/Section';
-import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
+import { ChartCard } from '@/components/charts/ChartCard';
 import { TimeRangeSelector } from '@/components/charts/TimeRangeSelector';
+import { TrainingHeatmap } from './TrainingHeatmap';
+import { categoryColor } from './categoryColors';
 import { CHART_RANGE_DAYS, type ChartRangeKey } from '@/components/charts/timeRange';
 
 const WeeklyVolumeChart = lazy(() =>
@@ -22,6 +26,12 @@ const FrequencyChart = lazy(() =>
 );
 const CategoryChart = lazy(() =>
   import('./AnalyticsCharts.body').then((m) => ({ default: m.CategoryChart })),
+);
+const WeeklyCategoryChart = lazy(() =>
+  import('./AnalyticsCharts.body').then((m) => ({ default: m.WeeklyCategoryChart })),
+);
+const SkillStepsChart = lazy(() =>
+  import('./AnalyticsCharts.body').then((m) => ({ default: m.SkillStepsChart })),
 );
 const PRTimelineChart = lazy(() =>
   import('./AnalyticsCharts.body').then((m) => ({ default: m.PRTimelineChart })),
@@ -51,7 +61,11 @@ export function TrainingAnalytics() {
 
   const weekly = useLiveQuery(() => getWeeklyVolumeSeries(weeks), [weeks], []);
   const frequency = useLiveQuery(() => getWeeklyFrequencySeries(weeks), [weeks], []);
+  const heatmapWeeks = Math.min(52, weeks);
+  const heatmap = useLiveQuery(() => getTrainingHeatmap(heatmapWeeks), [heatmapWeeks], []);
+  const weeklyCategories = useLiveQuery(() => getWeeklyCategorySets(weeks), [weeks], []);
   const categories = useLiveQuery(() => getCategoryDistribution(days), [days], []);
+  const skillSteps = useLiveQuery(() => getSkillStepTimeline(days), [days], []);
   const prs = useLiveQuery(() => getPRTimeline(days), [days], []);
 
   const weeklyData = useMemo(
@@ -72,12 +86,35 @@ export function TrainingAnalytics() {
     [categories, t, unit],
   );
 
+  const categoryLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        [...new Set([...weeklyCategories.flatMap((p) => Object.keys(p.byCategory))])].map((c) => [
+          c,
+          t(`workout.category.${c}`, { defaultValue: c }),
+        ]),
+      ),
+    [weeklyCategories, t],
+  );
+  const stackedCategories = useMemo(
+    () => Object.keys(categoryLabels).sort(),
+    [categoryLabels],
+  );
+  const weeklyCategoryData = useMemo(
+    () => weeklyCategories.map((p) => ({ weekStart: p.weekStart, total: p.total, ...p.byCategory })),
+    [weeklyCategories],
+  );
+  const hasWeeklyCategories = weeklyCategories.some((p) => p.total > 0);
+  const activeDays = heatmap.filter((d) => d.sessions > 0).length;
+  const hasHeatmap = activeDays > 0;
   const hasWeekly = weeklyData.some((p) => p.volume > 0);
   const hasFrequency = frequency.some((p) => p.sessions > 0);
   const hasCategories = categoryData.length > 0;
   const hasPRs = prs.length > 0;
+  const hasSkillSteps = skillSteps.length > 0;
+  const totalSteps = skillSteps.at(-1)?.cumulative ?? 0;
 
-  if (!hasWeekly && !hasFrequency && !hasCategories && !hasPRs) return null;
+  if (!hasSkillSteps && !hasHeatmap && !hasWeeklyCategories && !hasWeekly && !hasFrequency && !hasCategories && !hasPRs) return null;
 
   const totalVolume = weeklyData.reduce((sum, p) => sum + p.volume, 0);
   const totalSessions = frequency.reduce((sum, p) => sum + p.sessions, 0);
@@ -97,109 +134,121 @@ export function TrainingAnalytics() {
       </div>
 
       <div className="grid min-w-0 gap-4 md:grid-cols-2">
-        {hasWeekly && (
-          <Card className="min-w-0">
-            <SectionTitle
-              action={
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {Math.round(totalVolume).toLocaleString()} {unit}
-                </span>
-              }
+        {hasHeatmap && (
+          <div className="min-w-0 md:col-span-2">
+            <ChartCard
+              title={t('progress.analytics.heatmap')}
+              total={`${activeDays} ${t('progress.analytics.activeDays')}`}
+              hint={t('progress.analytics.heatmapHint')}
+              height="h-auto"
             >
-              {t('progress.analytics.weeklyVolume')}
-            </SectionTitle>
-            <p className="text-xs text-muted-foreground">
-              {t('progress.analytics.weeklyVolumeHint')}
-            </p>
-            <div className="mt-3 h-44 w-full">
-              <Suspense fallback={<ChartSkeleton />}>
-                <WeeklyVolumeChart
-                  data={weeklyData}
-                  unit={unit}
-                  range={range}
-                  summary={`${t('progress.analytics.summaryVolume')}: ${Math.round(totalVolume).toLocaleString()} ${unit}`}
-                />
-              </Suspense>
-            </div>
-          </Card>
+              <TrainingHeatmap
+                days={heatmap}
+                summary={`${t('progress.analytics.summaryHeatmap')}: ${activeDays}`}
+              />
+            </ChartCard>
+          </div>
+        )}
+
+        {hasWeekly && (
+          <ChartCard
+            title={t('progress.analytics.weeklyVolume')}
+            total={`${Math.round(totalVolume).toLocaleString()} ${unit}`}
+            hint={t('progress.analytics.weeklyVolumeHint')}
+          >
+            <WeeklyVolumeChart
+              data={weeklyData}
+              unit={unit}
+              range={range}
+              summary={`${t('progress.analytics.summaryVolume')}: ${Math.round(totalVolume).toLocaleString()} ${unit}`}
+            />
+          </ChartCard>
         )}
 
         {hasFrequency && (
-          <Card className="min-w-0">
-            <SectionTitle
-              action={
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {totalSessions} {t('progress.analytics.sessions')}
-                </span>
-              }
-            >
-              {t('progress.analytics.frequency')}
-            </SectionTitle>
-            <p className="text-xs text-muted-foreground">
-              {t('progress.analytics.frequencyHint')}
-            </p>
-            <div className="mt-3 h-44 w-full">
-              <Suspense fallback={<ChartSkeleton />}>
-                <FrequencyChart
-                  data={frequency}
-                  range={range}
-                  summary={`${t('progress.analytics.summaryFrequency')}: ${totalSessions}`}
-                />
-              </Suspense>
-            </div>
-          </Card>
+          <ChartCard
+            title={t('progress.analytics.frequency')}
+            total={`${totalSessions} ${t('progress.analytics.sessions')}`}
+            hint={t('progress.analytics.frequencyHint')}
+          >
+            <FrequencyChart
+              data={frequency}
+              range={range}
+              summary={`${t('progress.analytics.summaryFrequency')}: ${totalSessions}`}
+            />
+          </ChartCard>
+        )}
+
+        {hasWeeklyCategories && (
+          <ChartCard
+            title={t('progress.analytics.weeklyCategories')}
+            total={`${totalSets} ${t('progress.analytics.sets')}`}
+            hint={t('progress.analytics.weeklyCategoriesHint')}
+            footer={
+              <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                {stackedCategories.map((c) => (
+                  <li key={c} className="flex items-center gap-1">
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: categoryColor(c) }}
+                    />
+                    {categoryLabels[c]}
+                  </li>
+                ))}
+              </ul>
+            }
+          >
+            <WeeklyCategoryChart
+              data={weeklyCategoryData}
+              categories={stackedCategories}
+              labels={categoryLabels}
+              range={range}
+              summary={`${t('progress.analytics.summaryWeeklyCategories')}: ${totalSets}`}
+            />
+          </ChartCard>
         )}
 
         {hasCategories && (
-          <Card className="min-w-0">
-            <SectionTitle
-              action={
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {totalSets} {t('progress.analytics.sets')}
-                </span>
-              }
-            >
-              {t('progress.analytics.categories')}
-            </SectionTitle>
-            <p className="text-xs text-muted-foreground">
-              {t('progress.analytics.categoriesHint')}
-            </p>
-            <div className="mt-3 h-44 w-full">
-              <Suspense fallback={<ChartSkeleton />}>
-                <CategoryChart
-                  data={categoryData}
-                  unit={unit}
-                  summary={`${t('progress.analytics.summaryCategories')}: ${totalSets}`}
-                />
-              </Suspense>
-            </div>
-          </Card>
+          <ChartCard
+            title={t('progress.analytics.categories')}
+            total={`${totalSets} ${t('progress.analytics.sets')}`}
+            hint={t('progress.analytics.categoriesHint')}
+          >
+            <CategoryChart
+              data={categoryData}
+              unit={unit}
+              summary={`${t('progress.analytics.summaryCategories')}: ${totalSets}`}
+            />
+          </ChartCard>
         )}
 
         {hasPRs && (
-          <Card className="min-w-0">
-            <SectionTitle
-              action={
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {totalPRs} {t('progress.analytics.prs')}
-                </span>
-              }
-            >
-              {t('progress.analytics.prTimeline')}
-            </SectionTitle>
-            <p className="text-xs text-muted-foreground">
-              {t('progress.analytics.prTimelineHint')}
-            </p>
-            <div className="mt-3 h-44 w-full">
-              <Suspense fallback={<ChartSkeleton />}>
-                <PRTimelineChart
-                  data={prs}
-                  range={range}
-                  summary={`${t('progress.analytics.summaryPrs')}: ${totalPRs}`}
-                />
-              </Suspense>
-            </div>
-          </Card>
+          <ChartCard
+            title={t('progress.analytics.prTimeline')}
+            total={`${totalPRs} ${t('progress.analytics.prs')}`}
+            hint={t('progress.analytics.prTimelineHint')}
+          >
+            <PRTimelineChart
+              data={prs}
+              range={range}
+              summary={`${t('progress.analytics.summaryPrs')}: ${totalPRs}`}
+            />
+          </ChartCard>
+        )}
+
+        {hasSkillSteps && (
+          <ChartCard
+            title={t('progress.analytics.skillSteps')}
+            total={`${totalSteps} ${t('progress.analytics.steps')}`}
+            hint={t('progress.analytics.skillStepsHint')}
+          >
+            <SkillStepsChart
+              data={skillSteps}
+              range={range}
+              summary={`${t('progress.analytics.summarySkillSteps')}: ${totalSteps}`}
+            />
+          </ChartCard>
         )}
       </div>
     </section>

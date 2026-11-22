@@ -176,3 +176,51 @@ describe('buildPRTimeline', () => {
     expect(buildPRTimeline([])).toEqual([]);
   });
 });
+
+import { buildTrainingHeatmap, buildWeeklyCategorySets } from './analytics';
+
+describe('buildWeeklyCategorySets', () => {
+  const exercises = [
+    { id: 'ex-1', category: 'push' },
+    { id: 'ex-2', category: 'pull' },
+  ];
+  it('stack ανά κατηγορία/εβδομάδα, εξαιρεί warm-ups, κρατά κενές εβδομάδες', () => {
+    const rows = [
+      set({ exerciseId: 'ex-1', date: '2026-08-31' }),
+      set({ exerciseId: 'ex-1', date: '2026-08-31' }),
+      set({ exerciseId: 'ex-2', date: '2026-08-25' }),
+      set({ exerciseId: 'ex-2', date: '2026-08-31', isWarmup: true }),
+      set({ exerciseId: 'ex-2', date: '2026-08-31', setType: 'warmup' }),
+      set({ exerciseId: 'gone', date: '2026-08-31' }),
+    ];
+    const pts = buildWeeklyCategorySets(rows, exercises, 3, TODAY);
+    expect(pts.map((p) => p.weekStart)).toEqual(['2026-08-17', '2026-08-24', '2026-08-31']);
+    expect(pts[0]!.total).toBe(0);
+    expect(pts[1]!.byCategory).toEqual({ pull: 1 });
+    expect(pts[2]!.byCategory).toEqual({ push: 2, other: 1 });
+    expect(pts[2]!.total).toBe(3);
+  });
+});
+
+describe('buildTrainingHeatmap', () => {
+  it('ξεκινά Δευτέρα, σταματά σήμερα, μετρά πολλές προπονήσεις/μέρα και δεν διπλομετρά id', () => {
+    // σήμερα Τετάρτη 2026-09-02, 2 εβδομάδες → από Δευτέρα 2026-08-24
+    const today = new Date(2026, 8, 2, 23, 30);
+    const days = buildTrainingHeatmap(
+      [
+        { id: 'a', date: '2026-08-24' },
+        { id: 'b', date: '2026-09-02' },
+        { id: 'c', date: '2026-09-02' },
+        { id: 'c', date: '2026-09-02' },
+      ],
+      2,
+      today,
+    );
+    expect(days[0]!.date).toBe('2026-08-24');
+    expect(days.at(-1)!.date).toBe('2026-09-02');
+    expect(days).toHaveLength(10);
+    expect(days[0]!.sessions).toBe(1);
+    expect(days.at(-1)!.sessions).toBe(2);
+    expect(days.filter((d) => d.sessions > 0)).toHaveLength(2);
+  });
+});

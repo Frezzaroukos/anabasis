@@ -672,8 +672,26 @@
       "summaryVolume": "Εβδομαδιαίος όγκος προπόνησης",
       "summaryFrequency": "Προπονήσεις ανά εβδομάδα",
       "summaryCategories": "Σετ εργασίας ανά κατηγορία",
-      "summaryPrs": "Σωρευτικά προσωπικά ρεκόρ"
-    }
+      "summaryPrs": "Σωρευτικά προσωπικά ρεκόρ",
+      "heatmap": "Συνέπεια",
+      "heatmapHint": "Κάθε τετράγωνο είναι μια μέρα — πιο σκούρο = περισσότερες προπονήσεις.",
+      "activeDays": "ημέρες προπόνησης",
+      "summaryHeatmap": "Ημέρες με ολοκληρωμένη προπόνηση",
+      "sessionsCount_one": "{{count}} προπόνηση",
+      "sessionsCount_other": "{{count}} προπονήσεις",
+      "less": "Λιγότερο",
+      "more": "Περισσότερο",
+      "weeklyCategories": "Εβδομαδιαία σετ ανά κατηγορία",
+      "weeklyCategoriesHint": "Working σετ ανά εβδομάδα, χωρισμένα σε push / pull / legs / core.",
+      "summaryWeeklyCategories": "Working σετ ανά εβδομάδα και κατηγορία",
+      "skillSteps": "Πρόοδος skills",
+      "skillStepsHint": "Σωρευτικά βήματα (rungs) skills που πέτυχες.",
+      "steps": "βήματα",
+      "summarySkillSteps": "Σωρευτικά βήματα skills που πετύχατε"
+    },
+    "hold": "Κράτημα",
+    "reps": "Επαναλήψεις",
+    "bwEstimated": "≈ εκτίμηση με το τελευταίο σωματικό βάρος"
   },
   "dashboard": {
     "title": "Επισκόπηση",

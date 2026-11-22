@@ -24,8 +24,7 @@ import {
   REFERENCE_LINE_DASH,
   TOOLTIP_STYLE,
 } from './chartTheme';
-import { tickFormatterFor, tickIntervalFor, type ChartRangeKey } from './timeRange';
-import type { ChartMetric } from './ExerciseProgressChart';
+import { localNoon, tickFormatterFor, tickIntervalFor, type ChartRangeKey } from './timeRange';
 
 /**
  * Lazy recharts σώμα του ExerciseProgressChart. Τα tabs/«best» ticker/έλεγχος
@@ -34,24 +33,26 @@ import type { ChartMetric } from './ExerciseProgressChart';
  */
 export default function ExerciseProgressChartBody({
   withData,
-  metric,
+  dataKey,
   range,
   unit,
   unitless,
+  suffix,
   labelKey,
   prValue,
 }: {
   withData: Array<Record<string, unknown>>;
-  metric: ChartMetric;
+  dataKey: string;
   range: ChartRangeKey;
   unit: WeightUnit;
   unitless: boolean;
+  suffix?: string;
   labelKey: string;
   prValue: number | null;
 }) {
   const { t } = useTranslation();
   return (
-    <div role="img" aria-label={t(labelKey)} className="h-full w-full">
+    <div role="img" aria-label={`${t(labelKey)} (${withData.length})`} className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={withData} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
         <ChartGradientDefs />
@@ -73,13 +74,18 @@ export default function ExerciseProgressChartBody({
         <Tooltip
           cursor={CHART_CURSOR}
           contentStyle={TOOLTIP_STYLE}
-          labelFormatter={(d: string) => new Date(d).toLocaleDateString()}
-          formatter={(v: number) => [unitless ? `${v}` : `${v} ${unit}`, t(labelKey)]}
+          labelFormatter={(d: string) => localNoon(d).toLocaleDateString()}
+          formatter={(v: number, _n, item) => {
+            const estimated =
+              !unitless && (item as { payload?: { bwEstimated?: boolean } } | undefined)?.payload?.bwEstimated;
+            const base = suffix ? `${v}${suffix}` : unitless ? `${v}` : `${v} ${unit}`;
+            return [estimated ? `${base} · ${t('progress.bwEstimated')}` : base, t(labelKey)];
+          }}
         />
         {prValue != null && (
           <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray={REFERENCE_LINE_DASH}>
             <Label
-              value={`PR ${prValue}${unitless ? '' : ` ${unit}`}`}
+              value={`PR ${prValue}${suffix ?? (unitless ? '' : ` ${unit}`)}`}
               position="insideTopRight"
               fill={CHART_GOLD}
               className="text-xs"
@@ -88,7 +94,7 @@ export default function ExerciseProgressChartBody({
         )}
         <Area
           type="monotone"
-          dataKey={metric}
+          dataKey={dataKey}
           stroke={CHART_STROKE}
           strokeWidth={CHART_STROKE_WIDTH}
           fill={`url(#${ACCENT_FILL_ID})`}

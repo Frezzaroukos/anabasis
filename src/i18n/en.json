@@ -672,8 +672,26 @@
       "summaryVolume": "Weekly training volume",
       "summaryFrequency": "Sessions per week",
       "summaryCategories": "Working sets per category",
-      "summaryPrs": "Cumulative personal records"
-    }
+      "summaryPrs": "Cumulative personal records",
+      "heatmap": "Consistency",
+      "heatmapHint": "Each square is a day — darker means more sessions.",
+      "activeDays": "active days",
+      "summaryHeatmap": "Days with a completed workout",
+      "sessionsCount_one": "{{count}} session",
+      "sessionsCount_other": "{{count}} sessions",
+      "less": "Less",
+      "more": "More",
+      "weeklyCategories": "Weekly sets by category",
+      "weeklyCategoriesHint": "Working sets per week, split by push / pull / legs / core.",
+      "summaryWeeklyCategories": "Working sets per week by category",
+      "skillSteps": "Skill progress",
+      "skillStepsHint": "Cumulative skill steps (rungs) you achieved.",
+      "steps": "steps",
+      "summarySkillSteps": "Cumulative skill steps achieved"
+    },
+    "hold": "Hold",
+    "reps": "Reps",
+    "bwEstimated": "≈ estimated from latest body weight"
   },
   "dashboard": {
     "title": "Overview",

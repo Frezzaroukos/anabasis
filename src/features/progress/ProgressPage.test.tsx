@@ -41,7 +41,7 @@ const renderAt = (path = '/progress') =>
  * κρατάει το refactor πράσινα) — το ProgressPage δεν είχε ΚΑΝΕΝΑ test πριν.
  */
 describe('ProgressPage', () => {
-  it('αναζήτηση → επιλογή άσκησης → chart με 3 tabs (ΧΩΡΙΣ "Reps" — διαφορά από ExerciseDetailPage)', async () => {
+  it('αναζήτηση → επιλογή άσκησης → chart με tabs μόνο για metrics που έχουν δεδομένα (Top set/1RM/Reps/Volume, όχι Hold)', async () => {
     const ex = await createExercise({ name: 'Progress Chart Deadlift', category: 'legs' });
 
     const w1 = await startWorkout('strength', daysAgo(30));
@@ -62,13 +62,14 @@ describe('ProgressPage', () => {
     fireEvent.change(screen.getByPlaceholderText('Search exercises…'), {
       target: { value: 'Progress Chart Deadlift' },
     });
-    fireEvent.click(await screen.findByText('Progress Chart Deadlift'));
+    fireEvent.click(await screen.findByText('Progress Chart Deadlift', {}, { timeout: 5000 }));
 
-    await waitFor(() => expect(screen.getByText(/2 sessions/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/2 sessions/)).toBeTruthy(), { timeout: 5000 });
     expect(screen.getByText('Top set')).toBeTruthy();
     expect(screen.getByText('Est. 1RM')).toBeTruthy();
     expect(screen.getByText('Volume')).toBeTruthy();
-    expect(screen.queryByText('Reps')).toBeNull();
+    expect(screen.getByText('Reps')).toBeTruthy();
+    expect(screen.queryByText('Hold')).toBeNull();
 
     // Ο range selector είναι τώρα κοινός με το ExerciseDetailPage (item #7).
     expect(screen.getByRole('group')).toBeTruthy();

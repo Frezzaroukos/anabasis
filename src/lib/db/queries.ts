@@ -270,6 +270,20 @@ export async function setWorkoutDate(workoutId: string, isoDay: string): Promise
     patch.ended_at = new Date(new Date(w.ended_at).getTime() + delta).toISOString();
   }
   await db.workouts.update(workoutId, patch);
+  // Τα PR ακολουθούν τη μέρα της προπόνησης (prAchievedAt) — μετακίνηση μέρας
+  // πρέπει να τα μετακινήσει κι αυτά, αλλιώς chart και PR timeline διαφωνούν.
+  await recomputePRsForWorkout(workoutId);
+}
+
+/** Ξαναϋπολογίζει τα PR όλων των ασκήσεων (και της δραστηριότητας) μιας προπόνησης. */
+export async function recomputePRsForWorkout(workoutId: string): Promise<void> {
+  const w = await db.workouts.get(workoutId);
+  if (!w) return;
+  const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
+  for (const exerciseId of new Set(sets.map((s) => s.exercise_id))) {
+    await recomputePRsForExercise(exerciseId);
+  }
+  await recomputeActivityPRs(w.activity_kind);
 }
 
 /**
@@ -462,6 +476,22 @@ export async function addSet(input: AddSetInput): Promise<AddSetResult> {
 }
 
 /**
+ * Πότε «έγινε» ένα ρεκόρ. Σε live προπόνηση το `created_at` του σετ είναι η
+ * πραγματική ώρα. Σε backdated/επεξεργασμένη προπόνηση όμως το σετ γράφτηκε
+ * ΣΗΜΕΡΑ για μια παλιά μέρα — τότε μετρά η ημέρα της προπόνησης (started_at),
+ * αλλιώς το PR timeline/streaks/dashboard βλέπουν το ρεκόρ «τώρα».
+ */
+function prAchievedAt(
+  setCreatedAt: string,
+  workout: Pick<Workout, 'started_at'> | undefined,
+): string {
+  if (!workout) return setCreatedAt;
+  return localDay(new Date(setCreatedAt)) === localDay(new Date(workout.started_at))
+    ? setCreatedAt
+    : workout.started_at;
+}
+
+/**
  * Ελέγχει κάθε PR-υποψηφιότητα του σετ έναντι του τρέχοντος ρεκόρ και
  * αποθηκεύει ό,τι είναι νέο. Επιστρέφει ποια ρεκόρ έσπασαν ώστε το UI να
  * τα γιορτάσει.
@@ -477,6 +507,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
     .equals(getCurrentUserId())
     .filter((r) => r.exercise_id === set.exercise_id && r.deleted_at == null)
     .toArray();
+  const achievedAt = prAchievedAt(set.created_at, await db.workouts.get(workoutId));
 
   // Πρώτο σετ ΠΟΤΕ σε αυτή την άσκηση δεν «γιορτάζεται» ως PR — αλλιώς κάθε
   // νέα άσκηση θα έριχνε κομφετί. PR = ξεπερνάς κάτι που ΗΔΗ είχες.
@@ -495,7 +526,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
       value: c.value,
       reps: c.reps,
       weight_kg: c.weight_kg,
-      achieved_at: t,
+      achieved_at: achievedAt,
       workout_id: workoutId,
       set_id: set.id,
       created_at: t,
@@ -515,6 +546,9 @@ async function detectActivityPRs(workout: Workout): Promise<void> {
   const t = now();
   const candidates = candidatesFromWorkout(workout);
   if (candidates.length === 0) return;
+  // Backdated: το ρεκόρ ανήκει στη μέρα της προπόνησης, όχι στο «τώρα».
+  const achievedAt =
+    localDay(new Date(workout.started_at)) === localDay(new Date(t)) ? t : workout.started_at;
 
   const records = await db.personal_records
     .where('user_id')
@@ -543,7 +577,7 @@ async function detectActivityPRs(workout: Workout): Promise<void> {
       value: c.value,
       reps: c.reps,
       weight_kg: c.weight_kg,
-      achieved_at: t,
+      achieved_at: achievedAt,
       workout_id: workout.id,
       set_id: null,
       created_at: t,
@@ -607,7 +641,7 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
         value: c.value,
         reps: c.reps,
         weight_kg: c.weight_kg,
-        achieved_at: set.created_at,
+        achieved_at: prAchievedAt(set.created_at, workoutById.get(set.workout_id)),
         workout_id: set.workout_id,
         set_id: set.id,
         created_at: set.created_at,
@@ -727,8 +761,14 @@ async function reconcilePRs(
     for (const row of desired) {
       const queue = byKey.get(keyOf(row));
       const match = queue?.shift();
-      if (match) keptIds.add(match.id);
-      else toAdd.push(row);
+      if (match) {
+        keptIds.add(match.id);
+        // Ίδιο ρεκόρ, λάθος ημερομηνία (π.χ. αποθηκεύτηκε «τώρα» για backdated
+        // προπόνηση πριν τη διόρθωση) → διορθώνεται στη θέση του, ίδιο id.
+        if (match.achieved_at !== row.achieved_at) {
+          await db.personal_records.update(match.id, { achieved_at: row.achieved_at, updated_at: t });
+        }
+      } else toAdd.push(row);
     }
 
     for (const r of existingLive) {
@@ -1720,7 +1760,17 @@ export interface ExercisePoint {
   topWeight: number | null;
   e1rm: number | null;
   volume: number;
+  /** reps του top-weight σετ (για το «× reps» δίπλα στο φορτίο) */
   reps: number | null;
+  /** Περισσότερες reps σε ένα σετ της ημέρας — ανεξάρτητα από φορτίο (push-ups). */
+  maxReps: number | null;
+  /** Μεγαλύτερο hold (sec) της ημέρας — static ασκήσεις (planche, L-sit…). */
+  hold: number | null;
+  /**
+   * true = κάποιο σετ της ημέρας δεν είχε καταγεγραμμένο σωματικό βάρος και το
+   * φορτίο υπολογίστηκε με το πιο πρόσφατο βάρος σώματος ΜΕΧΡΙ εκείνη τη μέρα.
+   */
+  bwEstimated?: boolean;
 }
 
 /**
@@ -1743,13 +1793,39 @@ export async function getExerciseProgress(
     await db.sets.where('exercise_id').equals(exerciseId).toArray()
   ).filter((s) => isWorkingSet(s) && wDay.has(s.workout_id));
 
+  // Ασκήσεις σωματικού βάρους: σετ χωρίς καταγεγραμμένο βάρος (π.χ. πριν
+  // μετρηθεί ποτέ) παίρνουν το πιο πρόσφατο σωματικό βάρος ΜΕΧΡΙ εκείνη την
+  // ημέρα — ποτέ από το μέλλον. Χωρίς καμία μέτρηση μένει το added load.
+  const exercise = await db.exercises.get(exerciseId);
+  const bwHistory = exercise?.is_bodyweight
+    ? (await db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray())
+        .filter((r) => r.deleted_at == null && r.weight_kg != null)
+        .sort((a, b) => a.date.localeCompare(b.date))
+    : [];
+  const bodyweightOn = (day: string): number | null => {
+    let found: number | null = null;
+    for (const r of bwHistory) {
+      if (r.date > day) break;
+      found = r.weight_kg;
+    }
+    return found;
+  };
+
   const byDay = new Map<string, ExercisePoint>();
   for (const s of sets) {
     const day = wDay.get(s.workout_id)!;
     const cur =
       byDay.get(day) ??
-      ({ date: day, topWeight: null, e1rm: null, volume: 0, reps: null } as ExercisePoint);
-    const load = (s.weight_kg ?? 0) + (s.bodyweight_kg ?? 0);
+      ({ date: day, topWeight: null, e1rm: null, volume: 0, reps: null, maxReps: null, hold: null } as ExercisePoint);
+    let bw = s.bodyweight_kg ?? 0;
+    if (s.bodyweight_kg == null && bwHistory.length > 0) {
+      const fb = bodyweightOn(day);
+      if (fb != null) {
+        bw = fb;
+        cur.bwEstimated = true;
+      }
+    }
+    const load = (s.weight_kg ?? 0) + bw;
     if (load > 0 && (cur.topWeight == null || load > cur.topWeight)) {
       cur.topWeight = load;
       cur.reps = s.reps;
@@ -1758,7 +1834,13 @@ export async function getExerciseProgress(
       const est = e1rm(load, s.reps);
       if (cur.e1rm == null || est > cur.e1rm) cur.e1rm = Math.round(est * 10) / 10;
     }
-    cur.volume += setVolume(s);
+    if (s.reps && s.reps > 0 && (cur.maxReps == null || s.reps > cur.maxReps)) {
+      cur.maxReps = s.reps;
+    }
+    if (s.hold_seconds && s.hold_seconds > 0 && (cur.hold == null || s.hold_seconds > cur.hold)) {
+      cur.hold = s.hold_seconds;
+    }
+    cur.volume += setVolume({ ...s, bodyweight_kg: s.bodyweight_kg ?? (bw > 0 ? bw : null) });
     byDay.set(day, cur);
   }
   return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));

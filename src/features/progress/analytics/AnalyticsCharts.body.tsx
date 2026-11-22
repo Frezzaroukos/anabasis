@@ -12,6 +12,8 @@ import {
 } from 'recharts';
 import type { WeightUnit } from '@/lib/db/types';
 import {
+  ACCENT_FILL_ID,
+  ACTIVE_DOT,
   CHART_GOLD,
   CHART_GRID,
   CHART_STROKE,
@@ -21,6 +23,8 @@ import {
   GOLD_FILL_ID,
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
+import { categoryColor } from './categoryColors';
+import { compactNumber } from '@/components/charts/format';
 import { tickFormatterFor, tickIntervalFor, type ChartRangeKey } from '@/components/charts/timeRange';
 import type { PRTimelinePoint } from '@/lib/db/analytics';
 
@@ -55,12 +59,6 @@ function localDateLabel(date: string): string {
   });
 }
 
-function compact(value: number): string {
-  if (Math.abs(value) >= 10_000) return `${Math.round(value / 1000)}k`;
-  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}k`;
-  return String(Math.round(value));
-}
-
 function ChartFrame({
   summary,
   children,
@@ -91,7 +89,7 @@ export function WeeklyVolumeChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
           dataKey="weekStart"
@@ -105,8 +103,8 @@ export function WeeklyVolumeChart({
           tick={CHART_TICK}
           axisLine={false}
           tickLine={false}
-          width={44}
-          tickFormatter={(v: number) => compact(v)}
+          width={40}
+          tickFormatter={(v: number) => compactNumber(v)}
         />
         <Tooltip
           cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
@@ -135,7 +133,7 @@ export function FrequencyChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
           dataKey="weekStart"
@@ -150,7 +148,7 @@ export function FrequencyChart({
           tick={CHART_TICK}
           axisLine={false}
           tickLine={false}
-          width={30}
+          width={28}
         />
         <Tooltip
           cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
@@ -226,7 +224,7 @@ export function PRTimelineChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <ChartGradientDefs />
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
@@ -242,7 +240,7 @@ export function PRTimelineChart({
           tick={CHART_TICK}
           axisLine={false}
           tickLine={false}
-          width={30}
+          width={28}
         />
         <Tooltip
           contentStyle={{ ...TOOLTIP_STYLE, maxWidth: 280 }}
@@ -273,6 +271,111 @@ export function PRTimelineChart({
             stroke: 'hsl(var(--background))',
             fill: CHART_GOLD,
           }}
+        />
+      </AreaChart>
+    </ChartFrame>
+  );
+}
+
+export interface WeeklyCategoryDatum {
+  weekStart: string;
+  total: number;
+  [category: string]: number | string;
+}
+
+export function WeeklyCategoryChart({
+  data,
+  categories,
+  labels,
+  range,
+  summary,
+}: {
+  data: WeeklyCategoryDatum[];
+  /** κατηγορίες που εμφανίζονται, με σταθερή σειρά στοίβας */
+  categories: string[];
+  labels: Record<string, string>;
+  range: ChartRangeKey;
+  summary: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ChartFrame summary={summary}>
+      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+        <XAxis
+          dataKey="weekStart"
+          tickFormatter={tickFormatterFor(range)}
+          interval={tickIntervalFor(range, data.length)}
+          tick={CHART_TICK}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={28} />
+        <Tooltip
+          cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
+          contentStyle={TOOLTIP_STYLE}
+          labelFormatter={(d: string) => t('progress.analytics.weekOf', { date: localDateLabel(d) })}
+          formatter={(v: number, name: string) => [`${v}`, labels[name] ?? name]}
+        />
+        {categories.map((c, i) => (
+          <Bar
+            key={c}
+            dataKey={c}
+            stackId="sets"
+            fill={categoryColor(c)}
+            maxBarSize={28}
+            radius={i === categories.length - 1 ? [3, 3, 0, 0] : 0}
+          />
+        ))}
+      </BarChart>
+    </ChartFrame>
+  );
+}
+
+/** Σωρευτικά βήματα skills — ίδιο step-area με το PR timeline, άλλο tooltip. */
+export function SkillStepsChart({
+  data,
+  range,
+  summary,
+}: {
+  data: PRTimelinePoint[];
+  range: ChartRangeKey;
+  summary: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ChartFrame summary={summary}>
+      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
+        <ChartGradientDefs />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+        <XAxis
+          dataKey="date"
+          tickFormatter={tickFormatterFor(range)}
+          interval={tickIntervalFor(range, data.length)}
+          tick={CHART_TICK}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={28} />
+        <Tooltip
+          contentStyle={{ ...TOOLTIP_STYLE, maxWidth: 280 }}
+          labelFormatter={(d: string) => localDateLabel(d)}
+          formatter={(v: number, _name, item) => {
+            const events = (
+              item as { payload?: { events?: Array<{ name: string; type: string }> } } | undefined
+            )?.payload?.events;
+            const detail = events?.map((e) => `${e.type} · ${e.name}`).join(', ') ?? '';
+            return [`${v} ${t('progress.analytics.steps')}`, detail];
+          }}
+        />
+        <Area
+          type="stepAfter"
+          dataKey="cumulative"
+          stroke={CHART_STROKE}
+          strokeWidth={CHART_STROKE_WIDTH}
+          fill={`url(#${ACCENT_FILL_ID})`}
+          dot={{ r: 2.5, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+          activeDot={ACTIVE_DOT}
         />
       </AreaChart>
     </ChartFrame>

@@ -13,11 +13,15 @@ import { localDay } from './queries';
 import {
   buildCategoryDistribution,
   buildPRTimeline,
+  buildTrainingHeatmap,
+  buildWeeklyCategorySets,
   buildWeeklyFrequency,
   buildWeeklyVolume,
   weekStarts,
   type AnalyticsSetRow,
   type CategorySlice,
+  type HeatmapDay,
+  type WeeklyCategoryPoint,
   type PRTimelinePoint,
   type WeeklyFrequencyPoint,
   type WeeklyVolumePoint,
@@ -114,6 +118,8 @@ export async function getPRTimeline(days: number): Promise<PRTimelinePoint[]> {
   const activityLabel = new Map(activities.map((a) => [a.key, a.label]));
 
   const events = prs
+    // Tombstoned PRs (recompute μετά από edit/διαγραφή σετ) δεν είναι ρεκόρ.
+    .filter((pr) => pr.deleted_at == null)
     .map((pr) => ({
       date: localDay(new Date(pr.achieved_at)),
       type: pr.type,
@@ -125,5 +131,63 @@ export async function getPRTimeline(days: number): Promise<PRTimelinePoint[]> {
     }))
     .filter((e) => e.date >= since);
 
+  return buildPRTimeline(events);
+}
+
+/** Εβδομαδιαία working σετ ανά κατηγορία (stacked). */
+export async function getWeeklyCategorySets(weeks: number): Promise<WeeklyCategoryPoint[]> {
+  const since = weekStarts(weeks)[0]!;
+  const [workouts, exercises] = await Promise.all([
+    db.workouts.where('user_id').equals(getCurrentUserId()).toArray(),
+    db.exercises.toArray(),
+  ]);
+  const inRange = workouts.filter(
+    (w) => w.deleted_at == null && localDay(new Date(w.started_at)) >= since,
+  );
+  const rows = await loadSetRows(inRange);
+  return buildWeeklyCategorySets(
+    rows,
+    exercises.map((e) => ({ id: e.id, category: e.category })),
+    weeks,
+  );
+}
+
+/** Ημέρες προπόνησης (ολοκληρωμένες) για το consistency heatmap. */
+export async function getTrainingHeatmap(weeks: number): Promise<HeatmapDay[]> {
+  const since = weekStarts(weeks)[0]!;
+  const workouts = (await db.workouts.where('user_id').equals(getCurrentUserId()).toArray())
+    .filter(
+      (w) =>
+        w.deleted_at == null &&
+        w.ended_at != null &&
+        localDay(new Date(w.started_at)) >= since,
+    )
+    .map((w) => ({ id: w.id, date: localDay(new Date(w.started_at)) }));
+  return buildTrainingHeatmap(workouts, weeks);
+}
+
+/**
+ * Βήματα skills (rungs) που πέτυχες στο εύρος ημερών — σωρευτικά ανά ημέρα.
+ * `type` = όνομα skill, `name` = όνομα βήματος (για tooltip). Διαγραμμένες
+ * ολοκληρώσεις και βήματα/skills που έχουν σβηστεί δεν μετράνε.
+ */
+export async function getSkillStepTimeline(days: number): Promise<PRTimelinePoint[]> {
+  const since = localDayDaysAgo(days);
+  const [completions, steps, skills] = await Promise.all([
+    db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray(),
+    db.skill_steps.toArray(),
+    db.skills.toArray(),
+  ]);
+  const stepById = new Map(steps.map((st) => [st.id, st]));
+  const skillById = new Map(skills.filter((sk) => sk.deleted_at == null).map((sk) => [sk.id, sk]));
+  const events = completions
+    .filter((c) => c.deleted_at == null)
+    .flatMap((c) => {
+      const step = stepById.get(c.skill_step_id);
+      const skill = step ? skillById.get(step.skill_id) : undefined;
+      if (!step || !skill) return [];
+      return [{ date: localDay(new Date(c.achieved_at)), type: skill.name, name: step.name }];
+    })
+    .filter((e) => e.date >= since);
   return buildPRTimeline(events);
 }

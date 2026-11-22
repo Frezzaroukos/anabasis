@@ -11,7 +11,7 @@ import { CHART_RANGE_DAYS, type ChartRangeKey } from './timeRange';
 
 const ExerciseProgressChartBody = lazy(() => import('./ExerciseProgressChart.body'));
 
-export type ChartMetric = 'reps' | 'topWeight' | 'e1rm' | 'volume';
+export type ChartMetric = 'reps' | 'topWeight' | 'e1rm' | 'volume' | 'hold';
 
 interface MetricOption {
   key: ChartMetric;
@@ -19,6 +19,10 @@ interface MetricOption {
   prType: PRType;
   /** reps: όχι μετατροπή μονάδας/κατάληξη μονάδας — καθαρός αριθμός. */
   unitless?: boolean;
+  /** κατάληξη για unitless metrics (π.χ. 's' στα holds) */
+  suffix?: string;
+  /** πεδίο του ExercisePoint που ζωγραφίζεται (το 'reps' διαβάζει maxReps) */
+  field: 'maxReps' | 'topWeight' | 'e1rm' | 'volume' | 'hold';
 }
 
 /** Μία πηγή αλήθειας για τα 4 δυνατά metrics — ποια tabs φαίνονται το
@@ -26,10 +30,11 @@ interface MetricOption {
  * Fast-refresh warning αναμενόμενο (ίδιο μοτίβο με button.tsx/buttonVariants). */
 // eslint-disable-next-line react-refresh/only-export-components
 export const METRIC_OPTIONS: Record<ChartMetric, MetricOption> = {
-  reps: { key: 'reps', labelKey: 'exercises.detail.reps', prType: 'max_reps', unitless: true },
-  topWeight: { key: 'topWeight', labelKey: 'progress.topWeight', prType: 'max_weight' },
-  e1rm: { key: 'e1rm', labelKey: 'progress.e1rm', prType: 'e1rm' },
-  volume: { key: 'volume', labelKey: 'progress.volume', prType: 'max_volume' },
+  reps: { key: 'reps', labelKey: 'exercises.detail.reps', prType: 'max_reps', unitless: true, field: 'maxReps' },
+  topWeight: { key: 'topWeight', labelKey: 'progress.topWeight', prType: 'max_weight', field: 'topWeight' },
+  e1rm: { key: 'e1rm', labelKey: 'progress.e1rm', prType: 'e1rm', field: 'e1rm' },
+  volume: { key: 'volume', labelKey: 'progress.volume', prType: 'max_volume', field: 'volume' },
+  hold: { key: 'hold', labelKey: 'progress.hold', prType: 'max_hold', unitless: true, suffix: 's', field: 'hold' },
 };
 
 /** exposed για fetch-side χρήση (πόσες μέρες να ζητήσει ο caller). */
@@ -45,6 +50,27 @@ export { CHART_RANGE_DAYS };
 // eslint-disable-next-line react-refresh/only-export-components
 export function prLineApplies(metric: ChartMetric, isBodyweight: boolean): boolean {
   return !(isBodyweight && (metric === 'topWeight' || metric === 'e1rm'));
+}
+
+/**
+ * Ποια metric tabs έχουν πραγματικά δεδομένα. Μια άσκηση hold (planche) δεν
+ * έχει top weight/reps — η προεπιλογή «top set» θα έδειχνε άδειο chart ενώ
+ * υπάρχει ιστορικό. Χωρίς κανένα δεδομένο γυρνά όλα τα tabs (empty state).
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function resolveMetrics(
+  metrics: ChartMetric[],
+  metric: ChartMetric,
+  points: ReadonlyArray<Partial<Record<MetricOption['field'], number | null>>>,
+): { tabs: ChartMetric[]; active: ChartMetric } {
+  const hasData = (m: ChartMetric) =>
+    points.some((p) => {
+      const v = p[METRIC_OPTIONS[m].field];
+      return v != null && (m !== 'volume' || v > 0);
+    });
+  const withData = metrics.filter(hasData);
+  if (withData.length === 0) return { tabs: metrics.filter((m) => m !== 'hold'), active: metric };
+  return { tabs: withData, active: withData.includes(metric) ? metric : withData[0]! };
 }
 
 interface ExerciseProgressChartProps {
@@ -77,7 +103,7 @@ export function ExerciseProgressChart({
   prs,
   unit,
   metrics,
-  metric,
+  metric: requestedMetric,
   onMetricChange,
   range,
   onRangeChange,
@@ -85,6 +111,7 @@ export function ExerciseProgressChart({
   className,
 }: ExerciseProgressChartProps) {
   const { t } = useTranslation();
+  const { tabs, active: metric } = resolveMetrics(metrics, requestedMetric, rawPoints);
   const option = METRIC_OPTIONS[metric];
 
   // Τα σημεία έρχονται σε kg (storage) — μετατρέπονται στη μονάδα του χρήστη
@@ -96,16 +123,22 @@ export function ExerciseProgressChart({
         topWeight: p.topWeight != null ? toDisplayWeight(p.topWeight, unit) : null,
         e1rm: p.e1rm != null ? toDisplayWeight(p.e1rm, unit) : null,
         volume: toDisplayWeight(p.volume, unit),
+        maxReps: p.maxReps,
+        hold: p.hold,
+        bwEstimated: p.bwEstimated ?? false,
       })),
     [rawPoints, unit],
   );
 
-  const withData = points.filter((p) => p[metric] != null);
-  const best = withData.length ? Math.max(...withData.map((p) => Number(p[metric]))) : 0;
+  const withData = points.filter((p) => p[option.field] != null);
+  const best = withData.length ? Math.max(...withData.map((p) => Number(p[option.field]))) : 0;
   const bestTicker = useCountUp(best, 450, option.unitless ? 0 : 1);
-  const unitSuffix = option.unitless ? t(option.labelKey) : unit;
+  const unitSuffix = option.suffix ?? (option.unitless ? t(option.labelKey) : unit);
 
-  const prRaw = prs.find((r) => r.type === option.prType)?.value ?? null;
+  // Μπορεί να υπάρχουν πολλές live εγγραφές ίδιου τύπου (sync/import) — το
+  // ρεκόρ είναι η μέγιστη, όχι η πρώτη που επιστρέφει η βάση.
+  const sameType = prs.filter((r) => r.type === option.prType && r.deleted_at == null);
+  const prRaw = sameType.length ? Math.max(...sameType.map((r) => r.value)) : null;
   const prValue =
     prRaw == null || !prLineApplies(metric, isBodyweight)
       ? null
@@ -117,12 +150,14 @@ export function ExerciseProgressChart({
     <div className={className}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1">
-          {metrics.map((m) => (
+          {tabs.map((m) => (
             <button
               key={m}
+              type="button"
+              aria-pressed={metric === m}
               onClick={() => onMetricChange(m)}
               className={cn(
-                'rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'min-h-9 rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 metric === m
                   ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
                   : 'hover:bg-elevated',
@@ -157,10 +192,11 @@ export function ExerciseProgressChart({
             <Suspense fallback={<ChartSkeleton />}>
               <ExerciseProgressChartBody
                 withData={withData}
-                metric={metric}
+                dataKey={option.field}
                 range={range}
                 unit={unit}
                 unitless={!!option.unitless}
+                suffix={option.suffix}
                 labelKey={option.labelKey}
                 prValue={prValue}
               />
