@@ -19,7 +19,7 @@ beforeEach(async () => {
   await db.app_settings.clear();
   await db.app_settings.put({
     id: 's1', user_id: 'training-settings-profile', default_rest_timer_seconds: 180, notify_pr: true,
-    notify_session_reminder: false, notify_rest_timer: true, auto_start_rest_timer: true, reminder_time: null,
+    notify_session_reminder: false, notify_rest_timer: true, auto_start_rest_timer: true, rest_timer_enabled: true, reminder_time: null,
     reminder_days: [], show_e1rm: true, weight_unit: 'kg', theme: 'dark', dashboard_cards: [],
     coach_enabled: false, created_at: '', updated_at: '',
   } as never);
@@ -60,5 +60,17 @@ describe('TrainingSettingsPage — rest timer', () => {
     const notify = await screen.findByRole('button', { name: en.settings.restNotify });
     fireEvent.click(notify);
     await waitFor(async () => expect((await settings()).notify_rest_timer).toBe(false));
+  });
+
+  it('ο κύριος διακόπτης είναι ΚΛΕΙΣΤΟΣ για παλιούς χρήστες και κρύβει τις υπο-ρυθμίσεις', async () => {
+    await db.app_settings.update('s1', { rest_timer_enabled: undefined });
+    renderPage();
+    const master = await screen.findByRole('button', { name: en.settings.restTimerEnabled });
+    expect(master.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByRole('button', { name: '1:30' })).toBeNull();
+    expect(screen.queryByRole('button', { name: en.settings.restAutoStart })).toBeNull();
+    fireEvent.click(master);
+    await waitFor(async () => expect((await settings()).rest_timer_enabled).toBe(true));
+    await screen.findByRole('button', { name: '1:30' });
   });
 });

@@ -4,7 +4,14 @@ import { Minus, Plus, Timer, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { updateSettings } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { adjustRest, formatRest, setRestFinishHandler, stopRest, useRestTimer } from '../restTimer';
+import {
+  adjustRest,
+  formatRest,
+  isRestTimerEnabled,
+  setRestFinishHandler,
+  stopRest,
+  useRestTimer,
+} from '../restTimer';
 
 /** Σύντομο beep (WebAudio) — χωρίς asset. Σιωπηλό αν το API λείπει/μπλοκάρεται. */
 function beep(): void {
@@ -38,7 +45,8 @@ export function RestTimerBar() {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const { endsAt, finished, remaining, totalSeconds } = useRestTimer();
-  const notify = settings?.notify_rest_timer ?? true;
+  const enabled = isRestTimerEnabled(settings);
+  const notify = enabled && (settings?.notify_rest_timer ?? true);
   const auto = settings?.auto_start_rest_timer ?? true;
 
   useEffect(() => {
@@ -54,6 +62,12 @@ export function RestTimerBar() {
     return () => setRestFinishHandler(null);
   }, [notify]);
 
+  // Αν ο διακόπτης κλείσει (ή φορτώσει κλειστός) ενώ υπάρχει ενεργό/παλιό
+  // countdown από localStorage, σταμάτα το — καμία σιωπηλή ουρά, κανένας ήχος.
+  useEffect(() => {
+    if (settings && !enabled && (endsAt != null || finished)) stopRest();
+  }, [settings, enabled, endsAt, finished]);
+
   // Η μπάρα «έτοιμος» σβήνει μόνη της μετά από λίγο — να μη μένει σαν σκουπίδι.
   useEffect(() => {
     if (!finished) return;
@@ -62,7 +76,8 @@ export function RestTimerBar() {
   }, [finished]);
 
   const running = endsAt != null;
-  if (!running && !finished) return null;
+  // Κλειστό = ούτε μπάρα ούτε ήχος· και ό,τι έτρεχε σταματά αν το κλείσεις.
+  if (!enabled || (!running && !finished)) return null;
   const progress = running && totalSeconds > 0 ? Math.min(1, remaining / totalSeconds) : 0;
 
   return (

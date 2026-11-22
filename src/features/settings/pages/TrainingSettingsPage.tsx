@@ -4,14 +4,15 @@ import { Lock } from 'lucide-react';
 import { updateSettings } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { Card, SectionTitle } from '@/components/ui/Section';
+import { isRestTimerEnabled } from '@/features/workout/restTimer';
 import { SettingsHeader } from '../components/SettingsList';
 import { useIsPro } from '@/lib/api/auth';
 
 /**
  * Πώς καταγράφεις: μονάδες βάρους + ανάπαυση μεταξύ σετ. Το χρονόμετρο
- * προπόνησης είναι χειροκίνητο (820c2d5)· το rest timer ξεκινά μόνο του μετά από
- * σετ ΜΟΝΟ όσο είναι ενεργό το «Αυτόματο» — εδώ το ανοιγοκλείνεις και ορίζεις
- * διάρκεια/ειδοποίηση. Οι ρυθμίσεις υπήρχαν στη βάση αλλά δεν είχαν UI.
+ * προπόνησης είναι χειροκίνητο (820c2d5). Το rest timer είναι ΠΡΟΑΙΡΕΤΙΚΟ και
+ * ΚΛΕΙΣΤΟ εξ ορισμού (απόφαση owner, 5/9) — ο κύριος διακόπτης είναι εδώ· μόνο
+ * όταν είναι ανοιχτός εμφανίζονται οι υπο-ρυθμίσεις (διάρκεια/αυτόματο/ήχος).
  */
 const REST_PRESETS = [60, 90, 120, 180, 240, 300] as const;
 
@@ -46,6 +47,7 @@ export function TrainingSettingsPage() {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const isPro = useIsPro();
+  const restEnabled = isRestTimerEnabled(settings);
 
   return (
     <div className="space-y-6">
@@ -72,6 +74,20 @@ export function TrainingSettingsPage() {
       </Card>
 
       <Card>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <SectionTitle className="mb-1">{t('settings.restTimerEnabled')}</SectionTitle>
+            <p className="text-xs text-muted-foreground">{t('settings.restTimerEnabledHint')}</p>
+          </div>
+          <Toggle
+            t={t}
+            on={restEnabled}
+            label={t('settings.restTimerEnabled')}
+            onClick={() => void updateSettings({ rest_timer_enabled: !restEnabled })}
+          />
+        </div>
+        {restEnabled && (
+          <div className="mt-4 border-t border-border pt-4">
         <SectionTitle>{t('settings.restTimer')}</SectionTitle>
         <div className="flex flex-wrap gap-2" role="group" aria-label={t('settings.restTimer')}>
           {REST_PRESETS.map((sec) => (
@@ -114,6 +130,8 @@ export function TrainingSettingsPage() {
             onClick={() => void updateSettings({ notify_rest_timer: !settings?.notify_rest_timer })}
           />
         </div>
+          </div>
+        )}
       </Card>
 
       <Card>

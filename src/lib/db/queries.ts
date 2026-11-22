@@ -11,6 +11,7 @@ import type { Table } from 'dexie';
 import { db, SCHEMA_VERSION } from './schema';
 import { getCurrentUserId, setCurrentUserId } from './session';
 import { candidatesFromSet, candidatesFromWorkout, isNewPR } from '../domain/pr';
+import { realPRs } from '../domain/prBaseline';
 import { setVolume } from '../domain/volume';
 import { isWorkingSet } from '../domain/setFilters';
 import { e1rm } from '../domain/e1rm';
@@ -846,7 +847,8 @@ export async function getRecentPRs(limit = 20): Promise<PersonalRecord[]> {
       .equals(getCurrentUserId())
       .toArray()
   ).filter((r) => r.deleted_at == null);
-  return rows
+  // Μόνο πραγματικά σπασμένα ρεκόρ — τα baseline rows (πρώτο σετ) δεν είναι PR.
+  return realPRs(rows)
     .sort((a, b) => b.achieved_at.localeCompare(a.achieved_at))
     .slice(0, limit);
 }
@@ -1304,7 +1306,7 @@ export async function getExerciseSummaries(): Promise<
   }
   for (const [exId, prs] of prByExercise) {
     const cur = out.get(exId) ?? { lastTrainedAt: null, hasPR: false, setCount: 0 };
-    cur.hasPR = prs.length > 0;
+    cur.hasPR = realPRs(prs).length > 0;
     out.set(exId, cur);
   }
   return out;
@@ -1548,13 +1550,14 @@ export async function getGamificationInput(): Promise<{
   const weekSets = sets.filter(
     (s) => weekWorkoutIds.has(s.workout_id) && isWorkingSet(s),
   ).length;
-  const weekPrs = prs.filter((p) => inWeek(p.achieved_at)).length;
+  const brokenPrs = realPRs(prs);
+  const weekPrs = brokenPrs.filter((p) => inWeek(p.achieved_at)).length;
   // Ένα βήμα μπορεί να ξανακατακτηθεί μετά από reset· μετρά μία φορά/εβδομάδα.
   const weekStepIds = new Set(
     completions.filter((c) => inWeek(c.achieved_at)).map((c) => c.skill_step_id),
   );
   const totalXpValue =
-    workouts.length * 100 + totalSets * 5 + prs.length * 50 + masteredSteps * 40;
+    workouts.length * 100 + totalSets * 5 + brokenPrs.length * 50 + masteredSteps * 40;
   const weekXp = Math.min(
     weekWorkoutIds.size * 100 + weekSets * 5 + weekPrs * 50 + weekStepIds.size * 40,
     totalXpValue,
@@ -1563,7 +1566,7 @@ export async function getGamificationInput(): Promise<{
   return {
     completedWorkouts: workouts.length,
     totalSets,
-    prCount: prs.length,
+    prCount: brokenPrs.length,
     masteredSteps,
     masteredSkills,
     streakDays: insights.streakDays,
@@ -3312,13 +3315,13 @@ export async function deleteProfile(id: string): Promise<void> {
 
 /** Πόσα δεδομένα κρέμονται από ένα προφίλ — για να ξέρει ΤΙ σβήνει. */
 export async function getProfileStats(id: string) {
-  const [workouts, prs, programs, scheduled] = await Promise.all([
+  const [workouts, prRows, programs, scheduled] = await Promise.all([
     db.workouts.where('user_id').equals(id).count(),
     db.personal_records
       .where('user_id')
       .equals(id)
       .filter((r) => r.deleted_at == null)
-      .count(),
+      .toArray(),
     db.programs.where('user_id').equals(id).count(),
     db.scheduled_sessions
       .where('user_id')
@@ -3326,7 +3329,7 @@ export async function getProfileStats(id: string) {
       .filter((s) => s.deleted_at == null)
       .count(),
   ]);
-  return { workouts, prs, programs, scheduled };
+  return { workouts, prs: realPRs(prRows).length, programs, scheduled };
 }
 
 /**
@@ -3373,7 +3376,7 @@ export async function getCurrentProfileDataCounts(): Promise<{
   const sets = allSets.filter(
     (s) => s.deleted_at == null && liveWorkoutIds.has(s.workout_id),
   ).length;
-  const livePrs = prs.filter((r) => !deletedWorkoutIds.has(r.workout_id)).length;
+  const livePrs = realPRs(prs.filter((r) => !deletedWorkoutIds.has(r.workout_id))).length;
   return {
     workouts: liveWorkoutIds.size,
     sets,
@@ -3576,7 +3579,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
     exercises,
     totalVolume: exercises.reduce((a, e) => a + e.volume, 0),
     totalSets: live.filter(isWorkingSet).length,
-    prs: prs.filter((r) => r.workout_id === workoutId && r.deleted_at == null),
+    prs: realPRs(prs).filter((r) => r.workout_id === workoutId),
   };
 }
 
@@ -3716,7 +3719,7 @@ export async function getTrainingInsights(days = 30): Promise<TrainingInsights> 
     .equals(getCurrentUserId())
     .filter((r) => r.deleted_at == null)
     .toArray();
-  const prsThisPeriod = prs.filter(
+  const prsThisPeriod = realPRs(prs).filter(
     (r) => new Date(r.achieved_at).getTime() >= windowStart,
   ).length;
 

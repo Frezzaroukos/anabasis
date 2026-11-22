@@ -157,11 +157,11 @@ describe('ExerciseCard — entry friction', () => {
     });
   });
 
-  const putSettings = async (auto: boolean) => {
+  const putSettings = async (auto: boolean, enabled: boolean | null = true) => {
     await db.app_settings.clear();
     await db.app_settings.put({
       id: 's1', user_id: 'exercise-card-profile', default_rest_timer_seconds: 90, notify_pr: true,
-      notify_session_reminder: false, notify_rest_timer: true, auto_start_rest_timer: auto, reminder_time: null,
+      notify_session_reminder: false, notify_rest_timer: true, auto_start_rest_timer: auto, rest_timer_enabled: enabled ?? undefined, reminder_time: null,
       reminder_days: [], show_e1rm: true, weight_unit: 'kg', theme: 'dark', dashboard_cards: [],
       coach_enabled: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     } as never);
@@ -179,6 +179,20 @@ describe('ExerciseCard — entry friction', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add set' }));
     await waitFor(() => expect(remainingSeconds()).toBeGreaterThan(80));
     __resetRestTimer();
+  });
+
+  it('ΚΛΕΙΣΤΟ εξ ορισμού (owner 820c2d5): auto_start=true χωρίς rest_timer_enabled → κανένα timer', async () => {
+    __resetRestTimer();
+    // Παλιός χρήστης: αποθηκευμένο auto_start=true, ο νέος κύριος διακόπτης λείπει.
+    await putSettings(true, null);
+    const workout = await startWorkout('strength');
+    renderCard(workout.id);
+    fireEvent.change(screen.getByLabelText('Weight (kg)'), { target: { value: '60' } });
+    fireEvent.change(screen.getByLabelText('Reps'), { target: { value: '8' } });
+    await new Promise((r) => setTimeout(r, 50));
+    fireEvent.click(screen.getByRole('button', { name: 'Add set' }));
+    await waitFor(async () => expect(await db.sets.where('workout_id').equals(workout.id).count()).toBe(1));
+    expect(remainingSeconds()).toBe(0);
   });
 
   it('ΔΕΝ ξεκινά rest timer όταν η ρύθμιση είναι OFF', async () => {

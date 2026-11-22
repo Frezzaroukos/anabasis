@@ -1,5 +1,6 @@
 import { isWorkingSet } from '@/lib/domain/setFilters';
 import { totalVolume } from '@/lib/domain/volume';
+import { realPRs } from '@/lib/domain/prBaseline';
 import type { PersonalRecord, SetEntry } from '@/lib/db/types';
 
 export interface WorkoutSummaryData {
@@ -17,17 +18,19 @@ export interface WorkoutSummaryData {
  */
 export function summarizeWorkout(
   sets: ReadonlyArray<SetEntry>,
-  prs: ReadonlyArray<Pick<PersonalRecord, 'exercise_id' | 'type' | 'deleted_at' | 'workout_id'>>,
+  prs: ReadonlyArray<Pick<PersonalRecord, 'exercise_id' | 'activity_kind' | 'type' | 'deleted_at' | 'workout_id' | 'achieved_at'>>,
   workoutId: string,
 ): WorkoutSummaryData {
   const working = sets.filter((s) => isWorkingSet(s));
-  // «Νέο PR» = η προπόνηση έγραψε ρεκόρ ΠΑΝΩ από υπάρχον άλλης προπόνησης. Το
-  // πρώτο σετ ποτέ μιας άσκησης αφήνει «βάση» στον πίνακα αλλά δεν είναι PR
-  // (ίδιος κανόνας με το detectPRs / το κομφετί).
+  // «Νέο PR» = ρεκόρ ΠΑΝΩ από υπάρχον ΠΡΟΗΓΟΥΜΕΝΗΣ προπόνησης — ενιαίος
+  // ορισμός με όλους τους readers (lib/domain/prBaseline): το πρώτο σετ ποτέ μιας
+  // άσκησης αφήνει «βάση» στον πίνακα αλλά δεν είναι PR.
   const key = (p: { exercise_id: string | null; type: string }) => `${p.exercise_id ?? ''}:${p.type}`;
-  const live = prs.filter((p) => p.deleted_at == null);
-  const earlier = new Set(live.filter((p) => p.workout_id !== workoutId).map(key));
-  const prKeys = new Set(live.filter((p) => p.workout_id === workoutId && earlier.has(key(p))).map(key));
+  const prKeys = new Set(
+    realPRs(prs)
+      .filter((p) => p.workout_id === workoutId)
+      .map(key),
+  );
   return {
     exercises: new Set(working.map((s) => s.exercise_id)).size,
     sets: working.length,

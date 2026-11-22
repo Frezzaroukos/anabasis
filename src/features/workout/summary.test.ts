@@ -38,7 +38,7 @@ describe('summarizeWorkout', () => {
 
   it('counts a PR only when it beat an earlier workout; first-ever baseline is not a PR', () => {
     const row = (exercise_id: string, type: string, workout_id: string, deleted_at: string | null = null) =>
-      ({ exercise_id, type, workout_id, deleted_at }) as never;
+      ({ exercise_id, type, workout_id, deleted_at, activity_kind: null, achieved_at: workout_id === 'w0' ? '2026-11-01T10:00:00Z' : '2026-11-08T10:00:00Z' }) as never;
     const s = summarizeWorkout(
       [],
       [

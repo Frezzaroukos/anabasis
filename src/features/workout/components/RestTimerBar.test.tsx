@@ -6,6 +6,12 @@ import en from '@/i18n/en.json';
 import { RestTimerBar } from './RestTimerBar';
 import { __resetRestTimer, startRest, stopRest } from '../restTimer';
 
+// Το rest timer είναι opt-in (απόφαση owner)· εδώ ελέγχουμε μόνο το a11y της
+// μπάρας όταν είναι ενεργό, χωρίς ασύγχρονο Dexie query κάτω από fake timers.
+vi.mock('@/hooks/useAppSettings', () => ({
+  useAppSettings: () => ({ rest_timer_enabled: true, notify_rest_timer: false }),
+}));
+
 /**
  * Rest timer a11y: ο μετρητής ΔΕΝ ανακοινώνεται κάθε δευτερόλεπτο, αλλά το
  * ΤΕΛΟΣ («Rest over — go!») βγαίνει σε polite live region για screen reader.

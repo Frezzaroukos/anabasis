@@ -103,6 +103,13 @@ describe('DashboardPage — με δεδομένα', () => {
     await db.skill_steps.bulkPut(SEED_SKILL_STEPS);
 
     const squat = SEED_EXERCISES.find((e) => e.name === 'Back Squat')!;
+    // Πρώτο σετ ποτέ ≠ PR: χρειάζεται ΠΡΟΗΓΟΥΜΕΝΗ προπόνηση ώστε η επόμενη να σπάσει ρεκόρ.
+    const prior = await startWorkout();
+    await addSet({
+      workout_id: prior.id, exercise_id: squat.id, weight_kg: 90, bodyweight_kg: null, reps: 5, hold_seconds: null,
+    });
+    await endWorkout(prior.id);
+    await new Promise((r) => setTimeout(r, 5));
     const w = await startWorkout();
     await addSet({
       workout_id: w.id,

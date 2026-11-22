@@ -506,7 +506,9 @@
     "integrityIssues_one": "{{count}} issue found",
     "integrityIssues_other": "{{count}} issues found",
     "repaired_one": "Repaired {{count}} row.",
-    "repaired_other": "Repaired {{count}} rows."
+    "repaired_other": "Repaired {{count}} rows.",
+    "restTimerEnabled": "Rest timer",
+    "restTimerEnabledHint": "Optional countdown between sets. Off by default — you stay in control of your pace."
   },
   "common": {
     "save": "Save",
@@ -1593,9 +1595,9 @@
         "step1": "Tap “Start workout” on Home for today. For an earlier day open Calendar and tap “Add workout”.",
         "step2": "Choose a program day, or type a free name for an ad-hoc session, then tap “Start”.",
         "step3": "Tap “Add exercise”. “Recent” chips skip typing. The previous weight and reps are pre-filled — adjust them or keep them.",
-        "step4": "Set weight and reps, tap “Add set”. Rest starts automatically (“Auto”); use −15/+15 or tap “Auto” to turn it off. “+1 same” repeats the last set in one tap.",
+        "step4": "Set weight and reps, tap “Add set”. “+1 same” repeats the last set in one tap. Want a countdown between sets? Turn on “Rest timer” in Settings → Training — it is off by default.",
         "step5": "“Quick log” records one exercise in one line; “Paste notes” handles a whole session (next section).",
-        "step6": "Tap “Save workout” and confirm “End workout?”. The summary shows exercises, sets and PRs; rest end beeps/vibrates when notifications are on.",
+        "step6": "Tap “Save workout” and confirm “End workout?”. The summary shows exercises, sets and PRs; if “Rest timer” is on, its end beeps/vibrates when the alert is enabled.",
         "note": "Sets marked as warm-up do not count toward PRs. Leaving a session with no sets does not create a workout."
       },
       "paste": {
@@ -1714,7 +1716,7 @@
         "step2": "Quick log multipliers: “18kg 4xmax” creates four AMRAP sets, “80kg 3x5” three sets of five.",
         "step3": "Paste a whole session with “Paste notes”; correct a guessed exercise once and it is remembered.",
         "step4": "From Home: “Start workout” for today, “Weight” for a pre-filled weigh-in.",
-        "step5": "Rest controls: −15/+15 seconds, or tap “Auto” to switch to a manual timer.",
+        "step5": "Rest timer is optional: switch “Rest timer” on in Settings → Training, then use −15/+15 seconds or “Auto” on the bar.",
         "step6": "“Copy to another date” repeats a workout; “Merge into another exercise” fixes duplicates; “Log for this day” backfills an earlier day."
       }
     }

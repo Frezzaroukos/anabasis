@@ -29,7 +29,7 @@ import { QuickPasteWorkoutSheet } from './QuickPasteWorkoutSheet';
 import { readStopwatchSeconds, clearStopwatch } from '@/hooks/useManualStopwatch';
 import { PlateCalculator } from './PlateCalculator';
 import { RestTimerBar } from './RestTimerBar';
-import { startRest, stopRest } from '../restTimer';
+import { isRestTimerEnabled, startRest, stopRest } from '../restTimer';
 import { summarizeWorkout } from '../summary';
 import { BottomSheet } from '@/components/ui/sheet';
 import { ActivityLogForm } from './ActivityLogForm';
@@ -504,6 +504,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               >
                 <Weight className="h-4 w-4" />
               </Button>
+              {isRestTimerEnabled(settings) && (
               <Button
                 variant="outline"
                 className="min-w-11 shrink-0 px-3"
@@ -513,6 +514,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               >
                 <Timer className="h-4 w-4" />
               </Button>
+              )}
             </div>
           </>
         ) : (
@@ -520,7 +522,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
         )}
       </div>
 
-      {isSetLogged && <RestTimerBar />}
+      {isSetLogged && isRestTimerEnabled(settings) && <RestTimerBar />}
 
       {isSetLogged && (
         <AddExerciseSheet
