@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -42,6 +42,7 @@ import {
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
 import { StepFormSheet } from './components/StepFormSheet';
+import { moveSkillStep } from './skillSteps';
 import { SectionTitle } from '@/components/ui/Section';
 import { cn } from '@/lib/utils';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -93,6 +94,7 @@ export function SkillDetailPage() {
   const [deleteStepId, setDeleteStepId] = useState<string | null>(null);
   const [deleteSkillOpen, setDeleteSkillOpen] = useState(false);
   const [deleteSkillBlock, setDeleteSkillBlock] = useState<'in_use' | 'builtin' | null>(null);
+  const [movingStepId, setMovingStepId] = useState<string | null>(null);
 
   const data = useLiveQuery(() => getSkillWithSteps(skillId), [skillId]);
   const steps = data?.steps ?? [];
@@ -115,6 +117,20 @@ export function SkillDetailPage() {
   const stepById = new Map(steps.map((s) => [s.id, s]));
   const unitSuggestions = [...new Set(steps.map((s) => s.target_unit))];
   const masteredSkill = progress?.status === 'mastered';
+  const lastAchieved = steps
+    .map((step) => ({ step, completion: completions.get(step.id) }))
+    .filter((row) => row.completion != null)
+    .sort((a, b) => b.completion!.achieved_at.localeCompare(a.completion!.achieved_at))[0];
+
+  const moveStep = async (step: SkillStep, direction: -1 | 1) => {
+    if (movingStepId) return;
+    setMovingStepId(step.id);
+    try {
+      await moveSkillStep(skillId, step.id, direction);
+    } finally {
+      setMovingStepId(null);
+    }
+  };
 
   const onDeleteSkill = async () => {
     const result = await deleteSkill(skill.id);
@@ -203,6 +219,28 @@ export function SkillDetailPage() {
               style={{ width: `${pct}%` }}
             />
           </div>
+          {!masteredSkill && steps[currentIdx ?? -1] && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t('skills.currentStep')}:{' '}
+              <span className="font-medium text-foreground">{steps[currentIdx!]!.name}</span>
+              {' · '}
+              {t('skills.nextTarget')}:{' '}
+              <span className="font-mono tabular-nums">
+                {steps[currentIdx!]!.target_value} {steps[currentIdx!]!.target_unit}
+                {steps[currentIdx!]!.added_weight_kg != null &&
+                  ` + ${steps[currentIdx!]!.added_weight_kg}kg`}
+              </span>
+            </p>
+          )}
+          {lastAchieved && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t('skills.lastAchieved')}:{' '}
+              <span className="font-mono tabular-nums">
+                {lastAchieved.completion!.achieved_value} {lastAchieved.step.target_unit}
+              </span>{' '}
+              · {new Date(lastAchieved.completion!.achieved_at).toLocaleDateString(i18n.resolvedLanguage)}
+            </p>
+          )}
         </div>
       </header>
 
@@ -262,6 +300,24 @@ export function SkillDetailPage() {
                     {step.name}
                   </p>
                   <div className="-my-2 -mr-2 flex shrink-0">
+                    <button
+                      type="button"
+                      disabled={i === 0 || movingStepId != null}
+                      onClick={() => void moveStep(step, -1)}
+                      aria-label={t('skills.moveStepUp')}
+                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 disabled:opacity-30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={i === steps.length - 1 || movingStepId != null}
+                      onClick={() => void moveStep(step, 1)}
+                      aria-label={t('skills.moveStepDown')}
+                      className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:scale-95 disabled:opacity-30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => setEditingStep(step)}
@@ -365,10 +421,11 @@ export function SkillDetailPage() {
                 {done && (
                   <button
                     type="button"
-                    className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:underline"
+                    className="mt-2 flex min-h-11 items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
                     onClick={() => void undoStep(skillId, step.id)}
                   >
-                    {t('common.undo')}
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                    {t('skills.undoAchieved')}
                   </button>
                 )}
 

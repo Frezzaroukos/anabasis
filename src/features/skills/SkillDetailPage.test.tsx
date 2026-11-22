@@ -7,7 +7,14 @@ import en from '@/i18n/en.json';
 import { SkillDetailPage } from './SkillDetailPage';
 import { db } from '@/lib/db';
 import { SEED_SKILLS, SEED_SKILL_STEPS } from '@/lib/db/seeds';
-import { achieveStep, getSkillProgress, getStepCompletions } from '@/lib/db/queries';
+import {
+  achieveStep,
+  addSkillStep,
+  createSkill,
+  getSkillProgress,
+  getSkillStepStats,
+  getStepCompletions,
+} from '@/lib/db/queries';
 
 // added_weight_kg (v13) UI ακόμα δεν υπάρχει στο πραγματικό src/i18n/en.json —
 // ίδιο μοτίβο με το ExercisesPage.test.tsx: τοπικό override μόνο για το test.
@@ -47,8 +54,8 @@ describe('SkillDetailPage', () => {
     renderAt(planche.id);
     await waitFor(() => expect(screen.getByText('Planche')).toBeTruthy());
     // τα πραγματικά seeded βήματα
-    expect(screen.getByText('Planche Lean')).toBeTruthy();
-    expect(screen.getByText('Full Planche')).toBeTruthy();
+    expect(screen.getAllByText('Planche Lean').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Full Planche').length).toBeGreaterThan(0);
     // στόχος ορατός
     await waitFor(() =>
       expect(screen.getAllByText(/Target:/).length).toBeGreaterThan(0),
@@ -118,6 +125,68 @@ describe('SkillDetailPage — καταγραφή βάρους από το UI', (
   });
 });
 
+describe('SkillDetailPage — ορατή πρόοδος, undo και αναδιάταξη', () => {
+  async function customSkill(name: string, steps: string[]) {
+    const skill = await createSkill({ name });
+    const rows = [];
+    for (const stepName of steps) {
+      rows.push(await addSkillStep(skill.id, { name: stepName, target_value: 10 }));
+    }
+    return { skill, steps: rows };
+  }
+
+  it('δείχνει τρέχον βήμα, επόμενο στόχο και τελευταία επίτευξη', async () => {
+    const { skill, steps } = await customSkill('E2E Progress Skill', ['One', 'Two']);
+    await achieveStep(skill.id, steps[0]!.id, steps[0]!.target_value);
+
+    renderAt(skill.id);
+    await waitFor(() => expect(screen.getByText('E2E Progress Skill')).toBeTruthy());
+    expect(screen.getByText(/Current step:/)).toBeTruthy();
+    expect(screen.getByText(/Next target:/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/Last achieved:/)).toBeTruthy());
+  });
+
+  it('αναίρεση Mark achieved με ένα κουμπί (tombstone completion)', async () => {
+    const { skill, steps } = await customSkill('E2E Undo Skill', ['Only step']);
+    renderAt(skill.id);
+    await waitFor(() => expect(screen.getByText('E2E Undo Skill')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark achieved' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Undo mark achieved' })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Undo mark achieved' }));
+
+    await waitFor(async () => {
+      expect((await getSkillStepStats()).get(skill.id)).toEqual({ total: 1, done: 0 });
+    });
+    expect(await getStepCompletions([steps[0]!.id])).toEqual(new Map());
+    const raw = await db.user_skill_step_completions
+      .where('user_id')
+      .equals((await import('@/lib/db/session')).getCurrentUserId())
+      .toArray();
+    expect(raw.filter((r) => r.skill_step_id === steps[0]!.id).every((r) => r.deleted_at != null)).toBe(true);
+  });
+
+  it('αναδιατάσσει βήματα πάνω/κάτω και ξαναδένει τα prerequisites', async () => {
+    const { skill, steps } = await customSkill('E2E Reorder Skill', ['A', 'B', 'C']);
+    renderAt(skill.id);
+    await waitFor(() => expect(screen.getByText('E2E Reorder Skill')).toBeTruthy());
+
+    const moveDown = screen.getAllByRole('button', { name: 'Move step down' });
+    fireEvent.click(moveDown[0]!);
+
+    await waitFor(async () => {
+      const rows = (await db.skill_steps.where('skill_id').equals(skill.id).toArray()).sort(
+        (a, b) => a.step_number - b.step_number,
+      );
+      expect(rows.map((r) => r.name)).toEqual(['B', 'A', 'C']);
+      expect(rows.map((r) => r.prerequisites)).toEqual([[], [rows[0]!.id], [rows[1]!.id]]);
+    });
+    expect(steps).toHaveLength(3);
+  });
+});
+
 describe('SkillDetailPage — προβολή added_weight_kg στη σκάλα', () => {
   it('δείχνει το βάρος-στόχο ενός βήματος (π.χ. «Full X + 5kg»)', async () => {
     const skill = SEED_SKILLS.find((s) => s.name === 'V-Sit')!;
@@ -128,6 +197,6 @@ describe('SkillDetailPage — προβολή added_weight_kg στη σκάλα',
 
     renderAt(skill.id);
     await waitFor(() => expect(screen.getByText('V-Sit')).toBeTruthy());
-    expect(screen.getByText(/\+ 3kg/)).toBeTruthy();
+    expect(screen.getAllByText(/\+ 3kg/).length).toBeGreaterThan(0);
   });
 });

@@ -313,7 +313,12 @@
     "deleteSkillConfirmTitle": "Delete this skill?",
     "deleteSkillConfirmDesc": "The skill and its empty ladder will be removed. This can't be undone.",
     "deleteBlockedInUse": "This skill has steps, progress or goals attached. Archive it instead of deleting.",
-    "deleteBlockedBuiltin": "Built-in skills cannot be deleted — you can archive them."
+    "deleteBlockedBuiltin": "Built-in skills cannot be deleted — you can archive them.",
+    "moveStepUp": "Move step up",
+    "moveStepDown": "Move step down",
+    "nextTarget": "Next target",
+    "lastAchieved": "Last achieved",
+    "undoAchieved": "Undo mark achieved"
   },
   "settings": {
     "title": "Settings",
@@ -809,7 +814,14 @@
     "cancel": "Cancel",
     "delete": "Delete activity",
     "deleteConfirmTitle": "Delete this activity?",
-    "deleteConfirmDesc": "Past workouts keep their own name. The activity disappears from the picker."
+    "deleteConfirmDesc": "Past workouts keep their own name. The activity disappears from the picker.",
+    "start": "Start",
+    "startBlocked": "Finish the active workout first.",
+    "deletedToast": "Activity deleted",
+    "distanceInvalid": "Enter a distance above 0 (max 1000 km).",
+    "durationInvalid": "Use 25, 25:30 or 1:05:00 (max 24h).",
+    "durationPlaceholder": "25, 25:30 or 1:05:00",
+    "durationHint": "Leave empty to use the live timer."
   },
   "share": {
     "title": "Share Anabasis",

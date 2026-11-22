@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity as ActivityGlyph, Archive, ChevronDown, ChevronUp, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Activity as ActivityGlyph, Archive, ChevronDown, ChevronUp, Pencil, Play, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { reorderActivities, updateActivity } from '@/lib/db/queries';
+import { reorderActivities, startAdHocWorkout, updateActivity } from '@/lib/db/queries';
 import { deleteActivity } from '@/lib/db/activities';
+import { useToast } from '@/components/ui/toast-context';
 import type { Activity } from '@/lib/db/types';
 import { ActivityIcon } from '@/components/activityIcon';
 import { useActivities } from './useActivities';
@@ -17,6 +19,8 @@ import { ActivityFormSheet } from './components/ActivityFormSheet';
  */
 export function ActivitiesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const active = useActivities(false);
   const all = useActivities(true);
   const archived = all.filter((a) => a.is_archived);
@@ -53,8 +57,30 @@ export function ActivitiesPage() {
 
   const onDelete = async () => {
     if (!deleteTarget) return;
-    await deleteActivity(deleteTarget.id);
+    const target = deleteTarget;
+    const result = await deleteActivity(target.id);
     setDeleteTarget(null);
+    if (result !== 'deleted') return;
+    showToast({
+      message: t('activities.deletedToast'),
+      actionLabel: t('common.undo'),
+      onAction: () => void updateActivity(target.id, { deleted_at: null }),
+      durationMs: 7000,
+    });
+  };
+
+  /**
+   * Άμεση έναρξη δραστηριότητας χωρίς πρόγραμμα (τρέξιμο, ποδήλατο, μπάσκετ…).
+   * Πριν, το ad-hoc start ήταν πάντα strength — για ένα τρέξιμο έπρεπε να
+   * στηθεί πρόγραμμα ή να μπερδευτείς με το ημερολόγιο.
+   */
+  const onStart = async (a: Activity) => {
+    const result = await startAdHocWorkout(a.key, undefined, a.label);
+    if (!result) {
+      showToast({ message: t('activities.startBlocked') });
+      return;
+    }
+    navigate('/workout/active');
   };
 
   return (
@@ -110,6 +136,17 @@ export function ActivitiesPage() {
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
+                {!a.uses_sets && (
+                  <button
+                    type="button"
+                    onClick={() => void onStart(a)}
+                    aria-label={t('activities.start')}
+                    title={t('activities.start')}
+                    className="flex h-11 w-10 items-center justify-center rounded-md text-primary hover:bg-primary/10"
+                  >
+                    <Play className="h-4 w-4" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => void setArchived(a.id, true)}
