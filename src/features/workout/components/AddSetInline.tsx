@@ -175,7 +175,26 @@ export function AddSetInline({
     primaryInputRef.current?.focus();
   }, [holdActive]);
 
+  // Οι τιμές «προηγούμενης φοράς» φορτώνονται ασύγχρονα (IndexedDB) — συχνά
+  // ΜΕΤΑ το πρώτο render. Αν ο χρήστης δεν έχει αγγίξει το πεδίο, το γεμίζουμε
+  // όταν φτάσουν· αν έχει πληκτρολογήσει κάτι, δεν το πατάμε ποτέ.
+  const weightDirty = useRef(false);
+  const repsDirty = useRef(false);
+  const holdDirty = useRef(false);
+  useEffect(() => {
+    if (!weightDirty.current && initialWeight != null) {
+      setWeight(String(toDisplayWeight(initialWeight, unit)));
+    }
+  }, [initialWeight, unit]);
+  useEffect(() => {
+    if (!repsDirty.current && !holdActive && initialReps != null) setReps(String(initialReps));
+  }, [initialReps, holdActive]);
+  useEffect(() => {
+    if (!holdDirty.current && holdActive && initialHoldSeconds != null) setHold(String(initialHoldSeconds));
+  }, [initialHoldSeconds, holdActive]);
+
   const bumpWeight = (delta: number) => {
+    weightDirty.current = true;
     const cur = weightNum ?? 0;
     const next = Math.max(0, Math.round((cur + delta) * 100) / 100);
     setWeight(String(next));
@@ -202,9 +221,10 @@ export function AddSetInline({
         },
         setType === 'rest_pause' ? parsedRestPauseReps : [],
       );
-      // Το βάρος μένει ίδιο σετ-σετ — καθαρίζουν μόνο reps/hold/RPE/RIR/notes.
-      setReps('');
-      setHold('');
+      // Βάρος ΚΑΙ reps/hold μένουν σετ-σετ (τυπικά 3×8 στο ίδιο φορτίο = 1 tap
+      // ανά σετ)· καθαρίζουν μόνο τα σπάνια πεδία (RPE/RIR/σημείωση) που
+      // αφορούν ένα συγκεκριμένο σετ. Το focus επιστρέφει στο reps με επιλεγμένο
+      // κείμενο, οπότε το πληκτρολόγιο αντικαθιστά την τιμή αν αλλάξει.
       setRpe('');
       setRir('');
       setNotes('');
@@ -312,8 +332,13 @@ export function AddSetInline({
               step="0.5"
               min="0"
               value={weight}
-              onChange={(e) => setWeight(e.target.value)}
+              onChange={(e) => {
+                weightDirty.current = true;
+                setWeight(e.target.value);
+              }}
               className="h-11 min-w-0 font-mono tabular-nums"
+              enterKeyHint="next"
+              onFocus={(e) => e.currentTarget.select()}
               aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
               aria-invalid={weight.trim() !== '' && !weightValid}
               aria-describedby={weight.trim() !== '' && !weightValid ? weightErrId : undefined}
@@ -340,8 +365,13 @@ export function AddSetInline({
               min="1"
               step="1"
               value={hold}
-              onChange={(e) => setHold(e.target.value)}
+              onChange={(e) => {
+                holdDirty.current = true;
+                setHold(e.target.value);
+              }}
               className="h-11 min-w-0 font-mono tabular-nums"
+              enterKeyHint="done"
+              onFocus={(e) => e.currentTarget.select()}
               aria-label={t('workout.holdSeconds')}
               aria-invalid={hold.trim() !== '' && !holdValid}
               aria-describedby={hold.trim() !== '' && !holdValid ? holdErrId : undefined}
@@ -368,8 +398,13 @@ export function AddSetInline({
               step="any"
               value={reps}
               placeholder={allowsBlankReps ? t('workout.amrapPlaceholder') : undefined}
-              onChange={(e) => setReps(e.target.value)}
+              onChange={(e) => {
+                repsDirty.current = true;
+                setReps(e.target.value);
+              }}
               className="h-11 min-w-0 font-mono tabular-nums"
+              enterKeyHint="done"
+              onFocus={(e) => e.currentTarget.select()}
               aria-label={t('workout.reps')}
               aria-invalid={reps.trim() !== '' && !repsValid}
               aria-describedby={reps.trim() !== '' && !repsValid ? repsErrId : undefined}

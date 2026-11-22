@@ -60,7 +60,14 @@
     "rest": {
       "start": "Start rest",
       "stop": "Stop rest",
-      "restingShort": "Rest"
+      "restingShort": "Rest",
+      "over": "Rest over — go!",
+      "minus15": "15 seconds less rest",
+      "plus15": "15 seconds more rest",
+      "autoOn": "Auto",
+      "autoOff": "Auto off",
+      "dismiss": "Dismiss",
+      "manual": "Start rest timer"
     },
     "timer": {
       "start": "Start timer",
@@ -150,7 +157,16 @@
     "pasteNotesWorkoutName": "Workout name (optional)",
     "pasteNotesMatchExercise": "Match exercise",
     "amrapPlaceholder": "max (optional)",
-    "sessionDate": "Session date"
+    "sessionDate": "Session date",
+    "summary": {
+      "prs_one": "{{count}} new PR",
+      "prs_other": "{{count}} new PRs",
+      "exercises_one": "{{count}} exercise",
+      "exercises_other": "{{count}} exercises",
+      "sets_one": "{{count}} set",
+      "sets_other": "{{count}} sets"
+    },
+    "recent": "Recent"
   },
   "programs": {
     "title": "Programs",

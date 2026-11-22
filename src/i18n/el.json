@@ -60,7 +60,14 @@
     "rest": {
       "start": "Έναρξη rest",
       "stop": "Τερματισμός",
-      "restingShort": "Rest"
+      "restingShort": "Rest",
+      "over": "Τέλος ανάπαυσης — πάμε!",
+      "minus15": "15 δευτερόλεπτα λιγότερη ανάπαυση",
+      "plus15": "15 δευτερόλεπτα περισσότερη ανάπαυση",
+      "autoOn": "Αυτόματο",
+      "autoOff": "Αυτόματο off",
+      "dismiss": "Κλείσιμο",
+      "manual": "Έναρξη ανάπαυσης"
     },
     "timer": {
       "start": "Ξεκίνα χρονόμετρο",
@@ -150,7 +157,16 @@
     "pasteNotesWorkoutName": "Όνομα προπόνησης (προαιρετικό)",
     "pasteNotesMatchExercise": "Ταίριασμα άσκησης",
     "amrapPlaceholder": "max (προαιρετικό)",
-    "sessionDate": "Ημερομηνία συνεδρίας"
+    "sessionDate": "Ημερομηνία συνεδρίας",
+    "summary": {
+      "prs_one": "{{count}} νέο PR",
+      "prs_other": "{{count}} νέα PRs",
+      "exercises_one": "{{count}} άσκηση",
+      "exercises_other": "{{count}} ασκήσεις",
+      "sets_one": "{{count}} σετ",
+      "sets_other": "{{count}} σετ"
+    },
+    "recent": "Πρόσφατες"
   },
   "programs": {
     "title": "Προγράμματα",
