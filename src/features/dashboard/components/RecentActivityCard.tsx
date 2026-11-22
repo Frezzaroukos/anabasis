@@ -5,6 +5,7 @@ import { Dumbbell, Footprints, Bike, Waves, Activity as ActivityIcon } from 'luc
 import { listActivities, listCompletedWorkouts } from '@/lib/db/queries';
 import type { ActivityKind } from '@/lib/db/types';
 import { SectionTitle } from '@/components/ui/Section';
+import { relativeDayLabel } from './relativeDay';
 
 /**
  * «Τι έκανα πρόσφατα» — η Αρχική δεν σε αναγκάζει να ΚΑΤΑΓΡΑΨΕΙΣ· την ανοίγεις
@@ -20,17 +21,6 @@ const KIND_ICON: Record<string, typeof Dumbbell> = {
 
 function iconFor(kind: ActivityKind) {
   return KIND_ICON[kind] ?? ActivityIcon;
-}
-
-function relativeDay(iso: string, locale: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((startOf(today) - startOf(d)) / 86_400_000);
-  if (days === 0) return locale === 'el' ? 'Σήμερα' : 'Today';
-  if (days === 1) return locale === 'el' ? 'Χθες' : 'Yesterday';
-  if (days < 7) return locale === 'el' ? `${days} μέρες πριν` : `${days} days ago`;
-  return d.toLocaleDateString(locale === 'el' ? 'el-GR' : 'en-GB', { day: 'numeric', month: 'short' });
 }
 
 export function RecentActivityCard() {
@@ -57,7 +47,8 @@ export function RecentActivityCard() {
     );
   }
 
-  const recent = workouts.slice(0, 4);
+  // Η πιο πρόσφατη ζωγραφίζεται μόνη της στο LastWorkoutCard. Εδώ οι προηγούμενες.
+  const recent = workouts.slice(1, 4);
   if (recent.length === 0) return null;
 
   return (
@@ -89,7 +80,7 @@ export function RecentActivityCard() {
                   {meta && <span className="block text-xs text-muted-foreground tabular-nums">{meta}</span>}
                 </span>
                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                  {relativeDay(w.started_at, locale)}
+                  {relativeDayLabel(w.started_at, t, locale)}
                 </span>
               </Link>
             </li>

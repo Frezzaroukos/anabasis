@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
+import { ToastProvider } from '@/components/ui/toast';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
@@ -8,7 +9,7 @@ import { CalendarPage } from './CalendarPage';
 import { db } from '@/lib/db';
 import { setCurrentUserId } from '@/lib/db/session';
 import { SEED_ACTIVITIES } from '@/lib/db/seeds';
-import { createProgram, createProgramDay, localDay } from '@/lib/db/queries';
+import { createProgram, createProgramDay, endWorkout, localDay, startWorkout } from '@/lib/db/queries';
 import { createScheduledSession, weeklyDates } from '@/lib/db/scheduledSessions';
 
 /**
@@ -62,10 +63,12 @@ function LocationProbe() {
 
 const wrap = (ui: React.ReactNode) => (
   <I18nextProvider i18n={i18next}>
-    <MemoryRouter>
-      {ui}
-      <LocationProbe />
-    </MemoryRouter>
+    <ToastProvider>
+      <MemoryRouter>
+        {ui}
+        <LocationProbe />
+      </MemoryRouter>
+    </ToastProvider>
   </I18nextProvider>
 );
 
@@ -201,6 +204,17 @@ describe('CalendarPage — πλέγμα ανά εβδομάδα', () => {
 describe('CalendarPage — προγραμματισμένες προπονήσεις', () => {
   const today = localDay(new Date(FIXED_NOW));
 
+  it('το Schedule session έχει στόχο ≥44px και ανοίγει με click, όχι μόνο με Enter', async () => {
+    render(wrap(<CalendarPage />));
+    const btn = await screen.findByRole('button', { name: en.calendar.scheduleSession });
+    // h-11 = 2.75rem = 44px. Πριν ήταν text-xs χωρίς ύψος: 16px, και ένα
+    // tap λίγο έξω από τα γράμματα έπεφτε στο section από πίσω.
+    expect(btn.className).toMatch(/\bh-11\b/);
+    fireEvent.click(btn);
+    expect(await screen.findByPlaceholderText(en.calendar.sessionTitlePlaceholder)).toBeTruthy();
+    expect(screen.getByText(en.calendar.newScheduled)).toBeTruthy();
+  });
+
   it('δημιουργεί planned session από τη φόρμα και τη δείχνει στη μέρα', async () => {
     render(wrap(<CalendarPage />));
     await waitFor(() => expect(screen.getByText(en.calendar.scheduleSession)).toBeTruthy());
@@ -332,6 +346,61 @@ describe('CalendarPage — accessibility (πλέγμα ημερών)', () => {
     fireEvent.keyDown(todayCell, { key: 'Home' });
     const monday = await screen.findByRole('button', { name: /Monday, August 10, 2026/i });
     await waitFor(() => expect(monday.getAttribute('aria-pressed')).toBe('true'));
+  });
+});
+
+describe('CalendarPage — καταγραφή μέρας και διόρθωση', () => {
+  const today = localDay(new Date(FIXED_NOW));
+
+  it('«Ξεκίνα σήμερα» ανοίγει κενή συνεδρία χωρίς το sheet προγράμματος', async () => {
+    render(wrap(<CalendarPage />));
+    fireEvent.click(await screen.findByRole('button', { name: en.calendar.logToday }));
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/workout/active'));
+    const [workout] = await db.workouts.toArray();
+    expect(localDay(new Date(workout!.started_at))).toBe(today);
+    expect(workout!.ended_at).toBeNull();
+  });
+
+  it('«Καταγραφή για αυτή τη μέρα» βάζει τη συνεδρία στην επιλεγμένη παλιά μέρα', async () => {
+    render(wrap(<CalendarPage />));
+    fireEvent.click(await screen.findByRole('button', { name: /Saturday, August 1, 2026/i }));
+    fireEvent.click(await screen.findByRole('button', { name: en.calendar.logForDay }));
+    await waitFor(async () => expect(await db.workouts.count()).toBe(1));
+    const [workout] = await db.workouts.toArray();
+    expect(localDay(new Date(workout!.started_at))).toBe('2026-08-01');
+  });
+
+  it('μετονομάζει προπόνηση και τη διαγράφει με αναίρεση', async () => {
+    const workout = await startWorkout('strength', today, null, null, 'Push day');
+    await endWorkout(workout.id);
+
+    render(wrap(<CalendarPage />));
+    expect(await screen.findByRole('link', { name: /Push day/ })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Push day' }));
+    const name = await screen.findByDisplayValue('Push day');
+    fireEvent.change(name, { target: { value: 'Pull day' } });
+    fireEvent.click(screen.getByRole('button', { name: en.common.save }));
+
+    await waitFor(async () => {
+      const row = await db.workouts.get(workout.id);
+      expect(row!.workout_type).toBe('Pull day');
+    });
+    expect(await screen.findByRole('link', { name: /Pull day/ })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Pull day' }));
+    fireEvent.click(await screen.findByRole('button', { name: en.common.delete }));
+    await waitFor(async () => {
+      const row = await db.workouts.get(workout.id);
+      expect(row!.deleted_at).not.toBeNull();
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: en.common.undo }));
+    await waitFor(async () => {
+      const row = await db.workouts.get(workout.id);
+      expect(row!.deleted_at).toBeNull();
+    });
+    expect(await screen.findByRole('link', { name: /Pull day/ })).toBeTruthy();
   });
 
   it('τα βελάκια μήνα (prev/next) έχουν προσβάσιμο όνομα', async () => {

@@ -78,6 +78,8 @@ describe('DashboardPage — empty DB', () => {
 
     // Η κενή Αρχική δεν είναι σιωπηλή — δείχνει τι να κάνεις μετά.
     await waitFor(() => expect(screen.getByText(en.dashboard.next.title)).toBeTruthy());
+    expect(screen.getByText(en.dashboard.next.body)).toBeTruthy();
+    expect(screen.getByText(en.dashboard.next.weighIn)).toBeTruthy();
     expect(screen.getByText(en.dashboard.next.goal)).toBeTruthy();
 
     // Καμία κάρτα με μηδενικά: ένα «0/7» θα έδειχνε σαν να μετρήθηκε κάτι.
