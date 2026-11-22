@@ -118,6 +118,23 @@ export function CalendarPage() {
     undefined,
   );
 
+  /**
+   * Το BottomSheet cleanup (`useBackToClose`) καλεί `history.back()` ασύγχρονα.
+   * Περιμένουμε το `popstate` πριν ανοίξουμε δεύτερο sheet ή πλοηγηθούμε σε
+   * άλλο route (ίδιο fix με BottomTabNav — αλλιώς το `history.back()` ακυρώνει
+   * το νέο route/sheet).
+   */
+  const runAfterSheetClose = (action: () => void) => {
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('popstate', go);
+      action();
+    };
+    window.addEventListener('popstate', go, { once: true });
+    window.setTimeout(go, 300);
+  };
   // Προσθήκη προπόνησης στην επιλεγμένη μέρα (σήμερα = live, παλιά = backdated).
   const onPickProgramDay = async (dayId: string) => {
     if (!selected || starting) return;
@@ -133,7 +150,7 @@ export function CalendarPage() {
         return;
       }
       setAddOpen(false);
-      navigate('/workout/active');
+      runAfterSheetClose(() => navigate('/workout/active'));
     } finally {
       setStarting(false);
     }
@@ -153,7 +170,7 @@ export function CalendarPage() {
         return;
       }
       setAddOpen(false);
-      navigate('/workout/active');
+      runAfterSheetClose(() => navigate('/workout/active'));
     } finally {
       setStarting(false);
     }
@@ -185,7 +202,7 @@ export function CalendarPage() {
       }
       setAddOpen(false);
       setAdHocLabel('');
-      navigate('/workout/active');
+      runAfterSheetClose(() => navigate('/workout/active'));
     } finally {
       setStarting(false);
     }
@@ -228,7 +245,9 @@ export function CalendarPage() {
       }
       setAddOpen(false);
       setAdHocLabel('');
-      navigate('/workout/active', { state: { seedExercises: names } });
+      runAfterSheetClose(() =>
+        navigate('/workout/active', { state: { seedExercises: names } }),
+      );
     } finally {
       setStarting(false);
     }
@@ -257,7 +276,7 @@ export function CalendarPage() {
       }
       setScheduleOpen(false);
       setEditingSession(null);
-      navigate('/workout/active');
+      runAfterSheetClose(() => navigate('/workout/active'));
       return true;
     } finally {
       setStarting(false);
@@ -274,29 +293,12 @@ export function CalendarPage() {
     setStartError(null);
   };
 
-  /**
-   * Το BottomSheet cleanup (`useBackToClose`) καλεί `history.back()` ασύγχρονα.
-   * Περιμένουμε το `popstate` πριν ανοίξουμε δεύτερο sheet ή πλοηγηθούμε σε
-   * άλλο route (ίδιο fix με BottomTabNav — αλλιώς το `history.back()` ακυρώνει
-   * το νέο route/sheet).
-   */
-  const runAfterSheetClose = (action: () => void) => {
-    let done = false;
-    const go = () => {
-      if (done) return;
-      done = true;
-      window.removeEventListener('popstate', go);
-      action();
-    };
-    window.addEventListener('popstate', go, { once: true });
-    window.setTimeout(go, 300);
-  };
   // Γρήγορη δημιουργία προγράμματος από το ημερολόγιο: φτιάχνει κενό και πάει
   // κατευθείαν στον editor του, ώστε να το χτίσεις χωρίς να ψάχνεις το section.
   const onCreateProgram = async () => {
     const p = await createProgram(t('programs.namePlaceholder'));
     setAddOpen(false);
-    navigate(`/programs/${p.id}`);
+    runAfterSheetClose(() => navigate(`/programs/${p.id}`));
   };
   const dotOf = (kind: string) =>
     activities.find((a) => a.key === kind)?.dot_class ?? FALLBACK_DOT;

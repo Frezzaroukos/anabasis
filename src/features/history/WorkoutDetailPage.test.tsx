@@ -100,6 +100,28 @@ describe('WorkoutDetailPage — inline set & exercise management on past workout
     });
   });
 
+  it('κρύβει volume/chevron στο κινητό ώστε το όνομα άσκησης να μη συμπιέζεται', async () => {
+    const w = await startWorkout('strength', '2026-11-18', null, null, 'Upper');
+    await addSet({
+      workout_id: w.id,
+      exercise_id: bench.id,
+      weight_kg: 80,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await endWorkout(w.id);
+
+    renderDetail(w.id);
+    const link = await screen.findByRole('link', { name: /Bench Press/ });
+    const volume = within(link).getByText('400 kg');
+    expect(volume.className).toContain('hidden');
+    expect(volume.className).toContain('sm:inline');
+    const chevron = link.querySelector('svg');
+    expect(chevron?.getAttribute('class')).toContain('hidden');
+    expect(chevron?.getAttribute('class')).toContain('sm:block');
+  });
+
   it('undoes a set deletion from the toast', async () => {
     const w = await startWorkout('strength', '2026-11-18', null, null, 'Upper');
     const s = await addSet({
