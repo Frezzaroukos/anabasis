@@ -25,7 +25,7 @@ export const CHART_RANGE_LABEL_KEY: Record<ChartRangeKey, string> = {
 
 /** Recharts `interval` ώστε ο άξονας να μην πλημμυρίζει σε μεγάλα εύρη. */
 export function tickIntervalFor(range: ChartRangeKey, pointCount: number): number {
-  const targetTicks = range === '1M' ? 6 : range === '3M' ? 6 : 8;
+  const targetTicks = range === '1M' || range === '3M' ? 6 : 4;
   if (pointCount <= targetTicks) return 0;
   return Math.ceil(pointCount / targetTicks) - 1;
 }

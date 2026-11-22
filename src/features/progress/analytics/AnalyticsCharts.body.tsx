@@ -89,7 +89,7 @@ export function WeeklyVolumeChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -18 }}>
+      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
           dataKey="weekStart"
@@ -103,7 +103,7 @@ export function WeeklyVolumeChart({
           tick={CHART_TICK}
           axisLine={false}
           tickLine={false}
-          width={44}
+          width={40}
           tickFormatter={(v: number) => compactNumber(v)}
         />
         <Tooltip
@@ -133,7 +133,7 @@ export function FrequencyChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
           dataKey="weekStart"
@@ -148,7 +148,7 @@ export function FrequencyChart({
           tick={CHART_TICK}
           axisLine={false}
           tickLine={false}
-          width={30}
+          width={28}
         />
         <Tooltip
           cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
@@ -224,7 +224,7 @@ export function PRTimelineChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <ChartGradientDefs />
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
@@ -240,7 +240,7 @@ export function PRTimelineChart({
           tick={CHART_TICK}
           axisLine={false}
           tickLine={false}
-          width={30}
+          width={28}
         />
         <Tooltip
           contentStyle={{ ...TOOLTIP_STYLE, maxWidth: 280 }}
@@ -300,7 +300,7 @@ export function WeeklyCategoryChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
           dataKey="weekStart"
@@ -310,7 +310,7 @@ export function WeeklyCategoryChart({
           axisLine={false}
           tickLine={false}
         />
-        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={30} />
+        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={28} />
         <Tooltip
           cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
           contentStyle={TOOLTIP_STYLE}
@@ -345,7 +345,7 @@ export function SkillStepsChart({
   const { t } = useTranslation();
   return (
     <ChartFrame summary={summary}>
-      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
         <ChartGradientDefs />
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
         <XAxis
@@ -356,7 +356,7 @@ export function SkillStepsChart({
           axisLine={false}
           tickLine={false}
         />
-        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={30} />
+        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={28} />
         <Tooltip
           contentStyle={{ ...TOOLTIP_STYLE, maxWidth: 280 }}
           labelFormatter={(d: string) => localDateLabel(d)}
