@@ -14,7 +14,7 @@
 import { v4 as uuid } from 'uuid';
 import { db } from './schema';
 import { getCurrentUserId } from './session';
-import { setVolume } from '../domain/volume';
+import { setReps, setVolume } from '../domain/volume';
 import type { Goal, GoalMetric, GoalPeriod, GoalPeriodAnchor } from './types';
 
 const now = () => new Date().toISOString();
@@ -427,7 +427,9 @@ export async function getGoalProgress(goal: Goal, now: Date = new Date()): Promi
           (goal.exercise_id == null || s.exercise_id === goal.exercise_id),
       );
       if (goal.metric === 'sets') current = sets.length;
-      else if (goal.metric === 'reps') current = sets.reduce((a, s) => a + (s.reps ?? 0), 0);
+      else if (goal.metric === 'reps')
+        // Κύριες + mini-reps rest-pause — ίδιος ορισμός με το setVolume.
+        current = sets.reduce((a, s) => a + setReps(s), 0);
       else if (goal.metric === 'volume_kg') current = sets.reduce((a, s) => a + setVolume(s), 0);
     }
   }

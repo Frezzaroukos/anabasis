@@ -14,6 +14,8 @@ import {
   BUILTIN_PERIOD_ANCHORS,
 } from '@/lib/db/types';
 import type { Goal, GoalLoadMode, GoalMetric, GoalPeriod, GoalPeriodAnchor } from '@/lib/db/types';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 import { goalTitle } from '../goalTitle';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +44,10 @@ export function GoalFormSheet({
   goal: Goal | null;
 }) {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  // Μονάδα εμφάνισης/εισαγωγής βάρους. Το storage είναι ΠΑΝΤΑ kg· τη μετατροπή
+  // την κάνουν τα parseWeightToKg / toDisplayWeight στο boundary.
+  const weightUnit = settings?.weight_unit ?? 'kg';
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const skills = useLiveQuery(() => listSkills(), [], []);
   const trackers = useLiveQuery(() => listTrackers(), [], []);
@@ -65,11 +71,20 @@ export function GoalFormSheet({
 
   useEffect(() => {
     if (!open) return;
-    setMetric(goal?.metric ?? 'sessions');
+    const m = goal?.metric ?? 'sessions';
+    setMetric(m);
     setPeriod(goal?.period ?? 'week');
     setAnchor(goal?.period_anchor ?? 'calendar');
-    setTarget(String(goal?.target ?? 4));
-    setTargetWeight(goal?.target_weight != null ? String(goal.target_weight) : '');
+    // Για στόχους βάρους το αποθηκευμένο target είναι kg → δείχνεται στη μονάδα
+    // του χρήστη· για όλα τα άλλα μέτρα μένει ως έχει (αριθμός/απόσταση/χρόνος).
+    if (m === 'top_weight' && goal?.target != null) {
+      setTarget(String(toDisplayWeight(goal.target, weightUnit)));
+    } else {
+      setTarget(String(goal?.target ?? 4));
+    }
+    setTargetWeight(
+      goal?.target_weight != null ? String(toDisplayWeight(goal.target_weight, weightUnit)) : '',
+    );
     setTargetReps(goal?.target_reps != null ? String(goal.target_reps) : '');
     setLoadMode(goal?.load_mode ?? 'total');
     setSkillId(goal?.skill_id ?? null);
@@ -78,6 +93,11 @@ export function GoalFormSheet({
     setTrackerId(goal?.custom_tracker_id ?? null);
     setTrackerQuery('');
     setLabel(goal?.label ?? '');
+    // ΣΗΜΕΙΩΣΗ: ΔΕΝ εξαρτάται από το weightUnit. Τα settings υδροδοτούνται στο
+    // boot πριν ανοίξει η φόρμα (BootContext gate), άρα το weightUnit είναι ήδη
+    // σωστό εδώ. Αν το βάζαμε στα deps, μια καθυστερημένη φόρτωση θα ξανάτρεχε
+    // το reset και θα έσβηνε ό,τι είχε πληκτρολογήσει ο χρήστης.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, goal]);
 
   useEffect(() => {
@@ -157,12 +177,22 @@ export function GoalFormSheet({
 
   const preview = goalTitle(
     t,
-    { metric, target: valid ? targetNum : 0, period, activity_key: null, exercise_id: exerciseId, target_weight: targetWeightNum || null, target_reps: targetRepsNum || null, load_mode: loadMode },
+    {
+      metric,
+      target: valid ? (isWeightTarget ? parseWeightToKg(targetNum, weightUnit) : targetNum) : 0,
+      period,
+      activity_key: null,
+      exercise_id: exerciseId,
+      target_weight: isStrength ? parseWeightToKg(targetWeightNum, weightUnit) : null,
+      target_reps: targetRepsNum || null,
+      load_mode: loadMode,
+    },
     {
       activity: null,
       exercise: exerciseId ? (exercises.find((e) => e.id === exerciseId)?.name ?? null) : null,
       skill: selectedSkill?.name ?? null,
       custom: selectedTracker?.name ?? null,
+      weightUnit,
     },
   );
 
@@ -171,16 +201,17 @@ export function GoalFormSheet({
     busyRef.current = true;
     setBusy(true);
     setSaveError(false);
+    // Το βάρος εισάγεται στη μονάδα του χρήστη → αποθηκεύεται ΠΑΝΤΑ σε kg.
     const payload = {
       metric,
-      target: targetNum,
+      target: isWeightTarget ? parseWeightToKg(targetNum, weightUnit) : targetNum,
       period,
       period_anchor: period === 'day' ? 'calendar' : anchor,
       activity_key: null,
       exercise_id: isSkillGoal || isCustom ? null : exerciseId,
       skill_id: isSkillGoal ? skillId : null,
       custom_tracker_id: isCustom ? trackerId : null,
-      target_weight: isStrength ? targetWeightNum : null,
+      target_weight: isStrength ? parseWeightToKg(targetWeightNum, weightUnit) : null,
       target_reps: isStrength ? targetRepsNum : null,
       load_mode: isStrength ? loadMode : null,
       label: label.trim() || null,
@@ -329,7 +360,7 @@ export function GoalFormSheet({
                   className="h-10 font-mono tabular-nums"
                 />
               </Field>
-              <Field label={t('goals.weightLabel')} className="w-32">
+              <Field label={t('goals.weightLabel', { unit: weightUnit })} className="w-32">
                 <Input
                   inputMode="decimal"
                   value={targetWeight}
@@ -363,7 +394,7 @@ export function GoalFormSheet({
         ) : isWeightTarget ? (
           // Στόχος φορτίου («70kg weighted pull-up»): διάλεξε άσκηση (παρακάτω)
           // + βάρος-στόχο. Milestone — χωρίς περίοδο.
-          <Field label={t('goals.loadTargetLabel')} className="w-40">
+          <Field label={t('goals.loadTargetLabel', { unit: weightUnit })} className="w-40">
             <Input
               inputMode={countMetric ? 'numeric' : 'decimal'}
               value={target}

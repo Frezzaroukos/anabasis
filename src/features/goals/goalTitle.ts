@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
-import type { Goal } from '@/lib/db/types';
+import type { Goal, WeightUnit } from '@/lib/db/types';
 import { METRIC_UNIT } from '@/lib/db/goals';
+import { toDisplayWeight } from '@/lib/units';
 
 /**
  * Παράγει τον τίτλο ενός στόχου από τα πεδία του, όταν ο χρήστης δεν έδωσε
@@ -10,6 +11,9 @@ import { METRIC_UNIT } from '@/lib/db/goals';
  * Γιατί συνάρτηση και όχι αποθηκευμένο string: αν ο χρήστης αλλάξει το ποσό
  * ή την περίοδο, ένας αποθηκευμένος τίτλος θα έλεγε ψέματα. Ο τίτλος είναι
  * παράγωγο των δεδομένων, όχι δεύτερο αντίγραφό τους.
+ *
+ * Τα βάρη αποθηκεύονται ΠΑΝΤΑ σε kg· ο τίτλος δείχνει τη μονάδα του χρήστη
+ * (`weightUnit`), ώστε ένας χρήστης lb να βλέπει «@ 135 lb», όχι «@ 61.23 kg».
  */
 export function goalTitle(
   t: TFunction,
@@ -22,8 +26,13 @@ export function goalTitle(
     exercise?: string | null;
     skill?: string | null;
     custom?: string | null;
+    /** Μονάδα βάρους χρήστη για display· default kg (πίσω-συμβατό). */
+    weightUnit?: WeightUnit;
   } = {},
 ): string {
+  const weightUnit = names.weightUnit ?? 'kg';
+  const dispWeight = (kg: number) => toDisplayWeight(kg, weightUnit);
+
   // Milestone skill goal: «Κατέκτησε το Front Lever» — χωρίς περίοδο, το
   // ζητούμενο είναι το skill, όχι ένας ρυθμός.
   if (goal.metric === 'skill_steps') {
@@ -38,7 +47,8 @@ export function goalTitle(
     return t(key, {
       sets: goal.target,
       reps: goal.target_reps ?? '—',
-      weight: goal.target_weight ?? '—',
+      weight: goal.target_weight != null ? dispWeight(goal.target_weight) : '—',
+      unit: weightUnit,
       exercise,
     });
   }
@@ -46,7 +56,7 @@ export function goalTitle(
   // Milestone φορτίου: «Φτάσε 70 kg · Weighted Pull-up» — χωρίς περίοδο.
   if (goal.metric === 'top_weight') {
     const exercise = names.exercise ?? t('goals.metric.top_weight');
-    return t('goals.loadGoalTitle', { load: goal.target, exercise });
+    return t('goals.loadGoalTitle', { load: dispWeight(goal.target), unit: weightUnit, exercise });
   }
 
   // Custom tracker: «Κρύα ντους · 30 / εβδομάδα» — το όνομα του tracker + στόχος

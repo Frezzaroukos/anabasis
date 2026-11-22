@@ -6,6 +6,8 @@ import type { GoalProgress } from '@/lib/db/goals';
 import { addTrackerEntry } from '@/lib/db/trackers';
 import type { Goal } from '@/lib/db/types';
 import { useCountUp } from '@/hooks/useCountUp';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { toDisplayWeight } from '@/lib/units';
 import { cn } from '@/lib/utils';
 import { goalTitle } from '../goalTitle';
 import { GoalProgramLink } from './GoalProgramLink';
@@ -43,11 +45,15 @@ export function GoalRow({
   onDelete: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const weightUnit = settings?.weight_unit ?? 'kg';
   const p = progress;
   // Ολοκληρωμένος στόχος = επίτευξη → χρυσό, το ΜΟΝΟ χρώμα που δεν είναι primary.
   const completed = p.ratio >= 1;
   const decimals = Number.isInteger(p.current) ? 0 : 1;
   const displayCurrent = useCountUp(p.current, 450, decimals);
+  // Τα βάρη αποθηκεύονται σε kg· η γραμμή δείχνει τη μονάδα του χρήστη.
+  const displayTarget = toDisplayWeight(p.target, weightUnit);
 
   // «Μόλις έγινε» pulse — ξεχωρίζει τη ΣΤΙΓΜΗ της επίτευξης από το μόνιμο
   // χρυσό state που ακολουθεί. Χωρίς αυτό ο στόχος περνάει σε completed
@@ -65,6 +71,14 @@ export function GoalRow({
   }, [completed]);
 
   const isFrequencyGoal = p.goal.metric === 'sessions' && p.goal.period === 'week';
+  // Μετρικές όπου το target/current είναι ΒΑΡΟΣ σε kg αποθηκευμένο: η γραμμή τα
+  // δείχνει στη μονάδα του χρήστη (kg ή lb) και τη σωστή ετικέτα μονάδας.
+  const isWeightMetric = p.goal.metric === 'top_weight' || p.goal.metric === 'volume_kg';
+  const displayCurrentValue = isWeightMetric
+    ? toDisplayWeight(displayCurrent, weightUnit)
+    : displayCurrent;
+  const displayTargetValue = isWeightMetric ? displayTarget : p.target;
+  const displayUnit = isWeightMetric ? weightUnit : p.unit;
 
   return (
     <li
@@ -83,12 +97,13 @@ export function GoalRow({
                 exercise: exerciseName(p.goal.exercise_id),
                 skill: skillName(p.goal.skill_id),
                 custom: trackerName(p.goal.custom_tracker_id),
+                weightUnit,
               })}
           </p>
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-2">
           <p className="font-mono text-xs tabular-nums text-muted-foreground">
-            {displayCurrent} / {p.target} {p.unit}
+            {displayCurrentValue} / {displayTargetValue} {displayUnit}
           </p>
           {completed && (
             <span
