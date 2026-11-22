@@ -55,7 +55,9 @@ export function NavBar() {
             </button>
           )}
           {/* One-tap Settings on phones: the More sheet works, but this is the
-              predictable iOS path. Hidden on tablet/desktop where SideNav has it. */}
+              predictable iOS path. Hidden on tablet/desktop where SideNav has it, and on the
+              Settings hub itself (a link to the page you are on is noise). */}
+          {pathname !== '/settings' && (
           <Link
             to="/settings"
             aria-label={t('nav.settings')}
@@ -63,6 +65,7 @@ export function NavBar() {
           >
             <Settings className="h-5 w-5" aria-hidden />
           </Link>
+          )}
         </div>
       </div>
     </div>

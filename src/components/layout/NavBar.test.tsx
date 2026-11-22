@@ -72,3 +72,18 @@ describe('NavBar', () => {
     expect(screen.queryByRole('button', { name: 'Forward' })).toBeNull();
   });
 });
+
+describe('NavBar — settings shortcut', () => {
+  it('shows the Settings shortcut on normal pages but not on the Settings hub', () => {
+    const { unmount } = renderAt('/calendar');
+    expect(screen.getByRole('link', { name: en.nav.settings })).toBeTruthy();
+    unmount();
+    renderAt('/settings');
+    expect(screen.queryByRole('link', { name: en.nav.settings })).toBeNull();
+  });
+
+  it('keeps the shortcut on settings sub-pages (it is the way up to the hub)', () => {
+    renderAt('/settings/training');
+    expect(screen.getByRole('link', { name: en.nav.settings })).toBeTruthy();
+  });
+});
