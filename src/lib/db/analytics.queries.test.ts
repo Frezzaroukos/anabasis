@@ -4,6 +4,7 @@ import { SEED_EXERCISES, SEED_SKILLS, SEED_SKILL_STEPS } from './seeds';
 import { addSet, endWorkout, getExerciseProgress, startWorkout } from './queries';
 import { getCurrentUserId, setCurrentUserId } from './session';
 import {
+  getBodyWeightSeries,
   getCategoryDistribution,
   getPRTimeline,
   getSkillStepTimeline,
@@ -287,5 +288,37 @@ describe('getSkillStepTimeline', () => {
     const points = await getSkillStepTimeline(30);
     expect(points.map((p) => p.cumulative)).toEqual([2, 3]);
     expect(points[0]!.events).toHaveLength(2);
+  });
+});
+
+describe('getBodyWeightSeries', () => {
+  let original: string;
+  beforeAll(() => {
+    original = getCurrentUserId();
+    setCurrentUserId('analytics-bodyweight-series');
+  });
+  afterAll(() => setCurrentUserId(original));
+
+  it('μόνο ζωντανές μετρήσεις με βάρος, μέσα στο εύρος, ταξινομημένες', async () => {
+    const day = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const row = (id: string, date: string, weight: number | null, deleted = false) => ({
+      id, user_id: 'analytics-bodyweight-series', date, weight_kg: weight,
+      calories_in: null, calories_out: null, protein_g: null, carbs_g: null, fat_g: null,
+      body_fat_pct: null, steps: null, created_at: date, updated_at: date,
+      deleted_at: deleted ? date : null,
+    });
+    await db.body_metrics.bulkPut([
+      row('b1', day(5), 80),
+      row('b2', day(20), 79),
+      row('b3', day(10), null),
+      row('b4', day(8), 81, true),
+      row('b5', day(400), 70),
+    ] as never);
+    const s = await getBodyWeightSeries(60);
+    expect(s.map((p) => p.value)).toEqual([79, 80]);
   });
 });

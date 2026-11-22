@@ -191,3 +191,13 @@ export async function getSkillStepTimeline(days: number): Promise<PRTimelinePoin
     .filter((e) => e.date >= since);
   return buildPRTimeline(events);
 }
+
+/** Σωματικό βάρος (kg) ανά ημέρα στο εύρος — μόνο ζωντανές μετρήσεις με τιμή. */
+export async function getBodyWeightSeries(days: number): Promise<{ date: string; value: number }[]> {
+  const since = localDayDaysAgo(days);
+  const rows = await db.body_metrics.where('user_id').equals(getCurrentUserId()).toArray();
+  return rows
+    .filter((r) => r.deleted_at == null && r.weight_kg != null && r.date >= since)
+    .map((r) => ({ date: r.date, value: r.weight_kg as number }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}

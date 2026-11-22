@@ -224,3 +224,49 @@ describe('buildTrainingHeatmap', () => {
     expect(days.filter((d) => d.sessions > 0)).toHaveLength(2);
   });
 });
+
+import { buildBodyVsStrength } from './analytics';
+
+describe('buildBodyVsStrength', () => {
+  it('κοινός δείκτης: πρώτη τιμή κάθε σειράς = 100, union ημερών, null όπου λείπει σημείο', () => {
+    const out = buildBodyVsStrength(
+      [
+        { date: '2026-01-01', value: 100 },
+        { date: '2026-01-15', value: 120 },
+      ],
+      [
+        { date: '2026-01-01', value: 80 },
+        { date: '2026-01-08', value: 84 },
+        { date: '2026-01-15', value: 80 },
+      ],
+    );
+    expect(out.map((p) => p.date)).toEqual(['2026-01-01', '2026-01-08', '2026-01-15']);
+    expect(out[0]).toMatchObject({ strengthIdx: 100, bodyIdx: 100, strength: 100, body: 80 });
+    expect(out[1]).toMatchObject({ strengthIdx: null, bodyIdx: 105, strength: null });
+    expect(out[2]).toMatchObject({ strengthIdx: 120, bodyIdx: 100 });
+  });
+  it('λιγότερα από 2 σημεία σε κάποια σειρά → κενό (καμία σύγκριση)', () => {
+    expect(
+      buildBodyVsStrength([{ date: '2026-01-01', value: 100 }], [
+        { date: '2026-01-01', value: 80 },
+        { date: '2026-01-02', value: 81 },
+      ]),
+    ).toEqual([]);
+    expect(buildBodyVsStrength([], [])).toEqual([]);
+  });
+  it('αγνοεί μη-θετικές τιμές και δεν εξαρτάται από τη σειρά εισόδου', () => {
+    const out = buildBodyVsStrength(
+      [
+        { date: '2026-02-01', value: 110 },
+        { date: '2026-01-01', value: 100 },
+        { date: '2026-01-05', value: 0 },
+      ],
+      [
+        { date: '2026-02-01', value: 79 },
+        { date: '2026-01-01', value: 80 },
+      ],
+    );
+    expect(out[0]!.strengthIdx).toBe(100);
+    expect(out.at(-1)!.strengthIdx).toBe(110);
+  });
+});
