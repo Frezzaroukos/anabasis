@@ -10,8 +10,8 @@ import { v4 as uuid } from 'uuid';
 import type { Table } from 'dexie';
 import { db, SCHEMA_VERSION } from './schema';
 import { getCurrentUserId, setCurrentUserId } from './session';
-import { candidatesFromSet, candidatesFromWorkout, isNewPR } from '../domain/pr';
-import { realPRs } from '../domain/prBaseline';
+import { candidatesFromSet, candidatesFromWorkout, isNewPR, LATE_PR_TYPES } from '../domain/pr';
+import { realPRs, xpPRs } from '../domain/prBaseline';
 import { setVolume } from '../domain/volume';
 import { isWorkingSet } from '../domain/setFilters';
 import { e1rm } from '../domain/e1rm';
@@ -536,9 +536,15 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
   const hadHistory = existing.length > 0;
 
   for (const c of candidates) {
-    const current = existing.find((r) => r.type === c.type) ?? null;
+    // Οι γραμμές PR είναι ΙΣΤΟΡΙΚΟ (μία ανά βελτίωση) — σύγκριση με την
+    // καλύτερη, όχι με όποια επιστρέψει πρώτη η βάση (ψεύτικο «ρεκόρ»).
+    let current: PersonalRecord | null = null;
+    for (const r of existing) {
+      if (r.type !== c.type) continue;
+      if (current == null || isNewPR({ ...c, value: r.value }, current)) current = r;
+    }
     if (!isNewPR(c, current)) continue;
-    if (hadHistory) broken.push(c.type);
+    if (hadHistory && (current != null || !LATE_PR_TYPES.has(c.type))) broken.push(c.type);
     await db.personal_records.add({
       id: uuid(),
       user_id: getCurrentUserId(),
@@ -634,6 +640,29 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
   ]);
   const workoutById = new Map(workouts.map((w) => [w.id, w]));
 
+  // Ασκήσεις σωματικού βάρους: σετ χωρίς αποθηκευμένο σωματικό βάρος (παλιά /
+  // εισαγμένα) παίρνουν την τελευταία μέτρηση ΜΕΧΡΙ τη μέρα της προπόνησης —
+  // ίδιος κανόνας με το addSet και το chart, ποτέ από το μέλλον. Χωρίς μέτρηση
+  // μένει null → κανένα ρεκόρ συνολικού φορτίου (όχι επινοημένο νούμερο).
+  const exercise = await db.exercises.get(exerciseId);
+  const bwHistory = exercise?.is_bodyweight
+    ? (await db.body_metrics.where('user_id').equals(uid).toArray())
+        .filter((r) => r.deleted_at == null && r.weight_kg != null)
+        .sort((a, b) => a.date.localeCompare(b.date))
+    : [];
+  const withBodyweight = (set: SetEntry): SetEntry => {
+    if (set.bodyweight_kg != null || bwHistory.length === 0) return set;
+    const w = workoutById.get(set.workout_id);
+    if (!w) return set;
+    const day = localDay(new Date(w.started_at));
+    let found: number | null = null;
+    for (const r of bwHistory) {
+      if (r.date > day) break;
+      found = r.weight_kg;
+    }
+    return found == null ? set : { ...set, bodyweight_kg: found };
+  };
+
   const live = allSets
     .filter(
       (s) => isWorkingSet(s) && workoutById.get(s.workout_id)?.deleted_at == null,
@@ -651,7 +680,7 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
   const desired: DesiredPR[] = [];
   const best = new Map<PRType, PersonalRecord>();
   for (const set of live) {
-    for (const c of candidatesFromSet(set)) {
+    for (const c of candidatesFromSet(withBodyweight(set))) {
       const current = best.get(c.type) ?? null;
       if (!isNewPR(c, current)) continue;
       const row: PersonalRecord = {
@@ -1550,7 +1579,7 @@ export async function getGamificationInput(): Promise<{
   const weekSets = sets.filter(
     (s) => weekWorkoutIds.has(s.workout_id) && isWorkingSet(s),
   ).length;
-  const brokenPrs = realPRs(prs);
+  const brokenPrs = xpPRs(prs, LATE_PR_TYPES);
   const weekPrs = brokenPrs.filter((p) => inWeek(p.achieved_at)).length;
   // Ένα βήμα μπορεί να ξανακατακτηθεί μετά από reset· μετρά μία φορά/εβδομάδα.
   const weekStepIds = new Set(
@@ -1798,33 +1827,39 @@ export async function saveBodyMetric(
   if (existing) {
     // Unique [user_id+date]: ένα tombstone ανασταίνεται αντί να σπάσει το add.
     await db.body_metrics.update(existing.id, { ...patch, updated_at: t, deleted_at: null });
-    return;
+  } else {
+    await db.body_metrics.add({
+      id: uuid(),
+      user_id: getCurrentUserId(),
+      date,
+      weight_kg: null,
+      steps: null,
+      calories_in: null,
+      calories_out: null,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      body_fat_pct: null,
+      waist_cm: null,
+      chest_cm: null,
+      hips_cm: null,
+      arm_cm: null,
+      forearm_cm: null,
+      thigh_cm: null,
+      calf_cm: null,
+      neck_cm: null,
+      notes: null,
+      created_at: t,
+      updated_at: t,
+      ...patch,
+    });
   }
-  await db.body_metrics.add({
-    id: uuid(),
-    user_id: getCurrentUserId(),
-    date,
-    weight_kg: null,
-    steps: null,
-    calories_in: null,
-    calories_out: null,
-    protein_g: null,
-    carbs_g: null,
-    fat_g: null,
-    body_fat_pct: null,
-    waist_cm: null,
-    chest_cm: null,
-    hips_cm: null,
-    arm_cm: null,
-    forearm_cm: null,
-    thigh_cm: null,
-    calf_cm: null,
-    neck_cm: null,
-    notes: null,
-    created_at: t,
-    updated_at: t,
-    ...patch,
-  });
+  // Νέο/διορθωμένο σωματικό βάρος αλλάζει τα ρεκόρ συνολικού φορτίου (σώμα +
+  // πρόσθετο) των BW ασκήσεων — π.χ. μέτρηση με παλιά ημερομηνία γεμίζει το ιστορικό.
+  if ('weight_kg' in patch) {
+    const { recomputeBodyweightExercisePRs } = await import('./bodyweightPRs');
+    await recomputeBodyweightExercisePRs();
+  }
 }
 
 export async function getBodyMetric(date: string): Promise<BodyMetric | undefined> {
@@ -1920,6 +1955,10 @@ export async function importBodyMetrics(
       });
       added += 1;
     }
+  }
+  if (added + updated > 0) {
+    const { recomputeBodyweightExercisePRs } = await import('./bodyweightPRs');
+    await recomputeBodyweightExercisePRs();
   }
   return { added, updated };
 }

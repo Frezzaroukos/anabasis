@@ -56,6 +56,13 @@ export const BUILTIN_PR_TYPES = [
   'max_volume',
   'e1rm',
   'max_hold',
+  /**
+   * Ασκήσεις σωματικού βάρους: ΣΥΝΟΛΙΚΟ φορτίο (σώμα + πρόσθετο). Δίπλα στα
+   * max_weight/e1rm (μόνο πρόσθετο), ώστε μια μέρα χωρίς βάρη (σκέτο BW) να
+   * μετρά κι αυτή — χωρίς schema bump, το `type` είναι ελεύθερο string.
+   */
+  'max_total_load',
+  'e1rm_total',
   /** v7: PRs για δραστηριότητες χωρίς άσκηση (τρέξιμο/ποδήλατο/κολύμβηση) */
   'longest_distance',
   'longest_duration',

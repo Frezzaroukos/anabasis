@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { prLineApplies } from './ExerciseProgressChart';
+import { prTypeFor } from './ExerciseProgressChart';
 
 /**
  * Στις ασκήσεις σωματικού βάρους το chart δείχνει συνολικό φορτίο
- * (σωματικό + πρόσθετο) για topWeight/e1rm, αλλά το PR είναι μόνο το
- * πρόσθετο. Η γραμμή PR εκεί θα ήταν σε άλλη κλίμακα → την κρύβουμε.
+ * (σωματικό + πρόσθετο) για topWeight/e1rm → η γραμμή PR πρέπει να είναι το
+ * συνολικό ρεκόρ, όχι το πρόσθετο (αλλιώς άλλη κλίμακα).
  */
-describe('prLineApplies', () => {
-  it('κρύβει τη γραμμή PR για topWeight/e1rm σε bodyweight άσκηση', () => {
-    expect(prLineApplies('topWeight', true)).toBe(false);
-    expect(prLineApplies('e1rm', true)).toBe(false);
+describe('prTypeFor', () => {
+  it('bodyweight: topWeight/e1rm → συνολικά ρεκόρ', () => {
+    expect(prTypeFor('topWeight', true)).toBe('max_total_load');
+    expect(prTypeFor('e1rm', true)).toBe('e1rm_total');
   });
 
-  it('την κρατά για volume/reps (συμβατή βάση) και για μη-bodyweight', () => {
-    expect(prLineApplies('volume', true)).toBe(true);
-    expect(prLineApplies('reps', true)).toBe(true);
-    expect(prLineApplies('topWeight', false)).toBe(true);
-    expect(prLineApplies('e1rm', false)).toBe(true);
+  it('volume/reps και μη-bodyweight → τα κανονικά ρεκόρ', () => {
+    expect(prTypeFor('volume', true)).toBe('max_volume');
+    expect(prTypeFor('reps', true)).toBe('max_reps');
+    expect(prTypeFor('topWeight', false)).toBe('max_weight');
+    expect(prTypeFor('e1rm', false)).toBe('e1rm');
   });
 });
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isBaselinePR, realPRs } from './prBaseline';
+import { isBaselinePR, realPRs, xpPRs } from './prBaseline';
+import type { PersonalRecord } from '../db/types';
 
 const row = (
   workout_id: string,
@@ -61,5 +62,29 @@ describe('realPRs', () => {
     const w2 = row('w2', 'max_weight', '2026-11-08T10:00:00Z');
     const w3 = row('w3', 'max_weight', '2026-11-15T10:00:00Z');
     expect(realPRs([w3, w1, w2])).toEqual([w3, w2]);
+  });
+});
+
+describe('xpPRs — total-load records δεν διπλομετράνε XP', () => {
+  const LATE = new Set(['max_total_load', 'e1rm_total']);
+  const row = (o: Partial<PersonalRecord> & Pick<PersonalRecord, 'type' | 'workout_id' | 'achieved_at'>) =>
+    ({ exercise_id: 'e', activity_kind: null, deleted_at: null, set_id: null, ...o }) as PersonalRecord;
+
+  it('σετ που έσπασε max_weight ΚΑΙ max_total_load μετρά μία φορά', () => {
+    const rows = [
+      row({ type: 'max_weight', workout_id: 'w1', achieved_at: '2026-01-01', set_id: 'a' }),
+      row({ type: 'max_total_load', workout_id: 'w1', achieved_at: '2026-01-01', set_id: 'a' }),
+      row({ type: 'max_weight', workout_id: 'w2', achieved_at: '2026-01-02', set_id: 'b' }),
+      row({ type: 'max_total_load', workout_id: 'w2', achieved_at: '2026-01-02', set_id: 'b' }),
+    ];
+    expect(xpPRs(rows, LATE).map((r) => r.type)).toEqual(['max_weight']);
+  });
+
+  it('μέρα μόνο BW που σπάει ΜΟΝΟ e1rm_total μετρά', () => {
+    const rows = [
+      row({ type: 'e1rm_total', workout_id: 'w1', achieved_at: '2026-01-01', set_id: 'a' }),
+      row({ type: 'e1rm_total', workout_id: 'w2', achieved_at: '2026-01-02', set_id: 'b' }),
+    ];
+    expect(xpPRs(rows, LATE).map((r) => r.set_id)).toEqual(['b']);
   });
 });

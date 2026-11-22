@@ -7,6 +7,9 @@
  * θέση του (ίδιο id) — εδώ το τρέχουμε ΜΙΑ φορά ανά προφίλ για ΟΛΕΣ τις
  * ασκήσεις και τα activity PRs. Χωρίς schema bump· η σημαία ζει σε localStorage.
  *
+ * v2 (22/11): ξανατρέχει μία φορά για να γεμίσουν τα νέα ρεκόρ συνολικού φορτίου
+ * (`max_total_load`/`e1rm_total`) από το ιστορικό των BW ασκήσεων.
+ *
  * Idempotent (το recompute είναι), και αν αποτύχει δεν σημαδεύουμε τη σημαία →
  * ξαναδοκιμάζει στο επόμενο boot.
  */
@@ -14,7 +17,7 @@ import { db } from './schema';
 import { getCurrentUserId } from './session';
 import { recomputeActivityPRs, recomputePRsForExercise } from './queries';
 
-export const PR_DATES_FLAG_PREFIX = 'anabasis:pr-dates-v1:';
+export const PR_DATES_FLAG_PREFIX = 'anabasis:pr-dates-v2:';
 
 function flagKey(uid: string): string {
   return `${PR_DATES_FLAG_PREFIX}${uid}`;
@@ -81,10 +84,10 @@ export async function runPRDatesMigration(): Promise<PRDatesMigrationResult> {
     for (const [id, at] of after) if (before.get(id) !== at) fixed += 1;
     for (const id of before.keys()) if (!after.has(id)) fixed += 1;
     markDone(uid);
-    console.info(`[migration] pr-dates-v1: ${fixed} PR rows fixed`);
+    console.info(`[migration] pr-dates-v2: ${fixed} PR rows fixed`);
     return { status: 'done', fixed };
   } catch (err) {
-    console.warn('[migration] pr-dates-v1 failed — will retry next boot', err);
+    console.warn('[migration] pr-dates-v2 failed — will retry next boot', err);
     return { status: 'failed' };
   }
 }

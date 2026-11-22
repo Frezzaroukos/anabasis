@@ -24,7 +24,7 @@ import { AddSetInline, type SetIntensity } from '@/features/workout/components/A
 import { SetRow } from '@/features/workout/components/SetRow';
 import { AddExerciseSheet } from '@/features/workout/components/AddExerciseSheet';
 import { QuickPasteWorkoutSheet } from '@/features/workout/components/QuickPasteWorkoutSheet';
-import type { Exercise, PRType, SetEntry, SetType, WeightUnit } from '@/lib/db/types';
+import type { Exercise, SetEntry, SetType, WeightUnit } from '@/lib/db/types';
 import { Card, SectionTitle } from '@/components/ui/Section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,9 +35,8 @@ import { BatchWeightSheet } from './components/BatchWeightSheet';
 import { DuplicateWorkoutSheet } from './components/DuplicateWorkoutSheet';
 import { LoadingState } from '@/components/ui/loading-state';
 import { cn } from '@/lib/utils';
+import { WEIGHT_PR_TYPES } from '@/lib/domain/pr';
 
-/** PR types που είναι βάρος (kg storage) — τα υπόλοιπα (reps/hold/απόσταση/pace) δεν μετατρέπονται. */
-const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
 
 /**
  * Μία προπόνηση, όπως τη διαβάζεις — και τη διορθώνεις — εκ των υστέρων.

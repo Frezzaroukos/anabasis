@@ -244,6 +244,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'history.pr.max_volume',
       'history.pr.e1rm',
       'history.pr.max_hold',
+      'history.pr.max_total_load',
+      'history.pr.e1rm_total',
       'history.pr.longest_distance',
       'history.pr.longest_duration',
       'history.pr.fastest_pace',

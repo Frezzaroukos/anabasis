@@ -13,7 +13,6 @@ import {
 } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatWeight } from '@/lib/units';
-import type { PRType } from '@/lib/db/types';
 import { SectionTitle } from '@/components/ui/Section';
 import { Input } from '@/components/ui/input';
 import { VolumeChart } from './components/VolumeChart';
@@ -21,9 +20,8 @@ import { FeelChart } from './components/FeelChart';
 import { ProgressHistoryTabs } from './components/ProgressHistoryTabs';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { WEIGHT_PR_TYPES } from '@/lib/domain/pr';
 
-/** PR types που είναι βάρος (kg storage) — τα υπόλοιπα δεν μετατρέπονται. */
-const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set(['max_weight', 'max_volume', 'e1rm']);
 const VIRTUALIZE_THRESHOLD = 50;
 
 type GroupMode = 'month' | 'week';

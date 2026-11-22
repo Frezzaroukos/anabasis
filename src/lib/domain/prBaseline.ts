@@ -43,3 +43,21 @@ export function realPRs<T extends PRLike>(rows: ReadonlyArray<T>): T[] {
 export function isBaselinePR<T extends PRLike>(row: T, all: ReadonlyArray<T>): boolean {
   return !realPRs(all).includes(row);
 }
+
+/**
+ * PR που μετράνε για XP/badges. Τα ρεκόρ συνολικού φορτίου (σώμα + πρόσθετο)
+ * είναι δεύτερη ματιά στο ΙΔΙΟ σετ: όταν το σετ έσπασε ήδη άλλο ρεκόρ
+ * (π.χ. max_weight), δεν ξαναμετρά — αλλιώς ένα βαρύ σετ σε BW άσκηση θα έδινε
+ * διπλό XP και το backfill θα φούσκωνε το επίπεδο. Μια μέρα με σκέτο BW που
+ * σπάει ΜΟΝΟ συνολικό ρεκόρ μετρά κανονικά.
+ */
+export function xpPRs<T extends PRLike & Pick<PersonalRecord, 'set_id'>>(
+  rows: ReadonlyArray<T>,
+  lateTypes: ReadonlySet<string>,
+): T[] {
+  const real = realPRs(rows);
+  const setsWithPrimary = new Set(
+    real.filter((r) => r.set_id != null && !lateTypes.has(r.type)).map((r) => r.set_id),
+  );
+  return real.filter((r) => !lateTypes.has(r.type) || r.set_id == null || !setsWithPrimary.has(r.set_id));
+}

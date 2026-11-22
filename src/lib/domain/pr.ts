@@ -9,6 +9,22 @@ import type { PersonalRecord, PRType, SetEntry, Workout } from '../db/types';
 import { epley } from './e1rm';
 import { setVolume } from './volume';
 
+/** PR types σε κιλά (kg storage) — μετατρέπονται σε lb στο UI· τα υπόλοιπα όχι. */
+export const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
+  'max_weight',
+  'max_volume',
+  'e1rm',
+  'max_total_load',
+  'e1rm_total',
+]);
+
+/**
+ * Τύποι που ξεκίνησαν να καταγράφονται αργότερα (backfill στο boot). Γιορτάζονται
+ * μόνο όταν ξεπερνούν ΥΠΑΡΧΟΝ ρεκόρ ίδιου τύπου — αλλιώς το πρώτο σετ μετά το
+ * update σε κάθε BW άσκηση θα έριχνε ψεύτικο κομφετί πριν τρέξει το backfill.
+ */
+export const LATE_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>(['max_total_load', 'e1rm_total']);
+
 export interface PRCandidate {
   type: PRType;
   value: number;
@@ -50,6 +66,25 @@ export function candidatesFromSet(set: SetEntry): PRCandidate[] {
     candidates.push({
       type: 'e1rm',
       value: epley(set.weight_kg, set.reps),
+      reps: set.reps,
+      weight_kg: set.weight_kg,
+    });
+  }
+
+  // Συνολικό φορτίο (σώμα + πρόσθετο): μόνο όταν ξέρουμε το σωματικό βάρος του
+  // σετ. Έτσι ένα σκέτο BW σετ (χωρίς βάρη) μπορεί να σπάσει ρεκόρ φορτίου/e1RM,
+  // και το weighted μετρά με το πραγματικό του φορτίο.
+  if (set.bodyweight_kg != null && set.bodyweight_kg > 0 && set.reps != null && set.reps > 0) {
+    const total = set.bodyweight_kg + (set.weight_kg ?? 0);
+    candidates.push({
+      type: 'max_total_load',
+      value: total,
+      reps: set.reps,
+      weight_kg: set.weight_kg,
+    });
+    candidates.push({
+      type: 'e1rm_total',
+      value: epley(total, set.reps),
       reps: set.reps,
       weight_kg: set.weight_kg,
     });

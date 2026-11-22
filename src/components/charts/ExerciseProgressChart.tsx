@@ -41,15 +41,17 @@ export const METRIC_OPTIONS: Record<ChartMetric, MetricOption> = {
 export { CHART_RANGE_DAYS };
 
 /**
- * Η γραμμή PR είναι σε άλλη βάση για τις ασκήσεις σωματικού βάρους: το chart
- * δείχνει ΣΥΝΟΛΙΚΟ φορτίο (σωματικό + πρόσθετο) για topWeight/e1rm, ενώ το
- * αποθηκευμένο PR (max_weight/e1rm) είναι ΜΟΝΟ το πρόσθετο. Η γραμμή θα
- * καθόταν πολύ χαμηλότερα από τη σειρά — ψέμα, όχι αναφορά. Τα volume/reps
- * είναι συμβατά (το max_volume περιλαμβάνει το σωματικό βάρος).
+ * Ποιο αποθηκευμένο PR αντιστοιχεί στη σειρά του chart. Στις ασκήσεις
+ * σωματικού βάρους το chart δείχνει ΣΥΝΟΛΙΚΟ φορτίο (σώμα + πρόσθετο) για
+ * topWeight/e1rm — άρα η γραμμή PR πρέπει να είναι το συνολικό ρεκόρ
+ * (max_total_load / e1rm_total), όχι το πρόσθετο (max_weight / e1rm), αλλιώς
+ * θα καθόταν σε άλλη κλίμακα. Volume/reps είναι ήδη στην ίδια βάση.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function prLineApplies(metric: ChartMetric, isBodyweight: boolean): boolean {
-  return !(isBodyweight && (metric === 'topWeight' || metric === 'e1rm'));
+export function prTypeFor(metric: ChartMetric, isBodyweight: boolean): PRType {
+  if (isBodyweight && metric === 'topWeight') return 'max_total_load';
+  if (isBodyweight && metric === 'e1rm') return 'e1rm_total';
+  return METRIC_OPTIONS[metric].prType;
 }
 
 /**
@@ -137,10 +139,11 @@ export function ExerciseProgressChart({
 
   // Μπορεί να υπάρχουν πολλές live εγγραφές ίδιου τύπου (sync/import) — το
   // ρεκόρ είναι η μέγιστη, όχι η πρώτη που επιστρέφει η βάση.
-  const sameType = prs.filter((r) => r.type === option.prType && r.deleted_at == null);
+  const prType = prTypeFor(metric, isBodyweight);
+  const sameType = prs.filter((r) => r.type === prType && r.deleted_at == null);
   const prRaw = sameType.length ? Math.max(...sameType.map((r) => r.value)) : null;
   const prValue =
-    prRaw == null || !prLineApplies(metric, isBodyweight)
+    prRaw == null
       ? null
       : option.unitless
         ? prRaw

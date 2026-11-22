@@ -246,6 +246,8 @@
       "max_volume": "Max volume",
       "e1rm": "Est. 1RM",
       "max_hold": "Max hold",
+      "max_total_load": "Total load (body + added)",
+      "e1rm_total": "Est. 1RM (total)",
       "longest_distance": "Longest distance",
       "longest_duration": "Longest duration",
       "fastest_pace": "Fastest pace"
@@ -747,7 +749,7 @@
     "bodyVsStrength": {
       "title": "Body weight vs strength",
       "hint": "Both lines start at 100 — see whether strength grows faster than body weight.",
-      "strength": "Est. 1RM (total load)",
+      "strength": "Est. 1RM (total)",
       "body": "Body weight"
     }
   },
@@ -1699,9 +1701,9 @@
       "prs": {
         "title": "Personal records",
         "intro": "A PR is a best-ever mark for one exercise, compared with what you had before.",
-        "step1": "Strength PRs: Max weight, Max reps, Max volume, Est. 1RM and Max hold. Without sets, activities track Longest distance, Longest duration and Fastest pace.",
+        "step1": "Strength PRs: Max weight, Max reps, Max volume, Est. 1RM, Max hold and, for bodyweight exercises, Total load and Est. 1RM (total). Without sets, activities track Longest distance, Longest duration and Fastest pace.",
         "step2": "Warm-up sets never count. The very first set of a new exercise is not celebrated as a PR because there was no previous mark.",
-        "step3": "For bodyweight exercises, volume counts bodyweight + added weight; Max weight and Est. 1RM count only the added weight. A set with no added weight can still set volume or rep records.",
+        "step3": "For bodyweight exercises you get both: Max weight and Est. 1RM count only the added weight, while Total load and Est. 1RM (total) count bodyweight + added. So a day with no weights available (bodyweight only) can still set a record. Volume always counts bodyweight + added. Total-load records need a logged bodyweight.",
         "step4": "After you edit, repeat or delete sets (or delete a workout), PRs are recomputed from the remaining live sets, so old wrong marks do not stick."
       },
       "sync": {
