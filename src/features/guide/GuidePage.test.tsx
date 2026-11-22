@@ -69,6 +69,21 @@ describe('GuidePage — in-app οδηγός', () => {
     expect(screen.getByText('Nothing matches. Try another word.')).toBeTruthy();
   });
 
+  it('περιλαμβάνει τις νέες ενότητες paste, home, skills, activities και tricks', () => {
+    renderGuide();
+    const search = screen.getByRole('textbox', { name: 'Search the guide' });
+    for (const [term, title] of [
+      ['tricks', 'Quick tricks'],
+      ['paste', 'Quick paste notes'],
+      ['home', 'Home in one tap'],
+      ['skills', 'Skills and progressions'],
+      ['activities', 'Activities (run, bike, swim…)'],
+    ] as const) {
+      fireEvent.change(search, { target: { value: term } });
+      expect(screen.getByRole('button', { name: title })).toBeTruthy();
+    }
+  });
+
   it('κάθε label και κάθε guide key υπάρχει σε EN και EL', () => {
     const guideKeys = new Set<string>();
     const labelKeys = new Set<string>();
