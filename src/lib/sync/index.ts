@@ -316,18 +316,22 @@ function incomingWins(incoming: SyncRow, existing: SyncRow): boolean {
 
 /** Drop pulled rows that are older than (or the same instant as) the local copy. */
 async function rowsNewerThanLocal(table: AnyTable, rows: SyncRow[]): Promise<SyncRow[]> {
-  const winners: SyncRow[] = [];
-  for (const incoming of rows) {
-    const id = incoming.id;
-    if (typeof id !== 'string') {
-      winners.push(incoming);
-      continue;
-    }
-    const existing = (await table.get(id)) as SyncRow | undefined;
-    if (existing && !incomingWins(incoming, existing)) continue;
-    winners.push(incoming);
-  }
-  return winners;
+  // Ένα bulkGet αντί για ένα get ανά row: το πρώτο pull σε νέα συσκευή
+  // φέρνει χιλιάδες σετ.
+  const ids = rows.map((r) => (typeof r.id === 'string' ? r.id : null));
+  const lookup = ids.filter((id): id is string => id != null);
+  const found = (await table.bulkGet(lookup)) as (SyncRow | undefined)[];
+  const local = new Map<string, SyncRow>();
+  lookup.forEach((id, i) => {
+    const row = found[i];
+    if (row) local.set(id, row);
+  });
+  return rows.filter((incoming, i) => {
+    const id = ids[i];
+    if (id == null) return true;
+    const existing = local.get(id);
+    return !existing || incomingWins(incoming, existing);
+  });
 }
 
 async function putResolvingUnique(
