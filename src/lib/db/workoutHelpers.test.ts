@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { setCurrentUserId } from './session';
 import { SEED_EXERCISES } from './seeds';
-import { getWorkoutDetail, localDay, saveBodyMetric } from './queries';
+import { addSet, endWorkout, getExerciseSummaries, getWorkoutDetail, localDay, saveBodyMetric, startWorkout } from './queries';
 import {
   clearBodyMetric,
   duplicateSet,
@@ -19,6 +19,40 @@ beforeEach(async () => {
   await db.sets.clear();
   await db.personal_records.clear();
   await db.body_metrics.clear();
+});
+
+describe('getExerciseSummaries', () => {
+  it('μετράει μόνο σετ του τρέχοντος προφίλ', async () => {
+    const squat = SEED_EXERCISES.find((e) => e.name === 'Back Squat')!;
+    setCurrentUserId('summary-a');
+    const mineWorkout = await startWorkout('strength');
+    const mine = await addSet({
+      workout_id: mineWorkout.id,
+      exercise_id: squat.id,
+      weight_kg: 100,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await endWorkout(mineWorkout.id);
+
+    setCurrentUserId('summary-b');
+    const otherWorkout = await startWorkout('strength');
+    const other = await addSet({
+      workout_id: otherWorkout.id,
+      exercise_id: squat.id,
+      weight_kg: 200,
+      bodyweight_kg: null,
+      reps: 5,
+      hold_seconds: null,
+    });
+    await db.sets.update(other.id, { created_at: '2099-01-01T00:00:00.000Z' });
+    await endWorkout(otherWorkout.id);
+
+    setCurrentUserId('summary-a');
+    const summary = await getExerciseSummaries();
+    expect(summary.get(squat.id)?.lastTrainedAt).toBe(mine.created_at);
+  });
 });
 
 describe('inferExerciseDefaults', () => {

@@ -1062,7 +1062,16 @@ export async function getBodyweightLoads(limit = 5): Promise<BodyweightLoad[]> {
 export async function getExerciseSummaries(): Promise<
   Map<string, { lastTrainedAt: string | null; hasPR: boolean }>
 > {
-  const sets = await db.sets.filter((s) => s.deleted_at == null).toArray();
+  // Τα sets δεν έχουν user_id. Χωρίς το workout του τρέχοντος προφίλ, ένα
+  // builtin exercise έδειχνε «τελευταία φορά» από τα σετ άλλου προφίλ.
+  const myWorkoutIds = new Set(
+    (await db.workouts.where('user_id').equals(getCurrentUserId()).toArray())
+      .filter((w) => w.deleted_at == null)
+      .map((w) => w.id),
+  );
+  const sets = (await db.sets.toArray()).filter(
+    (s) => s.deleted_at == null && myWorkoutIds.has(s.workout_id),
+  );
   const prByExercise = await getPRsByExercise();
   const out = new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>();
   for (const s of sets) {
