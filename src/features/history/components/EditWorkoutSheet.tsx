@@ -13,6 +13,7 @@ import {
   setWorkoutTimes,
   setWorkoutType,
   softDeleteWorkout,
+  updateWorkoutDistance,
   updateWorkoutMeta,
 } from '@/lib/db/queries';
 import type { Workout } from '@/lib/db/types';
@@ -21,6 +22,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ActivityChip } from '@/components/ActivityChip';
 import { useToast } from '@/components/ui/toast-context';
+import { formatDurationInput, parseDurationInput } from '@/features/activities/duration';
+import { formatPaceMinPerKm } from '@/features/workout/utils';
+
+/** Λογικό όριο απόστασης — ίδιο με τον logger (ActivityLogForm). */
+const MAX_DISTANCE_KM = 1000;
 
 /**
  * Διόρθωση μιας καταγεγραμμένης προπόνησης.
@@ -51,13 +57,30 @@ export function EditWorkoutSheet({
   const [day, setDay] = useState(localDay(new Date(workout.started_at)));
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [minutes, setMinutes] = useState('');
+  const [durationText, setDurationText] = useState('');
+  const [distanceText, setDistanceText] = useState('');
   const [notes, setNotes] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [timeError, setTimeError] = useState(false);
+  const [durationError, setDurationError] = useState(false);
+  const [distanceError, setDistanceError] = useState(false);
 
-  const initialMinutes = (w: Workout) =>
-    w.duration_seconds != null ? String(Math.round(w.duration_seconds / 60)) : '';
+  // Η δραστηριότητα που διαλέγει ο χρήστης (για tracks_distance / uses_sets).
+  const selectedActivity = activities.find((a) => a.key === kind);
+  const showDistance = selectedActivity
+    ? selectedActivity.tracks_distance
+    : kind === 'run' || kind === 'cycling' || kind === 'swim';
+
+  // Απόσταση: δέχεται κόμμα ή τελεία. null = κενό, invalid = μη-θετικό/υπερβολικό.
+  const distanceParsed = (() => {
+    const raw = distanceText.trim();
+    if (!raw) return { value: null as number | null, invalid: false };
+    const km = Number(raw.replace(',', '.'));
+    if (!Number.isFinite(km) || km <= 0 || km > MAX_DISTANCE_KM) {
+      return { value: null as number | null, invalid: true };
+    }
+    return { value: km, invalid: false };
+  })();
 
   const hhmm = (iso: string | null): string => {
     if (!iso) return '';
@@ -72,15 +95,44 @@ export function EditWorkoutSheet({
     setDay(localDay(new Date(workout.started_at)));
     setStartTime(hhmm(workout.started_at));
     setEndTime(hhmm(workout.ended_at));
-    setMinutes(initialMinutes(workout));
+    setDurationText(
+      workout.duration_seconds != null ? formatDurationInput(workout.duration_seconds) : '',
+    );
+    setDistanceText(workout.distance_km != null ? String(workout.distance_km) : '');
     setNotes(workout.notes ?? '');
     setConfirmingDelete(false);
     setTimeError(false);
+    setDurationError(false);
+    setDistanceError(false);
   }, [open, workout]);
 
+  // Ζωντανή προεπισκόπηση pace (min/km) — ίδιος υπολογισμός με τον logger.
+  const paceSeconds = (() => {
+    const parsed = parseDurationInput(durationText);
+    if (parsed != null) return parsed;
+    return workout.duration_seconds ?? null;
+  })();
+  const pace =
+    showDistance && distanceParsed.value != null && !distanceError && paceSeconds != null
+      ? formatPaceMinPerKm(paceSeconds, distanceParsed.value)
+      : null;
+
   const save = async () => {
+    // Validation πρώτα: άκυρη διάρκεια/απόσταση δεν αποθηκεύεται, δείχνει μήνυμα.
+    setDurationError(false);
+    setDistanceError(false);
+    const durationSeconds = durationText.trim() === '' ? null : parseDurationInput(durationText);
+    if (durationText.trim() !== '' && durationSeconds == null) {
+      setDurationError(true);
+      return;
+    }
+    if (showDistance && distanceParsed.invalid) {
+      setDistanceError(true);
+      return;
+    }
+
     // Η ώρα προηγείται της διάρκειας: αν δοθεί λήξη, η διάρκεια υπολογίζεται
-    // από τη διαφορά και το πεδίο «λεπτά» δεν χρειάζεται να την πατήσει.
+    // από τη διαφορά και το πεδίο «διάρκειας» δεν χρειάζεται να την πατήσει.
     const origStart = hhmm(workout.started_at);
     const origEnd = hhmm(workout.ended_at);
     const timeChanged = startTime !== origStart || endTime !== origEnd;
@@ -103,13 +155,15 @@ export function EditWorkoutSheet({
     }
     if (workout.activity_kind !== kind) await setWorkoutActivity(workout.id, kind);
     if (localDay(new Date(workout.started_at)) !== day) await setWorkoutDate(workout.id, day);
-    // Χειροκίνητη διάρκεια — παράκαμπτεται αν μόλις όρισες λήξη (τότε ισχύει η διαφορά).
-    if (!endEdited && minutes.trim() !== initialMinutes(workout)) {
-      const mins = Number(minutes);
-      await setWorkoutDuration(
-        workout.id,
-        minutes.trim() !== '' && Number.isFinite(mins) && mins > 0 ? mins * 60 : null,
-      );
+    // Διάρκεια (h:mm:ss). Παρακάμπτεται αν μόλις όρισες λήξη (τότε ισχύει η διαφορά).
+    if (!endEdited && durationSeconds !== (workout.duration_seconds ?? null)) {
+      await setWorkoutDuration(workout.id, durationSeconds);
+    }
+    if (showDistance) {
+      const nextDist = distanceParsed.value;
+      if (nextDist !== (workout.distance_km ?? null)) {
+        await updateWorkoutDistance(workout.id, nextDist);
+      }
     }
     if ((workout.notes ?? '') !== notes.trim()) {
       await updateWorkoutMeta(workout.id, { notes: notes.trim() || null });
@@ -211,23 +265,64 @@ export function EditWorkoutSheet({
           </p>
         )}
 
-        {/* Χειροκίνητη διάρκεια — προαιρετική. Δεν χρειάζεται ζωντανό χρονόμετρο·
-            γράψε πόσα λεπτά κράτησε, ή άφησέ το κενό. Αν όρισες λήξη, η
+        {/* Απόσταση — μόνο για δραστηριότητες που μετρούν απόσταση. */}
+        {showDistance && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              {t('workout.distanceKm')}
+            </span>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={distanceText}
+              onChange={(e) => {
+                setDistanceError(false);
+                setDistanceText(e.target.value);
+              }}
+              placeholder="5.5"
+              className="h-10 font-mono tabular-nums"
+              aria-label={t('workout.distanceKm')}
+              aria-invalid={distanceError}
+            />
+            {distanceError && (
+              <p role="alert" className="text-xs text-destructive">
+                {t('activities.distanceInvalid')}
+              </p>
+            )}
+          </label>
+        )}
+
+        {/* Διάρκεια σε h:mm:ss («25», «25:30», «1:05:00»). Αν όρισες λήξη, η
             διάρκεια υπολογίζεται από τη διαφορά. */}
         <label className="flex flex-col gap-1.5">
           <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {t('history.workoutDuration')}
           </span>
           <Input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value)}
-            placeholder={t('history.workoutDurationPlaceholder')}
+            inputMode="text"
+            value={durationText}
+            onChange={(e) => {
+              setDurationError(false);
+              setDurationText(e.target.value);
+            }}
+            placeholder={t('activities.durationPlaceholder')}
             className="h-10 font-mono tabular-nums"
+            aria-label={t('history.workoutDuration')}
+            aria-invalid={durationError}
           />
+          {durationError && (
+            <p role="alert" className="text-xs text-destructive">
+              {t('activities.durationInvalid')}
+            </p>
+          )}
         </label>
+
+        {/* Ζωντανή προεπισκόπηση pace (min/km). */}
+        {pace && (
+          <p className="text-xs text-muted-foreground">
+            {t('workout.pace')}: <span className="font-mono tabular-nums">{pace}</span>
+          </p>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-xs uppercase tracking-wide text-muted-foreground">
