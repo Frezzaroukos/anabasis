@@ -2023,7 +2023,19 @@ export async function setProgramDescription(id: string, description: string): Pr
 
 export async function softDeleteProgram(id: string): Promise<void> {
   const t = now();
-  await db.programs.update(id, { deleted_at: t, updated_at: t });
+  await db.transaction('rw', db.programs, db.program_days, db.program_exercises, async () => {
+    await db.programs.update(id, { deleted_at: t, updated_at: t });
+    await db.program_days
+      .where('program_id')
+      .equals(id)
+      .and((d) => d.deleted_at == null)
+      .modify({ deleted_at: t, updated_at: t });
+    await db.program_exercises
+      .where('program_id')
+      .equals(id)
+      .and((e) => e.deleted_at == null)
+      .modify({ deleted_at: t, updated_at: t });
+  });
 }
 
 export async function getProgramWithExercises(programId: string) {
@@ -2031,7 +2043,8 @@ export async function getProgramWithExercises(programId: string) {
     db.programs.get(programId),
     db.program_exercises.where('program_id').equals(programId).sortBy('position'),
   ]);
-  return program ? { program, exercises: rows.filter((r) => r.deleted_at == null) } : null;
+  if (!program || program.deleted_at != null) return null;
+  return { program, exercises: rows.filter((r) => r.deleted_at == null) };
 }
 
 export interface ProgramExerciseInput {
@@ -2241,7 +2254,8 @@ export async function startWorkoutFromProgramDay(dayId: string, onDate?: string)
     const data = await getProgramDayWithExercises(dayId);
     if (!data) return null;
     const program = await db.programs.get(data.day.program_id);
-    const kind = program?.activity_kind ?? 'strength';
+    if (!program || program.deleted_at != null) return null;
+    const kind = program.activity_kind;
     const sessionNo = (await countProgramDaySessions(dayId)) + 1;
     const label = `${data.day.name} #${sessionNo}`;
     const w = await startWorkout(kind, onDate, data.day.program_id, dayId, label);
