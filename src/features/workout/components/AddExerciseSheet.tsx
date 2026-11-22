@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Search } from 'lucide-react';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useExercises } from '@/hooks/useExercises';
+import { getRecentExerciseIds } from '../recentExercises';
 import { queries } from '@/lib/db';
 import { inferExerciseDefaults } from '@/lib/db/workoutHelpers';
 import type { Exercise, ExerciseCategory } from '@/lib/db/types';
@@ -27,6 +29,16 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [], title
   const exerciseQuery = useExercises();
   const all = useMemo(() => exerciseQuery ?? [], [exerciseQuery]);
   const loading = exerciseQuery === undefined;
+
+  // «Πρόσφατες»: μόνο όσο η αναζήτηση είναι κενή — 1 tap αντί για πληκτρολόγηση.
+  const recentIds = useLiveQuery(() => (open ? getRecentExerciseIds(6) : Promise.resolve<string[]>([])), [open], [] as string[]);
+  const recent = useMemo(() => {
+    if (q.trim()) return [];
+    const byId = new Map(all.map((e) => [e.id, e]));
+    return recentIds
+      .map((id) => byId.get(id))
+      .filter((e): e is Exercise => e != null && !excludeIds.includes(e.id));
+  }, [recentIds, all, q, excludeIds]);
 
   useEffect(() => {
     if (!open) setQ('');
@@ -123,6 +135,29 @@ export function AddExerciseSheet({ open, onClose, onPick, excludeIds = [], title
         </p>
       ) : (
         <div className="px-2 pb-4">
+          {recent.length > 0 && (
+            <section className="mb-2" aria-label={t('workout.recent')}>
+              <h3 className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('workout.recent')}
+              </h3>
+              <div className="flex flex-wrap gap-1.5 px-3">
+                {recent.map((ex) => (
+                  <button
+                    key={`recent-${ex.id}`}
+                    type="button"
+                    onClick={() => {
+                      onPick(ex);
+                      onClose();
+                      setQ('');
+                    }}
+                    className="min-h-11 max-w-full truncate rounded-full border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {ex.name}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
           {grouped.map(({ cat, items }) =>
             items.length === 0 ? null : (
               <section key={cat} className="mb-2">
