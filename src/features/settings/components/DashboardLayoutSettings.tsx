@@ -62,12 +62,12 @@ export function DashboardLayoutSettings() {
             <li key={key} className="flex items-center gap-2 py-2">
               {/* 44px στόχος αφής ανά βελάκι — σε κινητό τα 20px κουμπάκια
                   αστοχούν συνέχεια. Το εικονίδιο μένει μικρό, η περιοχή όχι. */}
-              <div className="flex shrink-0 flex-col">
+              <div className="flex shrink-0 items-center">
                 <button
                   onClick={() => move(index, -1)}
                   disabled={index === 0}
                   aria-label={t('goals.moveUp')}
-                  className="flex h-9 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                  className="flex h-11 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
                 >
                   <ChevronUp className="h-4 w-4" />
                 </button>
@@ -75,7 +75,7 @@ export function DashboardLayoutSettings() {
                   onClick={() => move(index, 1)}
                   disabled={index === order.length - 1}
                   aria-label={t('goals.moveDown')}
-                  className="flex h-9 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                  className="flex h-11 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </button>
@@ -104,7 +104,8 @@ export function DashboardLayoutSettings() {
                   aria-label={t(CARD_LABEL[key as DashboardCardKey])}
                   onClick={() => toggle(index)}
                   className={cn(
-                    'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200',
+                    // ::before = αόρατη περιοχή αφής 44px ύψος γύρω από τον 24px διακόπτη
+                    "relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 before:absolute before:inset-x-0 before:-inset-y-[10px] before:content-['']",
                     visible ? 'bg-primary shadow-glow-sm' : 'bg-muted',
                   )}
                 >

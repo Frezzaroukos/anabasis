@@ -7,8 +7,41 @@ import { Card, SectionTitle } from '@/components/ui/Section';
 import { SettingsHeader } from '../components/SettingsList';
 import { useIsPro } from '@/lib/api/auth';
 
-/** Πώς καταγράφεις: μονάδες βάρους. (Το rest timer αφαιρέθηκε — δες commit 820c2d5·
- *  το χρονόμετρο προπόνησης είναι πλέον χειροκίνητο μέσα στην ενεργή συνεδρία.) */
+/**
+ * Πώς καταγράφεις: μονάδες βάρους + ανάπαυση μεταξύ σετ. Το χρονόμετρο
+ * προπόνησης είναι χειροκίνητο (820c2d5)· το rest timer ξεκινά μόνο του μετά από
+ * σετ ΜΟΝΟ όσο είναι ενεργό το «Αυτόματο» — εδώ το ανοιγοκλείνεις και ορίζεις
+ * διάρκεια/ειδοποίηση. Οι ρυθμίσεις υπήρχαν στη βάση αλλά δεν είχαν UI.
+ */
+const REST_PRESETS = [60, 90, 120, 180, 240, 300] as const;
+
+const fmtRest = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+function Toggle({
+  on,
+  label,
+  onClick,
+  t,
+}: {
+  on: boolean;
+  label: string;
+  onClick: () => void;
+  t: (k: string) => string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      aria-label={label}
+      className={`h-11 shrink-0 rounded-md px-4 text-sm font-medium uppercase transition-colors ${
+        on ? 'bg-primary text-primary-foreground' : 'bg-elevated hover:bg-accent'
+      }`}
+    >
+      {on ? t('common.on') : t('common.off')}
+    </button>
+  );
+}
 export function TrainingSettingsPage() {
   const { t } = useTranslation();
   const settings = useAppSettings();
@@ -35,6 +68,51 @@ export function TrainingSettingsPage() {
               {t(`common.${u}`)}
             </button>
           ))}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>{t('settings.restTimer')}</SectionTitle>
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t('settings.restTimer')}>
+          {REST_PRESETS.map((sec) => (
+            <button
+              key={sec}
+              type="button"
+              onClick={() => void updateSettings({ default_rest_timer_seconds: sec })}
+              aria-pressed={settings?.default_rest_timer_seconds === sec}
+              className={`h-11 min-w-14 rounded-md px-3 font-mono text-sm tabular-nums transition-colors ${
+                settings?.default_rest_timer_seconds === sec
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-elevated hover:bg-accent'
+              }`}
+            >
+              {fmtRest(sec)}
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-medium">{t('settings.restAutoStart')}</p>
+            <p className="text-xs text-muted-foreground">{t('settings.restAutoStartHint')}</p>
+          </div>
+          <Toggle
+            t={t}
+            on={!!settings?.auto_start_rest_timer}
+            label={t('settings.restAutoStart')}
+            onClick={() => void updateSettings({ auto_start_rest_timer: !settings?.auto_start_rest_timer })}
+          />
+        </div>
+        <div className="mt-4 flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-medium">{t('settings.restNotify')}</p>
+            <p className="text-xs text-muted-foreground">{t('settings.restNotifyHint')}</p>
+          </div>
+          <Toggle
+            t={t}
+            on={!!settings?.notify_rest_timer}
+            label={t('settings.restNotify')}
+            onClick={() => void updateSettings({ notify_rest_timer: !settings?.notify_rest_timer })}
+          />
         </div>
       </Card>
 
