@@ -1766,6 +1766,16 @@ export async function getTrainingSummary(days = 30) {
 /* ─────────── Body metrics (βάρος / θερμίδες) ─────────── */
 
 /** Τοπική ημερομηνία YYYY-MM-DD — μία εγγραφή ανά μέρα. */
+/**
+ * Η τοπική ημερομηνία `days` ημερολογιακές μέρες πριν από σήμερα (το `today`
+ * είναι injectable για tests). Παράθυρο «τελευταίες N μέρες» = ημέρες με
+ * localDay >= αυτή — ΟΧΙ `Date.now() - N×24h`, που κόβει το πρωί της οριακής
+ * μέρας και μετακινείται κατά μία ώρα με το DST.
+ */
+export function localDayDaysBack(days: number, today: Date = new Date()): string {
+  return localDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - Math.max(0, days)));
+}
+
 export function localDay(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
     d.getDate(),
@@ -2001,12 +2011,13 @@ export async function getExerciseProgress(
   exerciseId: string,
   days = 180,
 ): Promise<ExercisePoint[]> {
-  const since = Date.now() - days * 86400_000;
+  const since = localDayDaysBack(days);
   const workouts = await db.workouts.where('user_id').equals(getCurrentUserId()).toArray();
   const wDay = new Map(
     workouts
-      .filter((w) => w.deleted_at == null && Date.parse(w.started_at) >= since)
-      .map((w) => [w.id, localDay(new Date(w.started_at))]),
+      .map((w) => [w, localDay(new Date(w.started_at))] as const)
+      .filter(([w, day]) => w.deleted_at == null && day >= since)
+      .map(([w, day]) => [w.id, day]),
   );
   const sets = (
     await db.sets.where('exercise_id').equals(exerciseId).toArray()
@@ -3437,7 +3448,7 @@ export async function getActivityProgress(
   activityKind: string,
   days = 180,
 ): Promise<ActivityPoint[]> {
-  const since = Date.now() - days * 86400_000;
+  const since = localDayDaysBack(days);
   const workouts = (
     await db.workouts.where('user_id').equals(getCurrentUserId()).toArray()
   ).filter(
@@ -3445,7 +3456,7 @@ export async function getActivityProgress(
       w.deleted_at == null &&
       w.ended_at != null &&
       w.activity_kind === activityKind &&
-      Date.parse(w.started_at) >= since,
+      localDay(new Date(w.started_at)) >= since,
   );
 
   const byDay = new Map<string, ActivityPoint>();

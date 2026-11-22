@@ -288,3 +288,42 @@ export function buildTrainingHeatmap(
   }
   return out;
 }
+
+export interface BodyVsStrengthPoint {
+  date: string;
+  /** e1RM / πρώτο e1RM × 100 (null όταν δεν υπάρχει προπόνηση εκείνη τη μέρα) */
+  strengthIdx: number | null;
+  /** σωματικό βάρος / πρώτο βάρος × 100 */
+  bodyIdx: number | null;
+  strength: number | null;
+  body: number | null;
+}
+
+/**
+ * Σωματικό βάρος vs δύναμη σε ΚΟΙΝΟ δείκτη (πρώτη τιμή κάθε σειράς = 100), ώστε
+ * δύο διαφορετικές μονάδες/κλίμακες να χωράνε σε έναν άξονα (καθαρό στα 320px,
+ * χωρίς dual-axis). Χρειάζεται ≥2 σημεία ΚΑΙ στις δύο σειρές — αλλιώς `[]`
+ * (καμία σύγκριση από ένα μόνο σημείο).
+ */
+export function buildBodyVsStrength(
+  strength: readonly { date: string; value: number }[],
+  body: readonly { date: string; value: number }[],
+): BodyVsStrengthPoint[] {
+  const s = strength.filter((p) => p.value > 0);
+  const b = body.filter((p) => p.value > 0);
+  if (s.length < 2 || b.length < 2) return [];
+  const sByDate = new Map(s.map((p) => [p.date, p.value]));
+  const bByDate = new Map(b.map((p) => [p.date, p.value]));
+  const sBase = [...s].sort((x, y) => x.date.localeCompare(y.date))[0]!.value;
+  const bBase = [...b].sort((x, y) => x.date.localeCompare(y.date))[0]!.value;
+  const dates = [...new Set([...sByDate.keys(), ...bByDate.keys()])].sort();
+  const idx = (v: number | undefined, base: number) =>
+    v == null ? null : Math.round((v / base) * 1000) / 10;
+  return dates.map((date) => ({
+    date,
+    strengthIdx: idx(sByDate.get(date), sBase),
+    bodyIdx: idx(bByDate.get(date), bBase),
+    strength: sByDate.get(date) ?? null,
+    body: bByDate.get(date) ?? null,
+  }));
+}

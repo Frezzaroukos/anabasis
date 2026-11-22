@@ -15,6 +15,7 @@ import {
 import type { PersonalRecord } from '@/lib/db/types';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { toDisplayWeight } from '@/lib/units';
+import { BodyVsStrengthChart } from '@/components/charts/BodyVsStrengthChart';
 import {
   ExerciseProgressChart,
   CHART_RANGE_DAYS,
@@ -134,6 +135,10 @@ export function ExerciseDetailPage() {
         onRangeChange={setRange}
         isBodyweight={exercise.is_bodyweight}
       />
+
+      {exercise.is_bodyweight && (
+        <BodyVsStrengthChart points={rawPoints} unit={unit} range={range} />
+      )}
 
       <button
         onClick={() => void onExport()}
