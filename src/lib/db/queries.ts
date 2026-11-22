@@ -179,9 +179,12 @@ export async function softDeleteWorkout(workoutId: string): Promise<void> {
   );
   await db.transaction('rw', db.workouts, db.sets, db.scheduled_sessions, async () => {
     await db.workouts.update(workoutId, { deleted_at: t, updated_at: t });
+    // Σετ που ήταν ήδη tombstone κρατούν το δικό τους deleted_at. Αλλιώς το
+    // undo δεν μπορεί να τα ξεχωρίσει από όσα έσβησε αυτή η διαγραφή.
     await db.sets
       .where('workout_id')
       .equals(workoutId)
+      .and((s) => s.deleted_at == null)
       .modify({ deleted_at: t, updated_at: t });
     // Μια διαγραμμένη προπόνηση δεν «ολοκλήρωσε» το planned row της.
     await revertScheduledForWorkout(workoutId, t);
@@ -206,11 +209,18 @@ export async function restoreWorkout(workoutId: string): Promise<void> {
   const t = now();
   const workout = await db.workouts.get(workoutId);
   if (!workout || workout.deleted_at == null) return;
+  const stamp = workout.deleted_at;
   const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
-  const affectedExercises = new Set(sets.map((s) => s.exercise_id));
+  const affectedExercises = new Set(
+    sets.filter((s) => s.deleted_at === stamp).map((s) => s.exercise_id),
+  );
   await db.transaction('rw', db.workouts, db.sets, db.scheduled_sessions, async () => {
     await db.workouts.update(workoutId, { deleted_at: null, updated_at: t });
-    await db.sets.where('workout_id').equals(workoutId).modify({ deleted_at: null, updated_at: t });
+    await db.sets
+      .where('workout_id')
+      .equals(workoutId)
+      .and((s) => s.deleted_at === stamp)
+      .modify({ deleted_at: null, updated_at: t });
     // Το softDeleteWorkout το είχε γυρίσει σε planned. Το Undo πρέπει να
     // ξανασυνδέσει το ίδιο planned row — done αν η προπόνηση είχε τελειώσει,
     // planned αν είχε διαγραφεί ενώ ήταν ακόμη ενεργή.
