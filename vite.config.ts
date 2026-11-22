@@ -65,6 +65,12 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // `injectRegister: 'script-defer'` emits a register script that never
+        // posts SKIP_WAITING, and the plugin only sets these when injectRegister
+        // is `auto`. Without them the new worker stays waiting and the precache
+        // keeps serving the previous build for as long as a tab is open.
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // Το landing είναι static marketing page, όχι SPA route· μην την
         // κλέβει το navigation fallback του service worker.
