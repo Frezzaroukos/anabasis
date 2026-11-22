@@ -9,12 +9,6 @@
 
 import { v4 as uuid } from 'uuid';
 import { db, SCHEMA_VERSION } from './schema';
-import {
-  SEED_ACTIVITIES,
-  SEED_EXERCISES,
-  SEED_SKILLS,
-  SEED_SKILL_STEPS,
-} from './seeds';
 import type { AppSettings, User } from './types';
 import { getCurrentUserId, initSession } from './session';
 
@@ -23,6 +17,11 @@ export { DEFAULT_USER_ID as LOCAL_USER_ID } from './session';
 export async function bootstrapDB(): Promise<void> {
   initSession();
   await db.open();
+  // Τα seeds (~25 kB πηγαίου) χρειάζονται μόνο για το «τι λείπει» check.
+  // Δεν ανήκουν στο entry του πρώτου κατεβάσματος.
+  const { SEED_ACTIVITIES, SEED_EXERCISES, SEED_SKILLS, SEED_SKILL_STEPS } = await import(
+    './seeds'
+  );
   // Το ενεργό προφίλ μπορεί να είναι δικό του (πολλαπλά προφίλ) ή το αρχικό.
   const activeUserId = getCurrentUserId();
   const now = new Date().toISOString();

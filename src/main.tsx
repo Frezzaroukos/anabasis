@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import '@/i18n';
 /*
  * Fonts: bundled τοπικά (fontsource) — offline-first app δεν φορτώνει από
  * CDN. Fira Sans Condensed/Manrope/JetBrains Mono = τα verified με πλήρη
@@ -13,6 +12,7 @@ import '@fontsource/fira-sans-condensed/700.css';
 import '@fontsource-variable/manrope';
 import '@fontsource-variable/jetbrains-mono';
 import '@/styles/globals.css';
+import { initI18n } from '@/i18n';
 import { applyTheme, getStoredTheme } from '@/lib/theme';
 import { reloadOnServiceWorkerUpdate, showVersionRefreshToast } from '@/lib/pwa';
 import { initSession } from '@/lib/db/session';
@@ -50,8 +50,16 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Η γλώσσα είναι ξεχωριστό chunk. Περιμένουμε τη δική του πριν το πρώτο
+// render, αλλιώς η Αρχική θα έδειχνε κλειδιά i18n.
+void initI18n()
+  .catch((err: unknown) => {
+    console.error('[i18n]', err);
+  })
+  .then(() => {
+    createRoot(root).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+  });
