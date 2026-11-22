@@ -927,6 +927,7 @@ export async function reorderWorkoutExercises(
   );
 
   const touchedExercises = new Set<string>();
+  const t = now();
   await db.transaction('rw', db.sets, async () => {
     let cursor = base;
     for (const exerciseId of ordered) {
@@ -936,7 +937,7 @@ export async function reorderWorkoutExercises(
       for (const s of group) {
         const iso = new Date(cursor).toISOString();
         if (s.created_at !== iso) {
-          await db.sets.update(s.id, { created_at: iso });
+          await db.sets.update(s.id, { created_at: iso, updated_at: t });
           touchedExercises.add(exerciseId);
         }
         cursor += 1;

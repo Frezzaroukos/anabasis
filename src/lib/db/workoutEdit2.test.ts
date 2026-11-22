@@ -186,6 +186,19 @@ describe('reorderWorkoutExercises — αναδιάταξη', () => {
     expect(detail!.exercises.map((e) => e.exerciseId)).toEqual([bench.id, squat.id]);
     expect(detail!.totalSets).toBe(2);
   });
+
+  it('σφραγίζει updated_at στα σετ που άλλαξαν σειρά', async () => {
+    const w = await startWorkout('strength');
+    await addSet({ workout_id: w.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    const benchSet = await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 80, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+    await db.sets.update(benchSet.id, { updated_at: '2020-01-01T00:00:00.000Z' });
+
+    await reorderWorkoutExercises(w.id, [bench.id, squat.id]);
+
+    const after = (await db.sets.get(benchSet.id))!;
+    expect(after.updated_at > '2020-01-01T00:00:00.000Z').toBe(true);
+  });
 });
 
 describe('setWorkoutTimes — διόρθωση ώρας', () => {
