@@ -75,9 +75,11 @@ export function GoalFormSheet({
     setMetric(m);
     setPeriod(goal?.period ?? 'week');
     setAnchor(goal?.period_anchor ?? 'calendar');
-    // Για στόχους βάρους το αποθηκευμένο target είναι kg → δείχνεται στη μονάδα
-    // του χρήστη· για όλα τα άλλα μέτρα μένει ως έχει (αριθμός/απόσταση/χρόνος).
-    if (m === 'top_weight' && goal?.target != null) {
+    // Για στόχους βάρους (target_weight ΚΑΙ volume_kg) το αποθηκευμένο target
+    // είναι kg → δείχνεται στη μονάδα του χρήστη· για όλα τα άλλα μέτρα μένει
+    // ως έχει (αριθμός/απόσταση/χρόνος).
+    const weightTargeted = m === 'top_weight' || m === 'volume_kg';
+    if (weightTargeted && goal?.target != null) {
       setTarget(String(toDisplayWeight(goal.target, weightUnit)));
     } else {
       setTarget(String(goal?.target ?? 4));
@@ -111,8 +113,12 @@ export function GoalFormSheet({
   const isMilestone = MILESTONE_METRICS.includes(metric);
   const isSkillGoal = metric === 'skill_steps';
   const isWeightTarget = metric === 'top_weight';
+  const isVolume = metric === 'volume_kg';
   const isCustom = metric === 'custom';
   const isStrength = metric === 'strength';
+  // Το target αποθηκεύεται σε kg και εισάγεται/εμφανίζεται στη μονάδα του χρήστη:
+  // τόσο ο μεμονωμένος «στόχος φορτίου» όσο και ο στόχος όγκου (volume_kg).
+  const targetIsWeight = isWeightTarget || isVolume;
   const countMetric = ['sessions', 'sets', 'reps', 'skill_steps', 'strength'].includes(metric);
   const metricUnit = METRIC_UNIT[metric];
   // Ο στόχος φορτίου δένει κι αυτός με συγκεκριμένη άσκηση (ποιανής το φορτίο).
@@ -179,7 +185,7 @@ export function GoalFormSheet({
     t,
     {
       metric,
-      target: valid ? (isWeightTarget ? parseWeightToKg(targetNum, weightUnit) : targetNum) : 0,
+      target: valid ? (targetIsWeight ? parseWeightToKg(targetNum, weightUnit) : targetNum) : 0,
       period,
       activity_key: null,
       exercise_id: exerciseId,
@@ -204,7 +210,7 @@ export function GoalFormSheet({
     // Το βάρος εισάγεται στη μονάδα του χρήστη → αποθηκεύεται ΠΑΝΤΑ σε kg.
     const payload = {
       metric,
-      target: isWeightTarget ? parseWeightToKg(targetNum, weightUnit) : targetNum,
+      target: targetIsWeight ? parseWeightToKg(targetNum, weightUnit) : targetNum,
       period,
       period_anchor: period === 'day' ? 'calendar' : anchor,
       activity_key: null,
@@ -451,7 +457,10 @@ export function GoalFormSheet({
         ) : (
           <>
             <div className="flex gap-3">
-              <Field label={`${t('goals.targetLabel')}${metricUnit ? ` (${metricUnit})` : ''}`} className="w-28">
+              <Field
+                label={`${t('goals.targetLabel')}${isVolume ? ` (${weightUnit})` : metricUnit ? ` (${metricUnit})` : ''}`}
+                className="w-28"
+              >
                 <Input
                   inputMode={countMetric ? 'numeric' : 'decimal'}
                   value={target}

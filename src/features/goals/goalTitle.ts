@@ -66,6 +66,15 @@ export function goalTitle(
     return `${name} · ${goal.target} / ${t(`goals.period.${goal.period}`)}`;
   }
 
+  // Ο όγκος αποθηκεύεται σε kg· ο τίτλος τον δείχνει στη μονάδα του χρήστη
+  // (ίδιο σκεπτικό με το top_weight). Τα υπόλοιπα μέτρα κρατούν τη μονάδα τους.
+  if (goal.metric === 'volume_kg') {
+    const amount = `${dispWeight(goal.target)} ${weightUnit}`;
+    const scope = names.exercise ?? names.activity ?? null;
+    const withScope = scope ? `${amount} · ${scope}` : amount;
+    return `${withScope} / ${t(`goals.period.${goal.period}`)}`;
+  }
+
   const unit = METRIC_UNIT[goal.metric];
 
   // Με μονάδα, η μονάδα λέει ήδη τι μετράμε («20 km») — η λέξη «απόσταση»
