@@ -10,6 +10,7 @@ import {
   previewImport,
   type ImportPreview,
 } from '@/lib/db/queries';
+import { exportFileDate } from '../exportFileDate';
 import { exportSetsCsv, exportWorkoutsCsv } from '@/lib/db/csvExport';
 import {
   checkDataIntegrity,
@@ -67,14 +68,13 @@ export function DataSettingsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const today = () => new Date().toISOString().slice(0, 10);
 
   // Προεπιλογή = ΜΟΝΟ το ενεργό προφίλ — ακριβώς ό,τι δείχνει το «Τα δεδομένα σου»
   // από πάνω. Σε κοινόχρηστη συσκευή δεν φεύγουν σιωπηλά τα άλλα προφίλ.
   const onExport = async () => {
     setBusy('export');
     try {
-      download(await exportProfile(), `anabasis-backup-${today()}.json`, 'application/json');
+      download(await exportProfile(), `anabasis-backup-${exportFileDate()}.json`, 'application/json');
       setStatus(t('settings.exported'));
     } finally {
       setBusy(null);
@@ -87,7 +87,7 @@ export function DataSettingsPage() {
     try {
       download(
         await exportAll(),
-        `anabasis-all-profiles-${today()}.json`,
+        `anabasis-all-profiles-${exportFileDate()}.json`,
         'application/json',
       );
       setStatus(t('settings.exported'));
@@ -100,7 +100,7 @@ export function DataSettingsPage() {
     setBusy(kind === 'workouts' ? 'csvWorkouts' : 'csvSets');
     try {
       const csv = kind === 'workouts' ? await exportWorkoutsCsv() : await exportSetsCsv();
-      download(csv, `anabasis-${kind}-${today()}.csv`, 'text/csv;charset=utf-8');
+      download(csv, `anabasis-${kind}-${exportFileDate()}.csv`, 'text/csv;charset=utf-8');
       setStatus(t('settings.csvExported'));
     } finally {
       setBusy(null);
