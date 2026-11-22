@@ -1,9 +1,11 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
 import { ActivityLogForm } from './ActivityLogForm';
+import { formatDurationInput, parseDurationInput } from '@/features/activities/duration';
+import { readStopwatchSeconds } from '@/hooks/useManualStopwatch';
 import { db } from '@/lib/db';
 import { startWorkout } from '@/lib/db/queries';
 
@@ -39,6 +41,27 @@ beforeAll(async () => {
 
 const wrap = (ui: React.ReactNode) => <I18nextProvider i18n={i18next}>{ui}</I18nextProvider>;
 
+describe('duration parsing', () => {
+  it('δέχεται 25, 25:30 και 1:05:00 — αρνείται αρνητικά/0/άκυρα/>24h', () => {
+    expect(parseDurationInput('25')).toBe(25 * 60);
+    expect(parseDurationInput('25:30')).toBe(25 * 60 + 30);
+    expect(parseDurationInput('1:05:00')).toBe(3600 + 5 * 60);
+    expect(parseDurationInput(' 0 ')).toBeNull();
+    expect(parseDurationInput('-5')).toBeNull();
+    expect(parseDurationInput('25:75')).toBeNull();
+    expect(parseDurationInput('1:65:00')).toBeNull();
+    expect(parseDurationInput('25:00')).toBe(1500);
+    expect(parseDurationInput('24:00:00')).toBe(86400);
+    expect(parseDurationInput('24:00:01')).toBeNull();
+  });
+
+  it('μορφοποιεί πάντα σε mm:ss ή h:mm:ss', () => {
+    expect(formatDurationInput(1500)).toBe('25:00');
+    expect(formatDurationInput(3900)).toBe('1:05:00');
+    expect(formatDurationInput(59)).toBe('0:59');
+  });
+});
+
 describe('ActivityLogForm', () => {
   it('δείχνει απόσταση+ρυθμό για δραστηριότητα run, όχι για basketball', async () => {
     const run = await startWorkout('run');
@@ -63,6 +86,66 @@ describe('ActivityLogForm', () => {
       const updated = await db.workouts.get(run.id);
       expect(updated?.distance_km).toBe(5);
     });
+  });
+
+  it('χειροκίνητη διάρκεια «25» → 1500s και pace 5:00/km για 5km', async () => {
+    const run = await startWorkout('run');
+    render(wrap(<ActivityLogForm workout={run} />));
+
+    const distance = screen.getByLabelText('Distance (km)');
+    fireEvent.change(distance, { target: { value: '5' } });
+    fireEvent.blur(distance);
+    const duration = screen.getByLabelText('Duration');
+    fireEvent.change(duration, { target: { value: '25' } });
+    fireEvent.blur(duration);
+
+    await waitFor(async () => {
+      const updated = await db.workouts.get(run.id);
+      expect(updated?.duration_seconds).toBe(1500);
+    });
+    expect(screen.getByText('5:00/km')).toBeTruthy();
+  });
+
+  it('γράφει το manual duration στο stopwatch key που διαβάζει το Save', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+      key: () => null,
+      length: 0,
+    });
+    try {
+      const run = await startWorkout('run');
+      render(wrap(<ActivityLogForm workout={run} />));
+      const duration = screen.getByLabelText('Duration');
+      fireEvent.change(duration, { target: { value: '25:30' } });
+      fireEvent.blur(duration);
+
+      await waitFor(() => expect(readStopwatchSeconds(run.id)).toBe(25 * 60 + 30));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('αρνείται αρνητική/μηδενική απόσταση και άκυρη διάρκεια', async () => {
+    const run = await startWorkout('run');
+    render(wrap(<ActivityLogForm workout={run} />));
+
+    const distance = screen.getByLabelText('Distance (km)');
+    fireEvent.change(distance, { target: { value: '-5' } });
+    fireEvent.blur(distance);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+
+    const duration = screen.getByLabelText('Duration');
+    fireEvent.change(duration, { target: { value: '1:99' } });
+    fireEvent.blur(duration);
+    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
+
+    const updated = await db.workouts.get(run.id);
+    expect(updated?.distance_km).toBeNull();
+    expect(updated?.duration_seconds).toBeNull();
   });
 
   it('επιλέγει feel και το αποθηκεύει μέσω updateWorkoutMeta', async () => {
