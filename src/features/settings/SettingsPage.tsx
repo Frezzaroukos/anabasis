@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Activity,
+  BookOpen,
   Cloud,
   Database,
   Download,
@@ -117,6 +118,7 @@ export function SettingsPage() {
           </SettingsGroup>
 
           <SettingsGroup title={t('settings.hubHelpGroup')}>
+            <SettingsRow to="/guide" Icon={BookOpen} label={t('guide.title')} />
             <SettingsRow to="/help" Icon={HelpCircle} label={t('help.title')} />
             <SettingsRow to="/whats-new" Icon={Sparkle} label={t('changelog.title')} />
             <SettingsRow to="/feedback" Icon={MessageSquare} label={t('feedback.title')} />
