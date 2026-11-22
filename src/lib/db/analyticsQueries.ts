@@ -13,11 +13,15 @@ import { localDay } from './queries';
 import {
   buildCategoryDistribution,
   buildPRTimeline,
+  buildTrainingHeatmap,
+  buildWeeklyCategorySets,
   buildWeeklyFrequency,
   buildWeeklyVolume,
   weekStarts,
   type AnalyticsSetRow,
   type CategorySlice,
+  type HeatmapDay,
+  type WeeklyCategoryPoint,
   type PRTimelinePoint,
   type WeeklyFrequencyPoint,
   type WeeklyVolumePoint,
@@ -114,6 +118,8 @@ export async function getPRTimeline(days: number): Promise<PRTimelinePoint[]> {
   const activityLabel = new Map(activities.map((a) => [a.key, a.label]));
 
   const events = prs
+    // Tombstoned PRs (recompute μετά από edit/διαγραφή σετ) δεν είναι ρεκόρ.
+    .filter((pr) => pr.deleted_at == null)
     .map((pr) => ({
       date: localDay(new Date(pr.achieved_at)),
       type: pr.type,
@@ -126,4 +132,36 @@ export async function getPRTimeline(days: number): Promise<PRTimelinePoint[]> {
     .filter((e) => e.date >= since);
 
   return buildPRTimeline(events);
+}
+
+/** Εβδομαδιαία working σετ ανά κατηγορία (stacked). */
+export async function getWeeklyCategorySets(weeks: number): Promise<WeeklyCategoryPoint[]> {
+  const since = weekStarts(weeks)[0]!;
+  const [workouts, exercises] = await Promise.all([
+    db.workouts.where('user_id').equals(getCurrentUserId()).toArray(),
+    db.exercises.toArray(),
+  ]);
+  const inRange = workouts.filter(
+    (w) => w.deleted_at == null && localDay(new Date(w.started_at)) >= since,
+  );
+  const rows = await loadSetRows(inRange);
+  return buildWeeklyCategorySets(
+    rows,
+    exercises.map((e) => ({ id: e.id, category: e.category })),
+    weeks,
+  );
+}
+
+/** Ημέρες προπόνησης (ολοκληρωμένες) για το consistency heatmap. */
+export async function getTrainingHeatmap(weeks: number): Promise<HeatmapDay[]> {
+  const since = weekStarts(weeks)[0]!;
+  const workouts = (await db.workouts.where('user_id').equals(getCurrentUserId()).toArray())
+    .filter(
+      (w) =>
+        w.deleted_at == null &&
+        w.ended_at != null &&
+        localDay(new Date(w.started_at)) >= since,
+    )
+    .map((w) => ({ id: w.id, date: localDay(new Date(w.started_at)) }));
+  return buildTrainingHeatmap(workouts, weeks);
 }

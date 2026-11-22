@@ -25,7 +25,7 @@ import { ExerciseFormSheet } from './components/ExerciseFormSheet';
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { LoadingState } from '@/components/ui/loading-state';
 
-const DETAIL_METRICS: ChartMetric[] = ['reps', 'topWeight', 'e1rm', 'volume'];
+const DETAIL_METRICS: ChartMetric[] = ['reps', 'topWeight', 'e1rm', 'volume', 'hold'];
 
 /**
  * Η πρόοδος μιας άσκησης — headline «alive» surface (owner feedback: charts

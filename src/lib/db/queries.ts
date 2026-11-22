@@ -1720,7 +1720,12 @@ export interface ExercisePoint {
   topWeight: number | null;
   e1rm: number | null;
   volume: number;
+  /** reps του top-weight σετ (για το «× reps» δίπλα στο φορτίο) */
   reps: number | null;
+  /** Περισσότερες reps σε ένα σετ της ημέρας — ανεξάρτητα από φορτίο (push-ups). */
+  maxReps: number | null;
+  /** Μεγαλύτερο hold (sec) της ημέρας — static ασκήσεις (planche, L-sit…). */
+  hold: number | null;
 }
 
 /**
@@ -1748,7 +1753,7 @@ export async function getExerciseProgress(
     const day = wDay.get(s.workout_id)!;
     const cur =
       byDay.get(day) ??
-      ({ date: day, topWeight: null, e1rm: null, volume: 0, reps: null } as ExercisePoint);
+      ({ date: day, topWeight: null, e1rm: null, volume: 0, reps: null, maxReps: null, hold: null } as ExercisePoint);
     const load = (s.weight_kg ?? 0) + (s.bodyweight_kg ?? 0);
     if (load > 0 && (cur.topWeight == null || load > cur.topWeight)) {
       cur.topWeight = load;
@@ -1757,6 +1762,12 @@ export async function getExerciseProgress(
     if (s.reps && load > 0) {
       const est = e1rm(load, s.reps);
       if (cur.e1rm == null || est > cur.e1rm) cur.e1rm = Math.round(est * 10) / 10;
+    }
+    if (s.reps && s.reps > 0 && (cur.maxReps == null || s.reps > cur.maxReps)) {
+      cur.maxReps = s.reps;
+    }
+    if (s.hold_seconds && s.hold_seconds > 0 && (cur.hold == null || s.hold_seconds > cur.hold)) {
+      cur.hold = s.hold_seconds;
     }
     cur.volume += setVolume(s);
     byDay.set(day, cur);

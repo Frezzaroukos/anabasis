@@ -217,3 +217,74 @@ export function buildPRTimeline(
     return { date, cumulative, events: dayEvents };
   });
 }
+
+export interface WeeklyCategoryPoint {
+  weekStart: string;
+  /** working σετ ανά κατηγορία για την εβδομάδα */
+  byCategory: Record<string, number>;
+  total: number;
+}
+
+/**
+ * Working σετ ανά εβδομάδα ΚΑΙ κατηγορία (stacked chart). Οι κενές εβδομάδες
+ * μένουν (total 0) ώστε ο άξονας να μη συμπιέζεται· άγνωστη άσκηση → `other`.
+ */
+export function buildWeeklyCategorySets(
+  rows: readonly AnalyticsSetRow[],
+  exercises: readonly { id: string; category: string }[],
+  weeks: number,
+  today: Date = new Date(),
+): WeeklyCategoryPoint[] {
+  const starts = weekStarts(weeks, today);
+  const index = new Map(starts.map((weekStart, i) => [weekStart, i]));
+  const categoryById = new Map(exercises.map((e) => [e.id, e.category]));
+  const points: WeeklyCategoryPoint[] = starts.map((weekStart) => ({
+    weekStart,
+    byCategory: {},
+    total: 0,
+  }));
+  for (const row of rows) {
+    if (!isWorkingSet(row)) continue;
+    const i = index.get(mondayOfDay(row.date));
+    if (i == null) continue;
+    const category = categoryById.get(row.exerciseId) || 'other';
+    const point = points[i]!;
+    point.byCategory[category] = (point.byCategory[category] ?? 0) + 1;
+    point.total += 1;
+  }
+  return points;
+}
+
+export interface HeatmapDay {
+  date: string;
+  /** πλήθος ολοκληρωμένων προπονήσεων εκείνης της (τοπικής) ημέρας */
+  sessions: number;
+}
+
+/**
+ * Πλέγμα ημερών από τη Δευτέρα της πρώτης εβδομάδας μέχρι ΣΗΜΕΡΑ (όχι
+ * μέλλον). `weeks` ολόκληρες εβδομάδες συν η τρέχουσα μερική.
+ */
+export function buildTrainingHeatmap(
+  workouts: readonly { id: string; date: string }[],
+  weeks: number,
+  today: Date = new Date(),
+): HeatmapDay[] {
+  const starts = weekStarts(weeks, today);
+  const first = parseLocalDay(starts[0]!);
+  const todayKey = formatLocalDay(today);
+  const counts = new Map<string, number>();
+  const seen = new Set<string>();
+  for (const w of workouts) {
+    if (seen.has(w.id)) continue;
+    seen.add(w.id);
+    counts.set(w.date, (counts.get(w.date) ?? 0) + 1);
+  }
+  const out: HeatmapDay[] = [];
+  for (let i = 0; ; i++) {
+    const key = formatLocalDay(new Date(first.getFullYear(), first.getMonth(), first.getDate() + i));
+    if (key > todayKey) break;
+    out.push({ date: key, sessions: counts.get(key) ?? 0 });
+  }
+  return out;
+}

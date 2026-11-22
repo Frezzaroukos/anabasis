@@ -21,6 +21,8 @@ import {
   GOLD_FILL_ID,
   TOOLTIP_STYLE,
 } from '@/components/charts/chartTheme';
+import { categoryColor } from './categoryColors';
+import { compactNumber } from '@/components/charts/format';
 import { tickFormatterFor, tickIntervalFor, type ChartRangeKey } from '@/components/charts/timeRange';
 import type { PRTimelinePoint } from '@/lib/db/analytics';
 
@@ -53,12 +55,6 @@ function localDateLabel(date: string): string {
     day: 'numeric',
     month: 'short',
   });
-}
-
-function compact(value: number): string {
-  if (Math.abs(value) >= 10_000) return `${Math.round(value / 1000)}k`;
-  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}k`;
-  return String(Math.round(value));
 }
 
 function ChartFrame({
@@ -106,7 +102,7 @@ export function WeeklyVolumeChart({
           axisLine={false}
           tickLine={false}
           width={44}
-          tickFormatter={(v: number) => compact(v)}
+          tickFormatter={(v: number) => compactNumber(v)}
         />
         <Tooltip
           cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
@@ -275,6 +271,61 @@ export function PRTimelineChart({
           }}
         />
       </AreaChart>
+    </ChartFrame>
+  );
+}
+
+export interface WeeklyCategoryDatum {
+  weekStart: string;
+  total: number;
+  [category: string]: number | string;
+}
+
+export function WeeklyCategoryChart({
+  data,
+  categories,
+  labels,
+  range,
+  summary,
+}: {
+  data: WeeklyCategoryDatum[];
+  /** κατηγορίες που εμφανίζονται, με σταθερή σειρά στοίβας */
+  categories: string[];
+  labels: Record<string, string>;
+  range: ChartRangeKey;
+  summary: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ChartFrame summary={summary}>
+      <BarChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+        <XAxis
+          dataKey="weekStart"
+          tickFormatter={tickFormatterFor(range)}
+          interval={tickIntervalFor(range, data.length)}
+          tick={CHART_TICK}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={30} />
+        <Tooltip
+          cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
+          contentStyle={TOOLTIP_STYLE}
+          labelFormatter={(d: string) => t('progress.analytics.weekOf', { date: localDateLabel(d) })}
+          formatter={(v: number, name: string) => [`${v}`, labels[name] ?? name]}
+        />
+        {categories.map((c, i) => (
+          <Bar
+            key={c}
+            dataKey={c}
+            stackId="sets"
+            fill={categoryColor(c)}
+            maxBarSize={28}
+            radius={i === categories.length - 1 ? [3, 3, 0, 0] : 0}
+          />
+        ))}
+      </BarChart>
     </ChartFrame>
   );
 }

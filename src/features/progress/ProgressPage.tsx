@@ -25,7 +25,7 @@ import { ActivityProgress } from './ActivityProgress';
 import { TrainingAnalytics } from './analytics/TrainingAnalytics';
 import { ProgressHistoryTabs } from '@/features/history/components/ProgressHistoryTabs';
 
-const PROGRESS_METRICS: ChartMetric[] = ['topWeight', 'e1rm', 'volume'];
+const PROGRESS_METRICS: ChartMetric[] = ['topWeight', 'e1rm', 'reps', 'volume', 'hold'];
 
 /**
  * Πρόοδος ανά άσκηση. Ο χρήστης διαλέγει ΤΙ μετρά: το καλύτερο σετ (topWeight)

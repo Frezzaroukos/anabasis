@@ -30,8 +30,17 @@ export function tickIntervalFor(range: ChartRangeKey, pointCount: number): numbe
   return Math.ceil(pointCount / targetTicks) - 1;
 }
 
+/**
+ * `YYYY-MM-DD` → Date στις 12:00 ΤΟΠΙΚΗ ώρα. Το `new Date('2026-11-22')`
+ * διαβάζεται ως UTC· σε ζώνη πίσω από το UTC (ή με DST) η ετικέτα δείχνει
+ * την προηγούμενη μέρα. Το μεσημέρι είναι ασφαλές και στις δύο κατευθύνσεις.
+ */
+export function localNoon(isoDay: string): Date {
+  return new Date(`${isoDay.slice(0, 10)}T12:00:00`);
+}
+
 /** Μορφή ημερομηνίας στον άξονα: μέρα/μήνας για κοντινά, μήνας/έτος για μεγάλα. */
 export function tickFormatterFor(range: ChartRangeKey): (isoDate: string) => string {
   if (range === '1M' || range === '3M') return (d: string) => d.slice(5);
-  return (d: string) => new Date(d).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+  return (d: string) => localNoon(d).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
 }

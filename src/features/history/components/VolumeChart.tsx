@@ -5,6 +5,7 @@ import { getTrainingSummary, getVolumeTrend } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { toDisplayWeight } from '@/lib/units';
 import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
+import { compactNumber } from '@/components/charts/format';
 
 const VolumeChartBody = lazy(() => import('./VolumeChart.body'));
 
@@ -47,7 +48,7 @@ export function VolumeChart({ days = 30 }: { days?: number }) {
       <dl className="mb-4 grid grid-cols-3 gap-2 text-center">
         {(
           [
-            ['totalVolume', `${Math.round(totalVolume / 1000)}k`],
+            ['totalVolume', compactNumber(totalVolume)],
             ['totalSets', summary.totalSets],
             ['activeDays', `${summary.activeDays}/${days}`],
           ] as const
