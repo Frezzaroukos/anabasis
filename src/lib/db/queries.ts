@@ -1272,8 +1272,14 @@ export async function getBodyweightLoads(limit = 5): Promise<BodyweightLoad[]> {
 export async function getExerciseSummaries(): Promise<
   Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>
 > {
-  const sets = await db.sets.filter((s) => s.deleted_at == null).toArray();
-  const prByExercise = await getPRsByExercise();
+  // `table.filter(fn)` τρέχει JS predicate σε κάθε γραμμή μέσω cursor. Το
+  // getAll (`toArray`) είναι ένα native read — στο ίδιο πλήθος σετ είναι
+  // αρκετά φθηνότερο, και το `deleted_at` το πετάμε μετά στη μνήμη.
+  const [allSets, prByExercise] = await Promise.all([
+    db.sets.toArray(),
+    getPRsByExercise(),
+  ]);
+  const sets = allSets.filter((s) => s.deleted_at == null);
   const out = new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>();
   for (const s of sets) {
     const cur = out.get(s.exercise_id) ?? { lastTrainedAt: null, hasPR: false, setCount: 0 };
