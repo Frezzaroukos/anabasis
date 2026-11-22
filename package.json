@@ -17,7 +17,8 @@
     "build:staged": "tsc -b && vite build --outDir dist-staging --emptyOutDir",
     "deploy:promote": "scripts/promote.sh",
     "deploy:rollback": "scripts/rollback.sh",
-    "e2e": "node scripts/e2e/smoke.mjs"
+    "e2e": "node scripts/e2e/smoke.mjs",
+    "e2e:flows": "node scripts/e2e/dataflows.mjs"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
