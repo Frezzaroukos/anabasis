@@ -3,7 +3,7 @@ import { db } from './index';
 import { bootstrapDB } from './bootstrap';
 import { addSet, createExercise, startWorkout, listExercises } from './queries';
 import { createGoal, listGoals } from './goals';
-import { mergeExercises } from './exerciseMerge';
+import { getMergeImpact, mergeExercises } from './exerciseMerge';
 
 beforeAll(async () => {
   await bootstrapDB();
@@ -77,5 +77,50 @@ describe('mergeExercises', () => {
     const active = await listExercises();
     expect(active.some((e) => e.id === source.id)).toBe(false);
     expect(active.some((e) => e.id === target.id)).toBe(true);
+  });
+
+  it('μετά την ένωση τα PR του στόχου ξαναχτίζονται σωστά από τα live σετ (κορυφή = 30kg)', async () => {
+    const source = await createExercise({ name: 'Merge PR Dup Src' });
+    const target = await createExercise({ name: 'Merge PR Dup Tgt' });
+    const w = await startWorkout('strength');
+    await logSet(w.id, source.id, 20, 5);
+    await logSet(w.id, target.id, 30, 3);
+
+    await mergeExercises(source.id, target.id);
+
+    const live = (
+      await db.personal_records.where('exercise_id').equals(target.id).toArray()
+    ).filter((r) => r.deleted_at == null && r.activity_kind == null);
+    // Η χρονοσειρά είναι ταξινομημένη χρονικά και κάθε row ξεπερνά το προηγούμενο
+    // του ιδίου τύπου (ιδιότητα της detectPRs/recompute — όχι σταθερό πλήθος).
+    for (const type of new Set(live.map((r) => r.type))) {
+      const seq = live
+        .filter((r) => r.type === type)
+        .sort((a, b) => a.achieved_at.localeCompare(b.achieved_at));
+      for (let i = 1; i < seq.length; i += 1) {
+        expect(seq[i]!.value).toBeGreaterThan(seq[i - 1]!.value);
+      }
+    }
+    // Το καλύτερο βάρος (30) είναι η κορυφή — η πηγή δεν είχε μεγαλύτερο.
+    const maxWeight = live.filter((r) => r.type === 'max_weight');
+    expect(Math.max(...maxWeight.map((r) => r.value))).toBe(30);
+  });
+
+  it('getMergeImpact μετρά τις εγγραφές που θα μετακινηθούν', async () => {
+    const source = await createExercise({ name: 'Merge Impact Src' });
+    const target = await createExercise({ name: 'Merge Impact Tgt' });
+    const w = await startWorkout('strength');
+    await logSet(w.id, source.id, 10, 5);
+    await logSet(w.id, source.id, 10, 6);
+    await createGoal({ metric: 'sessions', target: 2, period: 'week', exercise_id: source.id });
+
+    const impact = await getMergeImpact(source.id, target.id);
+    expect(impact.sets).toBe(2);
+    expect(impact.goals).toBe(1);
+    expect(impact.total).toBeGreaterThanOrEqual(3);
+
+    // Ίδια/κενά ids → μηδέν.
+    expect((await getMergeImpact(source.id, source.id)).total).toBe(0);
+    expect((await getMergeImpact('', target.id)).total).toBe(0);
   });
 });

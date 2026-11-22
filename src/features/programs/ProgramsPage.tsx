@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Copy, Pencil, Play, Plus, Trash2, History, ListChecks, LayoutTemplate } from 'lucide-react';
+import { Copy, Pencil, Play, Plus, Trash2, History, ListChecks, LayoutTemplate, ChevronUp, ChevronDown } from 'lucide-react';
 import {
   createProgram,
   duplicateProgram,
@@ -14,6 +14,7 @@ import {
   startWorkoutFromProgram,
   startWorkoutFromProgramDay,
   createProgramFromTemplate,
+  reorderPrograms,
 } from '@/lib/db/queries';
 import { getNextProgramDay } from '@/lib/db/schedule';
 import { PROGRAM_TEMPLATES } from '@/lib/programTemplates';
@@ -165,6 +166,18 @@ export function ProgramsPage() {
     }
     setError(null);
     setRenamingId(null);
+  };
+
+  const moveProgram = async (index: number, dir: -1 | 1) => {
+    const target = index + dir;
+    if (target < 0 || target >= programs.length) return;
+    const next = [...programs];
+    const a = next[index];
+    const b = next[target];
+    if (!a || !b) return;
+    next[index] = b;
+    next[target] = a;
+    await reorderPrograms(next.map((p) => p.id));
   };
 
   return (
@@ -354,7 +367,7 @@ export function ProgramsPage() {
         </div>
       ) : (
         <ul className="stagger space-y-2">
-          {programs.map((p) => (
+          {programs.map((p, index) => (
             <li key={p.id} className="rounded-xl bg-card py-2 pl-4 pr-2">
               {renamingId === p.id ? (
                 <div className="flex gap-2 py-1 pr-2">
@@ -375,7 +388,31 @@ export function ProgramsPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1">
+                  {/* Αναδιάταξη — στενή κάθετη στήλη στα αριστερά, ώστε να μη
+                      στοιβάζονται κι άλλα κουμπιά στη δεξιά ομάδα ενεργειών
+                      (edit/duplicate/delete/start) που ήδη γεμίζει στα 320px. */}
+                  <div className="flex shrink-0 flex-col">
+                    <button
+                      type="button"
+                      onClick={() => void moveProgram(index, -1)}
+                      disabled={index === 0}
+                      aria-label={t('programs.moveUp')}
+                      className="flex h-8 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-25"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void moveProgram(index, 1)}
+                      disabled={index === programs.length - 1}
+                      aria-label={t('programs.moveDown')}
+                      className="flex h-8 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-25"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
                   <Link
                     to={`/programs/${p.id}`}
                     className="min-w-0 flex-1 rounded-md ring-offset-background transition-all duration-150 hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -433,6 +470,7 @@ export function ProgramsPage() {
                       <Play className="h-4 w-4" />
                       {t('programs.start')}
                     </Button>
+                  </div>
                   </div>
                 </div>
               )}

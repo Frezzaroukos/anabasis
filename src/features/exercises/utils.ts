@@ -18,6 +18,56 @@ export function categoryDotClass(category: string): string {
   return CATEGORY_DOT_COLORS[category] ?? 'bg-category-mixed';
 }
 
+/* ─────────── Ανίχνευση διπλότυπων ασκήσεων ─────────── */
+
+/**
+ * Κανονικοποιεί ένα όνομα άσκησης για σύγκριση «μοιάζουν;»:
+ *  - πεζά, χωρίς τόνους (NFD + strip diacritics),
+ *  - παύλες/κάτω-παύλες/στίξη → κενό,
+ *  - ενικό πληθυντικού: drop trailing «s» σε κάθε λέξη («pull-ups»→«pull up»,
+ *    «squats»→«squat»).
+ * Δεν είναι ταυτότητα (δεν αντικαθιστά το id) — είναι μόνο πρόταση ένωσης.
+ */
+export function normalizeExerciseName(name: string): string {
+  const base = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // τόνοι/διαλυτικά
+    .toLowerCase()
+    .replace(/[^a-z0-9α-ω]+/g, ' ') // στίξη/παύλες → κενό (κρατά ελληνικά)
+    .trim();
+  const words = base.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+  // Πληθυντικός: μόνο η ΤΕΛΕΥΤΑΙΑ λέξη — «pull ups»→«pull up», «squats»→«squat»,
+  // αλλά «abs» (μονή, 3 γράμματα) μένει «abs». Πολυ-λέξεις: πάντα, εφόσον >2.
+  const last = words[words.length - 1]!;
+  const singularizable =
+    last.length >= 3 && last.endsWith('s') && (words.length > 1 || last.length > 3);
+  if (singularizable) words[words.length - 1] = last.slice(0, -1);
+  return words.join(' ');
+}
+
+/**
+ * Ομαδοποιεί ασκήσεις που έχουν το ίδιο κανονικοποιημένο όνομα (≥2 μέλη).
+ * Επιστρέφει μόνο τα groups με πραγματικό διπλότυπο — οι μοναδικές μένουν έξω.
+ * Κρατά σταθερή σειρά: τα groups ταξινομημένα κατά όνομα.
+ */
+export function groupLikelyDuplicates<T extends { id: string; name: string }>(
+  exercises: T[],
+): T[][] {
+  const buckets = new Map<string, T[]>();
+  for (const ex of exercises) {
+    const key = normalizeExerciseName(ex.name);
+    if (!key) continue;
+    const arr = buckets.get(key) ?? [];
+    arr.push(ex);
+    buckets.set(key, arr);
+  }
+  return [...buckets.entries()]
+    .filter(([, arr]) => arr.length > 1)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, arr]) => arr);
+}
+
 export interface ExerciseCategoryGroup {
   category: string;
   items: Exercise[];
@@ -70,6 +120,59 @@ export interface LibraryCategoryGroup {
 
 /** all/mine/archived — ίδιο φίλτρο για exercises ΚΑΙ skills (ίδιο σχήμα user_id/is_archived). */
 export type LibraryFilter = 'all' | 'mine' | 'archived';
+
+/** Φίλτρα βιβλιοθήκης ασκήσεων: πηγή (όλα/δικά μου/αρχειοθετημένα) + χρήση + κατηγορία. */
+export type UsageFilter = 'any' | 'used' | 'unused';
+
+export interface ExerciseListFilters {
+  source: LibraryFilter;
+  category: string | null;
+  usage: UsageFilter;
+  /** Πόσα live σετ έχει η άσκηση (από getExerciseSummaries). */
+  setCountOf: (id: string) => number;
+}
+
+export function matchesExerciseFilters(
+  ex: { id: string; user_id: string | null; is_archived: boolean; category: string },
+  f: ExerciseListFilters,
+  currentUserId: string,
+): boolean {
+  if (!matchesLibraryFilter(ex, f.source, currentUserId)) return false;
+  if (f.category != null && ex.category !== f.category) return false;
+  if (f.usage !== 'any') {
+    const used = f.setCountOf(ex.id) > 0;
+    if (f.usage === 'used' && !used) return false;
+    if (f.usage === 'unused' && used) return false;
+  }
+  return true;
+}
+
+/** Ταξινόμηση βιβλιοθήκης: αλφαβητικά, πρόσφατα εκτελεσμένη, πιο συχνά/πολλά σετ. */
+export type LibrarySort = 'name' | 'recent' | 'frequency';
+
+export function sortExercises<T extends { id: string; name: string }>(
+  items: T[],
+  sort: LibrarySort,
+  summaryOf: (id: string) => { lastTrainedAt: string | null; setCount: number } | undefined,
+): T[] {
+  const copy = [...items];
+  if (sort === 'name') return copy.sort((a, b) => a.name.localeCompare(b.name));
+  if (sort === 'recent') {
+    return copy.sort((a, b) => {
+      const la = summaryOf(a.id)?.lastTrainedAt ?? '';
+      const lb = summaryOf(b.id)?.lastTrainedAt ?? '';
+      if (la !== lb) return lb.localeCompare(la); // πιο πρόσφατο πρώτο
+      return a.name.localeCompare(b.name);
+    });
+  }
+  // frequency: περισσότερα σετ πρώτα, tie → όνομα
+  return copy.sort((a, b) => {
+    const ca = summaryOf(a.id)?.setCount ?? 0;
+    const cb = summaryOf(b.id)?.setCount ?? 0;
+    if (cb !== ca) return cb - ca;
+    return a.name.localeCompare(b.name);
+  });
+}
 
 export function matchesLibraryFilter(
   row: { user_id: string | null; is_archived: boolean },

@@ -24,12 +24,15 @@ import { Input } from '@/components/ui/input';
 import { SkillCreateForm } from '@/features/skills/components/SkillCreateForm';
 import { SkillRow } from '@/features/skills/components/SkillRow';
 import { ExerciseFormSheet } from './components/ExerciseFormSheet';
+import { DuplicateSuggestions } from './components/DuplicateSuggestions';
 import {
   groupLibraryByCategory,
   matchesLibraryFilter,
+  matchesExerciseFilters,
   normalizeSkillCategory,
+  sortExercises,
 } from './utils';
-import type { LibraryFilter } from './utils';
+import type { LibraryFilter, LibrarySort, UsageFilter } from './utils';
 import { cn } from '@/lib/utils';
 
 /**
@@ -48,7 +51,7 @@ export function ExercisesPage() {
   const summaries = useLiveQuery(
     () => getExerciseSummaries(),
     [],
-    new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>(),
+    new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>(),
   );
   const skills = useLiveQuery(() => listSkills(true), [], []);
   const skillProgress = useLiveQuery(() => getAllSkillProgress(), [], new Map());
@@ -59,6 +62,9 @@ export function ExercisesPage() {
   );
 
   const [filter, setFilter] = useState<LibraryFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [usageFilter, setUsageFilter] = useState<UsageFilter>('any');
+  const [sort, setSort] = useState<LibrarySort>('name');
   const [query, setQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | undefined>(undefined);
@@ -68,15 +74,19 @@ export function ExercisesPage() {
   const currentUserId = getCurrentUserId();
   const q = query.trim().toLowerCase();
 
-  const filteredExercises = useMemo(
-    () =>
-      allExercises.filter(
-        (ex) =>
-          matchesLibraryFilter(ex, filter, currentUserId) &&
-          (q === '' || ex.name.toLowerCase().includes(q)),
-      ),
-    [allExercises, filter, q, currentUserId],
-  );
+  const filteredExercises = useMemo(() => {
+    const matched = allExercises.filter(
+      (ex) =>
+        matchesExerciseFilters(ex, {
+          source: filter,
+          category: categoryFilter,
+          usage: usageFilter,
+          setCountOf: (id) => summaries.get(id)?.setCount ?? 0,
+        }, currentUserId) &&
+        (q === '' || ex.name.toLowerCase().includes(q)),
+    );
+    return sortExercises(matched, sort, (id) => summaries.get(id));
+  }, [allExercises, filter, categoryFilter, usageFilter, sort, summaries, q, currentUserId]);
   const filteredSkills = useMemo(
     () =>
       skills.filter(
@@ -162,6 +172,8 @@ export function ExercisesPage() {
         />
       )}
 
+      <DuplicateSuggestions />
+
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -173,7 +185,7 @@ export function ExercisesPage() {
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {(['all', 'mine', 'archived'] as const).map((f) => (
           <button
             key={f}
@@ -189,6 +201,58 @@ export function ExercisesPage() {
             {t(`exercises.filter.${f}`)}
           </button>
         ))}
+      </div>
+
+      {/* Φίλτρα + ταξινόμηση — χρήση (όλες/χρησιμοποιημένες/αχρησιμοποίητες),
+          κατηγορία, σειρά. Δύο γραμμές σε στενή οθόνη, μία σε φαρδιά. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          {(['any', 'used', 'unused'] as const).map((u) => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => setUsageFilter(u)}
+              aria-pressed={usageFilter === u}
+              className={cn(
+                'rounded-full px-3 py-1 text-xs font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                usageFilter === u
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-elevated text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t(`exercises.usage.${u}`)}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="sr-only">{t('exercises.categoryFilter')}</span>
+            <select
+              value={categoryFilter ?? ''}
+              onChange={(e) => setCategoryFilter(e.target.value || null)}
+              aria-label={t('exercises.categoryFilter')}
+              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">{t('exercises.allCategories')}</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="sr-only">{t('exercises.sort.label')}</span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as LibrarySort)}
+              aria-label={t('exercises.sort.label')}
+              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="name">{t('exercises.sort.name')}</option>
+              <option value="recent">{t('exercises.sort.recent')}</option>
+              <option value="frequency">{t('exercises.sort.frequency')}</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {groups.length === 0 ? (
@@ -261,7 +325,7 @@ export function ExercisesPage() {
 
 interface ExerciseRowProps {
   exercise: Exercise;
-  summary: { lastTrainedAt: string | null; hasPR: boolean } | undefined;
+  summary: { lastTrainedAt: string | null; hasPR: boolean; setCount: number } | undefined;
   highlighted?: boolean;
   onOpen: () => void;
   onEdit: () => void;
@@ -300,6 +364,14 @@ function ExerciseRow({ exercise, summary, highlighted, onOpen, onEdit }: Exercis
         <p className="truncate text-xs text-muted-foreground">
           {t(`exercises.movementType.${exercise.movement_type}`)}
           {exercise.equipment.length > 0 && ` · ${exercise.equipment.join(', ')}`}
+          {summary != null && summary.setCount > 0 && (
+            <>
+              {' · '}
+              <span className="font-mono tabular-nums">
+                {t('exercises.usageCount', { count: summary.setCount })}
+              </span>
+            </>
+          )}
         </p>
       </button>
       <button
