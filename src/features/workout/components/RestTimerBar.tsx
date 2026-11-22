@@ -66,14 +66,23 @@ export function RestTimerBar() {
   const progress = running && totalSeconds > 0 ? Math.min(1, remaining / totalSeconds) : 0;
 
   return (
-    <div
-      role="timer"
-      aria-live="off"
-      className={cn(
-        'border-t border-border/60 bg-card px-3 py-2',
-        finished && 'bg-primary/10',
-      )}
-    >
+    <>
+      {/*
+       * Ανακοίνωση ΤΕΛΟΥΣ για screen reader: ορατό μετρητή δεν ανακοινώνεται
+       * (aria-live=off, αλλιώς θα «μιλούσε» κάθε δευτερόλεπτο). Αυτή η
+       * visually-hidden polite περιοχή αλλάζει ΜΟΝΟ στο finished → «Rest over».
+       */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {finished ? t('workout.rest.over') : ''}
+      </span>
+      <div
+        role="timer"
+        aria-live="off"
+        className={cn(
+          'border-t border-border/60 bg-card px-3 py-2',
+          finished && 'bg-primary/10',
+        )}
+      >
       <div className="mx-auto flex w-full max-w-md items-center gap-2 md:max-w-3xl lg:max-w-4xl">
         <Timer className={cn('h-4 w-4 shrink-0', finished ? 'text-primary' : 'text-muted-foreground')} aria-hidden />
         <div className="min-w-0 flex-1">
@@ -133,6 +142,7 @@ export function RestTimerBar() {
           <X className="h-4 w-4" />
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
