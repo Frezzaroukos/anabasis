@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowRight, Sparkles, Target, Dumbbell } from 'lucide-react';
-import { hasAnyCompletedWorkout } from '@/lib/db/queries';
+import { ArrowRight, Scale, Sparkles, Target, Dumbbell } from 'lucide-react';
+import { getLatestBodyweight, hasAnyCompletedWorkout } from '@/lib/db/queries';
 import { listGoals } from '@/lib/db/goals';
 import { getAllSkillProgress } from '@/lib/db/queries';
 
@@ -21,16 +21,26 @@ export function EmptyDashboardHint() {
   // All-time, όχι 30-μερο: αλλιώς κάποιος με ιστορικό >30 μερών ξαναβλέπει
   // «κατέγραψε την πρώτη σου προπόνηση» σαν να μην έχει προπονηθεί ποτέ.
   const hasWorkout = useLiveQuery(() => hasAnyCompletedWorkout(), [], undefined);
+  const latestWeight = useLiveQuery(() => getLatestBodyweight(), [], undefined);
 
-  if (hasWorkout === undefined) return null;
+  if (hasWorkout === undefined || latestWeight === undefined) return null;
 
+  // Πρώτα η προπόνηση και το βάρος — αυτά είναι το επόμενο βήμα ενός νέου
+  // χρήστη. Skill και στόχος μένουν, αλλά δεν σκεπάζουν την έναρξη.
   const steps = [
     {
-      done: skillProgress.size > 0,
-      to: '/skills',
-      Icon: Sparkles,
-      title: t('dashboard.next.skill'),
-      hint: t('dashboard.next.skillHint'),
+      done: hasWorkout,
+      to: '/calendar',
+      Icon: Dumbbell,
+      title: t('dashboard.next.body'),
+      hint: t('dashboard.next.bodyHint'),
+    },
+    {
+      done: latestWeight != null,
+      to: '/body',
+      Icon: Scale,
+      title: t('dashboard.next.weighIn'),
+      hint: t('dashboard.next.weighInHint'),
     },
     {
       done: goals.length > 0,
@@ -40,11 +50,11 @@ export function EmptyDashboardHint() {
       hint: t('dashboard.next.goalHint'),
     },
     {
-      done: hasWorkout,
-      to: '/calendar',
-      Icon: Dumbbell,
-      title: t('dashboard.next.body'),
-      hint: t('dashboard.next.bodyHint'),
+      done: skillProgress.size > 0,
+      to: '/skills',
+      Icon: Sparkles,
+      title: t('dashboard.next.skill'),
+      hint: t('dashboard.next.skillHint'),
     },
   ].filter((s) => !s.done);
 

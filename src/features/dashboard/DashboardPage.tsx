@@ -31,6 +31,8 @@ import { RecentPRsCard } from './components/RecentPRsCard';
 import { SkillsProgressCard } from './components/SkillsProgressCard';
 import { BodySummaryCard } from './components/BodySummaryCard';
 import { EmptyDashboardHint } from './components/EmptyDashboardHint';
+import { HomeQuickActions } from './components/HomeQuickActions';
+import { LastWorkoutCard } from './components/LastWorkoutCard';
 import { WeekStrip } from './components/WeekStrip';
 import { mondayOf } from './components/weekMath';
 import { NextMovesCard } from '@/features/coach/NextMovesCard';
@@ -68,10 +70,15 @@ const HERO_UNIT_KEY: Record<HeroTier, string> = {
  * Ήταν 396 γραμμές με 9 queries και όλες τις κάρτες inline — κάθε αλλαγή σε
  * μία κάρτα σήμαινε ανάγνωση ολόκληρης της σελίδας.
  */
+/** Μία προγραμματισμένη σήμερα την ξεκινά ήδη το κύριο κουμπί — η κάρτα μένει για τις υπόλοιπες. */
+function ScheduledOnHome() {
+  return <ScheduledTodayCard hideSingle />;
+}
+
 const CARD_COMPONENTS: Record<DashboardCardKey, React.ComponentType> = {
   skillLadder: SkillLadderCard,
   cta: StartWorkoutCta,
-  scheduled: ScheduledTodayCard,
+  scheduled: ScheduledOnHome,
   community: CommunityCard,
   recentActivity: RecentActivityCard,
   altitude: AltitudeCard,
@@ -205,6 +212,14 @@ export function DashboardPage() {
           </p>
         </div>
         <WeekStrip />
+        {/* Ζώνη «σήμερα»: έναρξη, βάρος/επικόλληση, τελευταία προπόνηση.
+            Το cta του registry ζωγραφίζεται ΕΔΩ και όχι στο grid από κάτω,
+            ώστε να μη θάβεται κάτω από κάρτες που ο χρήστης δεν ζήτησε πρώτες. */}
+        <div className="space-y-3">
+          <StartWorkoutCta />
+          <HomeQuickActions />
+          <LastWorkoutCard />
+        </div>
       </header>
 
       {auth && !isPro && (
@@ -264,7 +279,7 @@ export function DashboardPage() {
       <div className="h-px bg-border/60 md:col-span-2" />
 
       {order
-        .filter((c) => c.visible)
+        .filter((c) => c.visible && c.key !== 'cta')
         .map(({ key }) => {
           const Comp = CARD_COMPONENTS[key as DashboardCardKey];
           const full = FULL_WIDTH.includes(key as DashboardCardKey);

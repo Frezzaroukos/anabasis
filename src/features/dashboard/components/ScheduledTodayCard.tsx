@@ -20,7 +20,7 @@ import { scheduledRowAction } from './scheduledTodayLogic';
  * Επιστρέφει null όταν δεν υπάρχει planned session σήμερα, ώστε να μην
  * εμφανίζεται κενό/ψεύτικο κουτί.
  */
-export function ScheduledTodayCard() {
+export function ScheduledTodayCard({ hideSingle = false }: { hideSingle?: boolean }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const today = localDay();
@@ -31,6 +31,7 @@ export function ScheduledTodayCard() {
 
   const planned = sessions.filter((s) => s.status === 'planned');
   if (planned.length === 0) return null;
+  if (hideSingle && planned.length === 1) return null;
 
   const start = async (session: ScheduledSession) => {
     if (busyId) return;
