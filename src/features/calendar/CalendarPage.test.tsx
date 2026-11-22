@@ -204,6 +204,17 @@ describe('CalendarPage — πλέγμα ανά εβδομάδα', () => {
 describe('CalendarPage — προγραμματισμένες προπονήσεις', () => {
   const today = localDay(new Date(FIXED_NOW));
 
+  it('το Schedule session έχει στόχο ≥44px και ανοίγει με click, όχι μόνο με Enter', async () => {
+    render(wrap(<CalendarPage />));
+    const btn = await screen.findByRole('button', { name: en.calendar.scheduleSession });
+    // h-11 = 2.75rem = 44px. Πριν ήταν text-xs χωρίς ύψος: 16px, και ένα
+    // tap λίγο έξω από τα γράμματα έπεφτε στο section από πίσω.
+    expect(btn.className).toMatch(/\bh-11\b/);
+    fireEvent.click(btn);
+    expect(await screen.findByPlaceholderText(en.calendar.sessionTitlePlaceholder)).toBeTruthy();
+    expect(screen.getByText(en.calendar.newScheduled)).toBeTruthy();
+  });
+
   it('δημιουργεί planned session από τη φόρμα και τη δείχνει στη μέρα', async () => {
     render(wrap(<CalendarPage />));
     await waitFor(() => expect(screen.getByText(en.calendar.scheduleSession)).toBeTruthy());

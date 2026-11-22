@@ -804,7 +804,7 @@ export function CalendarPage() {
               <button
                 type="button"
                 onClick={() => openScheduleSheet(null)}
-                className="flex items-center gap-1 text-xs font-medium text-primary hover:opacity-80"
+                className="inline-flex h-11 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary ring-offset-background transition-colors hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
                 {t('calendar.scheduleSession')}
