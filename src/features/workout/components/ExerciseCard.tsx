@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Exercise, ProgramExercise, SetEntry, SetType } from '@/lib/db/types';
 import { CATEGORY_DOT, resolveSetGroup, suggestDropWeightKg, type SetChain } from '../utils';
-import { startRest } from '../restTimer';
+import { isRestTimerEnabled, startRest } from '../restTimer';
 import { parseQuickSets } from '../quickLog';
 import type { SetIntensity } from './AddSetInline';
 import { SetRow } from './SetRow';
@@ -102,7 +102,7 @@ export function ExerciseCard({
 
   /** Auto-start ανάπαυσης μετά από σετ (ρύθμιση) — όχι ανάμεσα σε drops της ίδιας αλυσίδας. */
   const autoRest = (skip = false) => {
-    if (skip || !settings?.auto_start_rest_timer) return;
+    if (skip || !isRestTimerEnabled(settings) || !settings?.auto_start_rest_timer) return;
     startRest(settings.default_rest_timer_seconds);
   };
 

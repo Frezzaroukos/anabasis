@@ -72,6 +72,17 @@ export function formatRest(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/**
+ * Το rest timer είναι ΠΡΟΑΙΡΕΤΙΚΟ (owner, 820c2d5): ενεργό μόνο με ρητό
+ * `rest_timer_enabled === true`. Λείπει/undefined = κλειστό — έτσι και οι
+ * υπάρχοντες χρήστες με αποθηκευμένο auto_start_rest_timer=true δεν βλέπουν τίποτα.
+ */
+export function isRestTimerEnabled(
+  settings: { rest_timer_enabled?: boolean } | null | undefined,
+): boolean {
+  return settings?.rest_timer_enabled === true;
+}
+
 export function clampRestSeconds(seconds: number): number {
   if (!Number.isFinite(seconds)) return MIN_REST_S;
   return Math.min(MAX_REST_S, Math.max(MIN_REST_S, Math.round(seconds)));

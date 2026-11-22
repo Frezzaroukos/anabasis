@@ -497,6 +497,12 @@ export interface AppSettings {
   notify_rest_timer: boolean;
   /** ο rest timer ξεκινά μόνος του μόλις καταγραφεί σετ — ένα tap λιγότερο */
   auto_start_rest_timer: boolean;
+  /**
+   * Κύριος διακόπτης του rest timer — ΑΠΟΦΑΣΗ OWNER (820c2d5): προαιρετικό και
+   * κλειστό εξ ορισμού, ακόμη και για παλιούς χρήστες με auto_start=true.
+   * Μη-indexed, χωρίς schema bump· λείπει = false (βλ. isRestTimerEnabled).
+   */
+  rest_timer_enabled?: boolean;
   reminder_time: string | null;
   reminder_days: number[];
   show_e1rm: boolean;
