@@ -62,4 +62,26 @@ describe('goalTitle — μονάδα βάρους (audit #11)', () => {
     expect(title).toContain('135');
     expect(title).toContain('lb');
   });
+
+  it('volume_kg: ο όγκος δείχνεται σε lb για χρήστη lb', () => {
+    // 4535.92 kg = 10000 lb
+    const title = goalTitle(
+      t,
+      { metric: 'volume_kg', target: 4535.92, period: 'week', activity_key: null, exercise_id: null },
+      { exercise: 'Squat', weightUnit: 'lb' },
+    );
+    expect(title).toContain('10000');
+    expect(title).toContain('lb');
+    expect(title).not.toContain('kg');
+  });
+
+  it('volume_kg: kg για χρήστη kg', () => {
+    const title = goalTitle(
+      t,
+      { metric: 'volume_kg', target: 5000, period: 'week', activity_key: null, exercise_id: null },
+      { exercise: 'Squat', weightUnit: 'kg' },
+    );
+    expect(title).toContain('5000');
+    expect(title).toContain('kg');
+  });
 });

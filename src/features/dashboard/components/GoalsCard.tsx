@@ -7,6 +7,7 @@ import { listTrackers } from '@/lib/db/trackers';
 import { SectionTitle } from '@/components/ui/Section';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { goalTitle } from '@/features/goals/goalTitle';
+import { useAppSettings } from '@/hooks/useAppSettings';
 
 /**
  * Οι στόχοι του χρήστη στην Αρχική — δακτύλιος ανά στόχο.
@@ -20,6 +21,8 @@ const MAX_ON_DASHBOARD = 3;
 
 export function GoalsCard() {
   const { t } = useTranslation();
+  const settings = useAppSettings();
+  const weightUnit = settings?.weight_unit ?? 'kg';
   const progress = useLiveQuery(() => getAllGoalProgress(), [], []);
   const activities = useLiveQuery(() => listActivities(true), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
@@ -74,6 +77,7 @@ export function GoalsCard() {
                   custom: p.goal.custom_tracker_id
                     ? (trackers.find((tr) => tr.id === p.goal.custom_tracker_id)?.name ?? null)
                     : null,
+                  weightUnit,
                 })}
             </span>
           </div>

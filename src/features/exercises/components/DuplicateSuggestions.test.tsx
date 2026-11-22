@@ -66,6 +66,14 @@ describe('DuplicateSuggestions', () => {
     const confirmBtns = screen.getAllByRole('button', { name: en.exercises.duplicates.merge });
     fireEvent.click(confirmBtns[confirmBtns.length - 1]!);
 
+    // Ο `confirmMerge` τρέχει async· το `finally` του (setBusy/setPending/setImpact)
+    // πρέπει να ολοκληρωθεί ΜΕΣΑ στο test, αλλιώς τρέχει μετά το teardown και το
+    // setState σκάει με «window is not defined». Περίμενε να κλείσει το dialog —
+    // κλείνει μόνο αφού εκτελεστεί το `finally` (setPending(null)).
+    await waitFor(() =>
+      expect(screen.queryByText(/Merge duplicates into/)).toBeNull(),
+    );
+
     // Μία από τις δύο αρχειοθετείται και τα σετ μαζεύονται σε μία.
     await waitFor(async () => {
       const rows = await db.exercises.toArray();

@@ -91,4 +91,46 @@ describe('GoalFormSheet — weight unit (audit #11)', () => {
       expect(goals[0]!.target).toBeCloseTo(102.06, 1);
     });
   });
+
+  it('volume_kg: 10000 lb αποθηκεύεται σε kg (~4535.92) — lossless round-trip', async () => {
+    await seedLbSettings();
+    render(wrap(<GoalFormSheet open onClose={() => {}} goal={null} />));
+
+    // Διάλεξε «Volume».
+    fireEvent.click(screen.getByRole('button', { name: en.goals.metric.volume_kg }));
+
+    // Το target δείχνει default '4'· το βρίσκουμε από την τιμή του.
+    const targetInput = (screen.getAllByRole('textbox') as HTMLInputElement[]).find(
+      (el) => el.value === '4',
+    )!;
+    expect(targetInput).toBeTruthy();
+    fireEvent.change(targetInput, { target: { value: '10000' } });
+    // Άφησε το React state να ενημερωθεί πριν το save (αλλιώς ο handler βλέπει
+    // την παλιά τιμή — race μεταξύ change και click).
+    await waitFor(() => expect((targetInput as HTMLInputElement).value).toBe('10000'));
+    fireEvent.click(screen.getByRole('button', { name: en.common.save }));
+
+    let savedId = '';
+    await waitFor(async () => {
+      const goals = await db.goals.toArray();
+      expect(goals).toHaveLength(1);
+      expect(goals[0]!.metric).toBe('volume_kg');
+      // 10000 lb = 4535.92 kg (όχι 10000).
+      expect(goals[0]!.target).toBeCloseTo(4535.92, 0);
+      savedId = goals[0]!.id;
+    });
+
+    // Re-open για edit: το πεδίο πρέπει να δείχνει πίσω 10000 lb.
+    const saved = await db.goals.get(savedId);
+    const { unmount } = render(
+      wrap(<GoalFormSheet open onClose={() => {}} goal={saved!} />),
+    );
+    await waitFor(() => {
+      const shown = (screen.getAllByRole('textbox') as HTMLInputElement[]).some(
+        (el) => el.value === '10000',
+      );
+      expect(shown).toBe(true);
+    });
+    unmount();
+  });
 });
