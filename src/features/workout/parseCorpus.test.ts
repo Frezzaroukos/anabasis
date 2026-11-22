@@ -31,4 +31,18 @@ describe('Quick Paste corpus', () => {
     expect(p.sets.map((s) => [s.weightKg == null ? null : Math.round(s.weightKg * 10) / 10, s.reps])).toEqual(c.sets);
     if (c.suspect) expect(p.hasSuspectValues).toBe(true);
   });
+
+  it('parses the whole corpus pasted as one multi-line note (no cross-line bleed)', () => {
+    const parsed = parseWorkoutNotes(CORPUS.map((c) => c.line).join('\n'), LIB, 'kg');
+    expect(parsed).toHaveLength(CORPUS.length);
+    parsed.forEach((p, i) => {
+      expect(LIB.find((e) => e.id === p.matchedExerciseId)?.name ?? null).toBe(CORPUS[i]!.exercise);
+    });
+  });
+
+  it('respects lb as the default unit for unitless weights', () => {
+    const p = parseWorkoutNotes('Bench 135 5,5', LIB, 'lb')[0]!;
+    expect(p.sets).toHaveLength(2);
+    expect(p.sets[0]!.weightKg).toBeCloseTo(61.2, 1);
+  });
 });

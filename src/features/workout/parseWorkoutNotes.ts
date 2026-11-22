@@ -350,6 +350,34 @@ function cleanSuggestedName(rawName: string): string {
     .trim();
 }
 
+/** Διαβάζει «σετ» για συγκεκριμένη άσκηση (ή null = άγνωστη) — κοινό για parse και inline διόρθωση. */
+export function parseSetsForExercise(
+  setsText: string,
+  exercise: Exercise | null,
+  unit: WeightUnit,
+  forceBodyweight = false,
+): QuickSet[] {
+  const isHold = exercise?.default_unit === 'sec';
+  const weighted = forceBodyweight || isHold
+    ? false
+    : exercise
+      ? !exercise.is_bodyweight || exercise.is_weighted
+      : true;
+  return parseQuickSets(forceBodyweight ? `bw ${setsText}` : setsText, weighted, unit);
+}
+
+/** Ύποπτα σετ: τεράστιο βάρος/reps/hold (χαμένο «+», κολλημένο ψηφίο) ή κανένα σετ. */
+export function hasSuspectSets(sets: QuickSet[], isHold: boolean): boolean {
+  return (
+    sets.length === 0 ||
+    sets.some(
+      (s) =>
+        (s.weightKg != null && s.weightKg > SUSPECT_WEIGHT_KG) ||
+        (s.reps != null && s.reps > (isHold ? SUSPECT_HOLD_SECONDS : SUSPECT_REPS)),
+    )
+  );
+}
+
 export function parseWorkoutNotes(
   text: string,
   exercises: Exercise[],
@@ -372,16 +400,7 @@ export function parseWorkoutNotes(
     const isHold = match.exercise?.default_unit === 'sec';
 
     // Hold ασκήσεις μετρούν δευτερόλεπτα· «15 12 10» δεν είναι βάρος 15kg.
-    const defaultWeighted = match.forceBodyweight || isHold
-      ? false
-      : match.exercise
-        ? !match.exercise.is_bodyweight || match.exercise.is_weighted
-        : true;
-    const sets = parseQuickSets(
-      match.forceBodyweight ? `bw ${setsText}` : setsText,
-      defaultWeighted,
-      unit,
-    );
+    const sets = parseSetsForExercise(setsText, match.exercise, unit, match.forceBodyweight);
     const looksNumeric = /\d/.test(setsText);
     if (sets.length === 0 && !looksNumeric) return;
 
@@ -391,11 +410,7 @@ export function parseWorkoutNotes(
       normalizeExerciseText(cleanedName) !== normalizeExerciseText(match.exercise.name) &&
       cleanedName.length >= 12;
 
-    const hasSuspectValues = sets.length === 0 || sets.some(
-      (s) =>
-        (s.weightKg != null && s.weightKg > SUSPECT_WEIGHT_KG) ||
-        (s.reps != null && s.reps > (isHold ? SUSPECT_HOLD_SECONDS : SUSPECT_REPS)),
-    );
+    const hasSuspectValues = hasSuspectSets(sets, isHold);
 
     out.push({
       id: `line-${idx}`,
