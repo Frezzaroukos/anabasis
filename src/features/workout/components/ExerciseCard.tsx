@@ -305,7 +305,7 @@ export function ExerciseCard({
               onClick={onRemove}
               aria-label={t('workout.removeExercise')}
               title={t('workout.removeExercise')}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap:min-h-11 tap:min-w-11"
             >
               <X className="h-3.5 w-3.5" />
             </button>

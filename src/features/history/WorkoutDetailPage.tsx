@@ -546,7 +546,7 @@ function HistoryExerciseCard({
             type="button"
             onClick={onRemovePending}
             aria-label={t('workout.removeExercise')}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" tap:min-h-11 tap:min-w-11
           >
             <X className="h-4 w-4" />
           </button>
@@ -559,7 +559,7 @@ function HistoryExerciseCard({
               onClick={() => onMoveExercise(-1)}
               aria-label={t('workout.moveUp')}
               title={t('workout.moveUp')}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap:min-h-11 tap:min-w-11 disabled:pointer-events-none disabled:opacity-30"
             >
               <ChevronUp className="h-4 w-4" />
             </button>
@@ -569,7 +569,7 @@ function HistoryExerciseCard({
               onClick={() => onMoveExercise(1)}
               aria-label={t('workout.moveDown')}
               title={t('workout.moveDown')}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap:min-h-11 tap:min-w-11 disabled:pointer-events-none disabled:opacity-30"
             >
               <ChevronDown className="h-4 w-4" />
             </button>
@@ -581,7 +581,7 @@ function HistoryExerciseCard({
             onClick={onRemoveExercise}
             aria-label={t('workout.removeExercise')}
             title={t('workout.removeExercise')}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive" tap:min-h-11 tap:min-w-11
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -592,7 +592,7 @@ function HistoryExerciseCard({
             onClick={onBatchWeight}
             aria-label={t('history.batchWeight')}
             title={t('history.batchWeight')}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" tap:min-h-11 tap:min-w-11
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
