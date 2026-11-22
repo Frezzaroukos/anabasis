@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Download, FileSpreadsheet, ShieldCheck, Trash2, Wrench } from 'lucide-react';
@@ -37,11 +37,17 @@ type Busy = 'export' | 'exportAll' | 'preview' | 'import' | 'csvWorkouts' | 'csv
 export function DataSettingsPage() {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
+  // Το preview του import και τα μηνύματα κατάστασης βγαίνουν ΚΑΤΩ από όλα τα
+  // κουμπιά export — σε κινητό ήταν εκτός οθόνης και φαινόταν «τίποτα δεν έγινε».
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy | null>(null);
   // Preview-before-import: κρατάμε το περιεχόμενο του αρχείου ΚΑΙ τη στεγνή
   // προεπισκόπηση, ώστε κανένα overwrite να μη γίνεται χωρίς ρητή επιβεβαίωση.
   const [pending, setPending] = useState<{ json: string; preview: ImportPreview } | null>(null);
+  useEffect(() => {
+    if (pending || status) feedbackRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  }, [pending, status]);
   const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
   // 0 = κλειστό, 1 = πρώτο confirm, 2 = τελικό confirm. Δύο διαφορετικά
   // dialogs — όχι ένα κουμπί που «καταλαβαίνει» διπλό πάτημα.
@@ -267,8 +273,8 @@ export function DataSettingsPage() {
         {/* Ρητή, δευτερεύουσα διαδρομή: ΟΛΑ τα προφίλ της συσκευής. */}
         <div className="mt-4 border-t border-border pt-3">
           <Button
-            variant="ghost"
-            className="h-auto min-h-11 px-0 text-xs text-muted-foreground"
+            variant="outline"
+            size="sm"
             loading={busy === 'exportAll'}
             onClick={() => void onExportAllProfiles()}
           >
@@ -279,6 +285,7 @@ export function DataSettingsPage() {
           </p>
         </div>
 
+        <div ref={feedbackRef}>
         {/* Preview-before-import: ρητή επιβεβαίωση, με το τι ακριβώς θα γίνει. */}
         {pending && (
           <div className="mt-4 rounded-md border border-border bg-elevated p-3" role="group">
@@ -316,6 +323,7 @@ export function DataSettingsPage() {
             {status}
           </p>
         )}
+        </div>
       </Card>
 
       {/* Έλεγχος/επιδιόρθωση orphan rows — χωρίς αυτό, μια λάθος διαγραφή

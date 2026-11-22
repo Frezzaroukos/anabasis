@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18next from 'i18next';
@@ -66,5 +66,19 @@ describe('DataSettingsPage — delete all data', () => {
       expect(screen.getByText('All data for this profile was deleted.')).toBeTruthy(),
     );
     expect((await db.workouts.get(w.id))?.deleted_at).toBeTruthy();
+  });
+});
+
+describe('DataSettingsPage — import feedback is brought into view', () => {
+  it('scrolls the import preview into view after choosing a backup file', async () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    renderPage();
+    const backup = JSON.stringify({ app: 'anabasis', version: 1, exportedAt: new Date().toISOString(), tables: {} });
+    const input = document.querySelector('input[type=file]') as HTMLInputElement;
+    const file = new File([backup], 'backup.json', { type: 'application/json' });
+    fireEvent.change(input, { target: { files: [file] } });
+    // Είτε preview είτε μήνυμα σφάλματος — και τα δύο πρέπει να έρθουν στο οπτικό πεδίο.
+    await waitFor(() => expect(scrolled).toHaveBeenCalled());
   });
 });
