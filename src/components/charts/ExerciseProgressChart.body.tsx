@@ -75,7 +75,12 @@ export default function ExerciseProgressChartBody({
           cursor={CHART_CURSOR}
           contentStyle={TOOLTIP_STYLE}
           labelFormatter={(d: string) => localNoon(d).toLocaleDateString()}
-          formatter={(v: number) => [suffix ? `${v}${suffix}` : unitless ? `${v}` : `${v} ${unit}`, t(labelKey)]}
+          formatter={(v: number, _n, item) => {
+            const estimated =
+              !unitless && (item as { payload?: { bwEstimated?: boolean } } | undefined)?.payload?.bwEstimated;
+            const base = suffix ? `${v}${suffix}` : unitless ? `${v}` : `${v} ${unit}`;
+            return [estimated ? `${base} · ${t('progress.bwEstimated')}` : base, t(labelKey)];
+          }}
         />
         {prValue != null && (
           <ReferenceLine y={prValue} stroke={CHART_GOLD} strokeDasharray={REFERENCE_LINE_DASH}>

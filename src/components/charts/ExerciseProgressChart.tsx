@@ -125,6 +125,7 @@ export function ExerciseProgressChart({
         volume: toDisplayWeight(p.volume, unit),
         maxReps: p.maxReps,
         hold: p.hold,
+        bwEstimated: p.bwEstimated ?? false,
       })),
     [rawPoints, unit],
   );

@@ -670,7 +670,8 @@
       "summaryWeeklyCategories": "Working sets per week by category"
     },
     "hold": "Hold",
-    "reps": "Reps"
+    "reps": "Reps",
+    "bwEstimated": "≈ estimated from latest body weight"
   },
   "dashboard": {
     "title": "Overview",

@@ -211,3 +211,44 @@ describe('getExerciseProgress — hold / maxReps / bodyweight', () => {
     expect(p!.topWeight).toBe(80);
   });
 });
+
+describe('getExerciseProgress — fallback σωματικού βάρους', () => {
+  let original: string;
+  const pushup = SEED_EXERCISES.find((e) => e.is_bodyweight)!;
+  const dayStr = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  beforeAll(async () => {
+    original = getCurrentUserId();
+    setCurrentUserId('analytics-bw-fallback');
+    await db.exercises.bulkPut(SEED_EXERCISES);
+  });
+  afterAll(() => setCurrentUserId(original));
+
+  const body = (date: string, kg: number) => ({
+    id: `bm-${date}`, user_id: 'analytics-bw-fallback', date, weight_kg: kg,
+    calories_in: null, calories_out: null, protein_g: null, carbs_g: null, fat_g: null,
+    body_fat_pct: null, steps: null, created_at: date, updated_at: date, deleted_at: null,
+  });
+
+  it('χρησιμοποιεί το πιο πρόσφατο βάρος ΜΕΧΡΙ τη μέρα (όχι μελλοντικό) και σημαίνει estimated', async () => {
+    await db.body_metrics.bulkPut([body(dayStr(20), 70), body(dayStr(2), 90)] as never);
+    const w = await startWorkout('strength', dayStr(10));
+    await addSet({ workout_id: w.id, exercise_id: pushup.id, weight_kg: 10, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    // addSet μπορεί να γεμίσει το βάρος μόνο του· σβήνουμε για να προσομοιώσουμε παλιό σετ
+    const sets = await db.sets.where('workout_id').equals(w.id).toArray();
+    await db.sets.update(sets[0]!.id, { bodyweight_kg: null });
+    const [p] = await getExerciseProgress(pushup.id, 30);
+    expect(p!.topWeight).toBe(80); // 10 + 70, όχι 10 + 90
+    expect(p!.bwEstimated).toBe(true);
+  });
+
+  it('χωρίς καμία μέτρηση: added load, χωρίς σήμανση', async () => {
+    await db.body_metrics.where('user_id').equals('analytics-bw-fallback').delete();
+    const [p] = await getExerciseProgress(pushup.id, 30);
+    expect(p!.topWeight).toBe(10);
+    expect(p!.bwEstimated).toBeFalsy();
+  });
+});
