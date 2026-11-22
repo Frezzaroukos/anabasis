@@ -751,7 +751,10 @@
       "title": "Merge into another exercise",
       "hint": "Moves all sets, records and history into the chosen exercise, then archives this one. Use it to unify duplicates (e.g. “Pull ups” and “Weighted pull ups” — weight is just a per-set option).",
       "search": "Search the exercise to keep…",
-      "confirm": "Merge into “{{name}}”"
+      "confirm": "Merge into “{{name}}”",
+      "impact": "{{count}} related records will move.",
+      "impact_one": "{{count}} related record will move.",
+      "impact_other": "{{count}} related records will move."
     },
     "movementType": {
       "compound": "Compound",
@@ -784,7 +787,31 @@
     "deleteConfirmTitle": "Delete this exercise?",
     "deleteConfirmDesc": "It will be removed from your library. This can't be undone.",
     "deleteBlockedInUse": "This exercise is used in your history, programs or goals. Merge it into another or archive it instead.",
-    "deleteBlockedBuiltin": "Built-in exercises cannot be deleted — you can archive them."
+    "deleteBlockedBuiltin": "Built-in exercises cannot be deleted — you can archive them.",
+    "duplicates": {
+      "title": "Possible duplicates ({{count}})",
+      "hint": "These look like the same exercise under different names. Pick which one to keep, then merge — all sets, records, program rows and goals move into it.",
+      "keep": "Keep {{name}}",
+      "merge": "Merge into selected",
+      "confirmTitle": "Merge duplicates into \"{{name}}\"?",
+      "confirmDesc": "{{count}} related records move into \"{{name}}\" and the other copies are archived. This can be undone by restoring them."
+    },
+    "usage": {
+      "any": "All",
+      "used": "Used",
+      "unused": "Unused"
+    },
+    "sort": {
+      "label": "Sort by",
+      "name": "Name",
+      "recent": "Recently trained",
+      "frequency": "Most trained"
+    },
+    "categoryFilter": "Filter by category",
+    "allCategories": "All categories",
+    "usageCount": "{{count}} sets",
+    "usageCount_one": "{{count}} set",
+    "usageCount_other": "{{count}} sets"
   },
   "activities": {
     "title": "Activities",

@@ -63,7 +63,8 @@ describe('ExercisesPage', () => {
 
     await waitFor(() => expect(screen.getByText('Neck Bridge Hold')).toBeTruthy());
     // η κατηγορία «neck» δεν υπάρχει στις builtin — πρέπει να φανεί ως δική της ομάδα
-    expect(screen.getByText('neck')).toBeTruthy();
+    // (heading, όχι το <option> του category filter που λέει επίσης «neck»)
+    expect(screen.getByRole('heading', { name: 'neck' })).toBeTruthy();
   });
 
   it('η αρχειοθέτηση κρύβει την άσκηση από την ενεργή λίστα', async () => {

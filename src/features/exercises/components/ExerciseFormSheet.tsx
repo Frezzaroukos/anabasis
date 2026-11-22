@@ -5,7 +5,7 @@ import { BottomSheet } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createExercise, updateExercise, listExercises, deleteExercise } from '@/lib/db/queries';
-import { mergeExercises } from '@/lib/db/exerciseMerge';
+import { getMergeImpact, mergeExercises } from '@/lib/db/exerciseMerge';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import type { DefaultUnit, Exercise, MovementType } from '@/lib/db/types';
 import { CategoryCombobox } from './CategoryCombobox';
@@ -65,6 +65,7 @@ export function ExerciseFormSheet({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mergeQuery, setMergeQuery] = useState('');
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
+  const [mergeImpact, setMergeImpact] = useState<number | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBlock, setDeleteBlock] = useState<'in_use' | 'builtin' | null>(null);
   const allExercises = useLiveQuery(() => listExercises(), [], []);
@@ -293,6 +294,11 @@ export function ExerciseFormSheet({
                       {t('common.cancel')}
                     </button>
                   </div>
+                  {mergeImpact != null && mergeImpact > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('exercises.merge.impact', { count: mergeImpact })}
+                    </p>
+                  )}
                   <Button
                     variant="destructive"
                     className="w-full"
@@ -315,7 +321,13 @@ export function ExerciseFormSheet({
                         <li key={e.id}>
                           <button
                             type="button"
-                            onClick={() => setMergeTargetId(e.id)}
+                            onClick={() => {
+                              setMergeTargetId(e.id);
+                              setMergeImpact(null);
+                              void getMergeImpact(exercise!.id, e.id).then((imp) =>
+                                setMergeImpact(imp.total),
+                              );
+                            }}
                             className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
                           >
                             {e.name}

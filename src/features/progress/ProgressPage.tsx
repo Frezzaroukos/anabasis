@@ -54,7 +54,7 @@ export function ProgressPage() {
   const summaries = useLiveQuery(
     () => getExerciseSummaries(),
     [],
-    new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>(),
+    new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>(),
   );
   const prsByExercise = useLiveQuery(
     () => getPRsByExercise(),

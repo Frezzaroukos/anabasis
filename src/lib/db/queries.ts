@@ -1049,20 +1049,21 @@ export async function getBodyweightLoads(limit = 5): Promise<BodyweightLoad[]> {
 }
 
 export async function getExerciseSummaries(): Promise<
-  Map<string, { lastTrainedAt: string | null; hasPR: boolean }>
+  Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>
 > {
   const sets = await db.sets.filter((s) => s.deleted_at == null).toArray();
   const prByExercise = await getPRsByExercise();
-  const out = new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>();
+  const out = new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>();
   for (const s of sets) {
-    const cur = out.get(s.exercise_id) ?? { lastTrainedAt: null, hasPR: false };
+    const cur = out.get(s.exercise_id) ?? { lastTrainedAt: null, hasPR: false, setCount: 0 };
     if (cur.lastTrainedAt == null || s.created_at > cur.lastTrainedAt) {
       cur.lastTrainedAt = s.created_at;
     }
+    cur.setCount += 1;
     out.set(s.exercise_id, cur);
   }
   for (const [exId, prs] of prByExercise) {
-    const cur = out.get(exId) ?? { lastTrainedAt: null, hasPR: false };
+    const cur = out.get(exId) ?? { lastTrainedAt: null, hasPR: false, setCount: 0 };
     cur.hasPR = prs.length > 0;
     out.set(exId, cur);
   }
@@ -1999,6 +2000,16 @@ export async function getProgramAdherence(
 
 export async function renameProgram(id: string, name: string): Promise<void> {
   await db.programs.update(id, { name, updated_at: now() });
+}
+
+/** Αναδιάταξη προγραμμάτων — γράφει display_order 0..n-1 με τη σειρά που δίνεται. */
+export async function reorderPrograms(orderedIds: string[]): Promise<void> {
+  const t = now();
+  await db.transaction('rw', db.programs, async () => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.programs.update(orderedIds[i]!, { display_order: i, updated_at: t });
+    }
+  });
 }
 
 /** Περιγραφή προγράμματος — κενό string αποθηκεύεται ως null (όχι ''). */
