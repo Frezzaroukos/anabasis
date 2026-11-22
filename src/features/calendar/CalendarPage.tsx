@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowUpFromLine, ChevronLeft, ChevronRight, ClipboardPaste, Flame, House, Play, Plus } from 'lucide-react';
@@ -35,6 +35,7 @@ import {
   ScheduledSessionSheet,
   type SchedulableProgram,
 } from './components/ScheduledSessionSheet';
+import { DayWorkoutRow } from './components/DayWorkoutRow';
 import { DOT_SIZE_CLASS, dotSizeOf, parseDayKey, weekAdherenceTint } from './calendarMath';
 
 /**
@@ -184,6 +185,25 @@ export function CalendarPage() {
       }
       setAddOpen(false);
       setAdHocLabel('');
+      navigate('/workout/active');
+    } finally {
+      setStarting(false);
+    }
+  };
+  /** Κενή συνεδρία για την επιλεγμένη μέρα — σήμερα ή backfill, χωρίς να ανοίξει το sheet. */
+  const onQuickLogDay = async () => {
+    if (!selected || starting || selected > today) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const result = await startAdHocWorkout(
+        'strength',
+        selected === today ? undefined : selected,
+      );
+      if (!result) {
+        setStartError(t('calendar.startBlocked'));
+        return;
+      }
       navigate('/workout/active');
     } finally {
       setStarting(false);
@@ -852,35 +872,30 @@ export function CalendarPage() {
             )}
           </div>
         )}
-        {(!day || day.workouts.length === 0) && dayScheduled.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t('calendar.noActivity')}</p>
+        {(!day || day.workouts.length === 0) && (
+          <div className="mb-3">
+            <p className="text-sm text-muted-foreground">{t('calendar.emptyDay')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('calendar.emptyDayHint')}</p>
+          </div>
         )}
         {day && day.workouts.length > 0 && (
           <ul className="space-y-2">
-            {/* Κάθε προπόνηση ανοίγει — πριν ήταν αδιέξοδο: έβλεπες ότι κάτι
-                έγινε εκείνη τη μέρα αλλά όχι ΤΙ. */}
             {day.workouts.map((w) => (
-              <li key={w.id}>
-                <Link
-                  to={`/history/${w.id}`}
-                  className="flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2 ring-offset-background transition-all duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <span className={cn('h-2 w-2 shrink-0 rounded-full', dotOf(w.kind))} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{w.label ?? labelOf(w.kind)}</p>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {[
-                        w.durationSeconds ? formatHMS(w.durationSeconds) : null,
-                        w.sets ? `${w.sets} ${t('history.totalSets')}` : null,
-                        w.distanceKm ? `${w.distanceKm} km` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ') || '—'}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Link>
-              </li>
+              <DayWorkoutRow
+                key={w.id}
+                id={w.id}
+                dotClass={dotOf(w.kind)}
+                title={w.label ?? labelOf(w.kind)}
+                meta={
+                  [
+                    w.durationSeconds ? formatHMS(w.durationSeconds) : null,
+                    w.sets ? `${w.sets} ${t('history.totalSets')}` : null,
+                    w.distanceKm ? `${w.distanceKm} km` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || '—'
+                }
+              />
             ))}
           </ul>
         )}
@@ -891,14 +906,29 @@ export function CalendarPage() {
         )}
 
         {selected && (
-          <button
-            disabled={selected > today}
-            onClick={() => setAddOpen(true)}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Plus className="h-4 w-4" />
-            {t('calendar.addWorkout')}
-          </button>
+          <div className="mt-3 space-y-2">
+            {selected > today && (
+              <p className="text-xs text-muted-foreground">{t('calendar.futureBlocked')}</p>
+            )}
+            <button
+              type="button"
+              disabled={selected > today || starting}
+              onClick={() => void onQuickLogDay()}
+              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-primary text-sm font-semibold text-primary-foreground ring-offset-background transition-all duration-150 hover:opacity-90 active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Play className="h-4 w-4" aria-hidden />
+              {selected < today ? t('calendar.logForDay') : t('calendar.logToday')}
+            </button>
+            <button
+              type="button"
+              disabled={selected > today}
+              onClick={() => setAddOpen(true)}
+              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-sm font-medium text-muted-foreground ring-offset-background transition-all duration-150 hover:border-foreground/30 hover:bg-accent hover:text-foreground active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Plus className="h-4 w-4" />
+              {t('calendar.addWorkout')}
+            </button>
+          </div>
         )}
       </section>
 
