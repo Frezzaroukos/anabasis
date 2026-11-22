@@ -98,6 +98,16 @@ describe('importWorkouts', () => {
     expect(zercher!.user_id).toBe('import-merge-test-profile');
   });
 
+  it('PR των εισαγμένων σετ παίρνουν τη μέρα του αρχείου, όχι τη στιγμή του import', async () => {
+    await importWorkouts([fixtureWorkout()]);
+    const prs = (await db.personal_records.toArray()).filter((r) => r.deleted_at == null);
+    expect(prs.length).toBeGreaterThan(0);
+    for (const pr of prs) {
+      const d = new Date(pr.achieved_at);
+      expect([d.getFullYear(), d.getMonth() + 1, d.getDate()]).toEqual([2025, 1, 15]);
+    }
+  });
+
   it('ξανα-import του ίδιου αρχείου = πλήρες no-op', async () => {
     await importWorkouts([fixtureWorkout()]);
     const res = await importWorkouts([fixtureWorkout()]);

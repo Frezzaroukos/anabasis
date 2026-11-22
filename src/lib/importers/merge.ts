@@ -18,6 +18,7 @@ import {
   createExercise,
   listAllExercises,
   localDay,
+  recomputePRsForExercise,
   startWorkout,
   updateWorkoutMeta,
 } from '@/lib/db/queries';
@@ -197,6 +198,7 @@ export async function importWorkouts(
   let workoutsAdded = 0;
   let setsAdded = 0;
   let exercisesCreated = 0;
+  const touchedExerciseIds = new Set<string>();
 
   /*
    * Φάση 2 — ΟΛΑ τα writes σε ΜΙΑ transaction: ή μπαίνει ολόκληρο το import ή
@@ -219,6 +221,7 @@ export async function importWorkouts(
           if (!exercise) throw new Error(`exercise not resolved: ${pe.name}`);
           for (const s of pe.sets) {
             await importOneSet(workout.id, exercise.id, s);
+            touchedExerciseIds.add(exercise.id);
             setsAdded += 1;
           }
         }
@@ -242,6 +245,11 @@ export async function importWorkouts(
           updated_at: new Date().toISOString(),
         });
         workoutsAdded += 1;
+      }
+      // Το started_at άλλαξε ΜΕΤΑ το addSet (που έγραψε τα PR) — ξαναχτίζουμε
+      // ώστε τα ρεκόρ να έχουν τη μέρα του αρχείου, όχι τη στιγμή του import.
+      for (const exerciseId of touchedExerciseIds) {
+        await recomputePRsForExercise(exerciseId);
       }
     },
   );

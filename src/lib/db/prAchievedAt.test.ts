@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from './index';
 import { SEED_EXERCISES } from './seeds';
-import { addSet, endWorkout, recomputePRsForExercise, startWorkout } from './queries';
+import { addSet, endWorkout, recomputePRsForExercise, setWorkoutDate, startWorkout } from './queries';
 import { getCurrentUserId, setCurrentUserId } from './session';
 
 function dayStr(daysAgo: number): string {
@@ -77,5 +77,21 @@ describe('PR achieved_at ακολουθεί την ημέρα της προπό�
     const pr = (await db.personal_records.where('activity_kind').equals('run').toArray()).find((r) => r.workout_id === w.id);
     expect(pr).toBeTruthy();
     expect(localDayOf(pr!.achieved_at)).toBe(dayStr(7));
+  });
+
+  it('αλλαγή ημέρας προπόνησης (setWorkoutDate) μετακινεί και τα PR της', async () => {
+    const lift = SEED_EXERCISES.find((e) => e.name === 'Weighted Dips') ?? dips;
+    const w = await startWorkout('strength', dayStr(12));
+    await addSet({ workout_id: w.id, exercise_id: lift.id, weight_kg: 77, bodyweight_kg: null, reps: 4, hold_seconds: null });
+    const find = async () =>
+      (await db.personal_records.where('exercise_id').equals(lift.id).toArray()).find(
+        (r) => r.deleted_at == null && r.type === 'max_weight' && r.value === 77,
+      )!;
+    const before = await find();
+    expect(localDayOf(before.achieved_at)).toBe(dayStr(12));
+    await setWorkoutDate(w.id, dayStr(9));
+    const after = await find();
+    expect(after.id).toBe(before.id);
+    expect(localDayOf(after.achieved_at)).toBe(dayStr(9));
   });
 });

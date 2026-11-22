@@ -270,6 +270,20 @@ export async function setWorkoutDate(workoutId: string, isoDay: string): Promise
     patch.ended_at = new Date(new Date(w.ended_at).getTime() + delta).toISOString();
   }
   await db.workouts.update(workoutId, patch);
+  // Τα PR ακολουθούν τη μέρα της προπόνησης (prAchievedAt) — μετακίνηση μέρας
+  // πρέπει να τα μετακινήσει κι αυτά, αλλιώς chart και PR timeline διαφωνούν.
+  await recomputePRsForWorkout(workoutId);
+}
+
+/** Ξαναϋπολογίζει τα PR όλων των ασκήσεων (και της δραστηριότητας) μιας προπόνησης. */
+export async function recomputePRsForWorkout(workoutId: string): Promise<void> {
+  const w = await db.workouts.get(workoutId);
+  if (!w) return;
+  const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
+  for (const exerciseId of new Set(sets.map((s) => s.exercise_id))) {
+    await recomputePRsForExercise(exerciseId);
+  }
+  await recomputeActivityPRs(w.activity_kind);
 }
 
 /**
