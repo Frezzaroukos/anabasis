@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowDown, ArrowUp, Check, Info, Pencil, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getBodyMetric, getBodyTrend, getBodyweightLoads, localDay, saveBodyMetric } from '@/lib/db/queries';
+import { getBodyMetric, getBodyTrend, getBodyweightLoads, getLatestBodyweight, localDay, saveBodyMetric } from '@/lib/db/queries';
 import { clearBodyMetric, listRecentBodyMetrics } from '@/lib/db/workoutHelpers';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { formatLength, formatWeight, lengthUnitFor, parseWeightToKg, toDisplayWeight } from '@/lib/units';
@@ -14,6 +14,8 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { ChartSkeleton } from '@/components/charts/ChartSkeleton';
 import { cn } from '@/lib/utils';
 import { MeasurementsForm, MeasurementsSummary } from './BodyMeasurements';
+import { WeightStepper } from './WeightStepper';
+import { formatDisplayWeight } from './weightEntry';
 import {
   MEASUREMENT_FIELDS,
   emptyMeasurements,
@@ -41,10 +43,18 @@ export function BodyPage() {
   const [deleteDate, setDeleteDate] = useState<string | null>(null);
 
   const trend = useLiveQuery(() => getBodyTrend(days), [days], []);
-  const selectedMetric = useLiveQuery(() => getBodyMetric(selectedDate), [selectedDate]);
+  // null = η μέρα δεν έχει μέτρηση· undefined = ακόμα φορτώνει. Το σκέτο
+  // getBodyMetric δεν τα ξεχωρίζει (και τα δύο βγαίνουν undefined).
+  const selectedMetric = useLiveQuery(async () => {
+    const row = await getBodyMetric(selectedDate);
+    return row ?? null;
+  }, [selectedDate]);
+  const latestKg = useLiveQuery(() => getLatestBodyweight(selectedDate), [selectedDate]);
   const recentEntries = useLiveQuery(() => listRecentBodyMetrics(10), [], []);
   const bodyweightLoads = useLiveQuery(() => getBodyweightLoads(5), [], []);
 
+  const [suggestedWeight, setSuggestedWeight] = useState(false);
+  const weightLabelId = 'body-weight-label';
   const [w, setW] = useState('');
   const [bf, setBf] = useState('');
   const [steps, setSteps] = useState('');
@@ -56,24 +66,29 @@ export function BodyPage() {
   const [chartMetric, setChartMetric] = useState<MeasurementField>('waist_cm');
 
   useEffect(() => {
+    if (selectedMetric === undefined || latestKg === undefined) return;
     if (!selectedMetric) {
-      setW('');
       setBf('');
       setSteps('');
       setMeasurements(emptyMeasurements());
-      return;
+    } else {
+      setBf(selectedMetric.body_fat_pct?.toString() ?? '');
+      setSteps(selectedMetric.steps?.toString() ?? '');
+      const next = emptyMeasurements();
+      for (const { key } of MEASUREMENT_FIELDS) next[key] = selectedMetric[key] ?? null;
+      setMeasurements(next);
     }
-    setW(
-      selectedMetric.weight_kg != null
-        ? String(toDisplayWeight(selectedMetric.weight_kg, unit, 'body'))
-        : '',
-    );
-    setBf(selectedMetric.body_fat_pct?.toString() ?? '');
-    setSteps(selectedMetric.steps?.toString() ?? '');
-    const next = emptyMeasurements();
-    for (const { key } of MEASUREMENT_FIELDS) next[key] = selectedMetric[key] ?? null;
-    setMeasurements(next);
-  }, [selectedMetric, selectedDate, unit]);
+    if (selectedMetric?.weight_kg != null) {
+      setW(formatDisplayWeight(selectedMetric.weight_kg, unit));
+      setSuggestedWeight(false);
+    } else if (latestKg != null) {
+      setW(formatDisplayWeight(latestKg, unit));
+      setSuggestedWeight(true);
+    } else {
+      setW('');
+      setSuggestedWeight(false);
+    }
+  }, [selectedMetric, latestKg, selectedDate, unit]);
 
   const num = (s: string) => {
     const cleaned = s.trim().replace(',', '.');
@@ -201,28 +216,52 @@ export function BodyPage() {
             className="h-11 rounded-md border border-input bg-background px-2.5 font-mono text-xs tabular-nums text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:h-9"
           />
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              [t('body.weight'), w, setW, unit],
-              [t('body.bodyFat'), bf, setBf, '%'],
-              [t('body.steps'), steps, setSteps, ''],
-            ] as const
-          ).map(([label, val, set, u]) => (
-            <label key={label} className="block">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-muted-foreground">
-                {label}
-                {u ? ` (${u})` : ''}
-              </span>
-              <Input
-                type="number"
-                inputMode="decimal"
-                value={val}
-                onChange={(e) => set(e.target.value)}
-                className="h-9 font-mono tabular-nums"
-              />
-            </label>
-          ))}
+        {weightPoints.length === 0 && (
+          <p className="mb-3 text-sm text-muted-foreground">{t('body.emptyHint')}</p>
+        )}
+        <div className="space-y-3">
+          <div>
+            <span
+              id={weightLabelId}
+              className="mb-1 block text-xs uppercase tracking-wide text-muted-foreground"
+            >
+              {t('body.weight')} ({unit})
+            </span>
+            <WeightStepper
+              value={w}
+              unit={unit}
+              labelledBy={weightLabelId}
+              onChange={(next) => {
+                setSuggestedWeight(false);
+                setW(next);
+              }}
+            />
+            {suggestedWeight && (
+              <p className="mt-1.5 text-xs text-muted-foreground">{t('body.prefilledFromLast')}</p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                [t('body.bodyFat'), bf, setBf, '%'],
+                [t('body.steps'), steps, setSteps, ''],
+              ] as const
+            ).map(([label, val, set, u]) => (
+              <label key={label} className="block">
+                <span className="mb-1 block text-xs uppercase tracking-wide text-muted-foreground">
+                  {label}
+                  {u ? ` (${u})` : ''}
+                </span>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={val}
+                  onChange={(e) => set(e.target.value)}
+                  className="h-11 font-mono tabular-nums"
+                />
+              </label>
+            ))}
+          </div>
         </div>
         <div className="mt-4 border-t border-border/60 pt-3">
           <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -300,7 +339,7 @@ export function BodyPage() {
                     onClick={() => setSelectedDate(entry.date)}
                     aria-label={t('body.editEntry')}
                     title={t('body.editEntry')}
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -309,7 +348,7 @@ export function BodyPage() {
                     onClick={() => setDeleteDate(entry.date)}
                     aria-label={t('body.clearEntry')}
                     title={t('body.clearEntry')}
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
+                    className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

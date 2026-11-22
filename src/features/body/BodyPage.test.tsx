@@ -5,7 +5,9 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
 import { BodyPage } from './BodyPage';
-import { localDay, saveBodyMetric } from '@/lib/db/queries';
+import { getBodyMetric, localDay, saveBodyMetric } from '@/lib/db/queries';
+import { setCurrentUserId } from '@/lib/db/session';
+import { db } from '@/lib/db';
 
 /**
  * Ίδιο fixture-πρότυπο με τα υπόλοιπα tests: i18n merged με τα νέα `body.*`
@@ -133,6 +135,29 @@ describe('BodyPage — περιφέρειες (Wave 4)', () => {
     expect(select).toBeTruthy();
     // Η διαφορά 84 → 82 φαίνεται ως −2 cm (πρόσημο).
     await waitFor(() => expect(screen.getByText(/−2 cm/)).toBeTruthy());
+  });
+
+  it('προ-συμπληρώνει το τελευταίο βάρος και το stepper κινείται ανά 0.1', async () => {
+    setCurrentUserId('body-prefill-lane');
+    await db.body_metrics.where('user_id').equals('body-prefill-lane').delete();
+    await saveBodyMetric(daysAgo(1), { weight_kg: 80.4 });
+
+    render(wrap(<BodyPage />));
+
+    await waitFor(() => {
+      const weight = screen.getAllByRole('spinbutton')[0] as HTMLInputElement;
+      expect(weight.value).toBe('80.4');
+    });
+    expect(screen.getByText(/Last entry/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Increase weight' }));
+    expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe('80.5');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(async () => {
+      const today = await getBodyMetric(localDay());
+      expect(today?.weight_kg).toBe(80.5);
+    });
   });
 
   it('δείχνει validation error για τιμή εκτός ορίων (>300cm)', async () => {
