@@ -13,7 +13,8 @@ import { formatMove } from '@/features/coach/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Exercise, ProgramExercise, SetEntry, SetType } from '@/lib/db/types';
-import { CATEGORY_DOT, resolveSetGroup, type SetChain } from '../utils';
+import { CATEGORY_DOT, resolveSetGroup, suggestDropWeightKg, type SetChain } from '../utils';
+import { startRest } from '../restTimer';
 import { parseQuickSets } from '../quickLog';
 import type { SetIntensity } from './AddSetInline';
 import { SetRow } from './SetRow';
@@ -65,6 +66,10 @@ export function ExerciseCard({
   const [showQuickHelp, setShowQuickHelp] = useState(false);
   // Πόσα ρεκόρ έσπασε το πιο πρόσφατο σετ — για τη γιορτή (χρυσό pulse).
   const [prCount, setPrCount] = useState(0);
+  // Drop set: προ-συμπλήρωση ~80% του προηγούμενου βάρους. Το formKey ξαναστήνει
+  // τη φόρμα (αν ήταν ήδη ανοιχτή) ώστε να πάρει το νέο initialWeight.
+  const [dropSeedKg, setDropSeedKg] = useState<number | null>(null);
+  const [formKey, setFormKey] = useState(0);
 
   /**
    * «3 × 8 · 60 kg» — μόνο ό,τι ορίζει πραγματικά το πρόγραμμα. Κενά πεδία
@@ -93,6 +98,12 @@ export function ExerciseCard({
     setPrCount(n);
     // Η γιορτή σβήνει μόνη της· δεν μπλοκάρει την επόμενη καταγραφή.
     globalThis.setTimeout(() => setPrCount(0), 2600);
+  };
+
+  /** Auto-start ανάπαυσης μετά από σετ (ρύθμιση) — όχι ανάμεσα σε drops της ίδιας αλυσίδας. */
+  const autoRest = (skip = false) => {
+    if (skip || !settings?.auto_start_rest_timer) return;
+    startRest(settings.default_rest_timer_seconds);
   };
 
   const isHold = exercise.default_unit === 'sec'; // skill/isometric άσκηση — reps γίνεται hold σε δευτερόλεπτα
@@ -159,8 +170,12 @@ export function ExerciseCard({
       notes: intensity.notes ?? null,
     });
     celebrate(res.newPRs.length);
+    autoRest(setType === 'dropset');
     // Αν μόλις καταχωρίσαμε drop set, επιστρέφουμε το selector σε normal για το επόμενο κανονικό σετ.
-    if (setType === 'dropset') setSetType('normal');
+    if (setType === 'dropset') {
+      setSetType('normal');
+      setDropSeedKg(null);
+    }
   };
 
   /** 1-tap αντιγραφή του τελευταίου σετ της άσκησης. */
@@ -170,6 +185,7 @@ export function ExerciseCard({
     try {
       const res = await duplicateSet(latestSet);
       celebrate(res.newPRs.length);
+      autoRest(latestSet.set_type === 'dropset');
     } finally {
       setRepeatBusy(false);
     }
@@ -177,17 +193,19 @@ export function ExerciseCard({
 
   /** 1-tap έναρξη drop set: συνδέει το τελευταίο σετ αν δεν έχει ήδη group_id και ανοίγει τη φόρμα. */
   const onStartDropSet = async () => {
-    if (latestSet) {
-      const groupId = latestSet.group_id ?? crypto.randomUUID();
-      if (!latestSet.group_id) {
-        await queries.updateSet(latestSet.id, { group_id: groupId });
-      }
-      onChainChange({ id: groupId, type: 'dropset' });
-    }
+    // Πρώτα το UI (σύγχρονα) — αλλιώς το remount της φόρμας μετά το await
+    // θα έσβηνε ό,τι πρόλαβε να πληκτρολογήσει ο χρήστης.
+    const groupId = latestSet ? (latestSet.group_id ?? crypto.randomUUID()) : null;
+    if (latestSet && groupId) onChainChange({ id: groupId, type: 'dropset' });
     onWeightedChange(true);
+    setDropSeedKg(suggestDropWeightKg(latestSet?.weight_kg ?? null));
+    setFormKey((k) => k + 1);
     setSetType('dropset');
     setQuickMode(false);
     setAdding(true);
+    if (latestSet && groupId && !latestSet.group_id) {
+      await queries.updateSet(latestSet.id, { group_id: groupId });
+    }
   };
 
   /**
@@ -404,12 +422,13 @@ export function ExerciseCard({
         ) : adding ? (
           <>
             <AddSetInline
+              key={formKey}
               weighted={weighted}
               holdMode={isHold}
               unit={unit}
-              initialWeight={latestSet?.weight_kg ?? last?.weight_kg ?? null}
-              initialReps={last?.reps ?? null}
-              initialHoldSeconds={last?.hold_seconds ?? null}
+              initialWeight={dropSeedKg ?? latestSet?.weight_kg ?? last?.weight_kg ?? null}
+              initialReps={latestSet?.reps ?? last?.reps ?? null}
+              initialHoldSeconds={latestSet?.hold_seconds ?? last?.hold_seconds ?? null}
               lastLabel={
                 last && (last.weight_kg != null || last.reps != null || last.hold_seconds != null)
                   ? `${t('workout.previous')}: ${

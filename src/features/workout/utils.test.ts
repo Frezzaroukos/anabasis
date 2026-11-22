@@ -6,6 +6,7 @@ import {
   isChainSetType,
   isEmptyDraftWorkout,
   resolveSetGroup,
+  suggestDropWeightKg,
 } from './utils';
 
 describe('formatLoad', () => {
@@ -114,5 +115,19 @@ describe('formatPaceMinPerKm', () => {
     expect(formatPaceMinPerKm(0, 5)).toBeNull();
     expect(formatPaceMinPerKm(1500, 0)).toBeNull();
     expect(formatPaceMinPerKm(1500, -1)).toBeNull();
+  });
+});
+
+describe('suggestDropWeightKg', () => {
+  it('suggests ~80% rounded to 2.5kg', () => {
+    expect(suggestDropWeightKg(100)).toBe(80);
+    expect(suggestDropWeightKg(60)).toBe(47.5);
+    expect(suggestDropWeightKg(30)).toBe(25);
+  });
+  it('returns null when there is no realistic drop or no weight', () => {
+    expect(suggestDropWeightKg(null)).toBeNull();
+    expect(suggestDropWeightKg(0)).toBeNull();
+    expect(suggestDropWeightKg(2.5)).toBeNull();
+    expect(suggestDropWeightKg(Number.NaN)).toBeNull();
   });
 });

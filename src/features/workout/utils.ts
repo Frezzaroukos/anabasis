@@ -148,3 +148,16 @@ export function formatPaceMinPerKm(elapsedSeconds: number, km: number): string |
   }
   return `${m}:${String(s).padStart(2, '0')}/km`;
 }
+
+/**
+ * Προτεινόμενο βάρος για drop set: ~80% του προηγούμενου σετ, στρογγυλεμένο στα
+ * 2.5 kg (το μικρότερο πραγματικό βήμα δίσκου). Είναι ΜΟΝΟ προ-συμπλήρωση που ο
+ * χρήστης αλλάζει ελεύθερα — γλιτώνει το πληκτρολόγιο στο συνηθισμένο drop.
+ * Επιστρέφει null όταν δεν βγαίνει ρεαλιστική πτώση (π.χ. 2.5 kg → 0).
+ */
+export function suggestDropWeightKg(previousKg: number | null): number | null {
+  if (previousKg == null || !Number.isFinite(previousKg) || previousKg <= 0) return null;
+  const dropped = Math.round((previousKg * 0.8) / 2.5) * 2.5;
+  if (dropped <= 0 || dropped >= previousKg) return null;
+  return dropped;
+}

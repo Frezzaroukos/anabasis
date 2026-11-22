@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ClipboardPaste, Link2, Plus, Save, Trash2, Weight } from 'lucide-react';
+import { ClipboardPaste, Link2, Plus, Save, Timer, Trash2, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/dialog';
-import { queries } from '@/lib/db';
-import type { Exercise, Workout } from '@/lib/db/types';
+import { db, queries } from '@/lib/db';
+import { getCurrentUserId } from '@/lib/db/session';
+import type { Exercise, PersonalRecord, Workout } from '@/lib/db/types';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkoutSets, useWorkoutExerciseIds } from '@/hooks/useWorkoutSets';
 import { getWorkoutPlan } from '@/lib/db/schedule';
@@ -27,10 +28,13 @@ import { AddExerciseSheet } from './AddExerciseSheet';
 import { QuickPasteWorkoutSheet } from './QuickPasteWorkoutSheet';
 import { readStopwatchSeconds, clearStopwatch } from '@/hooks/useManualStopwatch';
 import { PlateCalculator } from './PlateCalculator';
+import { RestTimerBar } from './RestTimerBar';
+import { startRest, stopRest } from '../restTimer';
+import { summarizeWorkout } from '../summary';
 import { BottomSheet } from '@/components/ui/sheet';
 import { ActivityLogForm } from './ActivityLogForm';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
+import { formatWeight, parseWeightToKg, toDisplayWeight } from '@/lib/units';
 
 
 function pendingKey(workoutId: string): string {
@@ -280,6 +284,25 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     writePendingIds(workout.id, pending.map((ex) => ex.id));
   }, [pending, workout.id]);
 
+  const exerciseIdsKey = persistedExerciseIds.join(',');
+  // Σύνοψη για τον διάλογο λήξης — υπολογίζεται μόνο όσο είναι ανοιχτός.
+  const workoutPRs = useLiveQuery(() => {
+    if (!confirmEnd) return Promise.resolve<PersonalRecord[]>([]);
+    const ids = new Set(exerciseIdsKey.split(',').filter(Boolean));
+    return db.personal_records
+      .where('user_id')
+      .equals(getCurrentUserId())
+      .filter((p) => p.deleted_at == null && p.exercise_id != null && ids.has(p.exercise_id))
+      .toArray();
+  },
+    [confirmEnd, workout.id, exerciseIdsKey],
+    [] as PersonalRecord[],
+  );
+  const summary = useMemo(
+    () => summarizeWorkout(sets, workoutPRs, workout.id),
+    [sets, workoutPRs, workout.id],
+  );
+
   const ready = setsQuery !== undefined && persistedQuery !== undefined && exercisesQuery !== undefined;
   // Βλ. isEmptyDraftWorkout σχόλιο — άδειο draft απορρίπτεται, δεν «τελειώνει».
   const isEmpty = ready ? isEmptyDraftWorkout(isSetLogged, sets.length) : false;
@@ -293,6 +316,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     await queries.endWorkout(workout.id, manual > 0 ? manual : undefined);
     clearStopwatch(workout.id);
     clearPendingIds(workout.id);
+    stopRest();
     navigate(`/history/${workout.id}`, { replace: true });
   };
 
@@ -302,6 +326,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     await queries.softDeleteWorkout(workout.id);
     clearStopwatch(workout.id);
     clearPendingIds(workout.id);
+    stopRest();
     navigate('/calendar', { replace: true });
   };
 
@@ -455,7 +480,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
             <div className="mt-4 flex gap-2">
               <Button
                 variant="outline"
-                className="flex-1"
+                className="min-w-0 flex-1 px-3"
                 onClick={() => setSheetOpen(true)}
               >
                 <Plus className="h-4 w-4" />
@@ -463,6 +488,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               </Button>
               <Button
                 variant="outline"
+                className="min-w-11 shrink-0 px-3"
                 onClick={() => setPasteOpen(true)}
                 aria-label={t('workout.pasteNotes')}
                 title={t('workout.pasteNotes')}
@@ -472,10 +498,20 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               </Button>
               <Button
                 variant="outline"
+                className="min-w-11 shrink-0 px-3"
                 aria-label={t('plate.target')}
                 onClick={() => setPlateOpen(true)}
               >
                 <Weight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="min-w-11 shrink-0 px-3"
+                aria-label={t('workout.rest.manual')}
+                title={t('workout.rest.manual')}
+                onClick={() => startRest(settings?.default_rest_timer_seconds ?? 180)}
+              >
+                <Timer className="h-4 w-4" />
               </Button>
             </div>
           </>
@@ -483,6 +519,8 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           <ActivityLogForm workout={workout} />
         )}
       </div>
+
+      {isSetLogged && <RestTimerBar />}
 
       {isSetLogged && (
         <AddExerciseSheet
@@ -542,6 +580,18 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
         description={
           <>
             {isEmpty ? t('workout.emptySaveDesc') : t('workout.endConfirmDesc')}
+            {!isEmpty && summary.sets > 0 && (
+              <span className="mt-2 block font-mono text-xs tabular-nums text-foreground" data-testid="end-summary">
+                {[
+                  t('workout.summary.exercises', { count: summary.exercises }),
+                  t('workout.summary.sets', { count: summary.sets }),
+                  formatWeight(summary.volumeKg, unit, { granularity: 'body' }),
+                ].join(' · ')}
+                {summary.prs > 0 && (
+                  <span className="ml-2 text-gold-strong">🏆 {t('workout.summary.prs', { count: summary.prs })}</span>
+                )}
+              </span>
+            )}
             {pending.length > 0 && (
               <span className="mt-2 block text-xs text-muted-foreground">
                 {t('workout.pendingWarning', { count: pending.length })}

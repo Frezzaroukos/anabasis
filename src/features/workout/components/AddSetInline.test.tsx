@@ -129,9 +129,40 @@ describe('AddSetInline — hold vs reps flow', () => {
     expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', '8');
     expect(screen.getByLabelText(/Weight/)).toHaveProperty('value', '40');
     fireEvent.click(screen.getByRole('button', { name: SAVE }));
-    await waitFor(() => expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', ''));
-    expect(onSave).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    // Επιτυχές save: τα reps ΜΕΝΟΥΝ (επόμενο σετ = 1 tap).
+    expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', '8');
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('μετά από επιτυχές save κρατά βάρος+reps αλλά καθαρίζει RPE/RIR/σημείωση', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(wrap(<AddSetInline weighted initialWeight={60} initialReps={8} onSave={onSave} />));
+    fireEvent.click(screen.getByText(en.workout.intensityShow));
+    fireEvent.change(screen.getByLabelText(en.workout.rpe), { target: { value: '8' } });
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByLabelText(en.workout.rpe)).toHaveProperty('value', ''));
+    expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', '8');
+    expect(screen.getByLabelText(/Weight/)).toHaveProperty('value', '60');
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    expect(onSave).toHaveBeenLastCalledWith(60, 8, null, expect.anything(), []);
+  });
+
+  it('γεμίζει τα προηγούμενα όταν φτάνουν ΜΕΤΑ το πρώτο render, αλλά δεν πατά ό,τι πληκτρολόγησε ο χρήστης', () => {
+    const onSave = vi.fn();
+    const { rerender } = render(wrap(<AddSetInline weighted onSave={onSave} />));
+    expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', '');
+    // Το IndexedDB απάντησε: «την προηγούμενη φορά 70kg × 6».
+    rerender(wrap(<AddSetInline weighted initialWeight={70} initialReps={6} onSave={onSave} />));
+    expect(screen.getByLabelText(/Weight/)).toHaveProperty('value', '70');
+    expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', '6');
+    // Ο χρήστης αλλάζει τα reps· νέο initial (π.χ. άλλο latestSet) δεν τα ξαναγράφει.
+    fireEvent.change(screen.getByLabelText(REPS_LABEL), { target: { value: '9' } });
+    rerender(wrap(<AddSetInline weighted initialWeight={70} initialReps={7} onSave={onSave} />));
+    expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', '9');
   });
 
   it('serializes rapid keyboard saves until the first write finishes', async () => {
