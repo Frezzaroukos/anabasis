@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -22,8 +22,14 @@ import type { ChartRangeKey } from '@/components/charts/timeRange';
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { ActivityProgress } from './ActivityProgress';
-import { TrainingAnalytics } from './analytics/TrainingAnalytics';
 import { ProgressHistoryTabs } from '@/features/history/components/ProgressHistoryTabs';
+
+// Τα 7 analytics queries διαβάζουν όλα τα σετ. Αν ξεκινήσουν μαζί με τη
+// λίστα ασκήσεων, καθυστερούν το «Last trained». Φορτώνονται αφού η λίστα
+// έχει ήδη δεδομένα.
+const TrainingAnalytics = lazy(() =>
+  import('./analytics/TrainingAnalytics').then((m) => ({ default: m.TrainingAnalytics })),
+);
 
 const PROGRESS_METRICS: ChartMetric[] = ['topWeight', 'e1rm', 'reps', 'volume', 'hold'];
 
@@ -54,8 +60,11 @@ export function ProgressPage() {
   const summaries = useLiveQuery(
     () => getExerciseSummaries(),
     [],
-    new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>(),
+    undefined,
   );
+  const summaryMap =
+    summaries ??
+    new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>();
   const prsByExercise = useLiveQuery(
     () => getPRsByExercise(),
     [],
@@ -110,9 +119,9 @@ export function ProgressPage() {
             onChange={(e) => setQ(e.target.value)}
             className="h-10"
           />
-          <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
             {filtered.map((e) => {
-              const s = summaries.get(e.id);
+              const s = summaryMap.get(e.id);
               return (
                 <li key={e.id}>
                   <button
@@ -148,7 +157,11 @@ export function ProgressPage() {
             )}
           </ul>
           <ActivityProgress />
-          <TrainingAnalytics />
+          {summaries !== undefined && (
+            <Suspense fallback={null}>
+              <TrainingAnalytics />
+            </Suspense>
+          )}
         </section>
       ) : (
         <section className="animate-rise-in space-y-4">

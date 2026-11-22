@@ -1285,15 +1285,14 @@ export async function getExerciseSummaries(): Promise<
 > {
   // Τα sets δεν έχουν user_id. Χωρίς το workout του τρέχοντος προφίλ, ένα
   // builtin exercise έδειχνε «τελευταία φορά» από τα σετ άλλου προφίλ.
-  const myWorkoutIds = new Set(
-    (await db.workouts.where('user_id').equals(getCurrentUserId()).toArray())
-      .filter((w) => w.deleted_at == null)
-      .map((w) => w.id),
-  );
-  const sets = (await db.sets.toArray()).filter(
-    (s) => s.deleted_at == null && myWorkoutIds.has(s.workout_id),
-  );
-  const prByExercise = await getPRsByExercise();
+  // `toArray` (native getAll) αντί για `filter` cursor — φθηνότερο σε χιλιάδες σετ.
+  const [myWorkouts, allSets, prByExercise] = await Promise.all([
+    db.workouts.where('user_id').equals(getCurrentUserId()).toArray(),
+    db.sets.toArray(),
+    getPRsByExercise(),
+  ]);
+  const myWorkoutIds = new Set(myWorkouts.filter((w) => w.deleted_at == null).map((w) => w.id));
+  const sets = allSets.filter((s) => s.deleted_at == null && myWorkoutIds.has(s.workout_id));
   const out = new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>();
   for (const s of sets) {
     const cur = out.get(s.exercise_id) ?? { lastTrainedAt: null, hasPR: false, setCount: 0 };
