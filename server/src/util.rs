@@ -44,7 +44,11 @@ pub fn format_iso_millis(t: OffsetDateTime) -> String {
 /// A timestamp ahead of `now` is clamped to `now` before the comparison.
 pub fn lww_store_timestamp(incoming: &str, existing: Option<&str>, now: &str) -> Option<String> {
     let now_i = parse_iso(now).unwrap_or(OffsetDateTime::UNIX_EPOCH);
-    let incoming_i = parse_iso(incoming).unwrap_or(OffsetDateTime::UNIX_EPOCH);
+    let Some(incoming_i) = parse_iso(incoming) else {
+        // Legacy/malformed `updated_at`: never overwrite an existing row, and
+        // never invent a 1970 timestamp for a new one — keep it as sent.
+        return existing.is_none().then(|| incoming.to_string());
+    };
     let clamped = if incoming_i > now_i {
         now_i
     } else {
