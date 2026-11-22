@@ -741,6 +741,7 @@
     "hold": "Hold",
     "reps": "Reps",
     "bwEstimated": "≈ estimated from latest body weight",
+    "notTrainedSection": "Not trained yet",
     "bodyVsStrength": {
       "title": "Body weight vs strength",
       "hint": "Both lines start at 100 — see whether strength grows faster than body weight.",

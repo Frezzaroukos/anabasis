@@ -101,4 +101,30 @@ describe('ProgressPage', () => {
     });
     expect(await screen.findByText('No exercise matches.')).toBeTruthy();
   });
+
+  it('προπονημένες πρώτα (πιο πρόσφατη πάνω)· οι «Not trained yet» σε collapsed ενότητα', async () => {
+    const older = await createExercise({ name: 'Zz Older Lift', category: 'legs' });
+    const newer = await createExercise({ name: 'Zz Newer Lift', category: 'legs' });
+    const never = await createExercise({ name: 'Zz Never Lift', category: 'legs' });
+    for (const [ex, ago] of [[older, 20], [newer, 3]] as const) {
+      const w = await startWorkout('strength', daysAgo(ago));
+      await addSet({
+        workout_id: w.id, exercise_id: ex.id,
+        weight_kg: 50, bodyweight_kg: null, reps: 5, hold_seconds: null,
+      });
+      await endWorkout(w.id);
+    }
+
+    renderAt();
+    await screen.findByText('Zz Newer Lift', {}, { timeout: 5000 });
+    const names = screen.getAllByText(/^Zz (Older|Newer) Lift$/).map((n) => n.textContent);
+    expect(names).toEqual(['Zz Newer Lift', 'Zz Older Lift']);
+    // collapsed: η «never» δεν φαίνεται
+    expect(screen.queryByText(never.name)).toBeNull();
+    const toggle = screen.getByRole('button', { name: /Not trained yet/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(await screen.findByText(never.name)).toBeTruthy();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  });
 });

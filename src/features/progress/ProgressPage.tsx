@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Download, Trophy } from 'lucide-react';
+import { ChevronDown, Download, Trophy } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { splitExerciseList } from './exerciseList';
 import {
   exportExerciseCsv,
   getExerciseProgress,
@@ -51,11 +53,10 @@ export function ProgressPage() {
   }, [params]);
 
   const exercises = useLiveQuery(() => listExercises(), [], []);
-  const summaries = useLiveQuery(
-    () => getExerciseSummaries(),
-    [],
-    new Map<string, { lastTrainedAt: string | null; hasPR: boolean; setCount: number }>(),
-  );
+  // undefined = ακόμα φορτώνει (δεν ξέρουμε ποιες είναι προπονημένες)
+  const summariesLoaded = useLiveQuery(() => getExerciseSummaries(), []);
+  const summaries =
+    summariesLoaded ?? new Map<string, { lastTrainedAt: string | null; hasPR: boolean }>();
   const prsByExercise = useLiveQuery(
     () => getPRsByExercise(),
     [],
@@ -71,6 +72,44 @@ export function ProgressPage() {
   const filtered = q
     ? exercises.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()))
     : exercises;
+  // Όσο φορτώνουν τα summaries όλες μένουν σε μία λίστα — αλλιώς οι προπονημένες
+  // θα πετάγονταν πρώτα στο «Not trained yet» και μετά θα «πηδούσαν» πάνω.
+  const { trained, untrained } = summariesLoaded
+    ? splitExerciseList(filtered, summaries)
+    : { trained: filtered, untrained: [] };
+  const [untrainedOpen, setUntrainedOpen] = useState(false);
+  // Στην αναζήτηση ανοίγει μόνο του — αλλιώς ένα αποτέλεσμα θα κρυβόταν.
+  const showUntrained = untrainedOpen || q.length > 0;
+  const renderRow = (e: (typeof exercises)[number]) => {
+              const s = summaries.get(e.id);
+              return (
+                <li key={e.id}>
+                  <button
+                    onClick={() => setExerciseId(e.id)}
+                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      {/* Trophy (χρυσό) = έχει PR· διακριτική κουκκίδα = έχει
+                          προπονηθεί· αλλιώς κενό — καθαρό εικονίδιο αντί για
+                          ανάμεικτα Unicode σύμβολα. */}
+                      <CategoryIcon category={e.category} />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{e.name}</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          {s?.lastTrainedAt
+                            ? t('progress.lastTrained', {
+                                date: new Date(s.lastTrainedAt).toLocaleDateString(i18n.resolvedLanguage),
+                              })
+                            : t('progress.never')}
+                        </span>
+                      </span>
+                      {s?.hasPR && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />}
+                    </span>
+                    <CategoryBadge category={e.category} />
+                  </button>
+                </li>
+              );
+            };
   const selected = exercises.find((e) => e.id === exerciseId) ?? null;
   const exercisePRs = prsByExercise.get(exerciseId ?? '') ?? [];
 
@@ -110,43 +149,42 @@ export function ProgressPage() {
             onChange={(e) => setQ(e.target.value)}
             className="h-10"
           />
-          <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
-            {filtered.map((e) => {
-              const s = summaries.get(e.id);
-              return (
-                <li key={e.id}>
-                  <button
-                    onClick={() => setExerciseId(e.id)}
-                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-elevated active:scale-[0.99] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      {/* Trophy (χρυσό) = έχει PR· διακριτική κουκκίδα = έχει
-                          προπονηθεί· αλλιώς κενό — καθαρό εικονίδιο αντί για
-                          ανάμεικτα Unicode σύμβολα. */}
-                      <CategoryIcon category={e.category} />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">{e.name}</span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          {s?.lastTrainedAt
-                            ? t('progress.lastTrained', {
-                                date: new Date(s.lastTrainedAt).toLocaleDateString(i18n.resolvedLanguage),
-                              })
-                            : t('progress.never')}
-                        </span>
-                      </span>
-                      {s?.hasPR && <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden />}
-                    </span>
-                    <CategoryBadge category={e.category} />
-                  </button>
+          {(trained.length > 0 || filtered.length === 0) && (
+            <ul className="stagger divide-y divide-border/60 overflow-hidden rounded-xl bg-card">
+              {trained.map(renderRow)}
+              {filtered.length === 0 && (
+                <li className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  {t('progress.noMatch')}
                 </li>
-              );
-            })}
-            {filtered.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-muted-foreground">
-                {t('progress.noMatch')}
-              </li>
-            )}
-          </ul>
+              )}
+            </ul>
+          )}
+          {untrained.length > 0 && (
+            <div className="overflow-hidden rounded-xl bg-card">
+              <button
+                type="button"
+                aria-expanded={showUntrained}
+                onClick={() => setUntrainedOpen((v) => !v)}
+                className="flex min-h-11 w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-elevated focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              >
+                <span>
+                  {t('progress.notTrainedSection')}{' '}
+                  <span className="font-mono text-xs font-normal text-muted-foreground">
+                    {untrained.length}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn('h-4 w-4 text-muted-foreground transition-transform', showUntrained && 'rotate-180')}
+                  aria-hidden
+                />
+              </button>
+              {showUntrained && (
+                <ul className="divide-y divide-border/60 border-t border-border/60">
+                  {untrained.map(renderRow)}
+                </ul>
+              )}
+            </div>
+          )}
           <ActivityProgress />
           <TrainingAnalytics />
         </section>
