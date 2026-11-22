@@ -6,7 +6,7 @@ import { I18nextProvider } from 'react-i18next';
 import en from '@/i18n/en.json';
 import { db } from '@/lib/db';
 import { setCurrentUserId } from '@/lib/db/session';
-import { addSet, endWorkout, startWorkout } from '@/lib/db/queries';
+import { addSet, endWorkout, localDay, startWorkout } from '@/lib/db/queries';
 import { SEED_EXERCISES } from '@/lib/db/seeds';
 import { WorkoutDetailPage } from './WorkoutDetailPage';
 import { ToastProvider } from '@/components/ui/toast';
@@ -265,6 +265,55 @@ describe('WorkoutDetailPage — inline set & exercise management on past workout
     await waitFor(async () => {
       detail = await getWorkoutDetail(w.id);
       expect(detail!.exercises.map((e) => e.exerciseId)).toEqual([squat.id, bench.id]);
+    });
+  });
+});
+
+describe('WorkoutDetailPage — batch weight, duplicate, date move', () => {
+  it('αλλάζει βάρος σε όλα τα σετ μιας άσκησης με ένα κίνημα (batch)', async () => {
+    const w = await startWorkout('strength', '2026-11-18', null, null, 'Upper');
+    await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 80, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 85, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+
+    renderDetail(w.id);
+    await waitFor(() => expect(screen.getByRole('link', { name: /Bench Press/ })).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: en.history.batchWeight }));
+    const sheet = await screen.findByRole('dialog');
+    const input = within(sheet).getByLabelText(en.history.batchWeightTitle) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '-10' } });
+    fireEvent.click(within(sheet).getByRole('button', { name: en.history.batchWeightApply }));
+
+    await waitFor(async () => {
+      const weights = (await db.sets.where('workout_id').equals(w.id).toArray())
+        .map((s) => s.weight_kg)
+        .sort((a, b) => (a ?? 0) - (b ?? 0));
+      expect(weights).toEqual([70, 75]);
+    });
+  });
+
+  it('αντιγράφει την προπόνηση σε άλλη ημερομηνία από το header', async () => {
+    const w = await startWorkout('strength', '2026-11-15', null, null, 'Upper');
+    await addSet({ workout_id: w.id, exercise_id: bench.id, weight_kg: 80, bodyweight_kg: null, reps: 5, hold_seconds: null });
+    await endWorkout(w.id);
+
+    renderDetail(w.id);
+    await waitFor(() => expect(screen.getByRole('link', { name: /Bench Press/ })).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: en.history.duplicateWorkout }));
+    const sheet = await screen.findByRole('dialog');
+    const dateInput = within(sheet).getByDisplayValue(localDay()) as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: '2026-11-08' } });
+    fireEvent.click(within(sheet).getByRole('button', { name: en.history.duplicateAction }));
+
+    await waitFor(async () => {
+      const copies = (await db.workouts.toArray()).filter(
+        (x) => x.id !== w.id && x.deleted_at == null && localDay(new Date(x.started_at)) === '2026-11-08',
+      );
+      expect(copies).toHaveLength(1);
+      const copySets = await db.sets.where('workout_id').equals(copies[0]!.id).toArray();
+      expect(copySets).toHaveLength(1);
     });
   });
 });
