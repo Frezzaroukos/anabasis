@@ -4079,6 +4079,80 @@ async fn stripe_lifetime_refund_revokes_only_the_latest_payment() {
 }
 
 #[tokio::test]
+async fn stripe_subscription_unpaid_does_not_grant_pro() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let (_, body) = signup(&app, "sub-unpaid@example.com", "correcthorsebattery").await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let account_id = body["account"]["id"].as_str().unwrap().to_string();
+    let timestamp = anabasis_api::util::now().unix_timestamp();
+
+    let payload = serde_json::to_vec(&json!({
+        "id": "evt_sub_unpaid",
+        "type": "checkout.session.completed",
+        "data": { "object": {
+            "id": "cs_sub_unpaid",
+            "client_reference_id": account_id,
+            "mode": "subscription",
+            "status": "complete",
+            "payment_status": "unpaid",
+            "subscription": "sub_unpaid",
+            "metadata": { "account_id": account_id, "plan": "monthly" }
+        }}
+    }))
+    .unwrap();
+    let signature = sign_stripe("whsec_test", timestamp, &payload);
+    assert_eq!(
+        post_stripe_webhook(&app, timestamp, &signature, &payload).await,
+        StatusCode::OK
+    );
+
+    let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+    assert_eq!(me["plan"], "free");
+    assert_eq!(me["plan_active"], false);
+}
+
+#[tokio::test]
+async fn stripe_subscription_paid_or_no_payment_required_grants_pro() {
+    let (app, _state, _dir) = test_app_with_billing().await;
+    let timestamp = anabasis_api::util::now().unix_timestamp();
+
+    for (event_id, payment_status) in [
+        ("evt_sub_paid", "paid"),
+        ("evt_sub_nopay", "no_payment_required"),
+    ] {
+        let (_, body) = signup(
+            &app,
+            &format!("{event_id}@example.com"),
+            "correcthorsebattery",
+        )
+        .await;
+        let token = body["token"].as_str().unwrap().to_string();
+        let account_id = body["account"]["id"].as_str().unwrap().to_string();
+        let payload = serde_json::to_vec(&json!({
+            "id": event_id,
+            "type": "checkout.session.completed",
+            "data": { "object": {
+                "id": format!("cs_{event_id}"),
+                "client_reference_id": account_id,
+                "mode": "subscription",
+                "status": "complete",
+                "payment_status": payment_status,
+                "subscription": format!("sub_{event_id}"),
+                "metadata": { "account_id": account_id, "plan": "monthly" }
+            }}
+        }))
+        .unwrap();
+        let signature = sign_stripe("whsec_test", timestamp, &payload);
+        assert_eq!(
+            post_stripe_webhook(&app, timestamp, &signature, &payload).await,
+            StatusCode::OK
+        );
+        let (_, me) = call(&app, "GET", "/api/me", Some(&token), None).await;
+        assert_eq!(me["plan_active"], true, "{payment_status} should grant");
+    }
+}
+
+#[tokio::test]
 async fn billing_portal_requires_a_stripe_subscription() {
     let (app, _state, _dir) = test_app_with_billing().await;
     let (_, body) = signup(&app, "portal@example.com", "correcthorsebattery").await;
