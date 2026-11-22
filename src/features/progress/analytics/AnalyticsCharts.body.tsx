@@ -12,6 +12,8 @@ import {
 } from 'recharts';
 import type { WeightUnit } from '@/lib/db/types';
 import {
+  ACCENT_FILL_ID,
+  ACTIVE_DOT,
   CHART_GOLD,
   CHART_GRID,
   CHART_STROKE,
@@ -326,6 +328,56 @@ export function WeeklyCategoryChart({
           />
         ))}
       </BarChart>
+    </ChartFrame>
+  );
+}
+
+/** Σωρευτικά βήματα skills — ίδιο step-area με το PR timeline, άλλο tooltip. */
+export function SkillStepsChart({
+  data,
+  range,
+  summary,
+}: {
+  data: PRTimelinePoint[];
+  range: ChartRangeKey;
+  summary: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ChartFrame summary={summary}>
+      <AreaChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: -24 }}>
+        <ChartGradientDefs />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+        <XAxis
+          dataKey="date"
+          tickFormatter={tickFormatterFor(range)}
+          interval={tickIntervalFor(range, data.length)}
+          tick={CHART_TICK}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis allowDecimals={false} tick={CHART_TICK} axisLine={false} tickLine={false} width={30} />
+        <Tooltip
+          contentStyle={{ ...TOOLTIP_STYLE, maxWidth: 280 }}
+          labelFormatter={(d: string) => localDateLabel(d)}
+          formatter={(v: number, _name, item) => {
+            const events = (
+              item as { payload?: { events?: Array<{ name: string; type: string }> } } | undefined
+            )?.payload?.events;
+            const detail = events?.map((e) => `${e.type} · ${e.name}`).join(', ') ?? '';
+            return [`${v} ${t('progress.analytics.steps')}`, detail];
+          }}
+        />
+        <Area
+          type="stepAfter"
+          dataKey="cumulative"
+          stroke={CHART_STROKE}
+          strokeWidth={CHART_STROKE_WIDTH}
+          fill={`url(#${ACCENT_FILL_ID})`}
+          dot={{ r: 2.5, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+          activeDot={ACTIVE_DOT}
+        />
+      </AreaChart>
     </ChartFrame>
   );
 }

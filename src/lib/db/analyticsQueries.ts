@@ -165,3 +165,29 @@ export async function getTrainingHeatmap(weeks: number): Promise<HeatmapDay[]> {
     .map((w) => ({ id: w.id, date: localDay(new Date(w.started_at)) }));
   return buildTrainingHeatmap(workouts, weeks);
 }
+
+/**
+ * Βήματα skills (rungs) που πέτυχες στο εύρος ημερών — σωρευτικά ανά ημέρα.
+ * `type` = όνομα skill, `name` = όνομα βήματος (για tooltip). Διαγραμμένες
+ * ολοκληρώσεις και βήματα/skills που έχουν σβηστεί δεν μετράνε.
+ */
+export async function getSkillStepTimeline(days: number): Promise<PRTimelinePoint[]> {
+  const since = localDayDaysAgo(days);
+  const [completions, steps, skills] = await Promise.all([
+    db.user_skill_step_completions.where('user_id').equals(getCurrentUserId()).toArray(),
+    db.skill_steps.toArray(),
+    db.skills.toArray(),
+  ]);
+  const stepById = new Map(steps.map((st) => [st.id, st]));
+  const skillById = new Map(skills.filter((sk) => sk.deleted_at == null).map((sk) => [sk.id, sk]));
+  const events = completions
+    .filter((c) => c.deleted_at == null)
+    .flatMap((c) => {
+      const step = stepById.get(c.skill_step_id);
+      const skill = step ? skillById.get(step.skill_id) : undefined;
+      if (!step || !skill) return [];
+      return [{ date: localDay(new Date(c.achieved_at)), type: skill.name, name: step.name }];
+    })
+    .filter((e) => e.date >= since);
+  return buildPRTimeline(events);
+}

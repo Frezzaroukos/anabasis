@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type { HeatmapDay } from '@/lib/db/analytics';
@@ -19,11 +20,21 @@ const LEVEL_CLASS: Record<0 | 1 | 2, string> = {
 export function TrainingHeatmap({ days, summary }: { days: HeatmapDay[]; summary: string }) {
   const { t } = useTranslation();
   const cols = Math.ceil(days.length / 7);
+  const scroller = useRef<HTMLDivElement>(null);
+  // Στενή οθόνη: τα κελιά κρατούν ≥12px και το πλέγμα κυλά ΜΟΝΟ μέσα στο card —
+  // ξεκινά στο τέλος (σήμερα), όχι στην παλιότερη εβδομάδα.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [cols]);
   return (
     <div role="img" aria-label={summary} className="w-full">
+      <div ref={scroller} className="w-full overflow-x-auto pb-1">
       <div
-        className="grid w-full gap-[3px]"
+        className="grid gap-[3px]"
         style={{
+          minWidth: cols * 15,
+          maxWidth: cols * 24,
           gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
           gridTemplateRows: 'repeat(7, auto)',
           gridAutoFlow: 'column',
@@ -40,6 +51,7 @@ export function TrainingHeatmap({ days, summary }: { days: HeatmapDay[]; summary
             className={cn('aspect-square w-full rounded-[3px]', LEVEL_CLASS[heatLevel(d.sessions)])}
           />
         ))}
+      </div>
       </div>
       <div className="mt-2 flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
         <span>{t('progress.analytics.less')}</span>

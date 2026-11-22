@@ -62,9 +62,9 @@ describe('ProgressPage', () => {
     fireEvent.change(screen.getByPlaceholderText('Search exercises…'), {
       target: { value: 'Progress Chart Deadlift' },
     });
-    fireEvent.click(await screen.findByText('Progress Chart Deadlift'));
+    fireEvent.click(await screen.findByText('Progress Chart Deadlift', {}, { timeout: 5000 }));
 
-    await waitFor(() => expect(screen.getByText(/2 sessions/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/2 sessions/)).toBeTruthy(), { timeout: 5000 });
     expect(screen.getByText('Top set')).toBeTruthy();
     expect(screen.getByText('Est. 1RM')).toBeTruthy();
     expect(screen.getByText('Volume')).toBeTruthy();

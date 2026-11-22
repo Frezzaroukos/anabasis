@@ -6,6 +6,7 @@ import { toDisplayWeight } from '@/lib/units';
 import {
   getCategoryDistribution,
   getPRTimeline,
+  getSkillStepTimeline,
   getTrainingHeatmap,
   getWeeklyCategorySets,
   getWeeklyFrequencySeries,
@@ -28,6 +29,9 @@ const CategoryChart = lazy(() =>
 );
 const WeeklyCategoryChart = lazy(() =>
   import('./AnalyticsCharts.body').then((m) => ({ default: m.WeeklyCategoryChart })),
+);
+const SkillStepsChart = lazy(() =>
+  import('./AnalyticsCharts.body').then((m) => ({ default: m.SkillStepsChart })),
 );
 const PRTimelineChart = lazy(() =>
   import('./AnalyticsCharts.body').then((m) => ({ default: m.PRTimelineChart })),
@@ -61,6 +65,7 @@ export function TrainingAnalytics() {
   const heatmap = useLiveQuery(() => getTrainingHeatmap(heatmapWeeks), [heatmapWeeks], []);
   const weeklyCategories = useLiveQuery(() => getWeeklyCategorySets(weeks), [weeks], []);
   const categories = useLiveQuery(() => getCategoryDistribution(days), [days], []);
+  const skillSteps = useLiveQuery(() => getSkillStepTimeline(days), [days], []);
   const prs = useLiveQuery(() => getPRTimeline(days), [days], []);
 
   const weeklyData = useMemo(
@@ -106,8 +111,10 @@ export function TrainingAnalytics() {
   const hasFrequency = frequency.some((p) => p.sessions > 0);
   const hasCategories = categoryData.length > 0;
   const hasPRs = prs.length > 0;
+  const hasSkillSteps = skillSteps.length > 0;
+  const totalSteps = skillSteps.at(-1)?.cumulative ?? 0;
 
-  if (!hasHeatmap && !hasWeeklyCategories && !hasWeekly && !hasFrequency && !hasCategories && !hasPRs) return null;
+  if (!hasSkillSteps && !hasHeatmap && !hasWeeklyCategories && !hasWeekly && !hasFrequency && !hasCategories && !hasPRs) return null;
 
   const totalVolume = weeklyData.reduce((sum, p) => sum + p.volume, 0);
   const totalSessions = frequency.reduce((sum, p) => sum + p.sessions, 0);
@@ -226,6 +233,20 @@ export function TrainingAnalytics() {
               data={prs}
               range={range}
               summary={`${t('progress.analytics.summaryPrs')}: ${totalPRs}`}
+            />
+          </ChartCard>
+        )}
+
+        {hasSkillSteps && (
+          <ChartCard
+            title={t('progress.analytics.skillSteps')}
+            total={`${totalSteps} ${t('progress.analytics.steps')}`}
+            hint={t('progress.analytics.skillStepsHint')}
+          >
+            <SkillStepsChart
+              data={skillSteps}
+              range={range}
+              summary={`${t('progress.analytics.summarySkillSteps')}: ${totalSteps}`}
             />
           </ChartCard>
         )}

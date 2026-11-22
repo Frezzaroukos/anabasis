@@ -667,7 +667,11 @@
       "more": "More",
       "weeklyCategories": "Weekly sets by category",
       "weeklyCategoriesHint": "Working sets per week, split by push / pull / legs / core.",
-      "summaryWeeklyCategories": "Working sets per week by category"
+      "summaryWeeklyCategories": "Working sets per week by category",
+      "skillSteps": "Skill progress",
+      "skillStepsHint": "Cumulative skill steps (rungs) you achieved.",
+      "steps": "steps",
+      "summarySkillSteps": "Cumulative skill steps achieved"
     },
     "hold": "Hold",
     "reps": "Reps",

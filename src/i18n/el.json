@@ -667,7 +667,11 @@
       "more": "Περισσότερο",
       "weeklyCategories": "Εβδομαδιαία σετ ανά κατηγορία",
       "weeklyCategoriesHint": "Working σετ ανά εβδομάδα, χωρισμένα σε push / pull / legs / core.",
-      "summaryWeeklyCategories": "Working σετ ανά εβδομάδα και κατηγορία"
+      "summaryWeeklyCategories": "Working σετ ανά εβδομάδα και κατηγορία",
+      "skillSteps": "Πρόοδος skills",
+      "skillStepsHint": "Σωρευτικά βήματα (rungs) skills που πέτυχες.",
+      "steps": "βήματα",
+      "summarySkillSteps": "Σωρευτικά βήματα skills που πετύχατε"
     },
     "hold": "Κράτημα",
     "reps": "Επαναλήψεις",

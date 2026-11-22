@@ -1,11 +1,12 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { db } from './index';
-import { SEED_EXERCISES } from './seeds';
+import { SEED_EXERCISES, SEED_SKILLS, SEED_SKILL_STEPS } from './seeds';
 import { addSet, endWorkout, getExerciseProgress, startWorkout } from './queries';
 import { getCurrentUserId, setCurrentUserId } from './session';
 import {
   getCategoryDistribution,
   getPRTimeline,
+  getSkillStepTimeline,
   getTrainingHeatmap,
   getWeeklyCategorySets,
   getWeeklyFrequencySeries,
@@ -250,5 +251,41 @@ describe('getExerciseProgress — fallback σωματικού βάρους', () 
     const [p] = await getExerciseProgress(pushup.id, 30);
     expect(p!.topWeight).toBe(10);
     expect(p!.bwEstimated).toBeFalsy();
+  });
+});
+
+describe('getSkillStepTimeline', () => {
+  let original: string;
+  beforeAll(async () => {
+    original = getCurrentUserId();
+    setCurrentUserId('analytics-skill-steps');
+    await db.skills.bulkPut(SEED_SKILLS);
+    await db.skill_steps.bulkPut(SEED_SKILL_STEPS);
+  });
+  afterAll(() => setCurrentUserId(original));
+
+  it('σωρευτικά βήματα, εξαιρεί διαγραμμένες ολοκληρώσεις και εκτός εύρους', async () => {
+    const [a, b, c] = SEED_SKILL_STEPS.slice(0, 3);
+    const iso = (daysAgo: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      d.setHours(12, 0, 0, 0);
+      return d.toISOString();
+    };
+    const row = (id: string, stepId: string, at: string, deleted = false) => ({
+      id, user_id: 'analytics-skill-steps', skill_step_id: stepId, achieved_value: 1,
+      added_weight_kg: null, achieved_at: at, created_at: at, updated_at: at,
+      deleted_at: deleted ? at : null,
+    });
+    await db.user_skill_step_completions.bulkPut([
+      row('c1', a!.id, iso(10)),
+      row('c2', b!.id, iso(10)),
+      row('c3', c!.id, iso(3)),
+      row('c4', c!.id, iso(2), true),
+      row('c5', a!.id, iso(200)),
+    ] as never);
+    const points = await getSkillStepTimeline(30);
+    expect(points.map((p) => p.cumulative)).toEqual([2, 3]);
+    expect(points[0]!.events).toHaveLength(2);
   });
 });
