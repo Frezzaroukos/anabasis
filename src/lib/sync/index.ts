@@ -591,6 +591,31 @@ function handleSyncError(err: unknown): void {
   setStatus({ state: 'offline' });
 }
 
+/*
+ * «Πρώτο sync ολοκληρώθηκε»: ό,τι θέλει να γράψει σε δεδομένα που μπορεί να
+ * ζουν και στον server (π.χ. migrations διόρθωσης) πρέπει να περιμένει το pull,
+ * αλλιώς δουλεύει πάνω σε παλιά τοπικά rows και σπρώχνει λάθος αποτέλεσμα.
+ */
+let syncSettledWaiters: Array<() => void> = [];
+
+function markSyncSettled(): void {
+  const waiters = syncSettledWaiters;
+  syncSettledWaiters = [];
+  for (const resolve of waiters) resolve();
+}
+
+/**
+ * Επιλύεται αμέσως όταν δεν υπάρχει λογαριασμός (τίποτα να περιμένεις)· αλλιώς
+ * μετά τον πρώτο ΕΠΙΤΥΧΗ κύκλο sync (pull συμπεριλαμβανομένου). Αν το δίκτυο
+ * πέφτει, μένει σε αναμονή — ο caller ξαναδοκιμάζει στο επόμενο boot.
+ */
+export function whenInitialSyncSettled(): Promise<void> {
+  if (!isLoggedIn()) return Promise.resolve();
+  return new Promise((resolve) => {
+    syncSettledWaiters.push(resolve);
+  });
+}
+
 let running = false;
 let syncChain: Promise<void> = Promise.resolve();
 
@@ -661,6 +686,7 @@ async function syncNowInner(): Promise<void> {
     const finishedAt = new Date().toISOString();
     writeCursors({ lastSyncAt: finishedAt });
     setStatus({ state: 'idle', lastSyncAt: finishedAt });
+    markSyncSettled();
   } catch (err) {
     handleSyncError(err);
   }
@@ -749,6 +775,7 @@ async function fullResyncInner(order: 'push-first' | 'pull-first'): Promise<void
     const finishedAt = new Date().toISOString();
     writeCursors({ lastSyncAt: finishedAt });
     setStatus({ state: 'idle', lastSyncAt: finishedAt });
+    markSyncSettled();
   } catch (err) {
     handleSyncError(err);
   }

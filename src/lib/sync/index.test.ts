@@ -18,7 +18,7 @@ import {
   undoStep,
 } from '../db/queries';
 import { createScheduledSession } from '../db/scheduledSessions';
-import { fullResync, syncNow } from './index';
+import { fullResync, syncNow, whenInitialSyncSettled } from './index';
 
 /**
  * Sync engine — mocked fetch (vi.stubGlobal). Ελέγχουμε το ΣΥΜΒΟΛΑΙΟ, όχι τον
@@ -802,5 +802,26 @@ describe('syncNow — tombstones', () => {
       ?.rows.find((r) => r.id === completion!.id);
     expect(pushed).toBeTruthy();
     expect(pushed!.deleted_at).toBeTruthy();
+  });
+});
+
+
+describe('whenInitialSyncSettled', () => {
+  it('χωρίς λογαριασμό επιλύεται αμέσως', async () => {
+    localStorage.removeItem('anabasis.auth');
+    await expect(whenInitialSyncSettled()).resolves.toBeUndefined();
+  });
+
+  it('με λογαριασμό περιμένει ΜΕΧΡΙ να ολοκληρωθεί ο πρώτος επιτυχής κύκλος (pull)', async () => {
+    stubFetch({});
+    let settled = false;
+    const p = whenInitialSyncSettled().then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    await syncNow();
+    await p;
+    expect(settled).toBe(true);
   });
 });

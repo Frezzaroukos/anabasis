@@ -40,6 +40,9 @@ export default function App() {
         // mount στο dev) — αλλιώς initAutoSync's guard θα έβλεπε ήδη ενεργό
         // και δεν θα ξανασυνδεόταν στο δεύτερο πραγματικό mount.
         teardownAutoSync = sync.initAutoSync();
+        // One-time διόρθωση παλιών PR dates: μετά το πρώτο sync pull, σε idle.
+        const { schedulePRDatesMigration } = await import('@/lib/db/prDatesMigration');
+        schedulePRDatesMigration(sync.whenInitialSyncSettled);
       })
       .catch((err: unknown) => {
         console.error('[bootstrap]', err);
