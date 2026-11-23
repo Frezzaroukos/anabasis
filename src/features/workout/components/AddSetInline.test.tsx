@@ -270,3 +270,104 @@ describe('AddSetInline — hold vs reps flow', () => {
     expect(onSave.mock.calls[0]?.[4]).toEqual([3, 2]);
   });
 });
+
+describe('AddSetInline — one-thumb steppers', () => {
+  it('weight ±2.5 kg and reps ±1 without the keyboard, then saves the stepped values', () => {
+    const onSave = vi.fn();
+    render(wrap(<AddSetInline weighted initialWeight={60} initialReps={8} onSave={onSave} />));
+
+    fireEvent.click(screen.getByRole('button', { name: '+2.5 kg' }));
+    fireEvent.click(screen.getByRole('button', { name: '+2.5 kg' }));
+    fireEvent.click(screen.getByRole('button', { name: '−2.5 kg' }));
+    fireEvent.click(screen.getByRole('button', { name: en.workout.stepRepsDown }));
+    expect(screen.getByLabelText(/Weight/)).toHaveProperty('value', '62.5');
+    expect(screen.getByLabelText(REPS_LABEL)).toHaveProperty('value', '7');
+
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0]?.[0]).toBe(62.5);
+    expect(onSave.mock.calls[0]?.[1]).toBe(7);
+  });
+
+  it('lb steps by 5 and the save still stores kilograms', () => {
+    const onSave = vi.fn();
+    render(wrap(<AddSetInline weighted unit="lb" initialReps={5} onSave={onSave} />));
+    fireEvent.click(screen.getByRole('button', { name: '+5 lb' }));
+    expect(screen.getByLabelText(/Weight/)).toHaveProperty('value', '5');
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    expect(onSave.mock.calls[0]?.[0]).toBeCloseTo(2.27, 2);
+  });
+
+  it('reps never step below 1; blank + «+1» starts at 1', () => {
+    render(wrap(<AddSetInline weighted={false} onSave={() => {}} />));
+    const reps = screen.getByLabelText(REPS_LABEL);
+    fireEvent.click(screen.getByRole('button', { name: en.workout.stepRepsDown }));
+    expect(reps).toHaveProperty('value', '');
+    fireEvent.click(screen.getByRole('button', { name: en.workout.stepRepsUp }));
+    expect(reps).toHaveProperty('value', '1');
+    fireEvent.click(screen.getByRole('button', { name: en.workout.stepRepsDown }));
+    expect(reps).toHaveProperty('value', '1');
+  });
+
+  it('holds step by 5 seconds and never below 1', () => {
+    const onSave = vi.fn();
+    render(wrap(<AddSetInline weighted={false} holdMode initialHoldSeconds={5} onSave={onSave} />));
+    const down = en.workout.stepHoldDown.replace('{{n}}', '5');
+    const up = en.workout.stepHoldUp.replace('{{n}}', '5');
+    fireEvent.click(screen.getByRole('button', { name: down }));
+    expect(screen.getByLabelText(HOLD_LABEL)).toHaveProperty('value', '5');
+    fireEvent.click(screen.getByRole('button', { name: up }));
+    fireEvent.click(screen.getByRole('button', { name: up }));
+    expect(screen.getByLabelText(HOLD_LABEL)).toHaveProperty('value', '15');
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    expect(onSave.mock.calls[0]?.[2]).toBe(15);
+  });
+
+  it('a stepper tap counts as an edit: late "last time" values do not overwrite it', () => {
+    const { rerender } = render(wrap(<AddSetInline weighted onSave={() => {}} />));
+    fireEvent.click(screen.getByRole('button', { name: '+2.5 kg' }));
+    rerender(wrap(<AddSetInline weighted initialWeight={80} onSave={() => {}} />));
+    expect(screen.getByLabelText(/Weight/)).toHaveProperty('value', '2.5');
+  });
+});
+
+describe('AddSetInline — focus after save on touch screens', () => {
+  const setPointer = (coarse: boolean) =>
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: coarse && query === '(pointer: coarse)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+
+  it('a tap on «Add set» does not re-open the soft keyboard', async () => {
+    setPointer(true);
+    const onSave = vi.fn();
+    render(wrap(<AddSetInline weighted={false} initialReps={8} onSave={onSave} />));
+    const button = screen.getByRole('button', { name: SAVE });
+    button.focus();
+    fireEvent.click(button);
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    await act(() => new Promise((r) => requestAnimationFrame(() => r(undefined))));
+    expect(document.activeElement).not.toBe(screen.getByLabelText(REPS_LABEL));
+    vi.unstubAllGlobals();
+  });
+
+  it('Enter/«Done» keeps the keyboard flow: focus returns to reps', async () => {
+    setPointer(true);
+    const onSave = vi.fn();
+    render(wrap(<AddSetInline weighted={false} initialReps={8} onSave={onSave} />));
+    const reps = screen.getByLabelText(REPS_LABEL);
+    fireEvent.keyDown(reps, { key: 'Enter' });
+    await waitFor(() => expect(document.activeElement).toBe(reps));
+    vi.unstubAllGlobals();
+  });
+
+  it('with a mouse, a click still returns focus to reps (desktop typing flow)', async () => {
+    setPointer(false);
+    render(wrap(<AddSetInline weighted={false} initialReps={8} onSave={() => {}} />));
+    fireEvent.click(screen.getByRole('button', { name: SAVE }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(REPS_LABEL)));
+    vi.unstubAllGlobals();
+  });
+});
