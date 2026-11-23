@@ -1,4 +1,5 @@
 import type { PersonalRecord } from '../db/types';
+import { NON_XP_PR_TYPES } from './pr';
 
 /**
  * ΕΝΙΑΙΟΣ ορισμός «PR» για ό,τι ΜΕΤΡΑΕΙ ή ΔΕΙΧΝΕΙ ρεκόρ (λίστες, αρχική,
@@ -55,7 +56,8 @@ export function xpPRs<T extends PRLike & Pick<PersonalRecord, 'set_id'>>(
   rows: ReadonlyArray<T>,
   lateTypes: ReadonlySet<string>,
 ): T[] {
-  const real = realPRs(rows);
+  // Ρεκόρ συνεδρίας / σχετικής δύναμης δεν δίνουν XP (βλ. NON_XP_PR_TYPES).
+  const real = realPRs(rows).filter((r) => !NON_XP_PR_TYPES.has(r.type));
   const setsWithPrimary = new Set(
     real.filter((r) => r.set_id != null && !lateTypes.has(r.type)).map((r) => r.set_id),
   );

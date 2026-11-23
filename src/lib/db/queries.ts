@@ -10,7 +10,16 @@ import { v4 as uuid } from 'uuid';
 import type { Table } from 'dexie';
 import { db, SCHEMA_VERSION } from './schema';
 import { getCurrentUserId, setCurrentUserId } from './session';
-import { candidatesFromSet, candidatesFromWorkout, isNewPR, LATE_PR_TYPES } from '../domain/pr';
+import {
+  candidatesFromSet,
+  candidatesFromWorkout,
+  isNewPR,
+  LATE_PR_TYPES,
+  SESSION_PR_TYPES,
+  sessionCandidates,
+  sessionTotals,
+} from '../domain/pr';
+import { resolveBodyweight } from '../domain/bodyweight';
 import { realPRs, xpPRs } from '../domain/prBaseline';
 import { setVolume } from '../domain/volume';
 import { isWorkingSet } from '../domain/setFilters';
@@ -117,10 +126,10 @@ export async function endWorkout(
   /** Χειροκίνητο χρονόμετρο: αν δοθεί, ΑΥΤΟ είναι η διάρκεια (μόνο ο χρόνος που
    * μέτρησε ο χρήστης), αντί για wall-clock. */
   durationOverride?: number,
-): Promise<void> {
+): Promise<PersonalRecord[]> {
   const t = now();
   const w = await db.workouts.get(workoutId);
-  if (!w) return;
+  if (!w) return [];
   const startedMs = Date.parse(w.started_at);
   const endedMs = Date.parse(t);
   const elapsed = Math.round((endedMs - startedMs) / 1000);
@@ -147,7 +156,9 @@ export async function endWorkout(
   const activity = await getActivity(w.activity_kind);
   if (activity ? !activity.uses_sets : w.activity_kind !== 'strength' && w.activity_kind !== 'skill') {
     await detectActivityPRs({ ...w, duration_seconds: duration });
+    return [];
   }
+  return recomputeSessionPRsForWorkout(workoutId);
 }
 
 export async function setWorkoutType(
@@ -554,6 +565,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
       value: c.value,
       reps: c.reps,
       weight_kg: c.weight_kg,
+      ...(c.bodyweight_kg != null ? { bodyweight_kg: c.bodyweight_kg } : {}),
       achieved_at: achievedAt,
       workout_id: workoutId,
       set_id: set.id,
@@ -640,28 +652,7 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
   ]);
   const workoutById = new Map(workouts.map((w) => [w.id, w]));
 
-  // Ασκήσεις σωματικού βάρους: σετ χωρίς αποθηκευμένο σωματικό βάρος (παλιά /
-  // εισαγμένα) παίρνουν την τελευταία μέτρηση ΜΕΧΡΙ τη μέρα της προπόνησης —
-  // ίδιος κανόνας με το addSet και το chart, ποτέ από το μέλλον. Χωρίς μέτρηση
-  // μένει null → κανένα ρεκόρ συνολικού φορτίου (όχι επινοημένο νούμερο).
-  const exercise = await db.exercises.get(exerciseId);
-  const bwHistory = exercise?.is_bodyweight
-    ? (await db.body_metrics.where('user_id').equals(uid).toArray())
-        .filter((r) => r.deleted_at == null && r.weight_kg != null)
-        .sort((a, b) => a.date.localeCompare(b.date))
-    : [];
-  const withBodyweight = (set: SetEntry): SetEntry => {
-    if (set.bodyweight_kg != null || bwHistory.length === 0) return set;
-    const w = workoutById.get(set.workout_id);
-    if (!w) return set;
-    const day = localDay(new Date(w.started_at));
-    let found: number | null = null;
-    for (const r of bwHistory) {
-      if (r.date > day) break;
-      found = r.weight_kg;
-    }
-    return found == null ? set : { ...set, bodyweight_kg: found };
-  };
+  const withBodyweight = await bodyweightResolver(exerciseId, uid, workoutById);
 
   const live = allSets
     .filter(
@@ -680,7 +671,8 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
   const desired: DesiredPR[] = [];
   const best = new Map<PRType, PersonalRecord>();
   for (const set of live) {
-    for (const c of candidatesFromSet(withBodyweight(set))) {
+    const resolved = withBodyweight(set);
+    for (const c of candidatesFromSet(resolved.set, { bwEstimated: resolved.estimated })) {
       const current = best.get(c.type) ?? null;
       if (!isNewPR(c, current)) continue;
       const row: PersonalRecord = {
@@ -692,6 +684,8 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
         value: c.value,
         reps: c.reps,
         weight_kg: c.weight_kg,
+        ...(c.bodyweight_kg != null ? { bodyweight_kg: c.bodyweight_kg } : {}),
+        ...(c.bw_estimated ? { bw_estimated: true } : {}),
         achieved_at: prAchievedAt(set.created_at, workoutById.get(set.workout_id)),
         workout_id: set.workout_id,
         set_id: set.id,
@@ -705,7 +699,122 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
 
   await reconcilePRs(
     uid,
-    (r) => r.exercise_id === exerciseId && r.activity_kind == null,
+    (r) => r.exercise_id === exerciseId && r.activity_kind == null && !SESSION_PR_TYPES.has(r.type),
+    desired,
+  );
+  // Τα ρεκόρ συνεδρίας ακολουθούν τα ίδια σετ — ίδιο recompute, δικό τους scope.
+  await recomputeSessionPRsForExercise(exerciseId);
+}
+
+/**
+ * Σωματικό βάρος ανά σετ για ασκήσεις σωματικού βάρους (μία πηγή: βλ.
+ * `resolveBodyweight`). Σετ με αποθηκευμένο βάρος μένουν ως έχουν· χωρίς αυτό
+ * παίρνουν την τελευταία μέτρηση ≤ ημέρα προπόνησης, αλλιώς την πλησιέστερη
+ * μεταγενέστερη εντός 60 ημερών ως `estimated` — ποτέ σιωπηλό ψεύτικο νούμερο.
+ */
+async function bodyweightResolver(
+  exerciseId: string,
+  uid: string,
+  workoutById: ReadonlyMap<string, Workout>,
+): Promise<(set: SetEntry) => { set: SetEntry; estimated: boolean }> {
+  const exercise = await db.exercises.get(exerciseId);
+  const history = exercise?.is_bodyweight
+    ? (await db.body_metrics.where('user_id').equals(uid).toArray())
+        .filter((r) => r.deleted_at == null && r.weight_kg != null)
+        .sort((a, b) => a.date.localeCompare(b.date))
+    : [];
+  return (set) => {
+    if (set.bodyweight_kg != null || history.length === 0) return { set, estimated: false };
+    const w = workoutById.get(set.workout_id);
+    if (!w) return { set, estimated: false };
+    const found = resolveBodyweight(history, localDay(new Date(w.started_at)));
+    return found == null
+      ? { set, estimated: false }
+      : { set: { ...set, bodyweight_kg: found.kg }, estimated: found.approximate };
+  };
+}
+
+/**
+ * Υπολογίζει τα ρεκόρ συνεδρίας για κάθε άσκηση της (μόλις ολοκληρωμένης)
+ * προπόνησης και επιστρέφει όσα είναι ΠΡΑΓΜΑΤΙΚΑ σπασμένα (όχι baseline — το
+ * πρώτο σύνολο ανά άσκηση+τύπο δεν είναι επίτευγμα). Για το διάλογο λήξης.
+ */
+export async function recomputeSessionPRsForWorkout(workoutId: string): Promise<PersonalRecord[]> {
+  const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
+  const exerciseIds = [...new Set(sets.filter((x) => x.deleted_at == null).map((x) => x.exercise_id))];
+  for (const id of exerciseIds) await recomputeSessionPRsForExercise(id);
+  if (exerciseIds.length === 0) return [];
+  const rows = (
+    await db.personal_records
+      .where('user_id')
+      .equals(getCurrentUserId())
+      .filter((r) => r.exercise_id != null && exerciseIds.includes(r.exercise_id) && r.deleted_at == null)
+      .toArray()
+  ).filter((r) => SESSION_PR_TYPES.has(r.type));
+  return realPRs(rows).filter((r) => r.workout_id === workoutId);
+}
+
+/**
+ * Ρεκόρ ΣΥΝΕΔΡΙΑΣ ανά άσκηση (session_sets/reps/volume/hold): σύνολο των
+ * working σετ της άσκησης σε ΜΙΑ ολοκληρωμένη προπόνηση. Ισοπαλία ≠ ρεκόρ· η
+ * πρώτη προπόνηση είναι baseline (το κρίνει το `realPRs` ανά άσκηση+τύπο).
+ * Προπονήσεις σε εξέλιξη δεν μετρούν — το άθροισμά τους δεν είναι τελικό.
+ */
+export async function recomputeSessionPRsForExercise(exerciseId: string): Promise<void> {
+  const uid = getCurrentUserId();
+  const [allSets, workouts] = await Promise.all([
+    db.sets.where('exercise_id').equals(exerciseId).toArray(),
+    db.workouts.where('user_id').equals(uid).toArray(),
+  ]);
+  const workoutById = new Map(workouts.map((w) => [w.id, w]));
+  const withBodyweight = await bodyweightResolver(exerciseId, uid, workoutById);
+
+  const byWorkout = new Map<string, { sets: SetEntry[]; estimated: Set<string> }>();
+  for (const set of allSets) {
+    const w = workoutById.get(set.workout_id);
+    if (!w || w.deleted_at != null || w.ended_at == null || !isWorkingSet(set)) continue;
+    const resolved = withBodyweight(set);
+    const entry = byWorkout.get(w.id) ?? { sets: [], estimated: new Set<string>() };
+    entry.sets.push(resolved.set);
+    if (resolved.estimated) entry.estimated.add(set.id);
+    byWorkout.set(w.id, entry);
+  }
+
+  const ordered = [...byWorkout.entries()]
+    .map(([id, v]) => ({ w: workoutById.get(id)!, ...v }))
+    .sort((a, b) => a.w.started_at.localeCompare(b.w.started_at) || a.w.id.localeCompare(b.w.id));
+
+  const desired: DesiredPR[] = [];
+  const best = new Map<PRType, PersonalRecord>();
+  for (const { w, sets, estimated } of ordered) {
+    for (const c of sessionCandidates(sessionTotals(sets, estimated))) {
+      const current = best.get(c.type) ?? null;
+      if (!isNewPR(c, current)) continue;
+      const at = w.ended_at ?? w.started_at;
+      const row: PersonalRecord = {
+        id: uuid(),
+        user_id: uid,
+        exercise_id: exerciseId,
+        activity_kind: null,
+        type: c.type,
+        value: c.value,
+        reps: null,
+        weight_kg: null,
+        ...(c.bw_estimated ? { bw_estimated: true } : {}),
+        achieved_at: localDay(new Date(at)) === localDay(new Date(w.started_at)) ? at : w.started_at,
+        workout_id: w.id,
+        set_id: null,
+        created_at: at,
+        updated_at: now(),
+      };
+      desired.push(row);
+      best.set(c.type, row);
+    }
+  }
+
+  await reconcilePRs(
+    uid,
+    (r) => r.exercise_id === exerciseId && r.activity_kind == null && SESSION_PR_TYPES.has(r.type),
     desired,
   );
 }
@@ -816,8 +925,14 @@ async function reconcilePRs(
         keptIds.add(match.id);
         // Ίδιο ρεκόρ, λάθος ημερομηνία (π.χ. αποθηκεύτηκε «τώρα» για backdated
         // προπόνηση πριν τη διόρθωση) → διορθώνεται στη θέση του, ίδιο id.
-        if (match.achieved_at !== row.achieved_at) {
-          await db.personal_records.update(match.id, { achieved_at: row.achieved_at, updated_at: t });
+        const patch: Partial<PersonalRecord> = {};
+        if (match.achieved_at !== row.achieved_at) patch.achieved_at = row.achieved_at;
+        if ((match.bodyweight_kg ?? null) !== (row.bodyweight_kg ?? null)) {
+          patch.bodyweight_kg = row.bodyweight_kg ?? null;
+        }
+        if (!!match.bw_estimated !== !!row.bw_estimated) patch.bw_estimated = !!row.bw_estimated;
+        if (Object.keys(patch).length > 0) {
+          await db.personal_records.update(match.id, { ...patch, updated_at: t });
         }
       } else toAdd.push(row);
     }
@@ -2074,14 +2189,6 @@ export async function getExerciseProgress(
         .filter((r) => r.deleted_at == null && r.weight_kg != null)
         .sort((a, b) => a.date.localeCompare(b.date))
     : [];
-  const bodyweightOn = (day: string): number | null => {
-    let found: number | null = null;
-    for (const r of bwHistory) {
-      if (r.date > day) break;
-      found = r.weight_kg;
-    }
-    return found;
-  };
 
   const byDay = new Map<string, ExercisePoint>();
   for (const s of sets) {
@@ -2091,9 +2198,9 @@ export async function getExerciseProgress(
       ({ date: day, topWeight: null, e1rm: null, volume: 0, reps: null, maxReps: null, hold: null } as ExercisePoint);
     let bw = s.bodyweight_kg ?? 0;
     if (s.bodyweight_kg == null && bwHistory.length > 0) {
-      const fb = bodyweightOn(day);
+      const fb = resolveBodyweight(bwHistory, day);
       if (fb != null) {
-        bw = fb;
+        bw = fb.kg;
         cur.bwEstimated = true;
       }
     }

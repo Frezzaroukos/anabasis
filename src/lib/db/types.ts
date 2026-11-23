@@ -63,6 +63,13 @@ export const BUILTIN_PR_TYPES = [
    */
   'max_total_load',
   'e1rm_total',
+  /** e1RM συνολικού φορτίου ÷ σωματικό βάρος (×BW)· κατώφλι +1%, ποτέ από εκτιμώμενο βάρος */
+  'relative_strength',
+  /** Ρεκόρ ΣΥΝΕΔΡΙΑΣ ανά άσκηση (σύνολο προπόνησης, set_id = null) */
+  'session_sets',
+  'session_reps',
+  'session_volume',
+  'session_hold',
   /** v7: PRs για δραστηριότητες χωρίς άσκηση (τρέξιμο/ποδήλατο/κολύμβηση) */
   'longest_distance',
   'longest_duration',
@@ -288,6 +295,13 @@ export interface PersonalRecord {
   set_id: UUID | null;
   created_at: ISOTimestamp;
   updated_at: ISOTimestamp;
+  /**
+   * Σωματικό βάρος του σετ όταν γράφτηκε το ρεκόρ (τύποι συνολικού φορτίου /
+   * relative_strength) — για «σώμα +2 kg» στο UI. Μη-indexed, χωρίς schema bump.
+   */
+  bodyweight_kg?: number | null;
+  /** true = το σωματικό βάρος είναι κατά προσέγγιση (μεταγενέστερη μέτρηση ≤60 ημ.) */
+  bw_estimated?: boolean;
   /**
    * Soft-delete tombstone (όπως σε όλους τους user-data πίνακες).
    *
