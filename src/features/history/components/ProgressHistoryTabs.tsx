@@ -20,7 +20,7 @@ export function ProgressHistoryTabs() {
           to={tab.to}
           className={({ isActive }) =>
             cn(
-              'rounded-md px-3 py-2 text-center text-xs font-medium transition-colors duration-150',
+              'rounded-md px-3 py-2 text-center text-xs font-medium tap:min-h-11 transition-colors duration-150',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
               isActive
                 ? 'bg-card text-foreground shadow-xs'

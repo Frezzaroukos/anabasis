@@ -22,6 +22,7 @@ import {
   updateWorkoutMeta,
 } from '@/lib/db/queries';
 import { useWakeLock } from '../useWakeLock';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
 import { AddExerciseSheet } from './AddExerciseSheet';
@@ -107,6 +108,9 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
 
   // Η οθόνη δεν πρέπει να κλειδώνει ανάμεσα σε σετ — όσο υπάρχει ενεργό workout.
   useWakeLock(true);
+  // Ανοιχτό πληκτρολόγιο: η λίστα παίρνει από κάτω χώρο ίσο με αυτό, ώστε το
+  // «Προσθήκη set» της τελευταίας άσκησης να μπορεί να ανέβει πάνω από τα πλήκτρα.
+  const keyboardInsetPx = useKeyboardInset();
 
   // Pending = exercises added in this session that haven't received a set yet.
   // Memory-only by design: refresh discards them (sets persist).
@@ -349,7 +353,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive tap:w-11"
             aria-label={t('workout.discard')}
             title={t('workout.discard')}
             loading={!ready}
@@ -357,19 +361,27 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          {/* Στα 360px το «Αποθήκευση προπόνησης» (221px) έσπρωχνε το χρονόμετρο
+              πάνω στον κάδο. Ορατό κείμενο κοντό σε στενές οθόνες· το όνομα
+              (aria-label) μένει ολόκληρο και περιέχει το ορατό (WCAG 2.5.3). */}
           <Button
             size="sm"
             loading={!ready}
             onClick={() => setConfirmEnd(true)}
+            aria-label={t('workout.saveWorkout')}
           >
             <Save className="h-4 w-4" />
-            {t('workout.saveWorkout')}
+            <span className="hidden min-[400px]:inline">{t('workout.saveWorkout')}</span>
+            <span className="min-[400px]:hidden">{t('workout.saveShort')}</span>
           </Button>
         </div>
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-md flex-1 overflow-y-auto px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:max-w-3xl lg:max-w-4xl">
+      <div
+        className="mx-auto w-full max-w-md flex-1 overflow-y-auto px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:max-w-3xl lg:max-w-4xl"
+        style={keyboardInsetPx > 0 ? { paddingBottom: `calc(${keyboardInsetPx}px + 1.5rem)` } : undefined}
+      >
         <div className="mb-4 space-y-2">
           <div className="flex items-center gap-2">
             <Input
@@ -380,7 +392,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               }}
               onBlur={onWorkoutTypeBlur}
               placeholder={t('workout.typePlaceholder')}
-              className="h-9 flex-1 text-sm"
+              className="h-9 flex-1 text-sm tap:h-11"
             />
             <input
               type="date"
@@ -405,7 +417,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               onBlur={onWorkoutNotesBlur}
               placeholder={t('workout.notesPlaceholder')}
               aria-label={t('workout.notes')}
-              className="h-8 text-xs text-muted-foreground"
+              className="h-8 text-xs text-muted-foreground tap:h-11"
             />
           )}
         </div>
@@ -421,7 +433,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-2 text-xs tap:min-h-11"
                   onClick={() => setChain(null)}
                 >
                   {t('workout.chain.end')}

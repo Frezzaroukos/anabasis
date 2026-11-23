@@ -55,7 +55,7 @@ export function RecentActivityCard() {
     <section className="rounded-xl bg-card p-4">
       <div className="mb-1 flex items-baseline justify-between">
         <SectionTitle>{t('dashboard.recentActivity')}</SectionTitle>
-        <Link to="/calendar" className="text-xs text-muted-foreground hover:text-foreground">
+        <Link to="/calendar" className="text-xs text-muted-foreground hover:text-foreground tap:hit-area">
           {t('dashboard.viewAll')}
         </Link>
       </div>

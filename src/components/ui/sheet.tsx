@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useBackToClose } from '@/hooks/useBackToClose';
 import { usePresence } from '@/hooks/usePresence';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 
 interface BottomSheetProps {
   open: boolean;
@@ -26,6 +27,9 @@ export function BottomSheet({
   const { mounted, closing } = usePresence(open);
   useFocusTrap(panelRef, open && mounted);
   useBackToClose(open, onClose);
+  // Με ανοιχτό πληκτρολόγιο το sheet κάθεται ΠΑΝΩ του: αλλιώς πεδίο + «Αποθήκευση»
+  // στο κάτω μέρος του (π.χ. σωματικό βάρος) έμεναν κρυμμένα πίσω από τα πλήκτρα.
+  const keyboard = useKeyboardInset(open && mounted);
 
   React.useEffect(() => {
     if (!open) return;
@@ -45,6 +49,8 @@ export function BottomSheet({
   return createPortal(
     <div
       className="fixed inset-0 z-[60] flex flex-col md:items-center md:justify-center md:p-6"
+      style={keyboard > 0 ? { bottom: keyboard } : undefined}
+      data-keyboard-inset={keyboard > 0 ? keyboard : undefined}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title != null ? titleId : undefined}
@@ -66,6 +72,7 @@ export function BottomSheet({
       <div
         ref={panelRef}
         tabIndex={-1}
+        style={keyboard > 0 ? { maxHeight: 'calc(100% - 0.5rem)' } : undefined}
         className={cn(
           'rounded-t-3xl border-t border-border/60 bg-elevated shadow-elevated-lg',
           'relative z-10 mt-auto flex max-h-[92dvh] w-full landscape:max-h-[94dvh] flex-col safe-bottom',

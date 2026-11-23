@@ -30,7 +30,7 @@ export function SkillRow({ skill, mastered, total, done, onToggleArchive }: Skil
       <div className="flex min-h-[3.5rem] items-center gap-1 py-2.5 pl-4 pr-1.5 transition-colors hover:bg-elevated">
         <Link
           to={`/skills/${skill.id}`}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-sm tap:min-h-11 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <SkillMark code={skill.short_code} name={skill.name} />
           <div className="min-w-0 flex-1">

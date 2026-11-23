@@ -16,7 +16,8 @@
     "more": "More",
     "goals": "Goals",
     "back": "Back",
-    "forward": "Forward"
+    "forward": "Forward",
+    "moreTab": "More"
   },
   "workout": {
     "title": "Workout",
@@ -169,7 +170,12 @@
     "recent": "Recent",
     "pasteNotesEditSets": "Sets (edit if wrong)",
     "pasteNotesUnreadable": "Couldn't read any valid set — fix the numbers or untick this line.",
-    "pasteNotesFuzzy": "Exercise guessed — check the match above."
+    "pasteNotesFuzzy": "Exercise guessed — check the match above.",
+    "stepRepsDown": "−1 rep",
+    "stepRepsUp": "+1 rep",
+    "stepHoldDown": "−{{n}} sec",
+    "stepHoldUp": "+{{n}} sec",
+    "saveShort": "Save"
   },
   "programs": {
     "title": "Programs",

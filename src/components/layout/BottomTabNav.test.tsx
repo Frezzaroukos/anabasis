@@ -50,3 +50,11 @@ describe('BottomTabNav — aria-current', () => {
     expect(current.length).toBe(0);
   });
 });
+
+describe('BottomTabNav — labels fit', () => {
+  it('the «more» tab uses the short label; the sheet keeps the full title', () => {
+    renderAt('/');
+    expect(screen.getByRole('button', { name: en.nav.moreTab })).toBeTruthy();
+    expect(en.nav.moreTab.length).toBeLessThanOrEqual(en.nav.more.length);
+  });
+});

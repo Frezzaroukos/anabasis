@@ -159,7 +159,7 @@ export function TrainingSettingsPage() {
             {!isPro && (
               <Link
                 to="/settings/account"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline tap:hit-area"
               >
                 <Lock className="h-3 w-3" aria-hidden="true" />
                 {t('account.upgrade')}

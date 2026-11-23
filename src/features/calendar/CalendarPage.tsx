@@ -576,7 +576,7 @@ export function CalendarPage() {
                     { month: 'long', year: 'numeric' },
                   )}
                   className={cn(
-                    'shrink-0 snap-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    'shrink-0 snap-center rounded-full px-3 py-1.5 text-xs font-medium tap:min-h-11 transition-colors',
                     cursor.month === month
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card/80 text-muted-foreground hover:text-foreground',

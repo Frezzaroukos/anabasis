@@ -303,7 +303,7 @@ export function ProgramDetailPage() {
                     setRenamingName(true);
                   }}
                   aria-label={t('programs.renameProgram')}
-                  className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="shrink-0 rounded-md p-2 text-muted-foreground tap:p-3.5 transition-colors hover:bg-accent hover:text-foreground"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>

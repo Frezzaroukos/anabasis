@@ -79,7 +79,7 @@ export function ExerciseDetailPage() {
   return (
     <div className="animate-rise-in space-y-6">
       <header className="space-y-2">
-        <Link to="/exercises" className="text-xs text-muted-foreground hover:text-foreground">
+        <Link to="/exercises" className="text-xs text-muted-foreground hover:text-foreground tap:hit-area">
           ← {t('exercises.title')}
         </Link>
         <div className="flex items-start justify-between gap-3">
@@ -92,7 +92,7 @@ export function ExerciseDetailPage() {
               type="button"
               onClick={() => setFormOpen(true)}
               aria-label={t('exercises.editTitle')}
-              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="rounded-md p-2 text-muted-foreground tap:p-3.5 transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Pencil className="h-4 w-4" />
             </button>
@@ -100,7 +100,7 @@ export function ExerciseDetailPage() {
               type="button"
               onClick={() => void setExerciseArchived(exercise.id, !exercise.is_archived)}
               aria-label={t(exercise.is_archived ? 'exercises.unarchive' : 'exercises.archive')}
-              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="rounded-md p-2 text-muted-foreground tap:p-3.5 transition-colors hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               {exercise.is_archived ? (
                 <ArchiveRestore className="h-4 w-4" />
@@ -142,7 +142,7 @@ export function ExerciseDetailPage() {
 
       <button
         onClick={() => void onExport()}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground tap:min-h-11 underline-offset-2 hover:text-foreground hover:underline"
       >
         <Download className="h-3 w-3" aria-hidden />
         CSV

@@ -85,13 +85,13 @@ function PasswordInput({
           minLength={minLength}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="pr-10"
+          className="pr-10 tap:pr-12"
         />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={t(visible ? 'account.hidePassword' : 'account.showPassword')}
-          className="absolute right-1 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+          className="absolute right-1 top-1/2 grid h-8 w-8 -translate-y-1/2 tap:h-11 tap:w-11 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useHistoryNav } from '@/hooks/useHistoryNav';
 import { parentRouteOf } from './parentRoute';
+import { cn } from '@/lib/utils';
 
 /**
  * Λωρίδα πλοήγησης στην κορυφή — πίσω/μπροστά.
@@ -31,7 +32,16 @@ export function NavBar() {
       : null;
 
   return (
-    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur safe-top">
+    // Κολλάει μόνο σε σελίδες βάθους, όπου το «πίσω» είναι ο δρόμος επιστροφής.
+    // Στις ρίζες (Αρχική, Ημερολόγιο, Στόχοι…) πλοηγεί το bottom nav και η μπάρα
+    // κρατούσε μόνιμα 44px μόνο για το γρανάζι — στο κινητό φεύγει με το scroll.
+    <div
+      className={cn(
+        'top-0 z-30 bg-background/95 backdrop-blur safe-top',
+        parent ? 'sticky' : 'relative md:sticky',
+      )}
+      data-sticky={parent ? 'true' : 'mobile-off'}
+    >
       <div className="mx-auto flex w-full max-w-md items-center justify-between px-2 md:max-w-4xl md:px-6 lg:max-w-5xl">
         {back && (
           <button

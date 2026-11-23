@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isCoarsePointer } from '@/lib/touch';
+import { useKeepAboveKeyboard } from '@/hooks/useKeepAboveKeyboard';
+import { StepperField } from './StepperField';
 import { BUILTIN_SET_TYPES, type SetType, type WeightUnit } from '@/lib/db/types';
 import { parseWeightToKg, toDisplayWeight } from '@/lib/units';
 
@@ -28,6 +31,7 @@ function isValidReps(n: number | null): n is number {
 const MAX_REPS = 1000;
 const MAX_HOLD_SECONDS = 7200;
 const MAX_WEIGHT_KG = 1000;
+const HOLD_STEP_SECONDS = 5;
 
 /** Ετικέτα ενός set type — builtin μεταφράζεται, custom δείχνεται ως έχει. */
 function setTypeLabel(st: SetType, t: (k: string) => string): string {
@@ -113,6 +117,22 @@ export function AddSetInline({
   // Μετά το save ξαναπαίρνει focus το reps/hold πεδίο — γρήγορη σειριακή
   // καταγραφή σετ-σετ χωρίς tap στο πληκτρολόγιο κάθε φορά.
   const primaryInputRef = useRef<HTMLInputElement>(null);
+  // Γράφεις στο πληκτρολόγιο → το «Προσθήκη set» μένει ορατό πάνω του.
+  const formRef = useRef<HTMLFieldSetElement>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
+  useKeepAboveKeyboard(formRef, saveRef);
+  // Η σειρά τύπων κυλά οριζόντια: αν ο επιλεγμένος (π.χ. «Μισό-hold» σε edit)
+  // είναι εκτός οθόνης, φέρ' τον μέσα — αλλιώς δεν ξέρεις τι είναι επιλεγμένο.
+  const typeRowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = typeRowRef.current;
+    const chip = row?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (!row || !chip) return;
+    const right = chip.offsetLeft + chip.offsetWidth;
+    if (chip.offsetLeft < row.scrollLeft || right > row.scrollLeft + row.clientWidth) {
+      row.scrollLeft = Math.max(0, chip.offsetLeft - 8);
+    }
+  }, [setType]);
   // Σταθερά ids για aria-describedby — ώστε το σφάλμα να «κολλάει» στο πεδίο
   // που το προκάλεσε (screen reader ακούει τον λόγο όταν εστιάζει το input).
   const errorBaseId = useId();
@@ -200,9 +220,30 @@ export function AddSetInline({
     setWeight(String(next));
   };
 
-  const weightSteps = unit === 'lb' ? [-5, 5, 10] : [-2.5, 2.5, 5];
+  const weightStep = unit === 'lb' ? 5 : 2.5;
 
-  const submit = async () => {
+  /** ±1 επανάληψη· ποτέ κάτω από 1 (0 reps δεν είναι σετ). Κενό + «+» → 1. */
+  const bumpReps = (direction: -1 | 1) => {
+    const next = Math.round(((repsNum ?? 0) + direction) * 100) / 100;
+    if (next <= 0) return;
+    repsDirty.current = true;
+    setReps(String(next));
+  };
+
+  /** ±5 δευτερόλεπτα για holds· ποτέ κάτω από 1s. */
+  const bumpHold = (direction: -1 | 1) => {
+    const next = Math.round(holdNum ?? 0) + direction * HOLD_STEP_SECONDS;
+    if (next <= 0) return;
+    holdDirty.current = true;
+    setHold(String(next));
+  };
+
+  /**
+   * `viaKeyboard`: ήρθε από Enter/«Done». Μόνο τότε (ή με ποντίκι) ξαναπαίρνει
+   * focus το πεδίο. Σε κινητό, μετά από tap στο κουμπί, ένα focus θα άνοιγε
+   * ξανά το πληκτρολόγιο σε κάθε σετ — μισή οθόνη σκεπασμένη ενώ ξεκουράζεσαι.
+   */
+  const submit = async (viaKeyboard = false) => {
     if (!valid || !restPauseValid || submitting.current) return;
     submitting.current = true;
     setSaveError(false);
@@ -234,12 +275,14 @@ export function AddSetInline({
     } finally {
       submitting.current = false;
       setBusy(false);
-      requestAnimationFrame(() => primaryInputRef.current?.focus());
+      if (viaKeyboard || !isCoarsePointer()) {
+        requestAnimationFrame(() => primaryInputRef.current?.focus());
+      }
     }
   };
 
   return (
-    <fieldset disabled={busy} aria-busy={busy} className="min-w-0 space-y-2">
+    <fieldset ref={formRef} disabled={busy} aria-busy={busy} className="min-w-0 space-y-2">
       {saveError && <p role="alert" className="text-sm text-destructive">{t('workout.saveFailed')}</p>}
       {lastLabel && (
         <button
@@ -258,14 +301,22 @@ export function AddSetInline({
         </button>
       )}
       {onSetTypeChange && (
-        <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label={t('workout.setType')}>
+        // Μία γραμμή που κυλά οριζόντια — όχι 4 γραμμές chips (~200px) ΠΑΝΩ από
+        // βάρος/επαναλήψεις. Ο τύπος αλλάζει σπάνια· τα πεδία και το «Προσθήκη
+        // set» χρησιμοποιούνται σε κάθε σετ, άρα ανεβαίνουν εκεί που φτάνει ο αντίχειρας.
+        <div
+          ref={typeRowRef}
+          className="-mx-2 flex snap-x scroll-px-2 items-center gap-1.5 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="radiogroup"
+          aria-label={t('workout.setType')}
+        >
           {/* Το τρέχον custom type (αν δεν είναι builtin) εμφανίζεται πρώτο ως ενεργό chip */}
           {!(BUILTIN_SET_TYPES as readonly string[]).includes(setType ?? 'normal') && setType && (
             <button
               type="button"
               role="radio"
               aria-checked
-              className="rounded-full border border-border bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
+              className="min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full border border-border bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
             >
               {setType}
             </button>
@@ -278,7 +329,7 @@ export function AddSetInline({
               aria-checked={setType === st}
               onClick={() => onSetTypeChange(st)}
               className={cn(
-                'min-h-11 rounded-full border border-border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full border border-border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                 setType === st
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent',
@@ -306,149 +357,138 @@ export function AddSetInline({
                 }
               }}
               placeholder={t('setType.customPlaceholder')}
-              className="h-7 w-28 text-xs"
+              className="h-11 w-36 shrink-0"
             />
           ) : (
             <button
               type="button"
               onClick={() => setCustomOpen(true)}
               aria-label={t('setType.custom')}
-              className="min-h-11 min-w-11 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="min-h-11 min-w-11 shrink-0 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               +
             </button>
           )}
         </div>
       )}
-      <div className="flex items-end gap-2">
+      <div className="flex items-start gap-2">
         {weighted && (
-          <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t('common.weight')} ({t(`common.${unit}`)})
-            </span>
-            <Input
-              inputMode="decimal"
-              type="number"
-              step="0.5"
-              min="0"
-              value={weight}
-              onChange={(e) => {
-                weightDirty.current = true;
-                setWeight(e.target.value);
-              }}
-              className="h-11 min-w-0 font-mono tabular-nums"
-              enterKeyHint="next"
-              onFocus={(e) => e.currentTarget.select()}
-              aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
-              aria-invalid={weight.trim() !== '' && !weightValid}
-              aria-describedby={weight.trim() !== '' && !weightValid ? weightErrId : undefined}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); primaryInputRef.current?.focus(); }
-              }}
-            />
-            {weight.trim() !== '' && !weightValid && (
+          <StepperField
+            label={`${t('common.weight')} (${t(`common.${unit}`)})`}
+            decText={`−${weightStep}`}
+            incText={`+${weightStep}`}
+            decLabel={`−${weightStep} ${t(`common.${unit}`)}`}
+            incLabel={`+${weightStep} ${t(`common.${unit}`)}`}
+            onStep={(direction) => bumpWeight(direction * weightStep)}
+            inputMode="decimal"
+            type="number"
+            step="0.5"
+            min="0"
+            value={weight}
+            onChange={(e) => {
+              weightDirty.current = true;
+              setWeight(e.target.value);
+            }}
+            enterKeyHint="next"
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label={`${t('common.weight')} (${t(`common.${unit}`)})`}
+            aria-invalid={weight.trim() !== '' && !weightValid}
+            aria-describedby={weight.trim() !== '' && !weightValid ? weightErrId : undefined}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); primaryInputRef.current?.focus(); }
+            }}
+            error={weight.trim() !== '' && !weightValid && (
               <span id={weightErrId} role="alert" className="text-xs text-destructive">
                 {t('workout.invalidWeight')}
               </span>
             )}
-          </label>
+          />
         )}
         {holdActive ? (
-          <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t('workout.holdSeconds')}
-            </span>
-            <Input
-              ref={primaryInputRef}
-              inputMode="numeric"
-              type="number"
-              min="1"
-              step="1"
-              value={hold}
-              onChange={(e) => {
-                holdDirty.current = true;
-                setHold(e.target.value);
-              }}
-              className="h-11 min-w-0 font-mono tabular-nums"
-              enterKeyHint="done"
-              onFocus={(e) => e.currentTarget.select()}
-              aria-label={t('workout.holdSeconds')}
-              aria-invalid={hold.trim() !== '' && !holdValid}
-              aria-describedby={hold.trim() !== '' && !holdValid ? holdErrId : undefined}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); void submit(); }
-              }}
-            />
-            {hold.trim() !== '' && !holdValid && (
+          <StepperField
+            ref={primaryInputRef}
+            label={t('workout.holdSeconds')}
+            decText={`−${HOLD_STEP_SECONDS}`}
+            incText={`+${HOLD_STEP_SECONDS}`}
+            decLabel={t('workout.stepHoldDown', { n: HOLD_STEP_SECONDS })}
+            incLabel={t('workout.stepHoldUp', { n: HOLD_STEP_SECONDS })}
+            onStep={bumpHold}
+            inputMode="numeric"
+            type="number"
+            min="1"
+            step="1"
+            value={hold}
+            onChange={(e) => {
+              holdDirty.current = true;
+              setHold(e.target.value);
+            }}
+            enterKeyHint="done"
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label={t('workout.holdSeconds')}
+            aria-invalid={hold.trim() !== '' && !holdValid}
+            aria-describedby={hold.trim() !== '' && !holdValid ? holdErrId : undefined}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); void submit(true); }
+            }}
+            error={hold.trim() !== '' && !holdValid && (
               <span id={holdErrId} role="alert" className="text-xs text-destructive">
                 {t('workout.invalidHold')}
               </span>
             )}
-          </label>
+          />
         ) : (
-          <label className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t('workout.reps')}
-            </span>
-            <Input
-              ref={primaryInputRef}
-              inputMode="decimal"
-              type="number"
-              min="0.5"
-              step="any"
-              value={reps}
-              placeholder={allowsBlankReps ? t('workout.amrapPlaceholder') : undefined}
-              onChange={(e) => {
-                repsDirty.current = true;
-                setReps(e.target.value);
-              }}
-              className="h-11 min-w-0 font-mono tabular-nums"
-              enterKeyHint="done"
-              onFocus={(e) => e.currentTarget.select()}
-              aria-label={t('workout.reps')}
-              aria-invalid={reps.trim() !== '' && !repsValid}
-              aria-describedby={reps.trim() !== '' && !repsValid ? repsErrId : undefined}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); void submit(); }
-              }}
-            />
-            {reps.trim() !== '' && !repsValid && (
+          <StepperField
+            ref={primaryInputRef}
+            label={t('workout.reps')}
+            decText="−1"
+            incText="+1"
+            decLabel={t('workout.stepRepsDown')}
+            incLabel={t('workout.stepRepsUp')}
+            onStep={bumpReps}
+            inputMode="decimal"
+            type="number"
+            min="0.5"
+            step="any"
+            value={reps}
+            placeholder={allowsBlankReps ? t('workout.amrapPlaceholder') : undefined}
+            onChange={(e) => {
+              repsDirty.current = true;
+              setReps(e.target.value);
+            }}
+            enterKeyHint="done"
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label={t('workout.reps')}
+            aria-invalid={reps.trim() !== '' && !repsValid}
+            aria-describedby={reps.trim() !== '' && !repsValid ? repsErrId : undefined}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); void submit(true); }
+            }}
+            error={reps.trim() !== '' && !repsValid && (
               <span id={repsErrId} role="alert" className="text-xs text-destructive">
                 {t('workout.invalidReps')}
               </span>
             )}
-          </label>
+          />
         )}
+      </div>
+
+      {/* Το κύριο κουμπί: πλήρες πλάτος, 48px, κάτω από τα πεδία — εκεί που
+          φτάνει ο αντίχειρας και δεν «στριμώχνει» τα πεδία σε μία γραμμή. */}
+      <div className="flex gap-2">
         <Button
-          size="sm"
+          ref={saveRef}
           disabled={!valid || !restPauseValid || busy}
           onClick={() => void submit()}
-          className="h-11 shrink-0"
+          className="h-12 min-w-0 flex-1 text-base"
         >
           {t(saveLabelKey)}
         </Button>
         {onCancel && (
-          <Button size="sm" variant="ghost" onClick={onCancel} className="h-11 shrink-0">
+          <Button variant="ghost" onClick={onCancel} className="h-12 shrink-0">
             {t('common.cancel')}
           </Button>
         )}
       </div>
-
-      {/* Γρήγορα steppers βάρους — 1 tap για +2.5/-2.5/+5 χωρίς πληκτρολόγιο */}
-      {weighted && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {weightSteps.map((delta) => (
-            <button
-              key={delta}
-              type="button"
-              onClick={() => bumpWeight(delta)}
-              className="rounded-md border border-border/70 bg-background/60 px-2.5 py-1 font-mono text-xs tabular-nums text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-95"
-            >
-              {delta > 0 ? `+${delta}` : delta} {unit}
-            </button>
-          ))}
-        </div>
-      )}
 
       {setType === 'rest_pause' && (
         <label className="flex flex-col gap-1">
@@ -462,7 +502,7 @@ export function AddSetInline({
             aria-label={t('workout.restPauseMiniSets')}
             className="h-11 min-w-0 font-mono tabular-nums"
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); void submit(); }
+              if (e.key === 'Enter') { e.preventDefault(); void submit(true); }
             }}
           />
           <span className="text-xs text-muted-foreground">
@@ -552,7 +592,7 @@ export function AddSetInline({
               className="h-10 text-sm"
               aria-label={t('workout.setNote')}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); void submit(); }
+                if (e.key === 'Enter') { e.preventDefault(); void submit(true); }
               }}
             />
           </label>

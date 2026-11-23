@@ -184,7 +184,7 @@ export function BodyPage() {
               <li key={row.exerciseId}>
                 <Link
                   to={`/progress?exerciseId=${row.exerciseId}`}
-                  className="flex items-center justify-between gap-3 py-2 text-sm transition-colors hover:text-primary"
+                  className="flex items-center justify-between gap-3 py-2 text-sm tap:min-h-11 transition-colors hover:text-primary"
                 >
                   <span className="min-w-0 flex-1 truncate">{row.name}</span>
                   <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
@@ -309,7 +309,7 @@ export function BodyPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedDate(entry.date)}
-                  className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left"
+                  className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left tap:min-h-11"
                 >
                   <span className="font-mono text-xs tabular-nums text-muted-foreground">
                     {entry.date}

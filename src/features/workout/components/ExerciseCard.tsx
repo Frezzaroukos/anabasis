@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Compass, Copy, HelpCircle, Plus, TrendingDown, Weight, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { hapticTick } from '@/lib/touch';
 import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
 import { addQuickSets, duplicateSet } from '@/lib/db/workoutHelpers';
@@ -39,6 +40,10 @@ interface ExerciseCardProps {
   /** Επιτρέπει αφαίρεση άδειας άσκησης (0 σετ) από την τρέχουσα προπόνηση. */
   onRemove?: () => void;
 }
+
+/** Δόνηση επιβεβαίωσης: απλό σετ / νέο ρεκόρ (ms). */
+const SET_HAPTIC = 12;
+const PR_HAPTIC = [12, 80, 28];
 
 export function ExerciseCard({
   exercise,
@@ -92,6 +97,15 @@ export function ExerciseCard({
     const parts = [reps ?? hold, load].filter(Boolean);
     return parts.length > 0 ? parts.join(' · ') : null;
   })();
+
+  /**
+   * Κάθε σετ που γράφτηκε: ένα σύντομο τικ δόνησης (Android· αλλού no-op) — στο
+   * γυμναστήριο συχνά δεν κοιτάς την οθόνη τη στιγμή που πατάς. Ρεκόρ = διπλό τικ.
+   */
+  const logged = (newPRs: number) => {
+    hapticTick(newPRs > 0 ? PR_HAPTIC : SET_HAPTIC);
+    celebrate(newPRs);
+  };
 
   const celebrate = (n: number) => {
     if (n <= 0) return;
@@ -169,7 +183,7 @@ export function ExerciseCard({
       tempo: intensity.tempo,
       notes: intensity.notes ?? null,
     });
-    celebrate(res.newPRs.length);
+    logged(res.newPRs.length);
     autoRest(setType === 'dropset');
     // Αν μόλις καταχωρίσαμε drop set, επιστρέφουμε το selector σε normal για το επόμενο κανονικό σετ.
     if (setType === 'dropset') {
@@ -184,7 +198,7 @@ export function ExerciseCard({
     setRepeatBusy(true);
     try {
       const res = await duplicateSet(latestSet);
-      celebrate(res.newPRs.length);
+      logged(res.newPRs.length);
       autoRest(latestSet.set_type === 'dropset');
     } finally {
       setRepeatBusy(false);
@@ -225,7 +239,7 @@ export function ExerciseCard({
         weighted,
         bodyweightKg,
       });
-      celebrate(res.newPRs.length);
+      logged(res.newPRs.length);
       setQuickText('');
       setQuickMode(false);
       setAdding(false);
@@ -279,7 +293,7 @@ export function ExerciseCard({
                 aria-selected={!weighted}
                 onClick={() => onWeightedChange(false)}
                 className={cn(
-                  'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                  'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:hit-area tap:px-2.5 tap:py-1',
                   !weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -291,7 +305,7 @@ export function ExerciseCard({
                 aria-selected={weighted}
                 onClick={() => onWeightedChange(true)}
                 className={cn(
-                  'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                  'rounded px-2 py-0.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:hit-area tap:px-2.5 tap:py-1',
                   weighted ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -319,7 +333,7 @@ export function ExerciseCard({
         <button
           type="button"
           onClick={onNeedBodyweight}
-          className="flex w-full items-center gap-1.5 border-t border-border/60 px-3 py-1.5 text-left text-xs text-muted-foreground hover:text-primary"
+          className="flex min-h-11 w-full items-center gap-1.5 border-t border-border/60 px-3 py-1.5 text-left text-xs text-muted-foreground hover:text-primary sm:min-h-0"
         >
           <Weight className="h-3 w-3 shrink-0" aria-hidden />
           {t('workout.setBodyweightHint')}
@@ -334,7 +348,7 @@ export function ExerciseCard({
               set={s}
               weighted={weighted}
               holdMode={isHold}
-              onDuplicated={celebrate}
+              onDuplicated={logged}
             />
           ))}
         </div>
@@ -359,13 +373,13 @@ export function ExerciseCard({
                       ? t('workout.quickPlaceholder')
                       : t('workout.quickPlaceholderBw')
                 }
-                className="h-9 font-mono tabular-nums"
+                className="h-9 font-mono tabular-nums tap:h-11"
                 aria-label={t('workout.quickLog')}
               />
               <button
                 type="button"
                 onClick={() => setShowQuickHelp(!showQuickHelp)}
-                className="flex shrink-0 items-center justify-center text-muted-foreground hover:text-primary"
+                className="flex shrink-0 items-center justify-center text-muted-foreground hover:text-primary tap:min-h-11 tap:min-w-11"
                 aria-label={t('workout.quickLog')}
               >
                 <HelpCircle className="h-5 w-5" />
@@ -443,13 +457,13 @@ export function ExerciseCard({
               setType={setType}
               onSetTypeChange={setSetType}
             />
-            <div className="mt-2 flex items-center justify-center gap-4">
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-x-1">
               <button
                 type="button"
                 onClick={() => setQuickMode(true)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:text-primary active:bg-accent"
               >
-                <Zap className="h-3 w-3" />
+                <Zap className="h-3 w-3 max-[399px]:hidden" aria-hidden />
                 {t('workout.quickLog')}
               </button>
               {latestSet && !isHold && (
@@ -457,9 +471,9 @@ export function ExerciseCard({
                   type="button"
                   disabled={repeatBusy}
                   onClick={() => void onRepeatLast()}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                  className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:text-primary active:bg-accent"
                 >
-                  <Copy className="h-3 w-3" />
+                  <Copy className="h-3 w-3 max-[399px]:hidden" aria-hidden />
                   {t('workout.repeatLastSet')}
                 </button>
               )}
@@ -467,9 +481,9 @@ export function ExerciseCard({
                 <button
                   type="button"
                   onClick={() => void onStartDropSet()}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                  className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:text-primary active:bg-accent"
                 >
-                  <TrendingDown className="h-3 w-3" />
+                  <TrendingDown className="h-3 w-3 max-[399px]:hidden" aria-hidden />
                   {t('workout.addDropSet')}
                 </button>
               )}
@@ -504,6 +518,8 @@ export function ExerciseCard({
                 size="sm"
                 onClick={() => void onStartDropSet()}
                 title={t('workout.addDropSet')}
+                aria-label={t('workout.addDropSet')}
+                className="tap:min-w-11"
               >
                 <TrendingDown className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{t('workout.addDropSet')}</span>
@@ -515,6 +531,7 @@ export function ExerciseCard({
               aria-label={t('workout.quickLog')}
               title={t('workout.quickLog')}
               onClick={() => setQuickMode(true)}
+              className="tap:min-w-11"
             >
               <Zap className="h-4 w-4" />
             </Button>
