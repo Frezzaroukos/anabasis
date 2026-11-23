@@ -216,7 +216,7 @@ export function HistoryPage() {
               value={exerciseFilter}
               onChange={(e) => setExerciseFilter(e.target.value)}
               aria-label={t('history.filterByExercise')}
-              className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 tap:h-11 text-xs text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="">{t('history.filterByExercise')}</option>
               {exerciseOptions.map((ex) => (
@@ -258,7 +258,7 @@ export function HistoryPage() {
                 value={fromDate}
                 max={toDate || undefined}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs tabular-nums"
+                className="h-9 rounded-md border border-input bg-background px-2 tap:h-11 font-mono text-xs tabular-nums"
               />
             </label>
             <label className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -268,7 +268,7 @@ export function HistoryPage() {
                 value={toDate}
                 min={fromDate || undefined}
                 onChange={(e) => setToDate(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-2 font-mono text-xs tabular-nums"
+                className="h-9 rounded-md border border-input bg-background px-2 tap:h-11 font-mono text-xs tabular-nums"
               />
             </label>
             {(query || exerciseFilter || fromDate || toDate) && (

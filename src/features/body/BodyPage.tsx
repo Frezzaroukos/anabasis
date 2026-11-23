@@ -184,7 +184,7 @@ export function BodyPage() {
               <li key={row.exerciseId}>
                 <Link
                   to={`/progress?exerciseId=${row.exerciseId}`}
-                  className="flex items-center justify-between gap-3 py-2 text-sm transition-colors hover:text-primary"
+                  className="flex items-center justify-between gap-3 py-2 text-sm tap:min-h-11 transition-colors hover:text-primary"
                 >
                   <span className="min-w-0 flex-1 truncate">{row.name}</span>
                   <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">

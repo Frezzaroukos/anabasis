@@ -160,7 +160,7 @@ export function ExerciseProgressChart({
               aria-pressed={metric === m}
               onClick={() => onMetricChange(m)}
               className={cn(
-                'min-h-9 rounded-md border border-border px-3 py-1 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'min-h-9 rounded-md border tap:min-h-11 border-border px-3 py-1 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 metric === m
                   ? 'border-primary/40 bg-primary text-primary-foreground shadow-glow-sm'
                   : 'hover:bg-elevated',

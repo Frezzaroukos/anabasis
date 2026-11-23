@@ -231,7 +231,7 @@ export function ExercisesPage() {
               value={categoryFilter ?? ''}
               onChange={(e) => setCategoryFilter(e.target.value || null)}
               aria-label={t('exercises.categoryFilter')}
-              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs tap:h-11 text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="">{t('exercises.allCategories')}</option>
               {categories.map((c) => (
@@ -245,7 +245,7 @@ export function ExercisesPage() {
               value={sort}
               onChange={(e) => setSort(e.target.value as LibrarySort)}
               aria-label={t('exercises.sort.label')}
-              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-9 rounded-md border border-border/70 bg-elevated px-2 text-xs tap:h-11 text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="name">{t('exercises.sort.name')}</option>
               <option value="recent">{t('exercises.sort.recent')}</option>
@@ -343,7 +343,7 @@ function ExerciseRow({ exercise, summary, highlighted, onOpen, onEdit }: Exercis
       <button
         type="button"
         onClick={onOpen}
-        className="min-w-0 flex-1 rounded-sm text-left ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="min-w-0 flex-1 rounded-sm text-left tap:min-h-11 ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <p className="flex items-center gap-2 text-sm font-medium">
           <CategoryIcon category={exercise.category} />

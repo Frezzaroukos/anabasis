@@ -58,7 +58,7 @@ export function ShareCard() {
             href={APP_URL}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 truncate font-mono text-sm text-foreground hover:text-primary"
+            className="flex items-center gap-1.5 truncate font-mono text-sm text-foreground hover:text-primary tap:min-h-11"
           >
             anabasis.axonos.dev
             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -92,7 +92,7 @@ export function ShareCard() {
               href={l.href}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-primary"
+              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-primary tap:min-h-11"
             >
               {l.label}
               <ExternalLink className="h-3 w-3" aria-hidden />
