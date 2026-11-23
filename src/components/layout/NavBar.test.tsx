@@ -87,3 +87,20 @@ describe('NavBar — settings shortcut', () => {
     expect(screen.getByRole('link', { name: en.nav.settings })).toBeTruthy();
   });
 });
+
+describe('NavBar — chrome on phones', () => {
+  it('root pages: the bar scrolls away on mobile (sticky only from md up)', () => {
+    const { container } = renderAt('/calendar');
+    const bar = container.firstElementChild as HTMLElement;
+    expect(bar.getAttribute('data-sticky')).toBe('mobile-off');
+    expect(bar.className).toContain('md:sticky');
+    expect(bar.className.split(' ')).not.toContain('sticky');
+  });
+
+  it('deep pages keep a sticky bar: «back» is the way out', () => {
+    const { container } = renderAt('/history/w1');
+    const bar = container.firstElementChild as HTMLElement;
+    expect(bar.getAttribute('data-sticky')).toBe('true');
+    expect(bar.className.split(' ')).toContain('sticky');
+  });
+});

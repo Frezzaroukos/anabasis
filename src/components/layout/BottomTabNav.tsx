@@ -94,7 +94,8 @@ export function BottomTabNav() {
               )}
             >
               <MoreHorizontal className="h-5 w-5" />
-              <span className="w-full truncate px-0.5 text-center">{t('nav.more')}</span>
+              {/* Κοντή ετικέτα: το «Περισσότερα» κοβόταν σε «Περισσότε…» στα 360–390px. */}
+              <span className="w-full truncate px-0.5 text-center">{t('nav.moreTab')}</span>
             </button>
           </li>
         </ul>
