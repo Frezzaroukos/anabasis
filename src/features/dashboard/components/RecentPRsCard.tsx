@@ -33,7 +33,7 @@ export function RecentPRsCard() {
     <section className="rounded-xl bg-card p-4">
       <SectionTitle
         action={
-          <Link to="/history" className="text-xs text-muted-foreground hover:text-foreground">
+          <Link to="/history" className="text-xs text-muted-foreground hover:text-foreground tap:hit-area">
             {t('dashboard.viewAll')} →
           </Link>
         }

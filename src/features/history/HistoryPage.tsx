@@ -231,7 +231,7 @@ export function HistoryPage() {
                 aria-pressed={groupMode === 'month'}
                 onClick={() => setGroupMode('month')}
                 className={cn(
-                  'rounded px-2.5 py-1 transition-colors',
+                  'rounded px-2.5 py-1 transition-colors tap:min-h-11',
                   groupMode === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
                 )}
               >
@@ -242,7 +242,7 @@ export function HistoryPage() {
                 aria-pressed={groupMode === 'week'}
                 onClick={() => setGroupMode('week')}
                 className={cn(
-                  'rounded px-2.5 py-1 transition-colors',
+                  'rounded px-2.5 py-1 transition-colors tap:min-h-11',
                   groupMode === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
                 )}
               >
@@ -280,7 +280,7 @@ export function HistoryPage() {
                   setFromDate('');
                   setToDate('');
                 }}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground tap:min-h-11"
               >
                 <X className="h-3 w-3" aria-hidden />
                 {t('history.clearFilters')}

@@ -309,7 +309,7 @@ export function BodyPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedDate(entry.date)}
-                  className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left"
+                  className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 text-left tap:min-h-11"
                 >
                   <span className="font-mono text-xs tabular-nums text-muted-foreground">
                     {entry.date}

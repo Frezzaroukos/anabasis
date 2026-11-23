@@ -141,6 +141,9 @@ export function SetRow({
     });
   };
 
+  // Αφή: 44px ύψος πάντα. Με 4 ενέργειες (ιστορικό: + «μετακίνηση») τα 44px
+  // πλάτος έσπαγαν το «#1 BW+17.5kg × 8» σε δύο γραμμές στα 390px → 40px εκεί.
+  const actionWidth = onMoveToExercise ? 'tap:w-10' : 'tap:w-11';
   const effectiveWeighted = set.weight_kg != null ? true : weighted;
   const setTypeDisplay = (BUILTIN_SET_TYPES as readonly string[]).includes(set.set_type)
     ? t(`setType.${set.set_type}`)
@@ -283,7 +286,7 @@ export function SetRow({
               }}
               aria-label={t('workout.moveSet')}
               title={t('workout.moveSet')}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
+              className={cn('flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11', actionWidth)}
             >
               <ArrowLeftRight className="h-3.5 w-3.5" />
             </button>
@@ -294,7 +297,7 @@ export function SetRow({
             onClick={() => void onDuplicate()}
             aria-label={t('workout.duplicateSet')}
             title={t('workout.duplicateSet')}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
+            className={cn('flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11', actionWidth)}
           >
             <Copy className="h-3.5 w-3.5" />
           </button>
@@ -306,7 +309,7 @@ export function SetRow({
             }}
             aria-label={t('common.edit')}
             title={t('common.edit')}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
+            className={cn('flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11', actionWidth)}
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
@@ -315,7 +318,7 @@ export function SetRow({
             onClick={() => void onDelete()}
             aria-label={t('common.delete')}
             title={t('common.delete')}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
+            className={cn('flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11', actionWidth)}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

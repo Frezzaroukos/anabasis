@@ -530,7 +530,7 @@ function HistoryExerciseCard({
       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
         <Link
           to={`/exercises/${exerciseId}`}
-          className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 tap:min-h-11 transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
           {/* Στο 320px τα 4–5 icon actions (44px touch) αφήνουν ελάχιστο χώρο·
@@ -548,7 +548,7 @@ function HistoryExerciseCard({
             type="button"
             onClick={onRemovePending}
             aria-label={t('workout.removeExercise')}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" tap:min-h-11 tap:min-w-11
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground tap:h-11 tap:w-11 hover:bg-accent hover:text-foreground" tap:min-h-11 tap:min-w-11
           >
             <X className="h-4 w-4" />
           </button>
@@ -561,7 +561,7 @@ function HistoryExerciseCard({
               onClick={() => onMoveExercise(-1)}
               aria-label={t('workout.moveUp')}
               title={t('workout.moveUp')}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap:min-h-11 tap:min-w-11 disabled:pointer-events-none disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground tap:h-11 tap:w-11 transition-colors hover:bg-accent hover:text-foreground tap:min-h-11 tap:min-w-11 disabled:pointer-events-none disabled:opacity-30"
             >
               <ChevronUp className="h-4 w-4" />
             </button>
@@ -571,7 +571,7 @@ function HistoryExerciseCard({
               onClick={() => onMoveExercise(1)}
               aria-label={t('workout.moveDown')}
               title={t('workout.moveDown')}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap:min-h-11 tap:min-w-11 disabled:pointer-events-none disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground tap:h-11 tap:w-11 transition-colors hover:bg-accent hover:text-foreground tap:min-h-11 tap:min-w-11 disabled:pointer-events-none disabled:opacity-30"
             >
               <ChevronDown className="h-4 w-4" />
             </button>
@@ -583,7 +583,7 @@ function HistoryExerciseCard({
             onClick={onRemoveExercise}
             aria-label={t('workout.removeExercise')}
             title={t('workout.removeExercise')}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive" tap:min-h-11 tap:min-w-11
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground tap:h-11 tap:w-11 hover:bg-destructive/15 hover:text-destructive" tap:min-h-11 tap:min-w-11
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -594,7 +594,7 @@ function HistoryExerciseCard({
             onClick={onBatchWeight}
             aria-label={t('history.batchWeight')}
             title={t('history.batchWeight')}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" tap:min-h-11 tap:min-w-11
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground tap:h-11 tap:w-11 hover:bg-accent hover:text-foreground" tap:min-h-11 tap:min-w-11
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
@@ -719,7 +719,7 @@ function HistoryExerciseCard({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 flex-1 justify-center text-xs text-muted-foreground hover:text-foreground"
+              className="h-8 flex-1 justify-center text-xs text-muted-foreground hover:text-foreground tap:min-h-11"
               onClick={() => setAdding(true)}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -728,7 +728,7 @@ function HistoryExerciseCard({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground tap:min-h-11"
               aria-label={t('workout.quickLog')}
               onClick={() => setQuickMode(true)}
             >

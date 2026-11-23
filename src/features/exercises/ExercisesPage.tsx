@@ -214,7 +214,7 @@ export function ExercisesPage() {
               onClick={() => setUsageFilter(u)}
               aria-pressed={usageFilter === u}
               className={cn(
-                'rounded-full px-3 py-1 text-xs font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                'rounded-full px-3 py-1 text-xs font-medium tap:min-h-11 ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                 usageFilter === u
                   ? 'bg-primary/10 text-primary'
                   : 'bg-elevated text-muted-foreground hover:text-foreground',
@@ -378,7 +378,7 @@ function ExerciseRow({ exercise, summary, highlighted, onOpen, onEdit }: Exercis
         type="button"
         onClick={onEdit}
         aria-label={t('exercises.editTitle')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="shrink-0 rounded-md p-2 text-muted-foreground tap:p-3.5 ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <Pencil className="h-4 w-4" />
       </button>
@@ -386,7 +386,7 @@ function ExerciseRow({ exercise, summary, highlighted, onOpen, onEdit }: Exercis
         type="button"
         onClick={() => void setExerciseArchived(exercise.id, !exercise.is_archived)}
         aria-label={t(exercise.is_archived ? 'exercises.unarchive' : 'exercises.archive')}
-        className="shrink-0 rounded-md p-2 text-muted-foreground ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="shrink-0 rounded-md p-2 text-muted-foreground tap:p-3.5 ring-offset-background transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {exercise.is_archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
       </button>

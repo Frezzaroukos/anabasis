@@ -79,7 +79,7 @@ export function ExerciseDetailPage() {
   return (
     <div className="animate-rise-in space-y-6">
       <header className="space-y-2">
-        <Link to="/exercises" className="text-xs text-muted-foreground hover:text-foreground">
+        <Link to="/exercises" className="text-xs text-muted-foreground hover:text-foreground tap:hit-area">
           ← {t('exercises.title')}
         </Link>
         <div className="flex items-start justify-between gap-3">
@@ -142,7 +142,7 @@ export function ExerciseDetailPage() {
 
       <button
         onClick={() => void onExport()}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground tap:min-h-11 underline-offset-2 hover:text-foreground hover:underline"
       >
         <Download className="h-3 w-3" aria-hidden />
         CSV

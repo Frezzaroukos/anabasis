@@ -23,7 +23,7 @@ export function TimeRangeSelector({
           aria-pressed={value === key}
           aria-label={t(CHART_RANGE_LABEL_KEY[key])}
           className={cn(
-            'rounded-md px-2.5 py-1 font-mono text-xs font-medium tabular-nums transition-colors',
+            'rounded-md px-2.5 py-1 font-mono text-xs font-medium tabular-nums transition-colors tap:min-h-11 tap:min-w-11',
             value === key
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:bg-elevated hover:text-foreground',
