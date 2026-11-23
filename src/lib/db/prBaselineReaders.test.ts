@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './index';
+import { NON_XP_PR_TYPES } from '../domain/pr';
 import { SEED_EXERCISES } from './seeds';
 import { setCurrentUserId } from './session';
 import {
@@ -63,7 +64,10 @@ describe('PR baseline — every reader agrees', () => {
 
     const counts = await getCurrentProfileDataCounts();
     expect(counts.prs).toBe(d2.length);
-    expect((await getGamificationInput()).prCount).toBe(d2.length);
+    // XP/badges δεν μετρούν τα ρεκόρ συνεδρίας / σχετικής δύναμης (NON_XP_PR_TYPES)
+    expect((await getGamificationInput()).prCount).toBe(
+      d2.filter((p) => !NON_XP_PR_TYPES.has(p.type)).length,
+    );
     expect((await getTrainingInsights(30)).prsThisPeriod).toBe(d2.length);
     expect((await getExerciseSummaries()).get(bench.id)?.hasPR).toBe(true);
   });

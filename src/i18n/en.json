@@ -162,6 +162,8 @@
     "summary": {
       "prs_one": "{{count}} new PR",
       "prs_other": "{{count}} new PRs",
+      "sessionPrs_one": "{{count}} workout record",
+      "sessionPrs_other": "{{count}} workout records",
       "exercises_one": "{{count}} exercise",
       "exercises_other": "{{count}} exercises",
       "sets_one": "{{count}} set",
@@ -245,6 +247,11 @@
     "empty": "Your training log will appear here.",
     "completed": "completed sessions",
     "ongoing": "ongoing",
+    "prBody": {
+      "total": "{{delta}} total load",
+      "body": "body {{delta}}",
+      "estimated": "estimated body weight"
+    },
     "recentPRs": "Recent PRs",
     "pr": {
       "max_weight": "Max weight",
@@ -254,6 +261,11 @@
       "max_hold": "Max hold",
       "max_total_load": "Total load (body + added)",
       "e1rm_total": "Est. 1RM (total)",
+      "relative_strength": "Relative strength (× body weight)",
+      "session_sets": "Most sets in a workout",
+      "session_reps": "Most reps in a workout",
+      "session_volume": "Most volume in a workout",
+      "session_hold": "Most hold time in a workout",
       "longest_distance": "Longest distance",
       "longest_duration": "Longest duration",
       "fastest_pace": "Fastest pace"

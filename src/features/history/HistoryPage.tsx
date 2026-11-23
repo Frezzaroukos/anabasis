@@ -20,7 +20,8 @@ import { FeelChart } from './components/FeelChart';
 import { ProgressHistoryTabs } from './components/ProgressHistoryTabs';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { WEIGHT_PR_TYPES } from '@/lib/domain/pr';
+import { formatPRValue } from '@/lib/domain/prFormat';
+import { PRBodyNote } from '@/components/PRBodyNote';
 
 const VIRTUALIZE_THRESHOLD = 50;
 
@@ -308,12 +309,11 @@ export function HistoryPage() {
                   <p className="text-xs text-muted-foreground">
                     {t(`history.pr.${pr.type}`)}
                   </p>
+                  <PRBodyNote pr={pr} unit={unit} />
                 </div>
                 <div className="text-right">
                   <p className="font-mono text-sm tabular-nums">
-                    {WEIGHT_PR_TYPES.has(pr.type)
-                      ? formatWeight(pr.value, unit)
-                      : Math.round(pr.value * 10) / 10}
+                    {formatPRValue(pr, unit)}
                   </p>
                   <p className="font-mono text-xs tabular-nums text-muted-foreground">
                     {new Date(pr.achieved_at).toLocaleDateString(locale)}

@@ -108,3 +108,35 @@ describe('pr-dates-v1 migration', () => {
     await vi.waitFor(() => expect(localStorage.getItem(`${PR_DATES_FLAG_PREFIX}${UID}`)).toBe('1'));
   });
 });
+
+describe('pr-dates-v2: backfill των νέων τύπων από υπάρχον ιστορικό', () => {
+  it('χτίζει ρεκόρ συνεδρίας χωρίς ψεύτικα PR (πρώτη προπόνηση = baseline) και είναι idempotent', async () => {
+    const { realPRs } = await import('../domain/prBaseline');
+    setCurrentUserId('pr-migration-backfill');
+    const pull = SEED_EXERCISES.find((e) => e.name === 'Pull-ups')!;
+    // «παλιά δεδομένα»: προπονήσεις + σετ χωρίς κανένα session row
+    const mk = async (daysAgo: number, n: number) => {
+      const w = await startWorkout('strength', dayStr(daysAgo));
+      for (let i = 0; i < n; i++) {
+        await addSet({ workout_id: w.id, exercise_id: pull.id, weight_kg: null, bodyweight_kg: null, reps: 8, hold_seconds: null });
+      }
+      await db.workouts.update(w.id, { ended_at: w.started_at }); // χωρίς endWorkout → χωρίς session rows
+      return w;
+    };
+    await mk(10, 3);
+    const second = await mk(5, 4);
+    expect((await db.personal_records.where('exercise_id').equals(pull.id).toArray()).some((r) => r.type === 'session_sets')).toBe(false);
+
+    const res = await runPRDatesMigration();
+    expect(res.status).toBe('done');
+    const rows = (await db.personal_records.where('exercise_id').equals(pull.id).toArray()).filter((r) => r.deleted_at == null);
+    const session = rows.filter((r) => r.type === 'session_sets');
+    expect(session.map((r) => r.value).sort()).toEqual([3, 4]);
+    // πραγματικό ρεκόρ ΜΟΝΟ το 4 (η πρώτη προπόνηση = baseline)
+    expect(realPRs(session).map((r) => [r.value, r.workout_id])).toEqual([[4, second.id]]);
+
+    localStorage.removeItem(`${PR_DATES_FLAG_PREFIX}pr-migration-backfill`);
+    expect(await runPRDatesMigration()).toEqual({ status: 'done', fixed: 0 });
+    setCurrentUserId(UID);
+  });
+});

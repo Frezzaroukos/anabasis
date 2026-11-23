@@ -13,6 +13,7 @@ import { setVolume } from './volume';
 export const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
   'max_weight',
   'max_volume',
+  'session_volume',
   'e1rm',
   'max_total_load',
   'e1rm_total',
@@ -23,18 +24,55 @@ export const WEIGHT_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
  * μόνο όταν ξεπερνούν ΥΠΑΡΧΟΝ ρεκόρ ίδιου τύπου — αλλιώς το πρώτο σετ μετά το
  * update σε κάθε BW άσκηση θα έριχνε ψεύτικο κομφετί πριν τρέξει το backfill.
  */
-export const LATE_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>(['max_total_load', 'e1rm_total']);
+export const LATE_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
+  'max_total_load',
+  'e1rm_total',
+  'relative_strength',
+]);
+
+/**
+ * Ρεκόρ ΣΥΝΕΔΡΙΑΣ ανά άσκηση (σύνολο μιας προπόνησης, όχι ενός σετ): περισσότερα
+ * σετ / reps / όγκος / δευτερόλεπτα hold στην ίδια άσκηση. set_id = null.
+ */
+export const SESSION_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
+  'session_sets',
+  'session_reps',
+  'session_volume',
+  'session_hold',
+]);
+
+/** Δεν μετράνε XP/badges: παράγωγα/δεύτερη ματιά — αλλιώς το backfill φουσκώνει το επίπεδο. */
+export const NON_XP_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
+  ...SESSION_PR_TYPES,
+  'relative_strength',
+]);
+
+/**
+ * Ελάχιστη σχετική βελτίωση για να μετρήσει νέο ρεκόρ ανά τύπο. Η σχετική
+ * δύναμη (e1RM συνολικού φορτίου ÷ σωματικό βάρος) κινείται με κάθε διακύμανση
+ * της ζυγαριάς — χωρίς κατώφλι 1% θα έβγαζε «ρεκόρ» για 300 g διαφορά.
+ */
+const MIN_GAIN: Partial<Record<string, number>> = { relative_strength: 0.01 };
 
 export interface PRCandidate {
   type: PRType;
   value: number;
   reps: number | null;
   weight_kg: number | null;
+  /** σωματικό βάρος του σετ (μόνο στους τύπους συνολικού φορτίου) */
+  bodyweight_kg?: number | null;
+  /** true = το σωματικό βάρος είναι κατά προσέγγιση (μεταγενέστερη μέτρηση) */
+  bw_estimated?: boolean;
   /** «καλύτερο» σημαίνει μεγαλύτερο (βάρος) ή μικρότερο (ρυθμός) — default 'higher' */
   direction?: 'higher' | 'lower';
 }
 
-export function candidatesFromSet(set: SetEntry): PRCandidate[] {
+export interface SetCandidateOptions {
+  /** το set.bodyweight_kg προέρχεται από μεταγενέστερη μέτρηση (κατά προσέγγιση) */
+  bwEstimated?: boolean;
+}
+
+export function candidatesFromSet(set: SetEntry, opts: SetCandidateOptions = {}): PRCandidate[] {
   const candidates: PRCandidate[] = [];
 
   // Reps + volume: ALWAYS track if reps > 0, regardless of weight_kg.
@@ -76,18 +114,36 @@ export function candidatesFromSet(set: SetEntry): PRCandidate[] {
   // και το weighted μετρά με το πραγματικό του φορτίο.
   if (set.bodyweight_kg != null && set.bodyweight_kg > 0 && set.reps != null && set.reps > 0) {
     const total = set.bodyweight_kg + (set.weight_kg ?? 0);
+    const est = opts.bwEstimated ? { bw_estimated: true } : {};
     candidates.push({
       type: 'max_total_load',
       value: total,
       reps: set.reps,
       weight_kg: set.weight_kg,
+      bodyweight_kg: set.bodyweight_kg,
+      ...est,
     });
+    const e1rmTotal = epley(total, set.reps);
     candidates.push({
       type: 'e1rm_total',
-      value: epley(total, set.reps),
+      value: e1rmTotal,
       reps: set.reps,
       weight_kg: set.weight_kg,
+      bodyweight_kg: set.bodyweight_kg,
+      ...est,
     });
+    // Σχετική δύναμη: λιγότερο σωματικό βάρος με ίδια απόδοση ανεβάζει τον λόγο
+    // (δεν σπάει το συνολικό φορτίο). ΠΟΤΕ από κατά προσέγγιση βάρος — θα ήταν
+    // ρεκόρ πάνω σε εκτίμηση.
+    if (!opts.bwEstimated) {
+      candidates.push({
+        type: 'relative_strength',
+        value: Math.round((e1rmTotal / set.bodyweight_kg) * 1000) / 1000,
+        reps: set.reps,
+        weight_kg: set.weight_kg,
+        bodyweight_kg: set.bodyweight_kg,
+      });
+    }
   }
 
   if (set.hold_seconds != null && set.hold_seconds > 0) {
@@ -147,7 +203,54 @@ export function isNewPR(
 ): boolean {
   if (!current) return true;
   if (current.type !== candidate.type) return true;
-  return candidate.direction === 'lower'
-    ? candidate.value < current.value
-    : candidate.value > current.value;
+  if (candidate.direction === 'lower') return candidate.value < current.value;
+  const gain = MIN_GAIN[candidate.type] ?? 0;
+  return candidate.value > current.value * (1 + gain);
+}
+
+/** Σύνολο μιας άσκησης σε μία προπόνηση → υποψήφια session ρεκόρ. */
+export interface SessionTotals {
+  sets: number;
+  reps: number;
+  volume: number;
+  holdSeconds: number;
+  /** κάποιο σετ χρησιμοποίησε κατά προσέγγιση σωματικό βάρος στον όγκο */
+  bwEstimated: boolean;
+}
+
+export function sessionTotals(
+  sets: ReadonlyArray<SetEntry>,
+  estimatedSetIds: ReadonlySet<string> = new Set(),
+): SessionTotals {
+  const totals: SessionTotals = { sets: 0, reps: 0, volume: 0, holdSeconds: 0, bwEstimated: false };
+  for (const s of sets) {
+    const reps = (s.reps ?? 0) + (s.rest_pause_reps ?? []).reduce((a, b) => a + b, 0);
+    const hold = s.hold_seconds ?? 0;
+    // «σετ εργασίας» μετρά μόνο αν έγινε κάτι (reps ή hold) — όχι κενό σετ
+    if (reps <= 0 && hold <= 0) continue;
+    totals.sets += 1;
+    totals.reps += reps;
+    totals.holdSeconds += hold;
+    totals.volume += setVolume(s);
+    if (estimatedSetIds.has(s.id) && reps > 0) totals.bwEstimated = true;
+  }
+  totals.volume = Math.round(totals.volume * 100) / 100;
+  return totals;
+}
+
+export function sessionCandidates(t: SessionTotals): PRCandidate[] {
+  const out: PRCandidate[] = [];
+  const base = { reps: null, weight_kg: null } as const;
+  if (t.sets > 0) out.push({ type: 'session_sets', value: t.sets, ...base });
+  if (t.reps > 0) out.push({ type: 'session_reps', value: t.reps, ...base });
+  if (t.volume > 0) {
+    out.push({
+      type: 'session_volume',
+      value: t.volume,
+      ...base,
+      ...(t.bwEstimated ? { bw_estimated: true } : {}),
+    });
+  }
+  if (t.holdSeconds > 0) out.push({ type: 'session_hold', value: t.holdSeconds, ...base });
+  return out;
 }

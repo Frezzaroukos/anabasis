@@ -162,6 +162,8 @@
     "summary": {
       "prs_one": "{{count}} νέο PR",
       "prs_other": "{{count}} νέα PR",
+      "sessionPrs_one": "{{count}} ρεκόρ προπόνησης",
+      "sessionPrs_other": "{{count}} ρεκόρ προπόνησης",
       "exercises_one": "{{count}} άσκηση",
       "exercises_other": "{{count}} ασκήσεις",
       "sets_one": "{{count}} σετ",
@@ -245,6 +247,11 @@
     "empty": "Το ιστορικό προπονήσεων θα εμφανίζεται εδώ.",
     "completed": "ολοκληρωμένες συνεδρίες",
     "ongoing": "σε εξέλιξη",
+    "prBody": {
+      "total": "{{delta}} συνολικό φορτίο",
+      "body": "σώμα {{delta}}",
+      "estimated": "εκτιμώμενο βάρος σώματος"
+    },
     "recentPRs": "Πρόσφατα ρεκόρ",
     "pr": {
       "max_weight": "Μέγιστο βάρος",
@@ -254,6 +261,11 @@
       "max_hold": "Μέγιστο hold",
       "max_total_load": "Συνολικό φορτίο (σώμα + βάρος)",
       "e1rm_total": "Εκτ. 1RM συνολικό",
+      "relative_strength": "Σχετική δύναμη (× βάρος σώματος)",
+      "session_sets": "Περισσότερα σετ σε προπόνηση",
+      "session_reps": "Περισσότερες reps σε προπόνηση",
+      "session_volume": "Μεγαλύτερος όγκος σε προπόνηση",
+      "session_hold": "Περισσότερο κράτημα σε προπόνηση",
       "longest_distance": "Μεγαλύτερη απόσταση",
       "longest_duration": "Μεγαλύτερη διάρκεια",
       "fastest_pace": "Ταχύτερος ρυθμός"
