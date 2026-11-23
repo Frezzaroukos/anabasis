@@ -169,6 +169,26 @@
   }
 }
 
+/*
+ * hit-area — στόχος αφής τουλάχιστον 44×44 χωρίς να αλλάξει η εμφάνιση: ένα
+ * αόρατο ::after κεντραρισμένο στο στοιχείο. Για μικρά chips/tabs/links που
+ * οπτικά πρέπει να μείνουν μικρά (π.χ. segmented control μέσα σε κεφαλίδα).
+ * Χρήση με `tap:hit-area` ώστε το desktop (ποντίκι) να μένει ακριβές. Μόνο
+ * όπου υπάρχει απόσταση από τα γειτονικά — αλλιώς ο ένας στόχος «τρώει» τον άλλο.
+ */
+@utility hit-area {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
 @layer utilities {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);

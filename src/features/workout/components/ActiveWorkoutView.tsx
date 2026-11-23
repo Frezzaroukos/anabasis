@@ -349,7 +349,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive tap:w-11"
             aria-label={t('workout.discard')}
             title={t('workout.discard')}
             loading={!ready}
@@ -357,13 +357,18 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          {/* Στα 360px το «Αποθήκευση προπόνησης» (221px) έσπρωχνε το χρονόμετρο
+              πάνω στον κάδο. Ορατό κείμενο κοντό σε στενές οθόνες· το όνομα
+              (aria-label) μένει ολόκληρο και περιέχει το ορατό (WCAG 2.5.3). */}
           <Button
             size="sm"
             loading={!ready}
             onClick={() => setConfirmEnd(true)}
+            aria-label={t('workout.saveWorkout')}
           >
             <Save className="h-4 w-4" />
-            {t('workout.saveWorkout')}
+            <span className="hidden min-[400px]:inline">{t('workout.saveWorkout')}</span>
+            <span className="min-[400px]:hidden">{t('workout.saveShort')}</span>
           </Button>
         </div>
         </div>
@@ -380,7 +385,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               }}
               onBlur={onWorkoutTypeBlur}
               placeholder={t('workout.typePlaceholder')}
-              className="h-9 flex-1 text-sm"
+              className="h-9 flex-1 text-sm tap:h-11"
             />
             <input
               type="date"
@@ -405,7 +410,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
               onBlur={onWorkoutNotesBlur}
               placeholder={t('workout.notesPlaceholder')}
               aria-label={t('workout.notes')}
-              className="h-8 text-xs text-muted-foreground"
+              className="h-8 text-xs text-muted-foreground tap:h-11"
             />
           )}
         </div>
@@ -421,7 +426,7 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-2 text-xs tap:min-h-11"
                   onClick={() => setChain(null)}
                 >
                   {t('workout.chain.end')}

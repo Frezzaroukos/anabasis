@@ -173,7 +173,8 @@
     "stepRepsDown": "−1 rep",
     "stepRepsUp": "+1 rep",
     "stepHoldDown": "−{{n}} sec",
-    "stepHoldUp": "+{{n}} sec"
+    "stepHoldUp": "+{{n}} sec",
+    "saveShort": "Save"
   },
   "programs": {
     "title": "Programs",

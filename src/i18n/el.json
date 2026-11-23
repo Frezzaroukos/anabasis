@@ -173,7 +173,8 @@
     "stepRepsDown": "−1 επανάληψη",
     "stepRepsUp": "+1 επανάληψη",
     "stepHoldDown": "−{{n}} δευτ.",
-    "stepHoldUp": "+{{n}} δευτ."
+    "stepHoldUp": "+{{n}} δευτ.",
+    "saveShort": "Αποθήκευση"
   },
   "programs": {
     "title": "Προγράμματα",

@@ -209,7 +209,7 @@ export function SetRow({
       {/* Row */}
       <div
         className={cn(
-          'relative flex select-none items-center justify-between gap-2 bg-card px-3 py-2 transition-transform touch-pan-y',
+          'relative flex select-none items-center justify-between gap-2 bg-card px-3 py-2 transition-transform touch-pan-y tap:py-1',
           animateCommit && 'animate-set-commit',
           justCommitted && 'set-row-commit-glow',
           set.group_id && groupColorClass(set.group_id),
@@ -283,7 +283,7 @@ export function SetRow({
               }}
               aria-label={t('workout.moveSet')}
               title={t('workout.moveSet')}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
             >
               <ArrowLeftRight className="h-3.5 w-3.5" />
             </button>
@@ -294,7 +294,7 @@ export function SetRow({
             onClick={() => void onDuplicate()}
             aria-label={t('workout.duplicateSet')}
             title={t('workout.duplicateSet')}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
           >
             <Copy className="h-3.5 w-3.5" />
           </button>
@@ -306,7 +306,7 @@ export function SetRow({
             }}
             aria-label={t('common.edit')}
             title={t('common.edit')}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
@@ -315,7 +315,7 @@ export function SetRow({
             onClick={() => void onDelete()}
             aria-label={t('common.delete')}
             title={t('common.delete')}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive active:scale-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring tap:h-11 tap:w-11"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
