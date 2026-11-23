@@ -4,9 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Trophy } from 'lucide-react';
 import { getRecentPRs, listActivities, listExercises } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
-import { formatWeight } from '@/lib/units';
 import { SectionTitle } from '@/components/ui/Section';
-import { WEIGHT_PR_TYPES } from '@/lib/domain/pr';
+import { formatPRValue } from '@/lib/domain/prFormat';
+import { PRBodyNote } from '@/components/PRBodyNote';
 
 
 /**
@@ -62,11 +62,10 @@ export function RecentPRsCard() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{name}</p>
                   <p className="text-xs text-muted-foreground">{t(`history.pr.${pr.type}`)}</p>
+                  <PRBodyNote pr={pr} unit={unit} />
                 </div>
                 <p className="font-mono text-sm">
-                  {WEIGHT_PR_TYPES.has(pr.type)
-                    ? formatWeight(pr.value, unit)
-                    : Math.round(pr.value * 10) / 10}
+                  {formatPRValue(pr, unit)}
                 </p>
               </Link>
             </li>

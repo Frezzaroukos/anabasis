@@ -762,6 +762,24 @@ export async function recomputeSessionPRsForWorkout(workoutId: string): Promise<
  */
 export async function recomputeSessionPRsForExercise(exerciseId: string): Promise<void> {
   const uid = getCurrentUserId();
+  const desired = await buildSessionPRRows(exerciseId, uid);
+  await reconcilePRs(
+    uid,
+    (r) => r.exercise_id === exerciseId && r.activity_kind == null && SESSION_PR_TYPES.has(r.type),
+    desired,
+  );
+}
+
+/**
+ * Τα «επιθυμητά» session rows μιας άσκησης (χωρίς εγγραφή). Με `includeWorkoutId`
+ * μετρά και μια προπόνηση ΣΕ ΕΞΕΛΙΞΗ (για την προεπισκόπηση στο διάλογο λήξης)·
+ * αλλιώς μόνο ολοκληρωμένες.
+ */
+async function buildSessionPRRows(
+  exerciseId: string,
+  uid: string,
+  includeWorkoutId?: string,
+): Promise<DesiredPR[]> {
   const [allSets, workouts] = await Promise.all([
     db.sets.where('exercise_id').equals(exerciseId).toArray(),
     db.workouts.where('user_id').equals(uid).toArray(),
@@ -772,7 +790,8 @@ export async function recomputeSessionPRsForExercise(exerciseId: string): Promis
   const byWorkout = new Map<string, { sets: SetEntry[]; estimated: Set<string> }>();
   for (const set of allSets) {
     const w = workoutById.get(set.workout_id);
-    if (!w || w.deleted_at != null || w.ended_at == null || !isWorkingSet(set)) continue;
+    if (!w || w.deleted_at != null || !isWorkingSet(set)) continue;
+    if (w.ended_at == null && w.id !== includeWorkoutId) continue;
     const resolved = withBodyweight(set);
     const entry = byWorkout.get(w.id) ?? { sets: [], estimated: new Set<string>() };
     entry.sets.push(resolved.set);
@@ -811,12 +830,53 @@ export async function recomputeSessionPRsForExercise(exerciseId: string): Promis
       best.set(c.type, row);
     }
   }
+  return desired;
+}
 
-  await reconcilePRs(
-    uid,
-    (r) => r.exercise_id === exerciseId && r.activity_kind == null && SESSION_PR_TYPES.has(r.type),
-    desired,
+/**
+ * Για κάθε ρεκόρ, το ΑΜΕΣΩΣ προηγούμενο ρεκόρ του ίδιου (άσκηση, τύπος) από
+ * ΑΛΛΗ προπόνηση — για το «+2 kg συνολικό φορτίο · σώμα +2 kg» στο UI.
+ */
+export async function getPreviousPRs(
+  rows: ReadonlyArray<PersonalRecord>,
+): Promise<Map<string, PersonalRecord>> {
+  const out = new Map<string, PersonalRecord>();
+  const exerciseIds = [...new Set(rows.map((r) => r.exercise_id).filter((x): x is string => x != null))];
+  if (exerciseIds.length === 0) return out;
+  const all = (
+    await db.personal_records
+      .where('user_id')
+      .equals(getCurrentUserId())
+      .filter((r) => r.deleted_at == null && r.exercise_id != null && exerciseIds.includes(r.exercise_id))
+      .toArray()
   );
+  for (const row of rows) {
+    let prev: PersonalRecord | null = null;
+    for (const o of all) {
+      if (o.exercise_id !== row.exercise_id || o.type !== row.type) continue;
+      if (o.workout_id === row.workout_id || o.achieved_at >= row.achieved_at) continue;
+      if (prev == null || o.achieved_at > prev.achieved_at) prev = o;
+    }
+    if (prev) out.set(row.id, prev);
+  }
+  return out;
+}
+
+/**
+ * Προεπισκόπηση (ΧΩΡΙΣ εγγραφή) των ρεκόρ συνεδρίας που θα προκύψουν όταν
+ * τελειώσει η προπόνηση σε εξέλιξη — για τη σύνοψη στο διάλογο λήξης. Μόνο
+ * πραγματικά σπασμένα (όχι baseline), ίδιος ορισμός με το endWorkout.
+ */
+export async function previewSessionPRs(workoutId: string): Promise<PersonalRecord[]> {
+  const uid = getCurrentUserId();
+  const sets = await db.sets.where('workout_id').equals(workoutId).toArray();
+  const exerciseIds = [...new Set(sets.filter((x) => x.deleted_at == null).map((x) => x.exercise_id))];
+  const out: PersonalRecord[] = [];
+  for (const id of exerciseIds) {
+    const desired = await buildSessionPRRows(id, uid, workoutId);
+    out.push(...realPRs(desired).filter((r) => r.workout_id === workoutId));
+  }
+  return out;
 }
 
 /**

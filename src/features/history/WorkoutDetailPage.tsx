@@ -35,7 +35,8 @@ import { BatchWeightSheet } from './components/BatchWeightSheet';
 import { DuplicateWorkoutSheet } from './components/DuplicateWorkoutSheet';
 import { LoadingState } from '@/components/ui/loading-state';
 import { cn } from '@/lib/utils';
-import { WEIGHT_PR_TYPES } from '@/lib/domain/pr';
+import { formatPRValue } from '@/lib/domain/prFormat';
+import { PRBodyNote } from '@/components/PRBodyNote';
 
 
 /**
@@ -245,11 +246,10 @@ export function WorkoutDetailPage() {
                     <span className={exName ? 'text-xs text-muted-foreground' : undefined}>
                       {t(`history.pr.${pr.type}`)}
                     </span>
+                    <PRBodyNote pr={pr} unit={unit} />
                   </span>
                   <span className="shrink-0 font-mono tabular-nums text-gold-strong">
-                    {WEIGHT_PR_TYPES.has(pr.type)
-                      ? formatWeight(pr.value, unit)
-                      : Math.round(pr.value * 10) / 10}
+                    {formatPRValue(pr, unit)}
                   </span>
                 </li>
               );

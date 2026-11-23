@@ -213,3 +213,27 @@ describe('ρεκόρ συνεδρίας ανά άσκηση', () => {
     expect(all.some((r) => r.type === 'max_reps')).toBe(true);
   });
 });
+
+describe('previewSessionPRs (διάλογος λήξης)', () => {
+  it('προβλέπει ό,τι θα επιστρέψει το endWorkout, χωρίς να γράφει τίποτα', async () => {
+    const { previewSessionPRs } = await import('./queries');
+    await session(pull.id, 10, [{ reps: 8 }, { reps: 8 }]);
+    const live = await startWorkout('strength', day(1));
+    for (let i = 0; i < 3; i++) {
+      await addSet({ workout_id: live.id, exercise_id: pull.id, weight_kg: null, bodyweight_kg: null, reps: 8, hold_seconds: null });
+    }
+    const before = (await db.personal_records.toArray()).length;
+    const preview = await previewSessionPRs(live.id);
+    expect((await db.personal_records.toArray()).length).toBe(before); // καμία εγγραφή
+    const done = await endWorkout(live.id);
+    expect(preview.map((r) => `${r.type}:${r.value}`).sort()).toEqual(done.map((r) => `${r.type}:${r.value}`).sort());
+    expect(preview.length).toBeGreaterThan(0);
+  });
+
+  it('πρώτη προπόνηση: η προεπισκόπηση είναι κενή (baseline)', async () => {
+    const { previewSessionPRs } = await import('./queries');
+    const live = await startWorkout('strength', day(1));
+    await addSet({ workout_id: live.id, exercise_id: pull.id, weight_kg: null, bodyweight_kg: null, reps: 8, hold_seconds: null });
+    expect(await previewSessionPRs(live.id)).toEqual([]);
+  });
+});

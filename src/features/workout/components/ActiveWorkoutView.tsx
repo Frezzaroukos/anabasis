@@ -302,6 +302,13 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
     [confirmEnd, workout.id, exerciseIdsKey],
     [] as PersonalRecord[],
   );
+  // Ρεκόρ ΣΥΝΕΔΡΙΑΣ (σύνολο άσκησης στην προπόνηση): προεπισκόπηση μόνο στο
+  // διάλογο λήξης — μέσα στην προπόνηση γιορτάζονται ΜΟΝΟ τα set-level.
+  const sessionPreview = useLiveQuery(
+    () => (confirmEnd ? queries.previewSessionPRs(workout.id) : Promise.resolve<PersonalRecord[]>([])),
+    [confirmEnd, workout.id, exerciseIdsKey, sets.length],
+    [] as PersonalRecord[],
+  );
   const summary = useMemo(
     () => summarizeWorkout(sets, workoutPRs, workout.id),
     [sets, workoutPRs, workout.id],
@@ -603,6 +610,11 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
                 ].join(' · ')}
                 {summary.prs > 0 && (
                   <span className="ml-2 text-gold-strong">🏆 {t('workout.summary.prs', { count: summary.prs })}</span>
+                )}
+                {sessionPreview.length > 0 && (
+                  <span className="ml-2 text-gold-strong" data-testid="end-session-prs">
+                    🏆 {t('workout.summary.sessionPrs', { count: sessionPreview.length })}
+                  </span>
                 )}
               </span>
             )}
