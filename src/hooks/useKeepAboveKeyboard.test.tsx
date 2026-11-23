@@ -44,33 +44,39 @@ function prepScroller() {
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Ο έλεγχος τρέχει ένα frame μετά το resize (αφού μπει το padding του πληκτρολογίου). */
+const nextFrame = () => act(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+
 describe('useKeepAboveKeyboard', () => {
-  it('scrolls just enough to lift the button above the keyboard while typing', () => {
+  it('scrolls just enough to lift the button above the keyboard while typing', async () => {
     const vv = fakeViewport(844);
     render(<Harness buttonBottom={700} />);
     const scrollBy = prepScroller();
     screen.getByLabelText('reps').focus();
     vv.height = 490; // keyboard opens
     act(() => { vv.dispatchEvent(new Event('resize')); });
+    await nextFrame();
     expect(scrollBy).toHaveBeenCalledWith({ top: 218, behavior: 'auto' });
   });
 
-  it('does nothing when the button is already visible', () => {
+  it('does nothing when the button is already visible', async () => {
     const vv = fakeViewport(844);
     render(<Harness buttonBottom={400} />);
     const scrollBy = prepScroller();
     screen.getByLabelText('reps').focus();
     vv.height = 490;
     act(() => { vv.dispatchEvent(new Event('resize')); });
+    await nextFrame();
     expect(scrollBy).not.toHaveBeenCalled();
   });
 
-  it('ignores viewport changes when no field in the form is being edited', () => {
+  it('ignores viewport changes when no field in the form is being edited', async () => {
     const vv = fakeViewport(844);
     render(<Harness buttonBottom={700} />);
     const scrollBy = prepScroller();
     vv.height = 490;
     act(() => { vv.dispatchEvent(new Event('resize')); });
+    await nextFrame();
     expect(scrollBy).not.toHaveBeenCalled();
   });
 

@@ -35,6 +35,7 @@ export function useKeepAboveKeyboard(
     if (!container || !vv) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let frame = 0;
     const reveal = () => {
       const target = targetRef.current;
       const active = document.activeElement;
@@ -50,11 +51,22 @@ export function useKeepAboveKeyboard(
       timer = setTimeout(reveal, 320);
     };
 
-    vv.addEventListener('resize', reveal);
+    // Ένα frame μετά: ο scroll container προσθέτει padding ίσο με το πληκτρολόγιο
+    // (βλ. ActiveWorkoutView) — χωρίς αυτό, όταν το περιεχόμενο χωράει, δεν
+    // υπάρχει καθόλου χώρος για να κυλήσει.
+    const onViewport = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(reveal);
+    };
+
+    vv.addEventListener('resize', onViewport);
+    vv.addEventListener('scroll', onViewport);
     container.addEventListener('focusin', onFocusIn);
     return () => {
       clearTimeout(timer);
-      vv.removeEventListener('resize', reveal);
+      cancelAnimationFrame(frame);
+      vv.removeEventListener('resize', onViewport);
+      vv.removeEventListener('scroll', onViewport);
       container.removeEventListener('focusin', onFocusIn);
     };
   }, [containerRef, targetRef]);

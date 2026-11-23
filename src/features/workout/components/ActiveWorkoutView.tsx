@@ -22,6 +22,7 @@ import {
   updateWorkoutMeta,
 } from '@/lib/db/queries';
 import { useWakeLock } from '../useWakeLock';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { SessionTimer } from './SessionTimer';
 import { ExerciseCard } from './ExerciseCard';
 import { AddExerciseSheet } from './AddExerciseSheet';
@@ -107,6 +108,9 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
 
   // Η οθόνη δεν πρέπει να κλειδώνει ανάμεσα σε σετ — όσο υπάρχει ενεργό workout.
   useWakeLock(true);
+  // Ανοιχτό πληκτρολόγιο: η λίστα παίρνει από κάτω χώρο ίσο με αυτό, ώστε το
+  // «Προσθήκη set» της τελευταίας άσκησης να μπορεί να ανέβει πάνω από τα πλήκτρα.
+  const keyboardInsetPx = useKeyboardInset();
 
   // Pending = exercises added in this session that haven't received a set yet.
   // Memory-only by design: refresh discards them (sets persist).
@@ -374,7 +378,10 @@ export function ActiveWorkoutView({ workout }: ActiveWorkoutViewProps) {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-md flex-1 overflow-y-auto px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:max-w-3xl lg:max-w-4xl">
+      <div
+        className="mx-auto w-full max-w-md flex-1 overflow-y-auto px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:max-w-3xl lg:max-w-4xl"
+        style={keyboardInsetPx > 0 ? { paddingBottom: `calc(${keyboardInsetPx}px + 1.5rem)` } : undefined}
+      >
         <div className="mb-4 space-y-2">
           <div className="flex items-center gap-2">
             <Input
