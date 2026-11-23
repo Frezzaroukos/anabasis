@@ -146,6 +146,26 @@ describe('ExerciseCard — entry friction', () => {
     expect((screen.getByLabelText('Reps') as HTMLInputElement).value).toBe('8');
   });
 
+  it('ένα σύντομο τικ δόνησης σε κάθε σετ που γράφεται (όπου υπάρχει Vibration API)', async () => {
+    const vibrate = vi.fn(() => true);
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+    try {
+      const workout = await startWorkout('strength');
+      renderCard(workout.id);
+      fireEvent.change(screen.getByLabelText('Weight (kg)'), { target: { value: '60' } });
+      fireEvent.change(screen.getByLabelText('Reps'), { target: { value: '5' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add set' }));
+      await waitFor(() => expect(vibrate).toHaveBeenCalledTimes(1));
+      // Ίδιο σετ ξανά: όχι ρεκόρ → απλό τικ.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Add set' })).toHaveProperty('disabled', false));
+      fireEvent.click(screen.getByRole('button', { name: 'Add set' }));
+      await waitFor(() => expect(vibrate).toHaveBeenCalledTimes(2));
+      expect(vibrate).toHaveBeenLastCalledWith(12);
+    } finally {
+      Reflect.deleteProperty(navigator, 'vibrate');
+    }
+  });
+
   it('drop set προ-συμπληρώνει ~80% του προηγούμενου βάρους', async () => {
     const workout = await startWorkout('strength');
     await addSet({ workout_id: workout.id, exercise_id: squat.id, weight_kg: 100, bodyweight_kg: null, reps: 8, hold_seconds: null });

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Compass, Copy, HelpCircle, Plus, TrendingDown, Weight, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { hapticTick } from '@/lib/touch';
 import { queries } from '@/lib/db';
 import { getLastPerformance } from '@/lib/db/queries';
 import { addQuickSets, duplicateSet } from '@/lib/db/workoutHelpers';
@@ -39,6 +40,10 @@ interface ExerciseCardProps {
   /** Επιτρέπει αφαίρεση άδειας άσκησης (0 σετ) από την τρέχουσα προπόνηση. */
   onRemove?: () => void;
 }
+
+/** Δόνηση επιβεβαίωσης: απλό σετ / νέο ρεκόρ (ms). */
+const SET_HAPTIC = 12;
+const PR_HAPTIC = [12, 80, 28];
 
 export function ExerciseCard({
   exercise,
@@ -92,6 +97,15 @@ export function ExerciseCard({
     const parts = [reps ?? hold, load].filter(Boolean);
     return parts.length > 0 ? parts.join(' · ') : null;
   })();
+
+  /**
+   * Κάθε σετ που γράφτηκε: ένα σύντομο τικ δόνησης (Android· αλλού no-op) — στο
+   * γυμναστήριο συχνά δεν κοιτάς την οθόνη τη στιγμή που πατάς. Ρεκόρ = διπλό τικ.
+   */
+  const logged = (newPRs: number) => {
+    hapticTick(newPRs > 0 ? PR_HAPTIC : SET_HAPTIC);
+    celebrate(newPRs);
+  };
 
   const celebrate = (n: number) => {
     if (n <= 0) return;
@@ -169,7 +183,7 @@ export function ExerciseCard({
       tempo: intensity.tempo,
       notes: intensity.notes ?? null,
     });
-    celebrate(res.newPRs.length);
+    logged(res.newPRs.length);
     autoRest(setType === 'dropset');
     // Αν μόλις καταχωρίσαμε drop set, επιστρέφουμε το selector σε normal για το επόμενο κανονικό σετ.
     if (setType === 'dropset') {
@@ -184,7 +198,7 @@ export function ExerciseCard({
     setRepeatBusy(true);
     try {
       const res = await duplicateSet(latestSet);
-      celebrate(res.newPRs.length);
+      logged(res.newPRs.length);
       autoRest(latestSet.set_type === 'dropset');
     } finally {
       setRepeatBusy(false);
@@ -225,7 +239,7 @@ export function ExerciseCard({
         weighted,
         bodyweightKg,
       });
-      celebrate(res.newPRs.length);
+      logged(res.newPRs.length);
       setQuickText('');
       setQuickMode(false);
       setAdding(false);
@@ -334,7 +348,7 @@ export function ExerciseCard({
               set={s}
               weighted={weighted}
               holdMode={isHold}
-              onDuplicated={celebrate}
+              onDuplicated={logged}
             />
           ))}
         </div>
