@@ -20,11 +20,14 @@ import process from 'node:process';
 import { chromium } from 'playwright';
 
 const ROOT = resolve(import.meta.dirname, '../..');
+// Ρυθμός «ανθρώπου» πριν το Add set (ms) και διαγνωστικά· E2E_PACE_MS=0 E2E_PROBE=1 για αναπαραγωγή του race.
+const PACE_MS = Number(process.env.E2E_PACE_MS ?? 150);
+const PROBE = process.env.E2E_PROBE === '1';
 const VITE = join(ROOT, 'node_modules/vite/bin/vite.js');
 const OUT = '/tmp/anabasis-t-e2e-build';
 const SHOTS = '/tmp/anabasis-e2e-flows';
 const RESERVED_PORTS = new Set([4000, 5173, 8120, 8121]);
-const RUNS = 3;
+const RUNS = Number(process.env.E2E_RUNS ?? 3);
 const VIEWPORT = { width: 390, height: 844 };
 
 let baseUrl = '';
@@ -162,11 +165,27 @@ async function logSets(page, exercise, sets) {
     const [weight, reps] = sets[index];
     await card.getByLabel('Weight (kg)').fill(String(weight));
     await card.getByLabel('Reps').fill(String(reps));
-    // Ρυθμός ανθρώπου: fill+click στο ίδιο ms (αδύνατο με δάχτυλο) έγραφε
-    // περιστασιακά το ΠΡΟΗΓΟΥΜΕΝΟ βάρος υπό φόρτο· με 400ms κενό 21/21 και το
-    // input δεν ξαναστήνεται (probe 23/11). Αιτία στο app δεν αποδείχθηκε.
-    await page.waitForTimeout(150);
+    // Ρυθμός ανθρώπου: στις 23/11 fill+click στο ίδιο ms έγραφε περιστασιακά
+    // το ΠΡΟΗΓΟΥΜΕΝΟ βάρος. 24/11 με E2E_PACE_MS=0: 21/21 στο main και 42/42 στο
+    // d4cd99a (load έως 22) — δεν αναπαράγεται· η φόρμα δεν ξαναστήνεται (key
+    // μόνο σε drop set) και το StepperField δεν έχει δική του κατάσταση. Το
+    // κενό μένει ως φθηνή ασφάλεια· E2E_PROBE=1 τυπώνει τις τιμές τη στιγμή του κλικ.
+    if (PACE_MS > 0) await page.waitForTimeout(PACE_MS);
+    if (PROBE) {
+      const at = await card.evaluate((el) => {
+        const w = el.querySelector('input[aria-label^="Weight"]');
+        const r = el.querySelector('input[aria-label="Reps"]');
+        const fs = el.querySelector('fieldset');
+        return { w: w?.value, r: r?.value, busy: fs?.getAttribute('aria-busy'), active: document.activeElement?.getAttribute('aria-label') };
+      });
+      console.log(`[probe] ${exercise} #${index + 1} want ${weight}×${reps} · at click ${JSON.stringify(at)}`);
+    }
     await card.getByRole('button', { name: 'Add set', exact: true }).click();
+    if (PROBE) {
+      await page.waitForTimeout(400);
+      const rows = await card.evaluate((el) => (el.textContent.match(/\d+(?:\.\d+)?kg × \d+/g) ?? []).join(' | '));
+      console.log(`[probe]   rows after: ${rows}`);
+    }
     await expectText(page, `${weight}kg × ${reps}`);
     if (index < sets.length - 1) await waitForSetForm(page, card, weight);
   }
