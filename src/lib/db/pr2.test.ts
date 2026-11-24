@@ -5,6 +5,7 @@ import { setCurrentUserId } from './session';
 import {
   addSet,
   endWorkout,
+  getRecentPRFeed,
   recomputePRsForExercise,
   softDeleteSet,
   startWorkout,
@@ -14,9 +15,9 @@ import { LATE_PR_TYPES } from '../domain/pr';
 import type { PersonalRecord, PRType } from './types';
 
 /**
- * PR-2: «περισσότερες reps με ίδιο φορτίο» και reps-ισοδύναμο σε ασκήσεις
- * σώματος — μέσα από το πραγματικό addSet / recompute πάνω στο IndexedDB
- * (fake-indexeddb).
+ * PR-2: «περισσότερες reps με ίδιο φορτίο», reps-ισοδύναμο σε ασκήσεις σώματος
+ * και η ροή «Πρόσφατα ρεκόρ» (30 ημέρες, ένα ανά άσκηση+τύπο) — μέσα από το
+ * πραγματικό addSet / recompute πάνω στο IndexedDB (fake-indexeddb).
  */
 const pull = SEED_EXERCISES.find((e) => e.name === 'Pull-ups')!;
 const bench = SEED_EXERCISES.find((e) => e.name === 'Bench Press')!;
@@ -164,5 +165,27 @@ describe('reps-ισοδύναμο (μόνο ασκήσεις σώματος)', (
     const xpTypes = xpPRs(all, LATE_PR_TYPES).map((r) => r.type);
     expect(xpTypes).not.toContain('reps_at_load');
     expect(xpTypes).not.toContain('rep_equivalent');
+  });
+});
+
+describe('getRecentPRFeed — «Πρόσφατα ρεκόρ»', () => {
+  it('παλιά ρεκόρ (>30 ημέρες, π.χ. από migration) δεν πλημμυρίζουν τη ροή', async () => {
+    await session(pull.id, 120, [{ reps: 10 }]);
+    for (const [ago, reps] of [[100, 12], [80, 14], [60, 16], [45, 18]] as const) {
+      await session(pull.id, ago, [{ reps }]);
+    }
+    expect(await getRecentPRFeed()).toHaveLength(0);
+    await session(pull.id, 3, [{ reps: 20 }]);
+    const feed = await getRecentPRFeed();
+    expect(feed.filter((r) => r.type === 'max_reps').map((r) => r.value)).toEqual([20]);
+  });
+
+  it('ένα ανά άσκηση+τύπο, το καλύτερο', async () => {
+    await session(pull.id, 40, [{ reps: 10 }]);
+    await session(pull.id, 10, [{ reps: 14 }]);
+    await session(pull.id, 4, [{ reps: 16 }]);
+    await session(pull.id, 2, [{ reps: 18 }]);
+    const maxReps = (await getRecentPRFeed()).filter((r) => r.type === 'max_reps');
+    expect(maxReps.map((r) => r.value)).toEqual([18]);
   });
 });

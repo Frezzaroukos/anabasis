@@ -21,6 +21,7 @@ import {
   sessionTotals,
   type PRCandidate,
 } from '../domain/pr';
+import { recentPRFeed } from '../domain/prFeed';
 import { resolveBodyweight } from '../domain/bodyweight';
 import { realPRs, xpPRs } from '../domain/prBaseline';
 import { setVolume } from '../domain/volume';
@@ -1136,6 +1137,15 @@ export async function getActivityPRs(activityKind: string): Promise<Map<PRType, 
   const m = new Map<PRType, PersonalRecord>();
   for (const r of rows) m.set(r.type, r);
   return m;
+}
+
+/**
+ * «Πρόσφατα ρεκόρ» (αρχική + Ιστορικό): μόνο των τελευταίων 30 ημερών και ένα
+ * (το καλύτερο) ανά άσκηση+τύπο — βλ. domain/prFeed. Τα υπόλοιπα στην Πρόοδο.
+ */
+export async function getRecentPRFeed(limit?: number): Promise<PersonalRecord[]> {
+  const rows = await db.personal_records.where('user_id').equals(getCurrentUserId()).toArray();
+  return recentPRFeed(rows, new Date(), { limit });
 }
 
 /** Τα πιο πρόσφατα PRs, ταξινομημένα (για History/Dashboard). */

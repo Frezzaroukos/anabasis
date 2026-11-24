@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Trophy } from 'lucide-react';
-import { getRecentPRs, listActivities, listExercises } from '@/lib/db/queries';
+import { getRecentPRFeed, listActivities, listExercises } from '@/lib/db/queries';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { SectionTitle } from '@/components/ui/Section';
 import { formatPRValue } from '@/lib/domain/prFormat';
@@ -10,7 +10,8 @@ import { PRBodyNote } from '@/components/PRBodyNote';
 
 
 /**
- * Τα τελευταία ρεκόρ.
+ * Τα τελευταία ρεκόρ: μόνο των τελευταίων 30 ημερών και ένα (το καλύτερο) ανά
+ * άσκηση+τύπο (βλ. domain/prFeed) — τα υπόλοιπα ζουν στην Πρόοδο.
  *
  * Κάθε γραμμή είναι ΣΥΝΔΕΣΜΟΣ προς την πρόοδο της άσκησης: ένα PR γεννά
  * αμέσως την ερώτηση «πώς πάω σε αυτή την άσκηση;» και πριν αυτό ήταν
@@ -20,7 +21,7 @@ export function RecentPRsCard() {
   const { t } = useTranslation();
   const settings = useAppSettings();
   const unit = settings?.weight_unit ?? 'kg';
-  const prs = useLiveQuery(() => getRecentPRs(4), [], []);
+  const prs = useLiveQuery(() => getRecentPRFeed(4), [], []);
   const exercises = useLiveQuery(() => listExercises(), [], []);
   const activities = useLiveQuery(() => listActivities(true), [], []);
 
@@ -33,7 +34,7 @@ export function RecentPRsCard() {
     <section className="rounded-xl bg-card p-4">
       <SectionTitle
         action={
-          <Link to="/history" className="text-xs text-muted-foreground hover:text-foreground tap:hit-area">
+          <Link to="/progress" className="text-xs text-muted-foreground hover:text-foreground tap:hit-area">
             {t('dashboard.viewAll')} →
           </Link>
         }
