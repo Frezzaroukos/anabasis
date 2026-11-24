@@ -70,6 +70,14 @@ export const BUILTIN_PR_TYPES = [
   'session_reps',
   'session_volume',
   'session_hold',
+  /**
+   * Περισσότερες reps με το ΙΔΙΟ πρόσθετο φορτίο (σκέτο σώμα ή ίδια κιλά) από
+   * κάθε προηγούμενη προπόνηση — όταν δεν σπάει ήδη το συνολικό max_reps.
+   * Γράφεται ΜΟΝΟ ως βελτίωση (χωρίς baseline rows), βλ. RepsAtLoadTracker.
+   */
+  'reps_at_load',
+  /** Ασκήσεις σώματος: reps + πρόσθετο kg × 0.6 (βλ. domain/repEquivalent) — σκορ, όχι βάρος */
+  'rep_equivalent',
   /** v7: PRs για δραστηριότητες χωρίς άσκηση (τρέξιμο/ποδήλατο/κολύμβηση) */
   'longest_distance',
   'longest_duration',

@@ -60,6 +60,29 @@ describe('pr-dates-v1 migration', () => {
     expect((await runPRDatesMigration()).status).toBe('skipped');
   });
 
+  it('v3: προφίλ που είχε ήδη τρέξει το v2 ξαναχτίζει ΜΙΑ φορά τους νέους τύπους (PR-2)', async () => {
+    expect(PR_DATES_FLAG_PREFIX).toBe('anabasis:pr-dates-v3:');
+    localStorage.setItem(`anabasis:pr-dates-v2:${UID}`, '1'); // παλιά σημαία δεν μπλοκάρει
+    const w1 = await startWorkout('strength', dayStr(20));
+    await addSet({ workout_id: w1.id, exercise_id: dips.id, weight_kg: null, bodyweight_kg: null, reps: 25, hold_seconds: null });
+    await addSet({ workout_id: w1.id, exercise_id: dips.id, weight_kg: 10, bodyweight_kg: null, reps: 6, hold_seconds: null });
+    const w2 = await startWorkout('strength', dayStr(15));
+    await addSet({ workout_id: w2.id, exercise_id: dips.id, weight_kg: 10, bodyweight_kg: null, reps: 8, hold_seconds: null });
+    // προσομοίωση ιστορικού ΠΡΙΝ το update: κανένα row των νέων τύπων
+    const fresh = await db.personal_records.where('exercise_id').equals(dips.id).toArray();
+    for (const r of fresh) {
+      if (r.type === 'reps_at_load' || r.type === 'rep_equivalent') await db.personal_records.delete(r.id);
+    }
+
+    expect((await runPRDatesMigration()).status).toBe('done');
+    const live = (await db.personal_records.where('exercise_id').equals(dips.id).toArray()).filter(
+      (r) => r.deleted_at == null,
+    );
+    expect(live.filter((r) => r.type === 'reps_at_load').map((r) => [r.value, r.workout_id])).toEqual([[8, w2.id]]);
+    expect(live.some((r) => r.type === 'rep_equivalent')).toBe(true);
+    expect(localStorage.getItem(`${PR_DATES_FLAG_PREFIX}${UID}`)).toBe('1');
+  });
+
   it('idempotent: χωρίς σημαία, δεύτερο τρέξιμο δεν αλλάζει τίποτα (fixed = 0)', async () => {
     const first = await runPRDatesMigration();
     expect(first.status).toBe('done');

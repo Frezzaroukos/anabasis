@@ -3,8 +3,18 @@ import { WEIGHT_PR_TYPES } from './pr';
 import { formatWeight, toDisplayWeight } from '../units';
 
 /** Η τιμή ενός PR όπως φαίνεται (μονάδες βάρους, δευτερόλεπτα, ×BW…). Ένα σημείο για όλες τις λίστες. */
-export function formatPRValue(pr: Pick<PersonalRecord, 'type' | 'value'>, unit: WeightUnit): string {
+export function formatPRValue(
+  pr: Pick<PersonalRecord, 'type' | 'value'> & Partial<Pick<PersonalRecord, 'weight_kg'>>,
+  unit: WeightUnit,
+): string {
   if (WEIGHT_PR_TYPES.has(pr.type)) return formatWeight(pr.value, unit);
+  // Σκορ σε reps (κανόνας reps↔κιλά) — ΠΟΤΕ ως βάρος.
+  if (pr.type === 'rep_equivalent') return `≈ ${Math.round(pr.value * 10) / 10}`;
+  // Reps στο ίδιο φορτίο: το φορτίο είναι μέρος του ρεκόρ («10 kg × 8»).
+  if (pr.type === 'reps_at_load') {
+    const reps = String(Math.round(pr.value));
+    return pr.weight_kg != null && pr.weight_kg > 0 ? `${formatWeight(pr.weight_kg, unit)} × ${reps}` : reps;
+  }
   if (pr.type === 'max_hold' || pr.type === 'session_hold') return `${Math.round(pr.value)}s`;
   if (pr.type === 'relative_strength') return `×${(Math.round(pr.value * 100) / 100).toFixed(2)}`;
   return String(Math.round(pr.value * 10) / 10);

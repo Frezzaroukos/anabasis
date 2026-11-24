@@ -1,5 +1,5 @@
 import type { PersonalRecord } from '../db/types';
-import { NON_XP_PR_TYPES } from './pr';
+import { IMPROVEMENT_ONLY_PR_TYPES, NON_XP_PR_TYPES } from './pr';
 
 /**
  * ΕΝΙΑΙΟΣ ορισμός «PR» για ό,τι ΜΕΤΡΑΕΙ ή ΔΕΙΧΝΕΙ ρεκόρ (λίστες, αρχική,
@@ -33,6 +33,11 @@ export function realPRs<T extends PRLike>(rows: ReadonlyArray<T>): T[] {
   const real = new Set<T>();
   for (const g of groups.values()) {
     for (const r of g) {
+      // Γράφονται μόνο όταν ξεπερνούν προηγούμενη προπόνηση (π.χ. reps_at_load).
+      if (IMPROVEMENT_ONLY_PR_TYPES.has(r.type)) {
+        real.add(r);
+        continue;
+      }
       // Υπάρχει row ΑΛΛΗΣ προπόνησης που καταγράφηκε νωρίτερα;
       if (g.some((o) => o.workout_id !== r.workout_id && o.achieved_at < r.achieved_at)) real.add(r);
     }
