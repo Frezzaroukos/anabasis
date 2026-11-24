@@ -727,7 +727,12 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
 
   const live = allSets
     .filter(
-      (s) => isWorkingSet(s) && workoutById.get(s.workout_id)?.deleted_at == null,
+      // Μόνο σετ σε ΔΙΚΕΣ μου ζωντανές προπονήσεις: οι seed ασκήσεις είναι κοινές σε
+      // όλα τα προφίλ, και `undefined?.deleted_at == null` θα περνούσε τα ξένα σετ.
+      (s) => {
+        const w = workoutById.get(s.workout_id);
+        return w != null && w.deleted_at == null && isWorkingSet(s);
+      },
     )
     .sort((a, b) => {
       const wa = workoutById.get(a.workout_id)?.started_at ?? '';
