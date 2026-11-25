@@ -21,8 +21,8 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preload" href="./fonts/manrope-greek-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="./fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="./landing.css?v=3" />
-    <script src="./landing.js?v=2" defer></script>
+    <link rel="stylesheet" href="./landing.css?v=4" />
+    <script src="./landing.js?v=3" defer></script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -59,7 +59,15 @@
             <button type="button" data-lang="en" aria-pressed="true">EN</button>
             <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
           </div>
-          <a class="mobile-price" href="#pricing" data-en="Pricing" data-el="Τιμές">Pricing</a>
+          <details class="mobile-menu" data-mobile-menu>
+            <summary aria-label="Menu" data-en-label="Menu" data-el-label="Μενού"><span class="mm-bars" aria-hidden="true"></span></summary>
+            <nav class="mobile-menu-panel" aria-label="Menu">
+              <a href="#pricing" data-en="Pricing" data-el="Τιμές">Pricing</a>
+              <a href="#faq" data-en="FAQ" data-el="FAQ">FAQ</a>
+              <a href="#how" data-en="How it works" data-el="Πώς δουλεύει">How it works</a>
+              <a class="mm-app" href="./" data-en="Open app ↗" data-el="Άνοιξε το app ↗">Open app ↗</a>
+            </nav>
+          </details>
           <a class="header-cta" href="./" data-en="Open app ↗" data-el="Άνοιξε το app ↗">Open app ↗</a>
         </div>
       </div>
