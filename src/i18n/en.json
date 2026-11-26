@@ -266,6 +266,8 @@
       "session_reps": "Most reps in a workout",
       "session_volume": "Most volume in a workout",
       "session_hold": "Most hold time in a workout",
+      "reps_at_load": "Reps at the same load",
+      "rep_equivalent": "Rep-equivalent",
       "longest_distance": "Longest distance",
       "longest_duration": "Longest duration",
       "fastest_pace": "Fastest pace"
@@ -1722,7 +1724,8 @@
         "step1": "Strength PRs: Max weight, Max reps, Max volume, Est. 1RM, Max hold and, for bodyweight exercises, Total load and Est. 1RM (total). Without sets, activities track Longest distance, Longest duration and Fastest pace.",
         "step2": "Warm-up sets never count. The very first set of a new exercise is not celebrated as a PR because there was no previous mark.",
         "step3": "For bodyweight exercises you get both: Max weight and Est. 1RM count only the added weight, while Total load and Est. 1RM (total) count bodyweight + added. So a day with no weights available (bodyweight only) can still set a record. Volume always counts bodyweight + added. Total-load records need a logged bodyweight.",
-        "step4": "After you edit, repeat or delete sets (or delete a workout), PRs are recomputed from the remaining live sets, so old wrong marks do not stick."
+        "step4": "After you edit, repeat or delete sets (or delete a workout), PRs are recomputed from the remaining live sets, so old wrong marks do not stick.",
+        "step5": "Reps at the same load: more reps with the same added weight (or bodyweight only) than in any earlier workout, e.g. +10 kg × 6 → × 8. A tie is not a record. Rep-equivalent (bodyweight exercises only): reps + added kg × 0.6, so +5 kg ≈ 3 reps and 40 kg × 1 (≈ 25) can be compared with 30 kg × 3 (≈ 21). It is a score in reps, not a weight, and gives no XP."
       },
       "sync": {
         "title": "Offline and sync",

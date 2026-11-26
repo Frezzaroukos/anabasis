@@ -15,10 +15,13 @@ import {
   candidatesFromWorkout,
   isNewPR,
   LATE_PR_TYPES,
+  RepsAtLoadTracker,
   SESSION_PR_TYPES,
   sessionCandidates,
   sessionTotals,
+  type PRCandidate,
 } from '../domain/pr';
+import { recentPRFeed } from '../domain/prFeed';
 import { resolveBodyweight } from '../domain/bodyweight';
 import { realPRs, xpPRs } from '../domain/prBaseline';
 import { setVolume } from '../domain/volume';
@@ -531,8 +534,12 @@ function prAchievedAt(
  */
 async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
   const t = now();
-  const broken: PRType[] = [];
-  const candidates = candidatesFromSet(set);
+  let broken: PRType[] = [];
+  const [exercise, workout] = await Promise.all([
+    db.exercises.get(set.exercise_id),
+    db.workouts.get(workoutId),
+  ]);
+  const candidates = candidatesFromSet(set, { bodyweightExercise: !!exercise?.is_bodyweight });
   if (candidates.length === 0) return broken;
 
   const existing = await db.personal_records
@@ -540,7 +547,7 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
     .equals(getCurrentUserId())
     .filter((r) => r.exercise_id === set.exercise_id && r.deleted_at == null)
     .toArray();
-  const achievedAt = prAchievedAt(set.created_at, await db.workouts.get(workoutId));
+  const achievedAt = prAchievedAt(set.created_at, workout);
 
   // Πρώτο σετ ΠΟΤΕ σε αυτή την άσκηση δεν «γιορτάζεται» ως PR — αλλιώς κάθε
   // νέα άσκηση θα έριχνε κομφετί. PR = ξεπερνάς κάτι που ΗΔΗ είχες.
@@ -573,7 +580,71 @@ async function detectPRs(set: SetEntry, workoutId: string): Promise<PRType[]> {
       updated_at: t,
     });
   }
+
+  // Περισσότερες reps στο ίδιο φορτίο: κρίνεται από τα ΣΕΤ (δεν έχει baseline rows).
+  const atLoad = await liveRepsAtLoad(set, workout);
+  if (atLoad) {
+    broken.push(atLoad.type);
+    await db.personal_records.add({
+      id: uuid(),
+      user_id: getCurrentUserId(),
+      exercise_id: set.exercise_id,
+      activity_kind: null,
+      type: atLoad.type,
+      value: atLoad.value,
+      reps: atLoad.reps,
+      weight_kg: atLoad.weight_kg,
+      achieved_at: achievedAt,
+      workout_id: workoutId,
+      set_id: set.id,
+      created_at: t,
+      updated_at: t,
+    });
+  }
+
+  // Το reps-ισοδύναμο είναι δεύτερη ματιά στο ίδιο σετ: γιορτάζεται μόνο όταν
+  // το σετ δεν έσπασε τίποτα άλλο (αλλιώς «2 PR» για ένα επίτευγμα).
+  if (broken.length > 1) broken = broken.filter((type) => type !== 'rep_equivalent');
   return broken;
+}
+
+/**
+ * Live εκδοχή του RepsAtLoadTracker: όλα τα working σετ της άσκησης σε
+ * προπονήσεις ΑΥΤΟΥ του προφίλ μέχρι την τρέχουσα, με τη σειρά του recompute,
+ * και μετά το νέο σετ. Ίδιο αποτέλεσμα με το recomputePRsForExercise.
+ */
+async function liveRepsAtLoad(
+  set: SetEntry,
+  workout: Workout | undefined,
+): Promise<PRCandidate | null> {
+  if (!workout || set.reps == null || set.reps <= 0) return null;
+  const others = (await db.sets.where('exercise_id').equals(set.exercise_id).toArray()).filter(
+    (s) => s.id !== set.id && isWorkingSet(s),
+  );
+  const workoutIds = [...new Set(others.map((s) => s.workout_id))];
+  const workouts = await db.workouts.bulkGet(workoutIds);
+  const uid = getCurrentUserId();
+  const byId = new Map<string, Workout>();
+  for (const w of workouts) {
+    if (w && w.user_id === uid && w.deleted_at == null) byId.set(w.id, w);
+  }
+  const prior = others
+    .filter((s) => {
+      const w = byId.get(s.workout_id);
+      return w != null && w.started_at <= workout.started_at;
+    })
+    .sort((a, b) => {
+      const wa = byId.get(a.workout_id)?.started_at ?? '';
+      const wb = byId.get(b.workout_id)?.started_at ?? '';
+      return (
+        wa.localeCompare(wb) ||
+        a.created_at.localeCompare(b.created_at) ||
+        a.set_number - b.set_number
+      );
+    });
+  const tracker = new RepsAtLoadTracker();
+  for (const s of prior) tracker.consider(s);
+  return tracker.consider(set);
 }
 
 /**
@@ -656,7 +727,12 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
 
   const live = allSets
     .filter(
-      (s) => isWorkingSet(s) && workoutById.get(s.workout_id)?.deleted_at == null,
+      // Μόνο σετ σε ΔΙΚΕΣ μου ζωντανές προπονήσεις: οι seed ασκήσεις είναι κοινές σε
+      // όλα τα προφίλ, και `undefined?.deleted_at == null` θα περνούσε τα ξένα σετ.
+      (s) => {
+        const w = workoutById.get(s.workout_id);
+        return w != null && w.deleted_at == null && isWorkingSet(s);
+      },
     )
     .sort((a, b) => {
       const wa = workoutById.get(a.workout_id)?.started_at ?? '';
@@ -668,11 +744,17 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
       );
     });
 
+  const bodyweightExercise = !!(await db.exercises.get(exerciseId))?.is_bodyweight;
   const desired: DesiredPR[] = [];
   const best = new Map<PRType, PersonalRecord>();
+  const atLoad = new RepsAtLoadTracker();
   for (const set of live) {
     const resolved = withBodyweight(set);
-    for (const c of candidatesFromSet(resolved.set, { bwEstimated: resolved.estimated })) {
+    const candidates = candidatesFromSet(resolved.set, {
+      bwEstimated: resolved.estimated,
+      bodyweightExercise,
+    });
+    for (const c of candidates) {
       const current = best.get(c.type) ?? null;
       if (!isNewPR(c, current)) continue;
       const row: PersonalRecord = {
@@ -694,6 +776,25 @@ export async function recomputePRsForExercise(exerciseId: string): Promise<void>
       };
       desired.push(row);
       best.set(c.type, row);
+    }
+    // Reps στο ίδιο φορτίο: μόνο βελτιώσεις, όχι στο `best` (ανά φορτίο, όχι ανά τύπο).
+    const repsRecord = atLoad.consider(set);
+    if (repsRecord) {
+      desired.push({
+        id: uuid(),
+        user_id: uid,
+        exercise_id: exerciseId,
+        activity_kind: null,
+        type: repsRecord.type,
+        value: repsRecord.value,
+        reps: repsRecord.reps,
+        weight_kg: repsRecord.weight_kg,
+        achieved_at: prAchievedAt(set.created_at, workoutById.get(set.workout_id)),
+        workout_id: set.workout_id,
+        set_id: set.id,
+        created_at: set.created_at,
+        updated_at: now(),
+      });
     }
   }
 
@@ -1041,6 +1142,15 @@ export async function getActivityPRs(activityKind: string): Promise<Map<PRType, 
   const m = new Map<PRType, PersonalRecord>();
   for (const r of rows) m.set(r.type, r);
   return m;
+}
+
+/**
+ * «Πρόσφατα ρεκόρ» (αρχική + Ιστορικό): μόνο των τελευταίων 30 ημερών και ένα
+ * (το καλύτερο) ανά άσκηση+τύπο — βλ. domain/prFeed. Τα υπόλοιπα στην Πρόοδο.
+ */
+export async function getRecentPRFeed(limit?: number): Promise<PersonalRecord[]> {
+  const rows = await db.personal_records.where('user_id').equals(getCurrentUserId()).toArray();
+  return recentPRFeed(rows, new Date(), { limit });
 }
 
 /** Τα πιο πρόσφατα PRs, ταξινομημένα (για History/Dashboard). */

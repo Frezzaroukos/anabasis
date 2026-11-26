@@ -7,6 +7,7 @@
 
 import type { PersonalRecord, PRType, SetEntry, Workout } from '../db/types';
 import { epley } from './e1rm';
+import { repEquivalentScore } from './repEquivalent';
 import { setVolume } from './volume';
 
 /** PR types σε κιλά (kg storage) — μετατρέπονται σε lb στο UI· τα υπόλοιπα όχι. */
@@ -28,6 +29,7 @@ export const LATE_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
   'max_total_load',
   'e1rm_total',
   'relative_strength',
+  'rep_equivalent',
 ]);
 
 /**
@@ -45,7 +47,17 @@ export const SESSION_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
 export const NON_XP_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>([
   ...SESSION_PR_TYPES,
   'relative_strength',
+  // δεύτερη ματιά στο ίδιο σετ (το max_reps/max_weight δίνει ήδη XP) — και το
+  // backfill τους από το ιστορικό δεν πρέπει να ανεβάσει το επίπεδο
+  'rep_equivalent',
+  'reps_at_load',
 ]);
+
+/**
+ * Τύποι που γράφονται ΜΟΝΟ όταν ξεπερνούν προηγούμενη προπόνηση — χωρίς
+ * baseline rows. Ο `realPRs` τους μετρά πάντα (η σύγκριση έγινε ήδη στα σετ).
+ */
+export const IMPROVEMENT_ONLY_PR_TYPES: ReadonlySet<PRType> = new Set<PRType>(['reps_at_load']);
 
 /**
  * Ελάχιστη σχετική βελτίωση για να μετρήσει νέο ρεκόρ ανά τύπο. Η σχετική
@@ -70,6 +82,8 @@ export interface PRCandidate {
 export interface SetCandidateOptions {
   /** το set.bodyweight_kg προέρχεται από μεταγενέστερη μέτρηση (κατά προσέγγιση) */
   bwEstimated?: boolean;
+  /** άσκηση σωματικού βάρους (`exercise.is_bodyweight`) → και ρεκόρ reps-ισοδύναμου */
+  bodyweightExercise?: boolean;
 }
 
 export function candidatesFromSet(set: SetEntry, opts: SetCandidateOptions = {}): PRCandidate[] {
@@ -144,6 +158,17 @@ export function candidatesFromSet(set: SetEntry, opts: SetCandidateOptions = {})
         bodyweight_kg: set.bodyweight_kg,
       });
     }
+  }
+
+  // Reps-ισοδύναμο (κανόνας χρήστη, βλ. domain/repEquivalent): μόνο σε ασκήσεις
+  // σώματος, ώστε 40 kg × 1 και 30 kg × 3 να συγκρίνονται. Σκορ, όχι βάρος.
+  if (opts.bodyweightExercise && set.reps != null && set.reps > 0) {
+    candidates.push({
+      type: 'rep_equivalent',
+      value: repEquivalentScore(set.reps, set.weight_kg),
+      reps: set.reps,
+      weight_kg: set.weight_kg,
+    });
   }
 
   if (set.hold_seconds != null && set.hold_seconds > 0) {
@@ -253,4 +278,53 @@ export function sessionCandidates(t: SessionTotals): PRCandidate[] {
   }
   if (t.holdSeconds > 0) out.push({ type: 'session_hold', value: t.holdSeconds, ...base });
   return out;
+}
+
+/**
+ * Το πρόσθετο φορτίο ενός σετ ως κλειδί σύγκρισης: σκέτο σώμα (null/0) = 0,
+ * αλλιώς kg στα 2 δεκαδικά (ίδια τιμή lb → ίδια kg, άρα ίδιο κλειδί).
+ */
+export function loadKey(weightKg: number | null | undefined): number {
+  if (weightKg == null || !Number.isFinite(weightKg) || weightKg <= 0) return 0;
+  return Math.round(weightKg * 100) / 100;
+}
+
+type RepsSet = Pick<SetEntry, 'workout_id' | 'weight_kg' | 'reps'>;
+
+/**
+ * «Περισσότερες reps με το ΙΔΙΟ φορτίο» (π.χ. +10 kg × 6 → × 8, ή 20 → 30
+ * σκέτες έλξεις) — το `max_reps` το πιάνει μόνο όταν ξεπερνά το ΣΥΝΟΛΙΚΟ ρεκόρ
+ * reps της άσκησης, οπότε +10 kg × 8 μετά από 20 σκέτες δεν μετρούσε ποτέ.
+ *
+ * Τροφοδοτείς τα working σετ μιας άσκησης με χρονολογική σειρά· το `consider`
+ * επιστρέφει candidate ΜΟΝΟ όταν:
+ *  - υπάρχει σετ στο ίδιο φορτίο από ΠΡΟΗΓΟΥΜΕΝΗ προπόνηση (αλλιώς δεν
+ *    ξεπέρασες τίποτα — ένα νέο φορτίο δεν είναι ρεκόρ reps),
+ *  - οι reps είναι ΑΥΣΤΗΡΑ περισσότερες από το καλύτερο σε αυτό το φορτίο
+ *    (ισοπαλία ≠ ρεκόρ),
+ *  - δεν σπάει ήδη το συνολικό max_reps (αλλιώς το ίδιο σετ θα έβγαζε δύο PR).
+ *
+ * Ίδια λογική για το live (addSet) και το recompute — ίδια rows, ίδια ids.
+ */
+export class RepsAtLoadTracker {
+  private overallBest = 0;
+  private readonly byLoad = new Map<number, { best: number; firstWorkoutId: string }>();
+
+  consider(set: RepsSet): PRCandidate | null {
+    const reps = set.reps ?? 0;
+    if (reps <= 0) return null;
+    const key = loadKey(set.weight_kg);
+    const seen = this.byLoad.get(key);
+    const isRecord =
+      seen != null &&
+      seen.firstWorkoutId !== set.workout_id &&
+      reps > seen.best &&
+      reps <= this.overallBest;
+    if (seen) seen.best = Math.max(seen.best, reps);
+    else this.byLoad.set(key, { best: reps, firstWorkoutId: set.workout_id });
+    this.overallBest = Math.max(this.overallBest, reps);
+    return isRecord
+      ? { type: 'reps_at_load', value: reps, reps, weight_kg: set.weight_kg }
+      : null;
+  }
 }

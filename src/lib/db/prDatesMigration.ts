@@ -15,6 +15,9 @@
  * ιστορικό. Δεν φτιάχνει ψεύτικα PR: η πρώτη τιμή ανά (άσκηση, τύπο) είναι
  * baseline και ο `realPRs` δεν την μετράει.
  *
+ * v3 (PR-2, 24/11): ξανατρέχει ΜΙΑ φορά για τα «reps στο ίδιο φορτίο» και το
+ * reps-ισοδύναμο των ασκήσεων σώματος. Κανένα XP (NON_XP_PR_TYPES).
+ *
  * Idempotent (το recompute είναι), και αν αποτύχει δεν σημαδεύουμε τη σημαία →
  * ξαναδοκιμάζει στο επόμενο boot.
  */
@@ -22,7 +25,7 @@ import { db } from './schema';
 import { getCurrentUserId } from './session';
 import { recomputeActivityPRs, recomputePRsForExercise } from './queries';
 
-export const PR_DATES_FLAG_PREFIX = 'anabasis:pr-dates-v2:';
+export const PR_DATES_FLAG_PREFIX = 'anabasis:pr-dates-v3:';
 
 function flagKey(uid: string): string {
   return `${PR_DATES_FLAG_PREFIX}${uid}`;
@@ -89,10 +92,10 @@ export async function runPRDatesMigration(): Promise<PRDatesMigrationResult> {
     for (const [id, at] of after) if (before.get(id) !== at) fixed += 1;
     for (const id of before.keys()) if (!after.has(id)) fixed += 1;
     markDone(uid);
-    console.info(`[migration] pr-dates-v2: ${fixed} PR rows fixed`);
+    console.info(`[migration] pr-dates-v3: ${fixed} PR rows fixed`);
     return { status: 'done', fixed };
   } catch (err) {
-    console.warn('[migration] pr-dates-v2 failed — will retry next boot', err);
+    console.warn('[migration] pr-dates-v3 failed — will retry next boot', err);
     return { status: 'failed' };
   }
 }

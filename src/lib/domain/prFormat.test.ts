@@ -9,6 +9,18 @@ describe('formatPRValue', () => {
     expect(formatPRValue({ type: 'relative_strength', value: 1.4263 }, 'kg')).toBe('×1.43');
     expect(formatPRValue({ type: 'session_sets', value: 4 }, 'kg')).toBe('4');
   });
+
+  it('reps-ισοδύναμο: σκορ «≈ 25», ποτέ βάρος (ούτε σε lb)', () => {
+    expect(formatPRValue({ type: 'rep_equivalent', value: 25 }, 'kg')).toBe('≈ 25');
+    expect(formatPRValue({ type: 'rep_equivalent', value: 9.5 }, 'lb')).toBe('≈ 9.5');
+    expect(formatPRValue({ type: 'rep_equivalent', value: 25 }, 'kg')).not.toMatch(/kg|lb/);
+  });
+
+  it('reps στο ίδιο φορτίο: «φορτίο × reps», σκέτο σώμα μόνο reps', () => {
+    expect(formatPRValue({ type: 'reps_at_load', value: 8, weight_kg: 10 }, 'kg')).toBe('10 kg × 8');
+    expect(formatPRValue({ type: 'reps_at_load', value: 8, weight_kg: 20.411656 }, 'lb')).toBe('45 lb × 8');
+    expect(formatPRValue({ type: 'reps_at_load', value: 31, weight_kg: null }, 'kg')).toBe('31');
+  });
 });
 
 describe('prBodyChange', () => {

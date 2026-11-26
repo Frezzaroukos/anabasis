@@ -58,4 +58,15 @@ describe('summarizeWorkout', () => {
     );
     expect(s.prs).toBe(2);
   });
+
+  it('reps-ισοδύναμο στο ίδιο σετ με άλλο ρεκόρ δεν μετρά διπλό· μόνο του μετρά', () => {
+    const row = (type: string, workout_id: string, set_id: string | null) =>
+      ({ exercise_id: 'pull', type, workout_id, set_id, deleted_at: null, activity_kind: null,
+        achieved_at: workout_id === 'w0' ? '2026-11-01T10:00:00Z' : '2026-11-08T10:00:00Z' }) as never;
+    const base = [row('max_reps', 'w0', 'a'), row('rep_equivalent', 'w0', 'a')];
+    // 30 σκέτες: max_reps + reps-ισοδύναμο στο ίδιο σετ → 1
+    expect(summarizeWorkout([], [...base, row('max_reps', 'w', 'S'), row('rep_equivalent', 'w', 'S')], 'w').prs).toBe(1);
+    // 40 kg × 1: μόνο reps-ισοδύναμο → 1
+    expect(summarizeWorkout([], [...base, row('rep_equivalent', 'w', 'T')], 'w').prs).toBe(1);
+  });
 });

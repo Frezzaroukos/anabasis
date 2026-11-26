@@ -5,7 +5,7 @@ import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { CalendarPlus, Clock, Dumbbell, Layers, Search, Trophy, X } from 'lucide-react';
 import { formatHMS } from '@/hooks/useSessionTimer';
 import {
-  getRecentPRs,
+  getRecentPRFeed,
   listActivities,
   listAllExercises,
   listWorkoutSummaries,
@@ -149,7 +149,8 @@ export function HistoryPage() {
     scrollMargin,
   });
 
-  const prs = useLiveQuery(() => getRecentPRs(8), [], []);
+  // 30 ημέρες + ένα ανά άσκηση+τύπο (domain/prFeed)· εδώ και ένα ανά άσκηση.
+  const prs = useLiveQuery(() => getRecentPRFeed(8), [], []);
   // listAllExercises (όχι db.exercises.toArray()): οι δικές σου ασκήσεις
   // δεν πρέπει να διαρρέουν στο ιστορικό άλλου προφίλ. Παίρνουμε ΚΑΙ τις
   // αρχειοθετημένες γιατί ένα PR μπορεί να αναφέρεται σε άσκηση που έκτοτε

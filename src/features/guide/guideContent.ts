@@ -237,7 +237,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: 'prs',
     titleKey: 'guide.sections.prs.title',
     introKey: 'guide.sections.prs.intro',
-    stepKeys: [1, 2, 3, 4].map((n) => `guide.sections.prs.step${n}`),
+    stepKeys: [1, 2, 3, 4, 5].map((n) => `guide.sections.prs.step${n}`),
     labelKeys: [
       'history.pr.max_weight',
       'history.pr.max_reps',
@@ -251,6 +251,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'history.pr.session_reps',
       'history.pr.session_volume',
       'history.pr.session_hold',
+      'history.pr.reps_at_load',
+      'history.pr.rep_equivalent',
       'history.pr.longest_distance',
       'history.pr.longest_duration',
       'history.pr.fastest_pace',
