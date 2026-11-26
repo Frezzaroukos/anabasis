@@ -291,7 +291,21 @@
     languageButtons.forEach(function (button) {
       button.setAttribute('aria-pressed', button.getAttribute('data-lang') === currentLang ? 'true' : 'false');
     });
+    all('[data-en-label]').forEach(function (node) {
+      node.setAttribute('aria-label', node.getAttribute('data-' + currentLang + '-label'));
+    });
     renderFounding(true);
+  }
+
+  function setupMenu() {
+    var menu = one('[data-mobile-menu]');
+    if (!menu) return;
+    function close() { menu.removeAttribute('open'); }
+    menu.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('a')) close();
+    });
+    doc.addEventListener('click', function (e) { if (!menu.contains(e.target)) close(); });
+    doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
   }
 
   function setupLanguage() {
@@ -398,6 +412,7 @@
     var glowB = one('.glow-b');
     var sticky = one('#mobile-cta');
     var pricing = one('#pricing');
+    var faq = one('#faq');
     var ticking = false;
 
     function update() {
@@ -424,6 +439,11 @@
           y > window.innerHeight * 0.72 &&
           pricingTop > window.innerHeight &&
           y + window.innerHeight < doc.documentElement.scrollHeight - 160;
+        // never cover the FAQ rows: hide while the FAQ is on screen
+        if (faq) {
+          var fr = faq.getBoundingClientRect();
+          if (fr.top < window.innerHeight && fr.bottom > 0) show = false;
+        }
         var wasVisible = sticky.classList.contains('is-visible');
         if (show !== wasVisible) {
           sticky.classList.toggle('is-visible', show);
@@ -476,6 +496,7 @@
     });
 
     setupLanguage();
+    setupMenu();
     renderFounding(true);
     setupReveal();
     setupLive();
